@@ -5,6 +5,7 @@ import { customerService, type CustomerOrder, type CustomerOrderItem } from '../
 import { GhnTrackingTimeline, type TrackingEvent } from '../../components/shipping/GhnTrackingTimeline';
 import { OrderProductLink } from '../../components/customer/OrderProductLink';
 import { getCustomerOrderActions } from '../../utils/customer-order-actions';
+import { useReturnWindowClock } from '../../hooks/useReturnWindowClock';
 import { getGhnTrackingCode } from '../../utils/ghn-tracking';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
 import { formatMoney, getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
@@ -27,6 +28,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
   confirmingOrderId?: string | null;
 }) {
   const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const returnWindowNow = useReturnWindowClock([order]);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [trackingEvents, setTrackingEvents] = useState<TrackingEvent[]>([]);
@@ -49,7 +51,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
     {error ? <><p role="alert">{error}</p><button type="button" onClick={() => setRetry(value => value + 1)}>Thử lại</button></> : <p role="status">Đang tải chi tiết đơn hàng…</p>}
   </section>;
 
-  const actions = getCustomerOrderActions(order);
+  const actions = getCustomerOrderActions(order, returnWindowNow);
   const completed = order.status === 'COMPLETED';
   const cancelled = order.status === 'CANCELLED';
   const pending = order.status === 'PENDING';
@@ -118,6 +120,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
 
     <ol className={`purchase-detail-progress grid grid-cols-1 gap-5 border-b border-[#EAE4D7] px-5 py-6 sm:grid-cols-5 sm:gap-3 sm:py-8 [&>li]:relative [&>li]:flex [&>li]:items-center [&>li]:gap-3 sm:[&>li]:flex-col sm:[&>li]:text-center [&_strong]:text-sm [&_strong]:font-medium [&_time]:text-xs [&_time]:text-[#7D715E] [&_.is-reached]:text-[#946B30]${cancelled ? ' purchase-detail-progress-cancelled' : ''}`} aria-label="Tiến trình đơn hàng">
       {steps.map(({ title, Icon, reached, time }, index) => <li key={title} className={reached ? 'is-reached' : ''} aria-current={index === currentStepIndex ? 'step' : undefined}>
+        {index < steps.length - 1 && <span aria-hidden="true" className={`pointer-events-none absolute left-6 top-6 h-[calc(100%+1.25rem)] w-px sm:left-1/2 sm:top-8 sm:h-px sm:w-[calc(100%+0.75rem)] ${steps[index + 1].reached ? 'bg-[#EEDFC6]' : 'bg-[#EAE4D7]'}`} />}
         <span className="purchase-step-icon relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] sm:h-16 sm:w-16 [.is-reached_&]:border-[#EEDFC6] [.is-reached_&]:bg-[#FBF5EB] [.is-reached_&]:text-[#B88E4F]"><Icon size={25} aria-hidden="true" />{reached && !(cancelled && index === 1) && <Check className="purchase-step-check absolute -bottom-1 -right-1 rounded-full border border-[#EEDFC6] bg-white p-0.5 box-content" size={12} />}</span>
         <strong>{title}</strong>{reached && dateLabel(time) ? <time dateTime={time!}>{dateLabel(time)}</time> : reached && !cancelled && <span className="purchase-step-time-missing text-[11px] text-[#7D715E]">Chưa có thời gian xác nhận</span>}
       </li>)}
@@ -145,7 +148,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
     <section className="purchase-detail-delivery border-b border-[#EAE4D7] p-4 sm:p-5" aria-label="Địa chỉ và vận chuyển">
       <div className="purchase-delivery-heading mb-4 flex flex-wrap items-center justify-between gap-2 [&>h2]:text-base [&>h2]:font-semibold [&>span]:text-xs [&>span]:text-[#7D715E]"><h2>Địa chỉ nhận hàng</h2>{trackingCode && <span>Giao Hàng Nhanh · <strong>{trackingCode}</strong></span>}</div>
       <div className="purchase-delivery-columns grid min-w-0 gap-5 lg:grid-cols-2 [&>address]:flex [&>address]:flex-col [&>address]:gap-2 [&>address]:not-italic [&>address]:text-sm [&_address>p]:leading-relaxed [&_address>p]:text-[#7D715E] [&>div]:min-w-0 lg:[&>div]:border-l lg:[&>div]:border-[#EAE4D7] lg:[&>div]:pl-5">
-        <address><strong>{order.customerName || 'Chưa có tên người nhận'}</strong><span>{order.customerPhone || 'Chưa có số điện thoại'}</span><p>{order.shippingAddress || 'Chưa có địa chỉ nhận hàng'}</p></address>
+        <address>{order.customerName || order.customerPhone || order.shippingAddress ? <><strong>{order.customerName || 'Chưa lưu tên người nhận'}</strong><span>{order.customerPhone || 'Chưa lưu số điện thoại'}</span><p>{order.shippingAddress || 'Chưa lưu địa chỉ nhận hàng'}</p></> : <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-4"><strong className="text-sm">Chưa lưu thông tin người nhận</strong><p className="mt-1 text-xs leading-relaxed text-[#7D715E]">{order.rawPayload?.demoHistoryReconstruction ? 'Đơn demo cũ chưa có địa chỉ giao hàng.' : 'Đơn hàng này chưa có thông tin giao hàng được lưu.'}</p></div>}</address>
         <div>{!cancelled && realTracking ? <GhnTrackingTimeline orderCode={trackingCode} onTimelineChange={setTrackingEvents} environment={['TEST', 'LIVE'].includes(order.rawPayload?.ghnEnvironment) ? order.rawPayload.ghnEnvironment : undefined} /> : <p className="purchase-no-tracking rounded-xl bg-[#FAF8F5] p-4 text-sm leading-relaxed text-[#7D715E]">{cancelled ? 'Đơn hàng đã hủy, không tiếp tục giao hàng.' : pending ? 'Shop chưa bàn giao đơn cho đơn vị vận chuyển.' : trackingCode ? 'Mã vận đơn thử nội bộ, chưa có hành trình giao hàng thực tế.' : 'Chưa có thông tin vận chuyển.'}</p>}</div>
       </div>
     </section>

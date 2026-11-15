@@ -63,7 +63,7 @@ export class AiFraudService {
     const windowDays = { '24h': 1, '7d': 7, '30d': 30, all: null }[timeframe];
     if (windowDays === undefined) throw new BadRequestException('Khoảng thời gian không hợp lệ.');
     const now = new Date();
-    const cacheKey = `ai:fraud:scan:${timeframe}:${targetStoreId || 'all'}:${query.collaboratorId || 'all'}:${query.status || 'all'}:${requesterUser.role}`;
+    const cacheKey = `ai:fraud:scan:v2:${timeframe}:${targetStoreId || 'all'}:${query.collaboratorId || 'all'}:${query.status || 'all'}:${requesterUser.role}`;
     const cached = await this.cacheService.get<FraudScanSummaryDto>(cacheKey);
     if (cached) return cached;
     const period = { ...(windowDays === null ? {} : { gte: new Date(now.getTime() - windowDays * 86400000) }), lte: now };
@@ -108,6 +108,7 @@ export class AiFraudService {
           select: {
             id: true,
             title: true,
+            imageUrl: true,
             price: true,
           },
         },
@@ -256,6 +257,7 @@ export class AiFraudService {
         referralLinkId: link.id,
         referralLinkCode: link.shortCode,
         productName: link.product?.title || 'Toàn gian hàng',
+        productImageUrl: link.product?.imageUrl || null,
         riskScore: analysis.riskScore,
         riskLevel: analysis.riskLevel,
         anomalyTypes: analysis.anomalies,

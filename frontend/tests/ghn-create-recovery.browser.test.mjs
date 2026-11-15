@@ -12,6 +12,7 @@ for (const savedEnvironment of ['TEST', 'LIVE', null, 'REJECTED', 'SUCCESS']) te
   const browser = await puppeteer.launch({ executablePath, headless: true });
   let creates = 0, verified = 0;
   const order = { id: '00000000-0000-4000-8000-000000000001', externalOrderSn: 'DH-QA-RECOVER',
+    shopConfirmedAt: new Date().toISOString(),
     status: 'PENDING', customerName: 'Test Customer', customerPhone: '0900000000', shippingAddress: 'Test Address',
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), subtotalAmount: 200000,
     discountAmount: 0, shippingFee: 25000, finalAmount: 225000, paymentMethod: 'COD', paymentStatus: 'UNPAID',
@@ -45,6 +46,12 @@ for (const savedEnvironment of ['TEST', 'LIVE', null, 'REJECTED', 'SUCCESS']) te
         if (url.pathname === '/api/orders/my-store') {
           if (creates) verified++;
           data = { items: [order], pagination: { total: 1, page: 1, limit: 10, totalPages: 1 } };
+          // A slow list reload must not delay the already-confirmed GHN result.
+          if (creates && savedEnvironment === 'SUCCESS') {
+            setTimeout(() => request.respond({ status: 200, headers,
+              body: JSON.stringify({ success: true, data }) }).catch(() => {}), 6000);
+            return;
+          }
         }
         if (url.pathname === '/api/stores') data = [{ id: 'qa-store', name: 'QA Shop' }];
         if (url.pathname === '/api/products') data = { items: [], pagination: { total: 0 } };
@@ -68,7 +75,9 @@ for (const savedEnvironment of ['TEST', 'LIVE', null, 'REJECTED', 'SUCCESS']) te
       return;
     }
     await page.waitForFunction(() => !document.querySelector('.shipping-dispatch-modal'));
-    await page.waitForSelector('button[title="Tra cứu hành trình vận chuyển GHN"]');
+    await page.waitForSelector('button[title="Tra cứu hành trình vận chuyển GHN"]', {
+      timeout: savedEnvironment === 'SUCCESS' ? 1500 : 10000,
+    });
     assert.equal(await page.$('button[title="Nhập mã vận đơn & giao hàng"]'), null);
     await page.click('button[title="Thao tác khác"]');
     await page.waitForSelector('[aria-label="Thông tin đơn DH-QA-RECOVER"]');

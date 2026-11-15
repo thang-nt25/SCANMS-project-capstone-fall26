@@ -1,3 +1,4 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, CheckCircle2, Copy, Mail, Share2, UserPlus, X } from 'lucide-react';
@@ -65,7 +66,7 @@ export function InviteKolModal({ onClose, store }: { onClose: () => void; store?
       const response: any = await api.get('/stores/my-store');
       const store = response?.data || response;
       if (!store?.slug) throw new Error('Cửa hàng chưa có đường dẫn công khai để chia sẻ.');
-      const link = new URL(`/shop/${encodeURIComponent(store.slug)}`, window.location.origin).href;
+      const link = publicWebsiteUrl(`/shop/${encodeURIComponent(store.slug)}`);
       setSharedShopLink(link);
       if (!navigator.clipboard?.writeText) throw new Error('Trình duyệt không hỗ trợ sao chép tự động. Hãy chọn và chép liên kết bên dưới.');
       await navigator.clipboard.writeText(link);

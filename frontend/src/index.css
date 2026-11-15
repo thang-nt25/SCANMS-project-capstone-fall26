@@ -1547,7 +1547,7 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
 #admin-finance-payouts-page { @apply [min-width:0]; @apply [max-width:100%]; @apply [color:#1A1612]; }
 #admin-finance-payouts-page *, #admin-finance-payouts-page *::before { @apply box-border; }
 #admin-finance-payouts-page > *, #admin-finance-payouts-page form, #admin-finance-payouts-page label { @apply [min-width:0]; }
-#admin-finance-payouts-page .finance-main-tabs { @apply grid; @apply [grid-template-columns:repeat(3,minmax(0,1fr))]; @apply [gap:10px]; @apply [padding:12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:14px]; @apply [background:#fff]; }
+#admin-finance-payouts-page .finance-main-tabs { @apply grid; @apply [grid-template-columns:repeat(4,minmax(0,1fr))]; @apply [gap:10px]; @apply [padding:12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:14px]; @apply [background:#fff]; }
 #admin-finance-payouts-page .finance-main-tabs button { @apply [min-height:46px]; @apply [padding:10px_14px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply justify-center; @apply [line-height:1.5]; @apply [background:#fff]; @apply [font-size:13px]; }
 #admin-finance-payouts-page .finance-main-tabs button[aria-pressed=true] { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; @apply [color:#8F682E]; }
 #admin-finance-payouts-page .finance-main-tabs svg { @apply [flex-shrink:0]; }
@@ -1573,11 +1573,11 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
 #admin-finance-payouts-page .finance-payout-table th,
 #admin-finance-payouts-page .finance-payout-table td { @apply [padding:14px_12px]; @apply [font-size:13px]; @apply [vertical-align:top]; @apply [line-height:1.6]; @apply [overflow-wrap:anywhere]; @apply whitespace-normal; }
 #admin-finance-payouts-page .finance-payout-table th:nth-child(1) { @apply [width:15%]; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(2) { @apply [width:20%]; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(3) { @apply [width:23%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(2) { @apply [width:19%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(3) { @apply [width:21%]; }
 #admin-finance-payouts-page .finance-payout-table th:nth-child(4) { @apply [width:21%]; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(5) { @apply [width:10%]; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(6) { @apply [width:11%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(5) { @apply [width:12%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(6) { @apply [width:12%]; }
 #admin-finance-payouts-page .finance-payout-table .font-mono { @apply [font-family:inherit]; font-variant-numeric: tabular-nums; @apply [letter-spacing:0]; }
 #admin-finance-payouts-page .payout-risk-trigger { @apply inline-flex; @apply items-center; @apply [gap:6px]; @apply [margin-top:8px]; @apply [padding:5px_8px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:7px]; @apply [background:#FBF5EB]; @apply text-left; @apply [font-size:11px]; @apply cursor-pointer; }
 #admin-finance-payouts-page .payout-amounts { @apply [margin:0]; @apply grid; @apply [gap:5px]; }
@@ -1906,7 +1906,7 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
 .collaboration-chat-section .chat-message-list { @apply [overscroll-behavior:contain]; @apply overflow-x-hidden; @apply [scroll-padding:14px]; }
 .collaboration-chat-section .chat-history-toolbar { @apply [padding:7px_14px]; @apply [background:#fff]; @apply [font-size:11px]; }
 .collaboration-chat-section .chat-message-entry { @apply relative; }
-.collaboration-chat-section .chat-date-divider { @apply sticky; @apply [top:0]; @apply [z-index:2]; @apply [margin:0_0_12px]; @apply [padding:6px_0]; @apply [background:#FAF8F5]; }
+.collaboration-chat-section .chat-date-divider { @apply relative; @apply [margin:0_0_12px]; @apply [padding:6px_0]; @apply [background:#FAF8F5]; }
 .collaboration-chat-section .chat-message-bubble { @apply [overflow-wrap:anywhere]; }
 .collaboration-chat-section .chat-composer { @apply [flex-shrink:0]; @apply [border-top:1px_solid_#EAE4D7]; }
 .collaboration-chat-section .chat-message-list > div + div { @apply [margin-top:16px]; }

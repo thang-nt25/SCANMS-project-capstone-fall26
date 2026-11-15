@@ -6,6 +6,7 @@ import { Button, ErrorNotice, Field } from "../../components/ui";
 import { money } from "../../types/contracts";
 import { profileStyles as s } from "../account/profile-styles";
 import { colors as c } from "../../theme/tokens";
+import { monthlyWithdrawalTax } from './monthly-withdrawal-tax';
 type LedgerRow = { id: string; transactionType: string; balanceBucket?: string; amount: string | number; balanceBefore: string | number; balanceAfter: string | number; createdAt: string; referenceDetails?: { storeName?: string | null; orderCode?: string | null } | null };
 const ledgerNames: Record<string, string> = { COMMISSION_PENDING: "Hoa hồng tạm giữ", COMMISSION_APPROVED: "Giải tỏa hoa hồng", PAYOUT_WITHDRAW: "Giữ tiền cho yêu cầu rút", REVERSAL: "Điều chỉnh thu hồi", PAYOUT_REJECT_REFUND: "Hoàn tiền yêu cầu rút" };
 const bucketNames: Record<string, string> = { AVAILABLE: "Khả dụng", PENDING: "Bảo chứng", SHOPPING: "Mua sắm" };
@@ -24,11 +25,11 @@ export function WalletLedgerRow({ item, last = false }: { item: LedgerRow; last?
 }
 
 type Source = { storeId: string; storeName: string; availableBalance: string | number; isActive: boolean };
-export function WithdrawSheet({ stores, storeId, setStoreId, value, setValue, minimum, policy, canWithdraw, busy, error, close, submit }: { stores: Source[]; storeId: string; setStoreId(id: string): void; value: string; setValue(value: string): void; minimum: string | number; policy: { threshold: number; rate: number }; canWithdraw: boolean; busy: boolean; error: unknown; close(): void; submit(): void }) {
+export function WithdrawSheet({ stores, storeId, setStoreId, value, setValue, minimum, policy, canWithdraw, busy, error, close, submit }: { stores: Source[]; storeId: string; setStoreId(id: string): void; value: string; setValue(value: string): void; minimum: string | number; policy: { threshold: number; rate: number; policy?: string; monthlyGross?: string | number }; canWithdraw: boolean; busy: boolean; error: unknown; close(): void; submit(): void }) {
   const [picker, setPicker] = useState(false);
   const selected = stores.find(store => store.storeId === storeId);
   const gross = Number(value), valid = /^\d{1,13}(\.\d{1,2})?$/.test(value) && gross >= Number(minimum) && !!selected?.isActive && gross <= Number(selected.availableBalance);
-  const tax = Number.isFinite(gross) && gross >= policy.threshold ? Math.round(gross * policy.rate * 100) / 100 : 0;
+  const tax = policy.policy === 'MONTHLY_PROGRESSIVE_V1' ? monthlyWithdrawalTax(value, String(policy.monthlyGross ?? '0')) : Number.isFinite(gross) && gross >= policy.threshold ? Math.round(gross * policy.rate * 100) / 100 : 0;
   return <BottomSheet title="Rút hoa hồng" close={() => { if (!busy) close(); }}>
     <Pressable accessibilityRole="button" disabled={busy} onPress={() => setPicker(true)} style={[s.card, s.row, { padding: 12 }]}><View style={s.icon}><Icon name="shopping-bag" color={c.strong} size={18} /></View><View style={{ flex: 1 }}><Text style={s.note}>Nguồn hoa hồng</Text><Text style={s.label}>{selected?.storeName || "Chọn gian hàng"}</Text>{selected && <Text style={s.note}>Khả dụng: {money(selected.availableBalance)}</Text>}</View><Icon name="chevron-down" size={17} color={c.muted} /></Pressable>
     <Field label="Số tiền muốn rút (VNĐ) *" value={value} onChangeText={setValue} keyboardType="decimal-pad" placeholder={`Tối thiểu ${money(minimum)}`} editable={!busy} style={s.input} />

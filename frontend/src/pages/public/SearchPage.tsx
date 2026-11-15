@@ -210,7 +210,7 @@ export default function SearchPage() {
     );
   };
 
-  const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string) => {
+  const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string, quantity = 1) => {
     if (!product.storeId) {
       toast.error('Chưa xác định được gian hàng. Vui lòng mở chi tiết sản phẩm.');
       return;
@@ -218,7 +218,7 @@ export default function SearchPage() {
     const payload = {
       product: { ...product, variants: product.variants?.filter((variant) => variant.isActive !== false) },
       store: { id: product.storeId, name: product.brand },
-      variantId, quantity: 1, openCartAfterAdd: false,
+      variantId, quantity, openCartAfterAdd: false,
     };
     if (!authService.getCurrentUser() || !localStorage.getItem('token')) {
       addItem(payload);
@@ -227,7 +227,6 @@ export default function SearchPage() {
       buyNow(payload);
     } else {
       addItem(payload);
-      openCart();
     }
   };
 
@@ -238,7 +237,6 @@ export default function SearchPage() {
     const intent = pendingPurchase.intent;
     setPendingPurchase(null);
     if (intent === 'buy' && matching.length) startCheckout(matching);
-    else openCart();
   };
 
   // Sync state when URL params change
@@ -1128,7 +1126,7 @@ export default function SearchPage() {
                       product={p}
                       wished={wishlistIds.has(p.id)}
                       onWishlist={() => void handleToggleWishlist(p.id)}
-                      onPurchase={(intent, variantId) => handlePurchase(p, intent, variantId)}
+                      onPurchase={(intent, variantId, quantity) => handlePurchase(p, intent, variantId, quantity)}
                       deal={liveDeals[p.id]}
                       now={liveDealsNow}
                     />

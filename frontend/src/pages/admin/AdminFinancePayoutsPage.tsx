@@ -1,3 +1,10 @@
+import { MonthlyRewardsPanel } from '../../components/promotions/MonthlyRewardsPanel';
+import AdminCustomerWithdrawals from '../../components/wallet/AdminCustomerWithdrawals';
+import { PayoutEvidenceDialog } from '../../components/wallet/PayoutEvidenceDialog';
+import { payoutTaxLabel, type MonthlyTaxContext } from '../../utils/payout-tax';
+import { Modal } from '../../components/ui/Modal';
+import { PayoutBankAccount } from '../../components/wallet/PayoutBankAccount';
+import '../../components/wallet/finance-payouts.css';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { EscrowFinanceReport } from '../../components/wallet/FinanceReports';
 import { FinanceOperations } from '../../components/wallet/FinanceOperations';
@@ -9,10 +16,12 @@ import {
   Loader2,
   CheckCircle2,
   Copy,
+  X,
 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { payoutDisplayCode } from '../../utils/payout-display-code';
+import { hasRejectionReason, toggleRejectionReason } from '../../utils/payout-rejection-reasons';
 
 interface PayoutItem {
   id: string;
@@ -27,6 +36,8 @@ interface PayoutItem {
   storeName?: string;
   amount: string;
   taxAmount: string;
+  taxContext?: MonthlyTaxContext | null;
+  monthlyWithdrawalSummary?: { month: string; totalGross: string; pendingGross: string; processingGross: string; approvedGross: string; count: number };
   netAmount: string;
   status: 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
   bankName: string;
@@ -36,6 +47,7 @@ interface PayoutItem {
   transferProvider?: string | null;
   hasBill: boolean;
   rejectedReason?: string | null;
+  refundedAmount?: string | null;
   createdAt: string;
   processedAt?: string | null;
   approvedByName?: string | null;
@@ -55,6 +67,18 @@ interface PayoutStats {
   totalRequests: number;
 }
 
+interface PendingFinanceWork {
+  kol: number;
+  customer: number;
+  escrow: number;
+  monthly: { policies: number; grants: number; total: number; months: string[] };
+  checkedAt: string;
+}
+function FinanceWorkBadge({ count, label }: { count?: number; label: string }) {
+  if (count === 0) return null;
+  return <span className="finance-tab-count finance-work-count" data-attention={count !== undefined || undefined} title={count === undefined ? 'Chưa tải được số việc cần xử lý' : `${count} ${label}`} aria-label={count === undefined ? 'Chưa xác định số lượng' : `${count} ${label}`}>{count === undefined ? '—' : count > 99 ? '99+' : count}</span>;
+}
+
 const formatMoney = (val: string | number) =>
   `${Number(val || 0).toLocaleString('vi-VN')} ₫`;
 
@@ -69,7 +93,7 @@ let lastAdminPayoutsSnapshot: { payouts: PayoutItem[]; stats: PayoutStats | null
 registerPrivateCacheReset(() => { lastAdminPayoutsSnapshot = null; });
 
 export default function AdminFinancePayoutsPage() {
-  const [activeTab, setActiveTab] = useState<'kol' | 'escrow' | 'operations'>('kol');
+  const [activeTab, setActiveTab] = useState<'kol' | 'escrow' | 'operations' | 'customer' | 'monthly'>('kol');
   const [loading, setLoading] = useState(() => !lastAdminPayoutsSnapshot);
   const [payouts, setPayouts] = useState<PayoutItem[]>(() => lastAdminPayoutsSnapshot?.payouts || []);
   const [stats, setStats] = useState<PayoutStats | null>(() => lastAdminPayoutsSnapshot?.stats || null);
@@ -78,12 +102,45 @@ export default function AdminFinancePayoutsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(() => lastAdminPayoutsSnapshot?.total || 0);
   const [loadError, setLoadError] = useState('');
-  const [gatewayEnabled, setGatewayEnabled] = useState(false);
-  const [gatewayProvider, setGatewayProvider] = useState('GATEWAY');
+  const [pendingWork, setPendingWork] = useState<PendingFinanceWork | null>(null);
+  const [workError, setWorkError] = useState(false);
+  const [rewardMonth, setRewardMonth] = useState<string>();
+  const workInFlight = useRef(false);
+  const workQueued = useRef(false);
+  const workMounted = useRef(false);
+  const previousWork = useRef<PendingFinanceWork | null>(null);
+  const fetchPendingWork = useCallback(async () => {
+    if (workInFlight.current) { workQueued.current = true; return; }
+    workInFlight.current = true;
+    try {
+      const response = await api.get('/admin/payouts/pending-work', { headers: { 'x-skip-cache': 'true' }, timeout: 15000 });
+      const next: PendingFinanceWork = response.data?.data || response.data;
+      if (!workMounted.current) return;
+      const old = previousWork.current;
+      if (old && document.visibilityState === 'visible' && (next.customer > old.customer || next.escrow > old.escrow || next.monthly.total > old.monthly.total || next.kol > old.kol)) {
+        toast.info('Có yêu cầu tài chính mới cần xử lý. Xem số lượng trên các tab.');
+      }
+      previousWork.current = next; setPendingWork(next); setWorkError(false);
+    } catch { if (workMounted.current) setWorkError(true); }
+    finally {
+      workInFlight.current = false;
+      if (workQueued.current && workMounted.current) { workQueued.current = false; void fetchPendingWork(); }
+    }
+  }, []);
+  useEffect(() => {
+    workMounted.current = true; void fetchPendingWork();
+    const refresh = () => { if (document.visibilityState === 'visible') void fetchPendingWork(); };
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh); document.addEventListener('visibilitychange', refresh);
+    return () => { workMounted.current = false; clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [fetchPendingWork]);
 
   // Approval modal state
   const [approvingItem, setApprovingItem] = useState<PayoutItem | null>(null);
   const [riskItem, setRiskItem] = useState<PayoutItem | null>(null);
+  const [riskFocusCode, setRiskFocusCode] = useState<string>();
+  const [monthlyItem, setMonthlyItem] = useState<PayoutItem | null>(null);
+  const [detailItem, setDetailItem] = useState<PayoutItem | null>(null);
   const approvalInFlight = useRef(false);
   const [submittingApproval, setSubmittingApproval] = useState(false);
 
@@ -129,34 +186,6 @@ export default function AdminFinancePayoutsPage() {
     fetchPayouts();
   }, [fetchStats, fetchPayouts]);
 
-  useEffect(() => {
-    api.get('/admin/payouts/gateway', { headers: { 'x-skip-cache': 'true' } }).then((res: any) => {
-      const gateway = res.data?.data ?? res.data ?? res;
-      setGatewayEnabled(Boolean(gateway.configured));
-      setGatewayProvider(gateway.provider || 'GATEWAY');
-    }).catch(() => { setGatewayEnabled(false); });
-  }, []);
-
-  const handleBankTransfer = async () => {
-    if (!approvingItem || approvalInFlight.current || !gatewayEnabled || (approvingItem.status === 'PENDING' && approvingItem.risk?.status === 'BLOCKED')) return;
-    approvalInFlight.current = true;
-    setSubmittingApproval(true);
-    try {
-      const action = approvingItem.status === 'PROCESSING' ? 'reconcile' : 'approve';
-      const response: any = await api.post(`/payouts/${approvingItem.id}/${action}`, {}, { timeout: gatewayProvider === 'BIDV_SANDBOX' ? 50000 : 25000 });
-      const result = response.data ?? response;
-      if (result.status === 'APPROVED') toast.success(result.provider === 'BIDV_SANDBOX' ? 'Đã hoàn tất rút tiền qua BIDV Sandbox và cập nhật lịch sử KOL trong SCANMS' : 'Ngân hàng xác nhận chuyển khoản thành công');
-      else toast.info('Ngân hàng đang xử lý. Tiền tiếp tục được giữ để đối soát.');
-    } catch (error: any) { toast.error(error.message || 'Cần đối soát trạng thái ngân hàng'); }
-    finally {
-      // Reload after uncertain results as well: a timed-out POST may already be PROCESSING.
-      setApprovingItem(null);
-      await Promise.allSettled([fetchStats(), fetchPayouts()]);
-      approvalInFlight.current = false;
-      setSubmittingApproval(false);
-    }
-  };
-
   const handleApproveSubmit = async ({ bill, bankRefCode, note }: ManualPayoutProof) => {
     if (!approvingItem || approvalInFlight.current || (approvingItem.status === 'PENDING' && approvingItem.risk?.status === 'BLOCKED')) return;
     approvalInFlight.current = true;
@@ -165,12 +194,14 @@ export default function AdminFinancePayoutsPage() {
       const formData = new FormData();
       formData.append('bill', bill);
       formData.append('bankRefCode', bankRefCode);
+      formData.append('expectedNetAmount', approvingItem.netAmount);
       if (note.trim()) formData.append('note', note.trim());
 
       await api.patch(`/admin/payouts/${approvingItem.id}/approve`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success(`Đã xác nhận giải ngân cho ${approvingItem.collaboratorName}`);
+      void fetchPendingWork();
       setApprovingItem(null);
       fetchStats();
       fetchPayouts();
@@ -194,6 +225,7 @@ export default function AdminFinancePayoutsPage() {
         reason: rejectReason.trim(),
       });
       toast.success('Đã từ chối và hoàn tiền về ví cho đối tác');
+      void fetchPendingWork();
       setRejectingItem(null);
       setRejectReason('');
       fetchStats();
@@ -234,7 +266,7 @@ export default function AdminFinancePayoutsPage() {
           }`}
         >
           <span className="finance-tab-number">1</span>
-          <span>Yêu cầu chi trả</span><span className="finance-tab-count">{stats?.pending.count ?? 0}</span>
+          <span>Yêu cầu chi trả</span><FinanceWorkBadge count={pendingWork?.kol} label="yêu cầu KOL chờ duyệt" />
         </button>
 
         <button
@@ -249,11 +281,19 @@ export default function AdminFinancePayoutsPage() {
         >
           <span className="finance-tab-number">2</span>
           <span>Bảo chứng Escrow · 14 ngày</span>
+          <FinanceWorkBadge count={pendingWork?.escrow} label="khoản cần đối soát" />
         </button>
+        <button type="button" aria-pressed={activeTab === 'customer'} onClick={() => setActiveTab('customer')} className="flex items-center gap-2 cursor-pointer"><span className="finance-tab-number">3</span><span>Rút tiền Customer</span><FinanceWorkBadge count={pendingWork?.customer} label="yêu cầu Customer chờ duyệt" /></button>
         <button type="button" aria-pressed={activeTab === 'operations'} onClick={() => setActiveTab('operations')} className="flex items-center gap-2 cursor-pointer">
-          <span className="finance-tab-number">3</span><span>Thuế &amp; Đối soát</span>
-        </button>
+          <span className="finance-tab-number">4</span><span>Thuế &amp; Đối soát</span>
+        </button><button type="button" aria-pressed={activeTab === 'monthly'} onClick={() => { setRewardMonth(pendingWork?.monthly.months[0]); setActiveTab('monthly'); }} className="flex items-center gap-2"><span className="finance-tab-number">5</span><span>Thưởng tháng</span><FinanceWorkBadge count={pendingWork?.monthly.total} label="chính sách hoặc đề nghị thưởng chờ duyệt" /></button>
       </div>
+      {workError && <div className="finance-work-notice" role="status"><span>Chưa cập nhật được số việc cần xử lý{pendingWork ? '; số đang hiện là lần kiểm tra gần nhất.' : '.'}</span><button type="button" onClick={() => void fetchPendingWork()}>Thử lại</button></div>}
+      {!workError && pendingWork && activeTab === 'escrow' && pendingWork.escrow > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.escrow} khoản cần xử lý</strong> · Có hồ sơ đổi trả, tranh chấp hoặc thẩm định chưa hoàn tất.</span></div>}
+      {!workError && pendingWork && activeTab === 'customer' && pendingWork.customer > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.customer} yêu cầu rút tiền Customer chờ duyệt.</strong></span></div>}
+      {!workError && pendingWork && activeTab === 'monthly' && pendingWork.monthly.total > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.monthly.total} việc chờ duyệt</strong> · {pendingWork.monthly.policies} chính sách · {pendingWork.monthly.grants} đề nghị thưởng</span><div>{pendingWork.monthly.months.map(month => <button type="button" key={month} aria-pressed={rewardMonth === month} onClick={() => setRewardMonth(month)}>Tháng {month.split('-').reverse().join('/')}</button>)}</div></div>}
+      {activeTab === 'customer' && <AdminCustomerWithdrawals onChanged={fetchPendingWork}/>}
+      {activeTab === 'monthly' && <MonthlyRewardsPanel key={rewardMonth || 'current'} initialMonth={rewardMonth} mode="operator" onChanged={fetchPendingWork}/>}
 
       {/* Tab 1: Chi trả hoa hồng KOL */}
       {activeTab === 'kol' && (
@@ -280,31 +320,31 @@ export default function AdminFinancePayoutsPage() {
                 {formatMoney(stats?.approved.netAmount || '0')}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                {stats?.approved.count ?? 0} lệnh chuyển thành công
+                {stats?.approved.count ?? 0} khoản chi trả thực tế
               </div>
             </div>
 
             <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Thuế TNCN đã khấu trừ (10%)
+                Thuế TNCN đã khấu trừ
               </div>
               <div className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
                 {formatMoney(stats?.approved.taxAmount || '0')}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                Lũy kế thuế TNCN khấu trừ 10%
+                Lũy kế chi trả thực tế đã hoàn tất
               </div>
             </div>
 
             <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Chờ đối soát ngân hàng
+                Chờ đối soát
               </div>
               <div className="text-2xl font-bold font-mono tabular-nums text-blue-700">
                 {stats?.processingCount ?? 0}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                Lệnh chi đang chờ kết quả
+                Yêu cầu cần xác minh chứng từ
               </div>
             </div>
           </div>
@@ -341,17 +381,17 @@ export default function AdminFinancePayoutsPage() {
           </div>
 
           {/* Table */}
-          <div className="finance-payout-table bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-xs">
+          <div className="finance-payout-table finance-ledger-table bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#FAF8F5] text-[#7D715E] border-b border-[#EAE4D7] font-bold">
                   <tr>
-                    <th className="p-3.5">Mã / Ngày</th>
-                    <th className="p-3.5">Nhà Sáng Tạo (KOL)</th>
-                    <th className="p-3.5">Tài Khoản Thụ Hưởng</th>
-                    <th className="p-3.5">Số tiền chi trả</th>
-                    <th className="p-3.5 text-center">Trạng Thái</th>
-                    <th className="p-3.5 text-center">Thao Tác</th>
+                    <th className="p-3.5">Mã / Thời gian gửi</th>
+                    <th className="p-3.5">Nhà sáng tạo (KOL)</th>
+                    <th className="p-3.5">Tài khoản thụ hưởng</th>
+                    <th className="p-3.5 text-right">Số tiền chi trả</th>
+                    <th className="p-3.5 text-center">Trạng thái</th>
+                    <th className="p-3.5 text-center">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EAE4D7]">
@@ -374,38 +414,35 @@ export default function AdminFinancePayoutsPage() {
                       return (
                         <tr key={item.id} className="hover:bg-[#FAF8F5]/60 transition">
                           <td className="p-3.5">
-                            <div title={item.id} className="font-mono text-[11px] font-bold text-[#1A1612]">
+                            <div title={item.id} className="payout-request-code font-semibold text-[#1A1612]">
                               {payoutDisplayCode(item.id, item.createdAt)}
+                              <button type="button" className="payout-copy" aria-label="Sao chép mã yêu cầu" onClick={() => { void navigator.clipboard.writeText(payoutDisplayCode(item.id, item.createdAt)).then(() => toast.success('Đã sao chép mã yêu cầu')).catch(() => toast.error('Không thể sao chép')); }}><Copy size={12}/></button>
                             </div>
-                            <div className="text-[10px] text-[#7D715E]">
-                              {new Date(item.createdAt).toLocaleDateString('vi-VN')}
-                            </div>
+                            <time dateTime={item.createdAt} title="Thời điểm KOL gửi yêu cầu · Giờ Việt Nam" className="mt-1 block text-[11px] tabular-nums text-[#7D715E]">
+                              {new Date(item.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                              {' · '}
+                              {new Date(item.createdAt).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' })}
+                            </time>
                           </td>
 
                           <td className="p-3.5">
-                            <div className="font-bold text-[#1A1612]">{item.collaboratorName}</div>
-                            <div className="text-[10px] text-[#7D715E]">{item.collaboratorPhone || item.collaboratorEmail}</div>
-                            {item.collaboratorTaxCode && (
-                              <div className="text-[10px] text-[#B88E4F]">MST: {item.collaboratorTaxCode}</div>
-                            )}
+                            <div className="payout-person-heading"><span className="payout-avatar">{item.collaboratorName.trim().split(/\s+/).slice(-2).map(part => part[0]).join('')}{item.collaboratorAvatar && <img src={item.collaboratorAvatar} alt="" onError={event => { event.currentTarget.hidden = true; }}/>}</span><strong>{item.collaboratorName}</strong></div>
+                            <div className="payout-person-meta">{item.collaboratorPhone || item.collaboratorEmail}{item.collaboratorTaxCode && <span>MST {item.collaboratorTaxCode}</span>}</div>
+                            <div className="payout-person-tools">
+                            {item.monthlyWithdrawalSummary && <button type="button" className="payout-month-total" onClick={() => setMonthlyItem(item)} title={`Tháng ${item.monthlyWithdrawalSummary.month.split('-').reverse().join('/')}`} aria-label={`Xem tổng yêu cầu rút tháng ${item.monthlyWithdrawalSummary.month} của ${item.collaboratorName}`}><span>Tổng yêu cầu tháng:</span><strong>{formatMoney(item.monthlyWithdrawalSummary.totalGross)}</strong><span aria-hidden="true">↗</span></button>}
                             {item.risk ? <button type="button" onClick={() => setRiskItem(item)} className="payout-risk-trigger" aria-label={`Xem kiểm tra rủi ro của ${item.collaboratorName}`}>
                               <span className={item.risk.status === 'BLOCKED' ? 'font-semibold text-[#DC2626]' : 'font-semibold text-[#8F682E]'}>
-                                {item.risk.status === 'BLOCKED' ? 'Cần xử lý' : item.risk.status === 'REVIEW' ? 'Cần bổ sung hồ sơ' : 'Đạt kiểm tra'} · {item.risk.passedChecks}/{item.risk.totalChecks}
+                                {item.risk.passedChecks === item.risk.totalChecks ? '✓ Đủ điều kiện' : '⚠ Cần bổ sung'} · {item.risk.passedChecks}/{item.risk.totalChecks}
                               </span><span aria-hidden="true"> ›</span>
                             </button> : <span>Chưa có kết quả kiểm tra</span>}
+                            </div>
                           </td>
                           <td className="p-3.5">
-                            <div className="font-semibold text-[#1A1612]">{item.bankName}</div>
-                            <div className="font-mono font-bold text-[#B88E4F]">{item.bankAccountNumber}</div>
-                            <div className="text-[10px] text-[#7D715E] uppercase">{item.bankAccountName}</div>
+                            <PayoutBankAccount copyable bankName={item.bankName} accountNumber={item.bankAccountNumber} accountName={item.bankAccountName}/>
                           </td>
 
                           <td className="p-3.5">
-                            <dl className="payout-amounts">
-                              <div><dt>Yêu cầu</dt><dd>{formatMoney(item.amount)}</dd></div>
-                              <div><dt>Thuế khấu trừ</dt><dd>{formatMoney(item.taxAmount)}</dd></div>
-                              <div><dt>Thực chuyển</dt><dd>{formatMoney(item.netAmount)}</dd></div>
-                            </dl>
+                            <div className="payout-money-cell"><strong title={item.status === 'REJECTED' ? 'Số tiền yêu cầu' : item.status === 'APPROVED' ? 'Thực nhận đã ghi nhận' : 'Thực nhận dự kiến'}>{formatMoney(item.status === 'REJECTED' ? item.amount : item.netAmount)}</strong>{item.status === 'REJECTED' ? <span className="payout-refund-note">{Number(item.refundedAmount) > 0 ? `Đã hoàn về ví ${formatMoney(item.refundedAmount!)}` : 'Chưa xác nhận bút toán hoàn'}</span> : <button type="button" className="payout-money-breakdown" onClick={() => setDetailItem(item)} title={payoutTaxLabel(item.amount, item.taxContext)}><span>Yêu cầu</span><span>{formatMoney(item.amount)}</span><span>Thuế</span><span>{formatMoney(item.taxAmount)}</span></button>}</div>
                           </td>
 
                           <td className="p-3.5 text-center">
@@ -413,15 +450,15 @@ export default function AdminFinancePayoutsPage() {
                               <div className="flex flex-col items-center gap-1.5">
                                 <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-xs font-semibold text-[#715126]">
                                   <CheckCircle2 size={14} className="shrink-0 text-[#059669]" aria-hidden="true" />
-                                  Hoàn tất
+                                  {(item.transferProvider === 'BIDV_SANDBOX' || item.bankRefCode?.startsWith('SBX-')) ? 'Hoàn tất thử nghiệm' : 'Hoàn tất'}
                                 </span>
-                                {item.transferProvider === 'BIDV_SANDBOX' && <span className="text-[10px] font-medium tracking-wide text-[#7D715E]">BIDV Sandbox</span>}
+
                               </div>
                             ) : <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${badge.className}`}>{badge.label}</span>}
-                            {item.transferProvider === 'BIDV_SANDBOX' && item.status === 'PROCESSING' && <div className="mt-1 text-[11px] text-[#7D715E]">BIDV Sandbox</div>}
+
                             {item.bankRefCode && <button
                               type="button"
-                              title={`Sao chép mã ${item.transferProvider === 'BIDV_SANDBOX' ? 'Sandbox' : 'ngân hàng'}: ${item.bankRefCode}`}
+                              title={`Sao chép mã giao dịch: ${item.bankRefCode}`}
                               aria-label={`Sao chép mã tham chiếu ${item.bankRefCode}`}
                               onClick={async () => {
                                 try { await navigator.clipboard.writeText(item.bankRefCode!); toast.success('Đã sao chép mã tham chiếu'); }
@@ -439,31 +476,20 @@ export default function AdminFinancePayoutsPage() {
                                   disabled={submittingApproval}
                                   onClick={() => setApprovingItem(item)}
                                   className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[11px] font-bold transition cursor-pointer"
-                                  title={item.status === 'PROCESSING' ? 'Đối soát lệnh đã gửi' : 'Chọn cách duyệt chi trả'}
+                                  title="Xác nhận chuyển khoản bằng chứng từ"
                                 >
-                                  {item.status === 'PROCESSING' ? 'Đối soát chi trả' : 'Duyệt chi trả'}
+                                  {item.status === 'PROCESSING' ? 'Đối soát' : 'Duyệt'}
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setRejectingItem(item)}
+                                  onClick={() => { setRejectingItem(item); setRejectReason(''); }}
                                   className="px-2 py-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-bold transition cursor-pointer"
                                   title="Từ chối yêu cầu"
                                 >
                                   Từ chối
                                 </button>
                               </div>
-                            ) : item.hasBill ? (
-                              <button
-                                type="button"
-                                onClick={() => handleViewBill(item)}
-                                className="px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-xs font-semibold text-[#1A1612] inline-flex items-center gap-1 transition cursor-pointer"
-                              >
-                                <Eye className="w-3 h-3 text-[#B88E4F]" />
-                                <span>Xem UNC</span>
-                              </button>
-                            ) : (
-                              <span className="inline-flex items-center justify-center gap-1 whitespace-nowrap text-[11px] text-[#7D715E]"><CheckCircle2 size={13} aria-hidden="true" />Đã xử lý</span>
-                            )}
+                            ) : <button type="button" onClick={() => setDetailItem(item)} className="payout-detail-link" title="Xem thông tin xử lý yêu cầu">{item.status === 'REJECTED' ? 'Xem lý do' : 'Xem bảng kê'}</button>}
                           </td>
                         </tr>
                       );
@@ -477,51 +503,43 @@ export default function AdminFinancePayoutsPage() {
       )}
 
       {/* Tab 2: Bảo chứng Tạm giữ Escrow */}
-      
-      {activeTab === 'escrow' && <EscrowFinanceReport />}
+
+      {activeTab === 'escrow' && <EscrowFinanceReport onChanged={fetchPendingWork} />}
       {activeTab === 'kol' && <div className="finance-pagination flex flex-wrap justify-between gap-3 items-center text-sm text-[#7D715E]">
         {loadError && <p role="alert" className="text-[#DC2626]">{loadError}</p>}
         <span>{total} yêu cầu</span><div className="flex gap-3 items-center"><button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Trước</button><span>Trang {page}</span><button disabled={page * 12 >= total || loading} onClick={() => setPage(page + 1)}>Sau</button></div>
       </div>}
       {activeTab === 'operations' && <FinanceOperations />}
       {/* Modal: Duyệt chi trả & Tải UNC */}
-      {riskItem?.risk && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setRiskItem(null)}>
-        <section role="dialog" aria-modal="true" aria-label="Chi tiết kiểm tra rủi ro" className="w-full max-w-lg rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xl max-h-[85vh] overflow-y-auto" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape') setRiskItem(null); }}>
-          <div className="flex items-start justify-between gap-4 border-b border-[#EAE4D7] pb-3">
-            <div><h3 className="font-semibold text-[#1A1612]">Kiểm tra điều kiện chi trả</h3><p className="mt-1 text-xs text-[#7D715E]">{riskItem.collaboratorName} · {riskItem.risk.passedChecks}/{riskItem.risk.totalChecks} điều kiện đạt</p></div>
-            <button autoFocus type="button" onClick={() => setRiskItem(null)} className="rounded-lg border border-[#EAE4D7] px-3 py-1.5 text-xs">Đóng</button>
-          </div>
-          <ul className="my-4 grid gap-2">{riskItem.risk.checks.map(check => <li key={check.code} className="flex items-start gap-3 rounded-lg bg-[#FAF8F5] px-3 py-2 text-sm"><span className={check.passed ? 'text-[#8F682E]' : 'text-[#DC2626]'} aria-label={check.passed ? 'Đạt' : 'Chưa đạt'}>{check.passed ? '✓' : '!'}</span><span>{check.label}</span></li>)}</ul>
-          <p className="border-t border-[#EAE4D7] pt-3 text-xs leading-relaxed text-[#7D715E]">{riskItem.risk.disclaimer}</p>
-        </section>
-      </div>}
       {approvingItem && <PayoutApprovalDialog
         key={approvingItem.id}
         item={approvingItem}
-        gatewayEnabled={gatewayEnabled}
-        sandbox={(approvingItem.transferProvider || gatewayProvider) === 'BIDV_SANDBOX'}
         busy={submittingApproval}
         onClose={() => setApprovingItem(null)}
-        onBankTransfer={handleBankTransfer}
+        onViewIssue={code => { setRiskFocusCode(code); setRiskItem(approvingItem); }}
         onManualApprove={handleApproveSubmit}
       />}
+      {riskItem && <PayoutEvidenceDialog id={riskItem.id} focusCode={approvingItem?.id === riskItem.id ? riskFocusCode : undefined} onClose={() => { setRiskItem(null); setRiskFocusCode(undefined); }} onReject={reason => { setRejectingItem(riskItem); setRejectReason(reason); setRiskItem(null); setApprovingItem(null); setRiskFocusCode(undefined); }}/>}
 
       {/* Modal: Từ chối yêu cầu */}
       {rejectingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div role="dialog" aria-modal="true" aria-label="Từ chối yêu cầu chi trả" className="payout-rejection-dialog bg-white border border-[#EAE4D7] rounded-2xl w-full shadow-xl animate-in zoom-in-95">
-            <h3 className="text-sm font-bold text-[#1A1612] mb-2">Từ chối Yêu cầu Chi trả</h3>
+          <div role="dialog" aria-modal="true" aria-label="Từ chối yêu cầu chi trả" className="payout-rejection-dialog relative bg-white border border-[#EAE4D7] rounded-2xl w-full shadow-xl animate-in zoom-in-95">
+            <button type="button" aria-label="Đóng cửa sổ từ chối" title="Đóng" disabled={submittingReject} onClick={() => { setRejectingItem(null); setRejectReason(''); }} className="absolute right-5 top-5 inline-flex !size-9 !min-h-9 items-center justify-center !rounded-lg !p-2 text-[#7D715E] hover:bg-[#FBF5EB] disabled:opacity-50"><X size={20}/></button>
+            <h3 className="mb-2 pr-10 text-sm font-bold text-[#1A1612]">Từ chối Yêu cầu Chi trả</h3>
             <p className="text-xs text-[#7D715E] mb-3">
               Số tiền <strong className="text-[#1A1612]">{formatMoney(rejectingItem.amount)}</strong> sẽ được hoàn lại vào ví khả dụng của đối tác.
             </p>
 
             <form onSubmit={handleRejectSubmit} className="space-y-3">
+              <div className="flex flex-wrap gap-2">{['KYC chưa được xác minh', 'Thông tin ngân hàng không khớp hồ sơ KYC', 'Chưa khai báo mã số thuế', 'Ví cần đối soát bởi bộ phận vận hành', 'Thiếu bút toán giữ tiền; kế toán kiểm tra', 'Số tiền hoặc thuế cần đối soát'].map(reason => <button type="button" key={reason} disabled={submittingReject} aria-pressed={hasRejectionReason(rejectReason, reason)} className={`rounded-lg border px-2 py-1.5 text-xs transition-colors ${hasRejectionReason(rejectReason, reason) ? 'border-[#D7BD94] bg-[#FBF5EB] text-[#715126]' : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5]'}`} onClick={() => setRejectReason(current => toggleRejectionReason(current, reason))}>{reason}</button>)}</div>
               <div>
                 <label className="block text-[11px] font-bold text-[#7D715E] mb-1">
                   Lý do từ chối *
                 </label>
                 <textarea
                   required
+                  maxLength={500}
                   rows={3}
                   placeholder="VD: Sai thông tin số tài khoản hoặc vi phạm quy chế tiếp thị..."
                   value={rejectReason}
@@ -551,6 +569,28 @@ export default function AdminFinancePayoutsPage() {
         </div>
       )}
 
+      {monthlyItem?.monthlyWithdrawalSummary && <Modal isOpen title="Tổng yêu cầu rút trong tháng" onClose={() => setMonthlyItem(null)} maxWidth="xl" stickyHeader>
+        <div className="payout-month-overview">
+          <div className="payout-month-heading"><div><strong>{monthlyItem.collaboratorName}</strong><span>Tháng {monthlyItem.monthlyWithdrawalSummary.month.split('-').reverse().join('/')}</span></div><strong>{formatMoney(monthlyItem.monthlyWithdrawalSummary.totalGross)}</strong></div>
+          <dl>{[
+            ['Chờ duyệt', monthlyItem.monthlyWithdrawalSummary.pendingGross],
+            ['Đang xử lý', monthlyItem.monthlyWithdrawalSummary.processingGross],
+            ['Đã hoàn tất', monthlyItem.monthlyWithdrawalSummary.approvedGross],
+          ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{formatMoney(value)}</dd></div>)}</dl>
+          <p>{monthlyItem.monthlyWithdrawalSummary.count} yêu cầu · Tiền gốc trước thuế · Toàn bộ cửa hàng</p>
+          {monthlyItem.taxContext?.policy === 'MONTHLY_PROGRESSIVE_V1' && <div className="payout-month-tax"><span>Tổng trước lệnh này tại lúc tính thuế</span><strong>{formatMoney(monthlyItem.taxContext.monthlyGrossBefore)}</strong><span>{payoutTaxLabel(monthlyItem.amount, monthlyItem.taxContext)}</span><strong>{formatMoney(monthlyItem.taxAmount)}</strong></div>}
+        </div>
+      </Modal>}
+      {detailItem && <Modal isOpen title="Chi tiết chi trả" subtitle={payoutDisplayCode(detailItem.id, detailItem.createdAt)} onClose={() => setDetailItem(null)} maxWidth="xl" stickyHeader>
+        <div className="grid gap-4 text-sm">
+          <div className="flex items-start justify-between gap-4"><div><strong>{detailItem.collaboratorName}</strong><p className="mb-0 mt-1 text-xs text-[#7D715E]">{new Date(detailItem.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p></div><span className="text-xs text-[#7D715E]">{detailItem.status === 'APPROVED' ? ((detailItem.transferProvider === 'BIDV_SANDBOX' || detailItem.bankRefCode?.startsWith('SBX-')) ? 'Hoàn tất thử nghiệm' : 'Hoàn tất') : STATUS_BADGES[detailItem.status]?.label}</span></div>
+          <PayoutBankAccount bankName={detailItem.bankName} accountNumber={detailItem.bankAccountNumber} accountName={detailItem.bankAccountName}/>
+          <dl className="m-0 grid gap-3 rounded-xl border border-[#EAE4D7] bg-[#FDFCF9] p-4">{[['Yêu cầu', formatMoney(detailItem.amount)], [payoutTaxLabel(detailItem.amount, detailItem.taxContext), formatMoney(detailItem.taxAmount)], [detailItem.status === 'REJECTED' ? 'Đã hoàn về ví' : 'Thực nhận', detailItem.status === 'REJECTED' ? (Number(detailItem.refundedAmount) > 0 ? formatMoney(detailItem.refundedAmount!) : 'Chưa xác nhận bút toán hoàn') : formatMoney(detailItem.netAmount)]].map(([label, value]) => <div key={label} className="flex justify-between gap-3"><dt className="text-[#7D715E]">{label}</dt><dd className="m-0 font-semibold tabular-nums">{value}</dd></div>)}</dl>
+          {detailItem.status === 'REJECTED' && <div className="rounded-xl border border-red-100 p-3"><span className="text-xs text-red-600">Lý do từ chối</span><p className="mb-0 mt-1 whitespace-pre-line">{detailItem.rejectedReason || 'Lệnh cũ chưa lưu lý do chi tiết.'}</p></div>}
+          {detailItem.bankRefCode && <p className="m-0 break-all text-xs text-[#7D715E]">Mã giao dịch: {detailItem.bankRefCode}</p>}
+          <div className="flex flex-wrap gap-2">{detailItem.monthlyWithdrawalSummary && <button className="rounded-lg border border-[#EAE4D7] px-3 py-2 text-xs" onClick={() => { setMonthlyItem(detailItem); setDetailItem(null); }}>Tổng tháng / Cách tính thuế</button>}<button className="rounded-lg border border-[#EAE4D7] px-3 py-2 text-xs" onClick={() => { setRiskItem(detailItem); setDetailItem(null); }}>Kiểm tra hồ sơ</button>{detailItem.hasBill && <button className="inline-flex items-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs" onClick={() => { void handleViewBill(detailItem); setDetailItem(null); }}><Eye size={13}/>Xem chứng từ</button>}</div>
+        </div>
+      </Modal>}
       {/* Modal: Xem ảnh UNC */}
       {viewingBillUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">

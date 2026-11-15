@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { SampleRequestDetails } from '../../components/orders/SampleRequestDetails';
 import { InviteKolModal } from '../../components/affiliate/InviteKolModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -798,7 +799,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                           <td className="py-3.5 px-4">
                             <Link to={`/products/${encodeURIComponent(s.product.id)}`} aria-label={`Xem sản phẩm ${s.product.title}`} className="flex items-start gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58]">
                               <img
-                                src={getSafeProductImageUrl(s.product.thumbnail, s.product.title)}
+                                src={getSafeProductImageUrl(s.product.thumbnail, s.product.title)} onError={handleProductImageError}
                                 alt={s.product.title}
                                 className="w-10 h-10 rounded-lg object-cover border border-[#EAE4D7] shrink-0 bg-[#FAF8F5]"
                               />
@@ -1220,7 +1221,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
               <h4 className="text-sm font-semibold">Thông tin gửi hàng</h4>
               <section className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-sm">
                 <div className="flex items-center gap-3 border-b border-[#EAE4D7] px-4 py-4">
-                  <img src={getSafeProductImageUrl(trackingModalItem.product.thumbnail)} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] object-cover" />
+                  <img src={getSafeProductImageUrl(trackingModalItem.product.thumbnail)} onError={handleProductImageError} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] object-cover" />
                   <div className="min-w-0"><p className="text-[10px] font-medium uppercase tracking-wider text-[#7D715E]">Sản phẩm gửi mẫu</p><p className="mt-1 font-semibold leading-relaxed">{trackingModalItem.product.title}</p></div>
                 </div>
                 <div className="space-y-3 px-4 py-4">

@@ -1,3 +1,4 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Link2,
@@ -11,7 +12,6 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
-  RefreshCw,
   TrendingUp,
   ShoppingBag,
   Clock3,
@@ -24,6 +24,8 @@ import { referralLinksService } from '../../services/referral-links.service';
 import type { ReferralLinkItem } from '../../services/referral-links.service';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
+import { Modal } from '../../components/ui/Modal';
+import './referral-links-compact.css';
 
 export default function AdminReferralLinksPage() {
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);
@@ -33,6 +35,8 @@ export default function AdminReferralLinksPage() {
 
 
   const [search, setSearch] = useState('');
+  const [query,setQuery] = useState('');
+  const [detailLink,setDetailLink] = useState<ReferralLinkItem|null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -51,10 +55,10 @@ export default function AdminReferralLinksPage() {
     try {
       const res = await referralLinksService.getAdminReferralLinks({
         page,
-        limit: 20,
+        limit: 10,
         status: statusFilter || undefined,
         channel: channelFilter || undefined,
-        search: search.trim() || undefined,
+        search: query || undefined,
       });
       setLinks(res.data);
       setTotalLinks(res.meta.total);
@@ -68,7 +72,7 @@ export default function AdminReferralLinksPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, channelFilter, search]);
+  }, [page, statusFilter, channelFilter, query]);
 
   useEffect(() => {
     fetchAdminLinks();
@@ -77,7 +81,7 @@ export default function AdminReferralLinksPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchAdminLinks();
+    setQuery(search.trim());
   };
 
 
@@ -137,8 +141,8 @@ export default function AdminReferralLinksPage() {
   }, [isBlockModalOpen, isSubmittingBlock]);
 
   return (
-    <div className="grid gap-4 min-w-0 text-[#1A1612]">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+    <div id="admin-referral-links" className="grid gap-4 min-w-0 text-[#1A1612]">
+      <div className="referral-summary-grid grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         <article className="flex items-center gap-3 min-w-0 p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-sm">
           <span className="hidden sm:grid place-items-center w-8.5 h-8.5 shrink-0 border border-[#EEDFC6] rounded-lg text-[#B88E4F] bg-white"><Link2 size={18} /></span>
           <div><p className="text-[#7D715E] text-xs leading-relaxed">{search || statusFilter || channelFilter ? 'Liên kết phù hợp' : 'Liên kết trên sàn'}</p><strong className="block mt-1 text-2xl font-semibold tabular-nums text-[#1A1612]">{totalLinks.toLocaleString('vi-VN')}</strong></div>
@@ -153,15 +157,15 @@ export default function AdminReferralLinksPage() {
         </article>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(240px,1fr)_auto] gap-3.5 items-center p-3.5 border border-[#EAE4D7] rounded-xl bg-white">
+      <div className="referral-workspace">
+      <div className="referral-filter-toolbar">
         <form onSubmit={handleSearch} className="flex gap-2 min-w-0">
           <div className="relative min-w-0 flex-1">
             <Search size={15} aria-hidden="true" className="absolute left-3 top-3 text-[#7D715E] pointer-events-none" />
             <input id="admin-referral-search" aria-label="Tìm liên kết tiếp thị" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm mã link, sản phẩm hoặc nhãn…" className="w-full h-[38px] pl-8.5 pr-2.5 py-2 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]" />
           </div>
-          <button type="submit" className="px-3.5 py-2 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-medium hover:border-[#C59B58] transition-colors cursor-pointer">Tìm</button>
         </form>
-        <div className="grid grid-cols-2 md:grid-cols-[172px_140px_auto] items-center gap-2.5">
+        <div className="referral-select-filters">
           <Select aria-label="Lọc trạng thái liên kết" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} className="w-full">
             <option value="">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
@@ -178,13 +182,11 @@ export default function AdminReferralLinksPage() {
             <option value="ZALO">Zalo</option>
             <option value="OTHER">Khác</option>
           </Select>
-          <button type="button" className="inline-flex justify-center items-center gap-1.5 h-[38px] px-3 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs whitespace-nowrap hover:border-[#C59B58] hover:text-[#B88E4F] transition-colors cursor-pointer col-span-2 md:col-span-1 justify-self-end md:justify-self-auto" onClick={() => fetchAdminLinks()} disabled={loading} title="Làm mới dữ liệu">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : 'text-[#B88E4F]'} /> Làm mới
-          </button>
+
         </div>
       </div>
 
-      <section className="min-w-0 overflow-hidden border border-[#EAE4D7] rounded-xl bg-white" aria-label="Danh sách liên kết tiếp thị">
+      <section className="referral-list-section min-w-0 overflow-hidden bg-white" aria-label="Danh sách liên kết tiếp thị">
         {errorMsg ? (
           <div className="flex items-start gap-2.5 p-5 text-[#DC2626] text-xs leading-relaxed" role="alert"><AlertCircle size={18} className="shrink-0 mt-0.5" /><p>{errorMsg}</p></div>
         ) : loading ? (
@@ -193,13 +195,10 @@ export default function AdminReferralLinksPage() {
           <div className="flex flex-col items-center justify-center gap-2.5 py-12 px-5 text-[#7D715E] text-center"><Link2 size={28} className="text-[#B88E4F]" /><h3 className="text-sm font-semibold text-[#1A1612]">Không tìm thấy liên kết</h3><p className="text-xs">Thử thay đổi từ khóa hoặc bộ lọc để xem kết quả.</p></div>
         ) : (
           <>
-            <div className="max-w-full overflow-x-auto" role="region" tabIndex={0} aria-label="Bảng liên kết tiếp thị">
-              <table className="w-full min-w-[1100px] table-fixed border-collapse text-left">
+            <div className="referral-table-region" role="region" aria-label="Bảng liên kết tiếp thị">
+              <table className="referral-links-table">
                 <caption className="sr-only">Liên kết tiếp thị trên sàn SCANMS</caption>
-                <colgroup>
-                  <col style={{ width: '170px' }} /><col /><col style={{ width: '180px' }} /><col style={{ width: '110px' }} />
-                  <col style={{ width: '90px' }} /><col style={{ width: '60px' }} /><col style={{ width: '115px' }} /><col style={{ width: '105px' }} />
-                </colgroup>
+                <colgroup><col style={{width:'15%'}}/><col style={{width:'25%'}}/><col style={{width:'17%'}}/><col style={{width:'10%'}}/><col style={{width:'7%'}}/><col style={{width:'5%'}}/><col style={{width:'11%'}}/><col style={{width:'10%'}}/></colgroup>
                 <thead className="bg-[#FAF8F5]"><tr>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Mã link</th>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Sản phẩm & gian hàng</th>
@@ -212,22 +211,21 @@ export default function AdminReferralLinksPage() {
                 </tr></thead>
                 <tbody>
                   {links.map((link) => {
-                    const fullUrl = window.location.origin + '/r/' + link.shortCode;
+                    const fullUrl = publicWebsiteUrl('/r/' + link.shortCode);
                     const statusLabel = link.status === 'BLOCKED' ? 'Bị khóa' : link.status === 'PAUSED' ? 'Tạm dừng' : link.status === 'EXPIRED' ? 'Hết hạn' : 'Hoạt động';
                     return (
                       <tr key={link.id} className="hover:bg-[#FBF5EB] transition-colors border-b border-[#EAE4D7] last:border-b-0">
-                        <td className="p-3 text-xs align-middle">
+                        <td data-label="Mã link" className="p-3 text-xs align-middle">
                           <div className="flex items-center gap-1.5">
-                            <code className="px-1.5 py-0.5 border border-[#EAE4D7] rounded bg-white text-xs font-mono font-medium">{link.shortCode}</code>
+                            <button type="button" className="referral-code-detail" onClick={()=>setDetailLink(link)} title="Xem thông tin liên kết"><code>{link.shortCode}</code></button>
                             <button type="button" onClick={() => { void handleCopy(link.shortCode, fullUrl); }} aria-label={'Sao chép liên kết ' + link.shortCode} title="Sao chép liên kết" className="grid place-items-center w-6 h-6 shrink-0 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer">
                               {copiedCode === link.shortCode ? <CheckCircle2 size={14} className="text-[#059669]" /> : <Copy size={14} />}
                             </button>
                             <a href={fullUrl} target="_blank" rel="noreferrer" aria-label={'Mở liên kết ' + link.shortCode + ' trong tab mới'} title="Mở liên kết" className="grid place-items-center w-6 h-6 shrink-0 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer"><ExternalLink size={13} /></a>
                           </div>
-                          {link.label && <p className="mt-1 truncate text-[#7D715E] text-[10px]" title={link.label}>{link.label.replaceAll('_', ' ')}</p>}
                           <p className="mt-0.5 truncate text-[#7D715E] text-[10px]">{new Date(link.createdAt).toLocaleDateString('vi-VN')}</p>
                         </td>
-                        <td className="p-3 text-xs align-middle">
+                        <td data-label="Sản phẩm & gian hàng" className="p-3 text-xs align-middle">
                           <div className="flex items-center gap-2.5 min-w-0">
                             {link.product?.imageUrl && <img src={link.product.imageUrl} alt={link.product.title} onError={(event) => { event.currentTarget.classList.add('hidden'); event.currentTarget.nextElementSibling?.classList.remove('hidden'); }} className="w-9 h-9 shrink-0 border border-[#EAE4D7] rounded-lg bg-white object-contain" />}
                             <span className={'grid place-items-center w-9 h-9 shrink-0 border border-[#EAE4D7] rounded-lg bg-white text-[#B88E4F] ' + (link.product?.imageUrl ? 'hidden' : '')}><ShoppingBag size={18} /></span>
@@ -237,28 +235,28 @@ export default function AdminReferralLinksPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 text-xs align-middle">
+                        <td data-label="KOL tiếp thị" className="p-3 text-xs align-middle">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className="grid place-items-center w-7 h-7 shrink-0 border border-[#EEDFC6] rounded-full bg-white text-[#B88E4F] text-xs font-medium">{link.collaborator?.fullName?.charAt(0) || <User size={14} />}</span>
                             <div className="min-w-0"><p className="line-clamp-2 text-xs font-medium leading-relaxed" title={link.collaborator?.fullName}>{link.collaborator?.fullName || 'Ẩn danh'}</p><p className="truncate text-[#7D715E] text-[10px]" title={link.collaborator?.email}>{link.collaborator?.email || ''}</p></div>
                           </div>
                         </td>
-                        <td className="p-3 text-xs align-middle">
+                        <td data-label="Kênh / UTM" className="p-3 text-xs align-middle">
                           <span className="inline-block max-w-full px-1.5 py-0.5 border border-[#EAE4D7] rounded bg-white text-[#7D715E] text-[10px] leading-normal">{link.channel || 'Chưa xác định'}</span>
                           {link.utmSource && <p className="mt-0.5 truncate text-[#7D715E] text-[10px]" title={link.utmSource}>Nguồn: {link.utmSource}</p>}
                         </td>
-                        <td className="p-3 text-xs align-middle text-center tabular-nums">
+                        <td data-label="Nhấp" className="p-3 text-xs align-middle text-center tabular-nums">
                           <strong className="text-xs font-semibold">{(link.totalClicks || 0).toLocaleString('vi-VN')}</strong><p className="text-[10px] text-[#7D715E]">{(link.uniqueClicks || 0).toLocaleString('vi-VN')} duy nhất</p>
                         </td>
-                        <td className="p-3 text-xs align-middle text-center tabular-nums"><strong className="text-xs font-semibold">{(link.totalOrders || 0).toLocaleString('vi-VN')}</strong></td>
-                        <td className="p-3 text-xs align-middle">
+                        <td data-label="Đơn" className="p-3 text-xs align-middle text-center tabular-nums"><strong className="text-xs font-semibold">{(link.totalOrders || 0).toLocaleString('vi-VN')}</strong></td>
+                        <td data-label="Trạng thái" className="p-3 text-xs align-middle">
                           <span className={'inline-flex items-center gap-1 px-1.5 py-0.5 border rounded text-[10px] leading-tight whitespace-nowrap ' + (link.status === 'BLOCKED' ? 'border-red-200 bg-red-50/50 text-[#DC2626]' : 'border-[#EAE4D7] bg-white text-[#7D715E]')}>
                             {link.status === 'BLOCKED' ? <ShieldAlert size={12} className="text-[#DC2626] shrink-0" /> : link.status === 'PAUSED' ? <Clock3 size={12} className="text-[#B88E4F] shrink-0" /> : link.status !== 'EXPIRED' ? <CheckCircle2 size={12} className="text-[#059669] shrink-0" /> : null}
                             {statusLabel}
                           </span>
                           {link.status === 'BLOCKED' && link.disabledReason && <p className="line-clamp-2 mt-1 text-[#DC2626] text-[10px]" title={link.disabledReason}>{link.disabledReason}</p>}
                         </td>
-                        <td className="p-3 text-xs align-middle text-right">
+                        <td data-label="Thao tác" className="p-3 text-xs align-middle text-right">
                           {link.status === 'BLOCKED' ? (
                             <button type="button" className="inline-flex justify-center items-center gap-1 min-h-[28px] px-2 py-1 border border-[#EEDFC6] rounded-md bg-white text-[#7D715E] text-[10px] font-medium whitespace-nowrap hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition-colors cursor-pointer" onClick={() => handleUnblock(link)}><UnlockKeyhole size={13} /> Mở khóa</button>
                           ) : (
@@ -282,6 +280,9 @@ export default function AdminReferralLinksPage() {
           </>
         )}
       </section>
+      </div>
+
+      {detailLink && <Modal isOpen onClose={()=>setDetailLink(null)} title="Thông tin liên kết" subtitle={detailLink.shortCode} maxWidth="lg" stickyHeader><dl className="referral-detail-facts">{[['Tiêu đề',detailLink.label],['Sản phẩm',detailLink.product?.title],['Cửa hàng',detailLink.store?.name],['KOL',detailLink.collaborator?.fullName],['Kênh',detailLink.channel],['UTM source',detailLink.utmSource],['UTM medium',detailLink.utmMedium],['UTM campaign',detailLink.utmCampaign],['UTM content',detailLink.utmContent],['Ngày tạo',new Date(detailLink.createdAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})],['Hết hạn',detailLink.expiresAt?new Date(detailLink.expiresAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'Không thiết lập']].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||'Chưa có thông tin'}</dd></div>)}</dl></Modal>}
 
       {isBlockModalOpen && selectedLinkToBlock && (
         <div className="fixed inset-0 z-50 flex justify-center items-center p-4 bg-[#231D15]/35 backdrop-blur-[3px]">

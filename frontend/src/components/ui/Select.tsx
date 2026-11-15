@@ -28,6 +28,7 @@ export interface SelectProps {
   onChange?: (event: { target: { value: string; name?: string; id?: string } }) => void;
   options?: SelectOption[];
   placeholder?: string;
+  selectedLabel?: string;
   disabled?: boolean;
   required?: boolean;
   className?: string;
@@ -89,6 +90,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       onChange,
       options: optionsProp,
       placeholder,
+      selectedLabel,
       disabled = false,
       required = false,
       className,
@@ -247,9 +249,9 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     }, [isOpen]);
 
     const selectedOption = options.find((opt) => opt.value === currentValue);
-    const displayLabel = selectedOption
+    const displayLabel = selectedLabel ?? (selectedOption
       ? selectedOption.label
-      : placeholder || (options.length > 0 ? options[0].label : 'Chọn...');
+      : placeholder || (options.length > 0 ? options[0].label : 'Chọn...'));
 
     const handleSelect = (opt: SelectOption) => {
       if (opt.disabled || disabled) return;

@@ -159,6 +159,7 @@ describe('CommissionRules Integration & Security Test', () => {
       findMany: jest.fn(async () => []),
       updateMany: jest.fn(async () => ({ count: 0 })),
     },
+    storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
     monthlyBonusResult: {
       findUnique: jest.fn(async ({ where }) => {
         const { storeId, collaboratorId, yearMonth } =

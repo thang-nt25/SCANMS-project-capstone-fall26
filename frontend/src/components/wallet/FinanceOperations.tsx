@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../services/api";
+import { VietnamMonthPicker } from '../ui/VietnamMonthPicker';
+import { PayoutEvidenceDialog } from './PayoutEvidenceDialog';
+import { LedgerReconciliation } from './LedgerReconciliation';
+import { ArrowRight, AlertCircle, Wallet, ReceiptText, Landmark } from 'lucide-react';
 
 const input =
   "rounded-lg border border-[#EAE4D7] bg-white p-2 text-sm text-[#1A1612]";
@@ -26,21 +30,21 @@ type TaxReport = {
   net: string;
   items: TaxRow[];
   missingTaxCodes: string[];
-  sandbox?: { count: number; gross: string; tax: string; net: string };
 };
 type CostReport = {
   ordersMissingCost: { id: string; code: string }[];
   samplesMissingCost: string[];
 };
 export function FinanceOperations() {
-  const [section, setSection] = useState<'tax' | 'cost' | 'certificate'>('tax');
+  const [section, setSection] = useState<'tax' | 'cost' | 'certificate' | 'ledger'>('tax');
   const [month, setMonth] = useState(
     new Date()
       .toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" })
       .slice(0, 7),
   );
   const [report, setReport] = useState<TaxReport | null>(null);
-  const [taxScope, setTaxScope] = useState<'all' | 'real' | 'sandbox'>('all');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const taxRequest = useRef(0);
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [storeId, setStoreId] = useState("");
@@ -55,9 +59,12 @@ export function FinanceOperations() {
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [issuePayoutId, setIssuePayoutId] = useState<string | null>(null);
+  const [showTaxIssues, setShowTaxIssues] = useState(false);
+  const missingTaxRows = report?.items.filter(row => !row.collaborator.collaboratorProfile?.taxCode?.trim()) ?? [];
   const loadTaxReport = useCallback(async () => {
     const requestId = ++taxRequest.current;
-    setBusy(true); setMessage(''); setReport(null);
+    setReportLoading(true); setMessage(''); setReport(null);
     try {
       const next = data<TaxReport>(await api.get('/admin/payouts/tax-report', {
         params: { yearMonth: month }, headers: { 'x-skip-cache': 'true' },
@@ -67,12 +74,12 @@ export function FinanceOperations() {
       setReport(next);
     } catch (error) {
       if (requestId === taxRequest.current) setMessage(error instanceof Error ? error.message : 'Không tải được báo cáo thuế.');
-    } finally { if (requestId === taxRequest.current) setBusy(false); }
+    } finally { if (requestId === taxRequest.current) setReportLoading(false); }
   }, [month]);
   useEffect(() => {
-    if (section !== 'tax') return;
+    if (section !== 'tax' && section !== 'certificate') return;
     void loadTaxReport();
-    return () => { taxRequest.current++; setBusy(false); };
+    return () => { taxRequest.current++; setReportLoading(false); };
   }, [section, loadTaxReport]);
   const [ledger, setLedger] = useState<{
     yearMonth?: string;
@@ -84,7 +91,16 @@ export function FinanceOperations() {
       difference: string;
     }[];
   } | null>(null);
-  useEffect(() => { setReport(null); setLedger(null); setPayoutId(''); setMessage(''); }, [month]);
+  useEffect(() => { setReport(null); setLedger(null); setPayoutId(''); setFile(null); setNumber(''); setIssuedAt(''); setMessage(''); setIssuePayoutId(null); setShowTaxIssues(false); }, [month]);
+  useEffect(() => {
+    if (section !== 'ledger') return;
+    let live = true; setLedgerLoading(true); setMessage(''); setLedger(null);
+    api.get('/admin/payouts/ledger-reconciliation', { params: { yearMonth: month }, headers: { 'x-skip-cache': 'true' } })
+      .then(response => { if (live) setLedger(data(response)); })
+      .catch(error => { if (live) setMessage(error instanceof Error ? error.message : 'Không tải được sổ cái.'); })
+      .finally(() => { if (live) setLedgerLoading(false); });
+    return () => { live = false; };
+  }, [section, month]);
   useEffect(() => {
     api
       .get("/stores/all-admin")
@@ -119,7 +135,7 @@ export function FinanceOperations() {
     );
   }
   function exportCsv() {
-    if (!report) return;
+    if (!report?.items.length) return;
     // Neutralize formula prefixes when opening the exported file in a spreadsheet.
     const cell = (value: unknown) =>
       `"${String(value ?? "")
@@ -159,9 +175,10 @@ export function FinanceOperations() {
   }
   return (
     <section className="finance-operations space-y-5 rounded-2xl border border-[#EAE4D7] bg-white p-5 text-[#1A1612]">
+      {issuePayoutId && <PayoutEvidenceDialog id={issuePayoutId} focusCode="TAX_ID" onClose={() => setIssuePayoutId(null)}/>}
       <div className="finance-operation-tabs" role="tablist" aria-label="Nghiệp vụ đối soát">
-        {([{ id: 'tax', label: 'Báo cáo thuế' }, { id: 'cost', label: 'Chi phí thực tế' }, { id: 'certificate', label: 'Chứng từ thuế' }] as const).map((tab, index) => (
-          <button key={tab.id} type="button" role="tab" aria-selected={section === tab.id} onClick={() => setSection(tab.id)}>
+        {([{ id: 'tax', label: 'Báo cáo thuế' }, { id: 'cost', label: 'Bổ sung giá vốn' }, { id: 'certificate', label: 'Chứng từ thuế' }, { id: 'ledger', label: 'Sổ cái' }] as const).map((tab, index) => (
+          <button key={tab.id} type="button" role="tab" aria-selected={section === tab.id} disabled={busy} onClick={() => setSection(tab.id)}>
             <span className="finance-tab-number">{index + 1}</span>{tab.label}
           </button>
         ))}
@@ -171,132 +188,33 @@ export function FinanceOperations() {
           {message}
         </p>
       )}
-      <div className="flex flex-wrap items-end gap-3" hidden={section === 'cost'}>
-        <label className="grid gap-1 text-sm">
-          Kỳ chi trả
-          <span className="finance-vietnamese-period">
-            <select aria-label="Tháng chi trả" disabled={busy} className={input} value={month.slice(5, 7)} onChange={(e) => setMonth(`${month.slice(0, 4)}-${e.target.value}`)}>
-              {Array.from({ length: 12 }, (_, index) => {
-                const value = String(index + 1).padStart(2, '0');
-                return <option key={value} value={value}>Tháng {index + 1}</option>;
-              })}
-            </select>
-            <select aria-label="Năm chi trả" disabled={busy} className={input} value={month.slice(0, 4)} onChange={(e) => setMonth(`${e.target.value}-${month.slice(5, 7)}`)}>
-              {Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index).map(year => <option key={year} value={year}>{year}</option>)}
-            </select>
-          </span>
-        </label>
-        <button
-          className={button}
-          disabled={busy || !month}
-          onClick={() => void loadTaxReport()}
-        >
-          Xem báo cáo thuế
-        </button>
-        <button className={button} disabled={busy || !report || taxScope !== 'real'} onClick={exportCsv} title={taxScope !== 'real' ? 'Chọn Ngoài Sandbox để xuất CSV riêng của nhóm này' : undefined}>
-          CSV ngoài Sandbox
-        </button>
-        <button
-          className={button}
-          disabled={busy}
-          onClick={() =>
-            void run(async () =>
-              setLedger(
-                data(
-                  await api.get("/admin/payouts/ledger-reconciliation", {
-                    params: { yearMonth: month },
-                    headers: { "x-skip-cache": "true" },
-                  }),
-                ),
-              ),
-            )
-          }
-        >
-          Đối chiếu sổ cái
-        </button>
-      </div>
-      {section === 'tax' && ledger && (
-        <div className="overflow-x-auto text-sm">
-          <p className="mb-2 font-semibold">
-            {ledger.balanced
-              ? `Biến động tháng ${ledger.yearMonth} khớp sổ cái`
-              : `Biến động tháng ${ledger.yearMonth} có chênh lệch cần đối soát`}
-          </p>
-          <table className="w-full text-left">
-            <thead>
-              <tr>
-                {[
-                  "Tài khoản",
-                  "Biến động nghiệp vụ",
-                  "Biến động sổ cái",
-                  "Chênh lệch",
-                ].map((label) => (
-                  <th className="p-2" key={label}>
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ledger.items.map((row) => (
-                <tr className="border-t border-[#EAE4D7]" key={row.account}>
-                  <td className="p-2">
-                    {(
-                      {
-                        PARTNER_EARNINGS_PAYABLE: "Thu nhập khả dụng",
-                        AFFILIATE_ESCROW: "Thu nhập bảo chứng",
-                        CUSTOMER_FUNDS: "Tiền mua hàng",
-                        PAYOUT_RESERVED: "Tiền giữ chi trả",
-                        CORPORATE_BANK: "Thực chi ngân hàng",
-                        PIT_TAX_PAYABLE: "Thuế TNCN phải nộp",
-                        BIDV_SANDBOX_BANK: "Chi trả Sandbox",
-                        SANDBOX_PIT_PAYABLE: "Thuế mô phỏng Sandbox",
-                      } as Record<string, string>
-                    )[row.account] ?? row.account}
-                  </td>
-                  <td className="p-2">
-                    {Number(row.walletAmount).toLocaleString("vi-VN")} ₫
-                  </td>
-                  <td className="p-2">
-                    {Number(row.bookAmount).toLocaleString("vi-VN")} ₫
-                  </td>
-                  <td className="p-2">
-                    {Number(row.difference).toLocaleString("vi-VN")} ₫
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-xs text-[#7D715E]">Đối chiếu phát sinh trong tháng theo giờ Việt Nam, gồm giao dịch thử nghiệm. Không phải số dư hiện tại; chênh lệch lịch sử ngoài kỳ không được xóa hoặc bù tự động.</p>
-          {!ledger.balanced && <p className="mt-2 text-xs text-[#8F682E]">Bút toán ghi khác tháng với thời điểm xử lý nghiệp vụ sẽ tạo chênh lệch kỳ. Cần kiểm tra ngày ghi sổ và chứng từ trước khi điều chỉnh.</p>}
-        </div>
-      )}
+      {section !== 'cost' && <div className="flex flex-wrap items-center justify-between gap-3">
+        <VietnamMonthPicker value={month} max={new Date().toLocaleDateString('sv-SE', {timeZone:'Asia/Ho_Chi_Minh'}).slice(0,7)} label="Kỳ chi trả" disabled={busy} onChange={setMonth}/>
+        {section === 'tax' && <button type="button" className={button} disabled={busy || reportLoading || !report?.items.length} onClick={exportCsv} title={!report?.items.length ? 'Kỳ này chưa có khoản chi trả thực tế để xuất' : 'Tải báo cáo theo kỳ đã chọn'}>Xuất CSV</button>}
+      </div>}
+      {(reportLoading && (section === 'tax' || section === 'certificate') || ledgerLoading && section === 'ledger') && <p role="status" className="text-sm text-[#7D715E]">Đang tải dữ liệu kỳ đã chọn…</p>}
+      {section === 'ledger' && ledger && <LedgerReconciliation report={ledger} month={month}/>}
       {section === 'tax' && report && (
         <div className="finance-tax-result text-sm">
-          <div className="mb-4 grid grid-cols-3 gap-3" role="group" aria-label="Loại chi trả">
-            {(['all', 'real', 'sandbox'] as const).map(scope => <button key={scope} type="button" aria-pressed={taxScope === scope} onClick={() => setTaxScope(scope)} className={`min-h-12 rounded-xl border px-3 py-2 font-semibold ${taxScope === scope ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>
-              {scope === 'all' ? `Tất cả · ${report.items.length + (report.sandbox?.count ?? 0)} khoản` : scope === 'real' ? `Ngoài Sandbox · ${report.items.length} khoản` : `Sandbox · ${report.sandbox?.count ?? 0} khoản`}
-            </button>)}
-          </div>
-          <p className="mb-3 text-xs text-[#7D715E]">Kỳ {report.yearMonth.slice(5)}/{report.yearMonth.slice(0, 4)} · Theo ngày hoàn tất chi trả, giờ Việt Nam. Lệnh chờ duyệt, đang xử lý hoặc bị từ chối chưa được tính.</p>
+          <p className="mb-3 text-xs text-[#7D715E]">Kỳ {report.yearMonth.slice(5)}/{report.yearMonth.slice(0, 4)} · {report.items.length} khoản chi trả thực tế đã hoàn tất.</p>
           <dl className="finance-tax-totals">
             {[
-              { label: 'Trước thuế', value: taxScope === 'all' ? Number(report.gross) + Number(report.sandbox?.gross ?? 0) : taxScope === 'real' ? report.gross : report.sandbox?.gross ?? '0' },
-              { label: 'Thuế khấu trừ', value: taxScope === 'all' ? Number(report.tax) + Number(report.sandbox?.tax ?? 0) : taxScope === 'real' ? report.tax : report.sandbox?.tax ?? '0' },
-              { label: 'Thực nhận', value: taxScope === 'all' ? Number(report.net) + Number(report.sandbox?.net ?? 0) : taxScope === 'real' ? report.net : report.sandbox?.net ?? '0' },
-            ].map((item, index) => <div key={item.label}>
-              <dt><span aria-hidden="true">{index + 1}</span>{item.label}</dt>
+              { label: 'Trước thuế', value: report.gross, icon: Wallet },
+              { label: 'Thuế khấu trừ', value: report.tax, icon: ReceiptText },
+              { label: 'Thực nhận', value: report.net, icon: Landmark },
+            ].map(item => <div key={item.label}>
+              <dt><span aria-hidden="true"><item.icon size={18}/></span>{item.label}</dt>
               <dd>{Number(item.value).toLocaleString('vi-VN')} ₫</dd>
             </div>)}
           </dl>
-          {taxScope === 'real' && report.missingTaxCodes.length > 0 && (
-            <p className="text-[#DC2626]">
-              Có {report.missingTaxCodes.length} khoản chi thiếu mã số thuế. Kế
-              toán cần bổ sung hồ sơ.
-            </p>
-          )}
+          {missingTaxRows.length > 0 && <div className="finance-tax-issues">
+            <button type="button" className="finance-tax-issue-trigger" aria-expanded={missingTaxRows.length > 1 ? showTaxIssues : undefined} onClick={() => missingTaxRows.length === 1 ? setIssuePayoutId(missingTaxRows[0].id) : setShowTaxIssues(value => !value)}>
+              <AlertCircle size={17}/><span>{missingTaxRows.length} khoản chi thiếu mã số thuế</span><span className="finance-tax-issue-action">Xem hồ sơ <ArrowRight size={15}/></span>
+            </button>
+            {showTaxIssues && missingTaxRows.length > 1 && <div className="finance-tax-issue-list">{missingTaxRows.map(row => <button type="button" key={row.id} onClick={() => setIssuePayoutId(row.id)}><span>{row.collaborator.fullName}<small>Lệnh {row.id.slice(0, 8).toUpperCase()} · {Number(row.amount).toLocaleString('vi-VN')} ₫</small></span><ArrowRight size={16}/></button>)}</div>}
+          </div>}
           <p className="finance-tax-caption">
-            {taxScope === 'all' ? `Tổng khấu trừ của các lệnh hoàn tất trong hệ thống, gồm ${report.sandbox?.count ?? 0} khoản Sandbox.` : taxScope === 'real' ? `${report.items.length} khoản hoàn tất ngoài Sandbox.` : `${report.sandbox?.count ?? 0} khoản hoàn tất qua Sandbox.`}
+            Theo ngày hoàn tất chuyển khoản, giờ Việt Nam.
           </p>
         </div>
       )}
@@ -327,6 +245,7 @@ export function FinanceOperations() {
           Nhãn hàng
           <select
             required
+            disabled={busy}
             className={input}
             value={storeId}
             onChange={(e) => {
@@ -390,13 +309,14 @@ export function FinanceOperations() {
           Ghi nhận chi phí
         </button>
       </form>
+      {section === 'certificate' && !reportLoading && report && !report.items.some(row => Number(row.taxAmount) > 0) && <p className="rounded-xl border border-[#EAE4D7] p-4 text-sm text-[#7D715E]">Chưa có khoản chi trả thực tế đã khấu trừ thuế trong kỳ này.</p>}
       <form
-        hidden={section !== 'certificate'}
+        hidden={section !== 'certificate' || reportLoading || !report?.items.some(row => Number(row.taxAmount) > 0)}
         className="grid gap-3 border-t border-[#EAE4D7] pt-5 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
           void run(async () => {
-            if (!file) return;
+            if (!file || !payoutId || reportLoading) return;
             const body = new FormData();
             body.append("file", file);
             body.append("issuer", issuer);
@@ -416,8 +336,7 @@ export function FinanceOperations() {
           Đính kèm chứng từ thuế đã phát hành
         </h3>
         <p className="text-sm text-[#7D715E] sm:col-span-2">
-          Chọn khoản chi trong báo cáo kỳ ở trên và tải bản PDF được đơn vị phát
-          hành cung cấp.
+          Đính kèm PDF đã phát hành cho khoản chi trong kỳ đã chọn.
         </p>
         <label className="grid gap-1 text-sm">
           Khoản chi đã khấu trừ thuế
@@ -474,12 +393,13 @@ export function FinanceOperations() {
           <input
             className={input}
             type="file"
+            key={month}
             accept="application/pdf"
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
-        <button className={button} disabled={busy || !payoutId || !file}>
+        <button className={button} disabled={busy || reportLoading || !payoutId || !file}>
           Đính kèm chứng từ
         </button>
       </form>

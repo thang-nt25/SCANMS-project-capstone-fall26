@@ -1,0 +1,116 @@
+#kol-wallet-page .wallet-balance-overview {
+  display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0;
+  border: 1px solid #EAE4D7; border-radius: 16px; background: #fff; padding: 8px;
+}
+#kol-wallet-page .wallet-balance-overview .wallet-balance-cell {
+  position: relative; display: flex; flex-direction: column; justify-content: center;
+  min-width: 0; min-height: 140px; padding: 18px 20px; border: 0;
+  border-radius: 10px; background: #fff; box-shadow: none; gap: 0;
+}
+#kol-wallet-page .wallet-balance-cell + .wallet-balance-cell::before {
+  content: ''; position: absolute; left: 0; top: 20px; bottom: 20px; width: 1px; background: #EAE4D7;
+}
+#kol-wallet-page .wallet-balance-cell[data-active=true] { background: #FBF5EB; }
+#kol-wallet-page .wallet-balance-top { display: grid; grid-template-columns: 42px minmax(0,1fr); align-items: center; gap: 12px; margin-bottom: 14px; }
+#kol-wallet-page .wallet-balance-icon { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #EEDFC6; border-radius: 12px; color: #B88E4F; background: #FBF5EB; }
+#kol-wallet-page .wallet-balance-badge { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; padding: 6px 8px; border: 1px solid #EEDFC6; border-radius: 10px; color: #79592C; background: #FBF5EB; font-size: 12px; font-weight: 600; line-height: 17px; text-align: center; }
+#kol-wallet-page .wallet-balance-badge svg { flex-shrink: 0; color: #059669; }
+#kol-wallet-page .wallet-balance-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #7D715E; min-height: 24px; }
+#kol-wallet-page .wallet-balance-label > svg { color: #B88E4F; flex-shrink: 0; }
+#kol-wallet-page .wallet-balance-label button { display: grid; place-items: center; padding: 4px; margin-left: auto; cursor: pointer; border-radius: 6px; }
+#kol-wallet-page .wallet-balance-label button:focus-visible { outline: 2px solid #C59B58; }
+#kol-wallet-page .wallet-balance-cell strong { font-size: 28px; line-height: 38px; font-weight: 650; color: #1A1612; margin: 12px 0 6px; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+#kol-wallet-page .wallet-balance-cell p { margin: 0; font-size: 12px; line-height: 18px; color: #7D715E; }
+#kol-wallet-page .wallet-bank-row, #kol-wallet-page .wallet-withdraw-row { box-shadow: none !important; background: #fff !important; border-radius: 16px !important; padding: 22px !important; }
+#kol-wallet-page .wallet-bank-summary { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 24px !important; padding: 0 !important; }
+#kol-wallet-page .wallet-bank-summary > div:first-child { padding: 12px 0 !important; }
+#kol-wallet-page .wallet-bank-summary .flex-col { flex-direction: column; align-items: flex-start; gap: 6px; }
+#kol-wallet-page .wallet-bank-tools { display: flex; align-items: start; gap: 10px; margin-top: auto; }
+#kol-wallet-page .wallet-bank-tools > button, #kol-wallet-page .wallet-bank-more summary { height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #EEDFC6; border-radius: 10px; background: #fff; color: #7D715E; cursor: pointer; font-size: 13px; }
+#kol-wallet-page .wallet-bank-tools > button { flex: 1; }
+#kol-wallet-page .wallet-bank-more { position: relative; }
+#kol-wallet-page .wallet-bank-more summary { width: 42px; list-style: none; }
+#kol-wallet-page .wallet-bank-more summary::-webkit-details-marker { display: none; }
+#kol-wallet-page .wallet-bank-more > div { position: absolute; right: 0; top: 48px; z-index: 15; width: 260px; max-width: 70vw; padding: 14px; border: 1px solid #EAE4D7; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px #231d1514; font-size: 12px; color: #7D715E; }
+#kol-wallet-page .wallet-bank-more p { margin: 0 0 8px; }
+#kol-wallet-page .wallet-bank-more button { display: flex; gap: 6px; align-items: center; color: #DC2626; min-height: 36px; cursor: pointer; }
+#kol-wallet-page .wallet-bank-row:has(.wallet-bank-editor) { align-self: stretch !important; }
+#kol-wallet-page .wallet-bank-row:has(.wallet-bank-editor) > div { grid-template-rows: auto minmax(0,1fr) !important; align-content: stretch !important; }
+#kol-wallet-page .wallet-bank-close { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: #7D715E; cursor: pointer; }
+#kol-wallet-page .wallet-bank-close:hover { background: #FBF5EB; }
+#kol-wallet-page .wallet-bank-editor { display: flex; flex-direction: column; gap: 16px; margin-top: 0; }
+#kol-wallet-page .wallet-bank-editor label { display: flex; align-items: center; min-height: 24px; margin-bottom: 8px; font-size: 13px; line-height: 18px; font-weight: 500; text-transform: none; letter-spacing: 0; color: #7D715E; }
+#kol-wallet-page .wallet-bank-selection { display: flex; align-items: center; gap: 10px; border: 1px solid #EAE4D7; border-radius: 12px; padding: 12px; background: white; }
+#kol-wallet-page .wallet-bank-logo { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid #EAE4D7; border-radius: 10px; padding: 5px; color: #B88E4F; }
+#kol-wallet-page .wallet-bank-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+#kol-wallet-page .wallet-bank-selected-name { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+#kol-wallet-page .wallet-bank-selected-name strong { font-size: 14px; font-weight: 600; color: #1A1612; }
+#kol-wallet-page .wallet-bank-selected-name span { font-size: 11px; line-height: 16px; color: #7D715E; overflow-wrap: anywhere; }
+#kol-wallet-page .wallet-bank-selection button { display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; min-height: 36px; padding: 6px 10px; border: 1px solid #EAE4D7; border-radius: 8px; font-size: 12px; cursor: pointer; }
+#kol-wallet-page .wallet-bank-editor input { display: block; width: 100%; height: 48px; padding: 0 13px; border: 1px solid #EAE4D7; border-radius: 10px; background: white; font-family: inherit; font-size: 14px; color: #1A1612; outline: none; }
+#kol-wallet-page .wallet-bank-editor input:focus { border-color: #C59B58; box-shadow: 0 0 0 2px #FBF5EB; }
+#kol-wallet-page .wallet-bank-editor input[aria-invalid=true] { border-color: #DC2626; }
+#kol-wallet-page .wallet-bank-note { display: flex; align-items: center; justify-content: center; gap: 7px; color: #7D715E; font-size: 11px; line-height: 17px; margin: 9px 0 0; }
+#kol-wallet-page .wallet-bank-note svg { color: #B88E4F; flex-shrink: 0; }
+#kol-wallet-page .wallet-bank-editor .wallet-bank-error { color: #DC2626; font-size: 12px; line-height: 18px; margin: 6px 0 0; }
+#kol-wallet-page .wallet-bank-editor-footer { margin-top: auto; padding-top: 4px; }
+#kol-wallet-page .wallet-bank-editor-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+#kol-wallet-page .wallet-bank-editor-actions button { height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #EAE4D7; border-radius: 10px; background: #fff; color: #7D715E; font-size: 13px; cursor: pointer; }
+#kol-wallet-page .wallet-bank-editor-actions button[type=submit] { border-color: #EEDFC6; background: #FBF5EB; color: #1A1612; font-weight: 600; }
+#kol-wallet-page .wallet-bank-editor button:disabled { opacity: .6; cursor: wait; }
+#kol-wallet-page .wallet-bank-row:has(.wallet-bank-editor) + .wallet-withdraw-row .wallet-amount-layout input,
+#kol-wallet-page .wallet-bank-editor .wallet-bank-selection { height: 56px !important; }
+#kol-wallet-page .wallet-bank-editor .wallet-bank-selection { padding: 6px 12px; }
+#kol-wallet-page .wallet-bank-editor .wallet-bank-logo { width: 36px; height: 36px; }
+#kol-wallet-page .wallet-bank-row:has(.wallet-bank-editor) + .wallet-withdraw-row .wallet-amount-layout label { min-height: 24px; line-height: 24px; font-weight: 500; }
+#kol-wallet-page .wallet-amount-control { width: 100%; min-width: 0; }
+#kol-wallet-page .wallet-amount-layout { display: block !important; }
+#kol-wallet-page .wallet-amount-layout label { font-size: 13px !important; text-transform: none !important; letter-spacing: 0 !important; }
+#kol-wallet-page .wallet-amount-layout input { height: 56px !important; font-size: 22px !important; font-family: inherit; }
+#kol-wallet-page .wallet-quick-group { margin-top: 16px; }
+#kol-wallet-page .wallet-available-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 24px; padding: 0; color: #7D715E; font-size: 13px; }
+#kol-wallet-page .wallet-available-line strong { color: #1A1612; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+#kol-wallet-page .wallet-quick-amounts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 8px; }
+#kol-wallet-page .wallet-quick-amounts button { height: 48px; min-height: 48px; padding: 6px; border-radius: 10px !important; font-family: inherit; font-size: 12px; background: #fff; }
+#kol-wallet-page .wallet-quick-amounts button[aria-pressed=true] { border-color: #C59B58; background: #FBF5EB; }
+#kol-wallet-page .wallet-estimate { padding: 14px 16px; background: #FAF8F5; }
+#kol-wallet-page .wallet-estimate > div { padding: 3px 0; align-items: center; }
+#kol-wallet-page .wallet-estimate > div:last-child { padding-top: 12px; margin-top: 10px; }
+#kol-wallet-page .wallet-estimate [data-testid=withdrawal-net-preview] { font-size: 22px; line-height: 30px; font-family: inherit; font-weight: 650; }
+#kol-wallet-page .wallet-month-context { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; line-height: 17px; color: #7D715E; }
+#kol-wallet-page .wallet-month-context > span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+#kol-wallet-page .wallet-withdraw-caption { margin: 9px 0 0; color: #7D715E; font-size: 11px; line-height: 17px; text-align: center; }
+#kol-wallet-page .wallet-withdraw-actions > button { height: 44px !important; font-size: 13px !important; background: #FBF5EB !important; border-color: #EEDFC6 !important; }
+#kol-wallet-page .wallet-recent-transactions table { min-width: 0; }
+#kol-wallet-page .wallet-recent-transactions th,
+#kol-wallet-page .wallet-recent-transactions td { white-space: normal; overflow-wrap: anywhere; padding: 12px 10px; }
+#kol-wallet-page .wallet-recent-transactions td span { white-space: normal; }
+@media(max-width:1100px) {
+  #kol-wallet-page .wallet-balance-overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #kol-wallet-page .wallet-balance-cell:nth-child(3)::before { display: none; }
+  #kol-wallet-page .wallet-balance-cell:nth-child(n+3) { border-top: 1px solid #EAE4D7; }
+}
+@media(max-width:540px) {
+  #kol-wallet-page .wallet-balance-overview .wallet-balance-cell { padding: 14px 12px; min-height: 174px; justify-content: flex-start; }
+  #kol-wallet-page .wallet-balance-cell strong { font-size: 22px; line-height: 30px; }
+  #kol-wallet-page .wallet-balance-top { grid-template-columns: 32px minmax(0,1fr); gap: 6px; }
+  #kol-wallet-page .wallet-balance-icon { width: 32px; height: 42px; border-radius: 9px; }
+  #kol-wallet-page .wallet-balance-badge { min-height: 48px; font-size: 10px; padding: 5px; }
+  #kol-wallet-page .wallet-balance-label { display: grid; grid-template-columns: minmax(0,1fr) 20px; align-items: start; font-size: 12px; gap: 5px; min-height: 54px; }
+  #kol-wallet-page .wallet-balance-label button { padding: 2px; }
+  #kol-wallet-page .wallet-balance-cell p { font-size: 11px; }
+  #kol-wallet-page .wallet-bank-row, #kol-wallet-page .wallet-withdraw-row { padding: 16px !important; }
+  #kol-wallet-page .wallet-recent-transactions th:nth-child(3),
+  #kol-wallet-page .wallet-recent-transactions td:nth-child(3),
+  #kol-wallet-page .wallet-recent-transactions th:nth-child(5),
+  #kol-wallet-page .wallet-recent-transactions td:nth-child(5),
+  #kol-wallet-page .wallet-recent-transactions th:nth-child(6),
+  #kol-wallet-page .wallet-recent-transactions td:nth-child(6),
+  #kol-wallet-page .wallet-recent-transactions col:nth-child(3),
+  #kol-wallet-page .wallet-recent-transactions col:nth-child(5),
+  #kol-wallet-page .wallet-recent-transactions col:nth-child(6) { display: none; }
+  #kol-wallet-page .wallet-recent-transactions col:nth-child(1) { width: 22%; }
+  #kol-wallet-page .wallet-recent-transactions col:nth-child(2) { width: 48%; }
+  #kol-wallet-page .wallet-recent-transactions col:nth-child(4) { width: 30%; }
+  #kol-wallet-page .wallet-recent-transactions th, #kol-wallet-page .wallet-recent-transactions td { padding: 12px 5px; font-size: 11px; }
+}

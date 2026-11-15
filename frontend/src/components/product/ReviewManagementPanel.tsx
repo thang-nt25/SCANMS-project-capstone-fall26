@@ -1,5 +1,7 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useRef, useState } from 'react';
-import { Star, X, RotateCw, MessageSquareQuote, AlertTriangle, Send, Flag } from 'lucide-react';
+import { Star, X, Search, ExternalLink, MessageSquareQuote, AlertTriangle, Send, Flag } from 'lucide-react';
+import './review-management.css';
 import api from '@/services/api';
 import { toast } from '@/utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -95,6 +97,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
+  const [search,setSearch] = useState('');
   const [action, setAction] = useState<{ id: string; kind: 'reply' | 'report' | 'resolve'; decision?: 'KEEP' | 'HIDE' } | null>(null);
   const [text, setText] = useState('');
   const [reason, setReason] = useState('ABUSE');
@@ -153,6 +156,8 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
   const countHidden = reviews.filter((r) => r.status === 'HIDDEN').length;
 
   const shown = reviews.filter((review) => {
+    const term=search.trim().toLocaleLowerCase('vi');
+    if(term && ![review.product?.title,review.customerName,review.comment].some(value=>String(value||'').toLocaleLowerCase('vi').includes(term)))return false;
     if (filter === 'ALL') return true;
     if (filter === 'PENDING') return pending(review);
     if (filter === 'LOW') return review.rating <= 2;
@@ -166,16 +171,16 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
 
   const filterTabs = [
     { key: 'ALL', label: 'Tất cả', count: reviews.length },
-    { key: 'PENDING', label: 'Cần sàn xử lý', count: countPending },
+    { key: 'PENDING', label: 'Cần xử lý', count: countPending },
     { key: 'APPROVED', label: 'Đang hiển thị', count: countApproved },
     { key: 'LOW', label: '1–2 sao', count: countLow },
     { key: 'HIDDEN', label: 'Đã ẩn', count: countHidden },
   ];
 
   return (
-    <div className="space-y-4 text-left text-[#1A1612]">
+    <div className="review-management space-y-4 text-left text-[#1A1612]">
       {/* 3 Thẻ chỉ số tổng quan nhanh */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="review-metrics grid grid-cols-3 gap-3">
         <div className="p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] font-bold text-sm shadow-2xs">
             ⭐
@@ -210,7 +215,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
       </div>
 
       {/* Toolbar: Bộ lọc tab bên trái + Nút Làm mới bên phải */}
-      <div className="grid w-full grid-cols-2 items-stretch gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="review-filters grid w-full grid-cols-2 items-stretch gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-3">
         <div className="contents" role="group" aria-label="Bộ lọc đánh giá">
           {filterTabs.map((tab) => {
             const isSelected = filter === tab.key;
@@ -239,15 +244,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
           })}
         </div>
 
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer disabled:opacity-50"
-        >
-          <RotateCw size={13} className={loading ? 'animate-spin text-[#B88E4F]' : ''} />
-          <span>Làm mới</span>
-        </button>
+        <label className="review-search"><Search size={16}/><span className="sr-only">Tìm đánh giá</span><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm sản phẩm, khách hàng, nội dung…"/>{search&&<button type="button" aria-label="Xóa tìm kiếm" onClick={()=>setSearch('')}><X size={14}/></button>}</label>
       </div>
 
       {/* Danh sách bài đánh giá */}
@@ -262,21 +259,21 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="review-list">
           {shown.map((review) => {
             const statusConfig = {
-              APPROVED: { label: 'Đang công khai', bg: 'bg-[#FBF5EB]', text: 'text-[#059669]', border: 'border-[#EEDFC6]' },
-              PENDING: { label: 'Chờ sàn duyệt', bg: 'bg-[#FAF8F5]', text: 'text-[#D97706]', border: 'border-[#EAE4D7]' },
+              APPROVED: { label: 'Đang công khai', bg: 'bg-[#FBF5EB]', text: 'text-[#805B27]', border: 'border-[#EEDFC6]' },
+              PENDING: { label: 'Chờ duyệt', bg: 'bg-[#FAF8F5]', text: 'text-[#D97706]', border: 'border-[#EAE4D7]' },
               HIDDEN: { label: 'Đã ẩn vi phạm', bg: 'bg-[#FDF2F2]', text: 'text-[#DC2626]', border: 'border-[#F8D7DA]' },
               REJECTED: { label: 'Đã từ chối', bg: 'bg-[#FDF2F2]', text: 'text-[#DC2626]', border: 'border-[#F8D7DA]' },
             }[review.status as string] || { label: review.status, bg: 'bg-white', text: 'text-[#7D715E]', border: 'border-[#EAE4D7]' };
 
             return (
-              <article key={review.id} className="rounded-xl border border-[#EAE4D7] bg-white p-4 space-y-3 shadow-2xs">
+              <article key={review.id} className="review-row rounded-xl border border-[#EAE4D7] bg-white p-4 space-y-3 shadow-2xs">
                 {/* Hàng thông tin khách + sản phẩm */}
-                <div className="flex items-start gap-3">
+                <div className="review-row-header flex items-start gap-3">
                   <img
-                    src={getSafeProductImageUrl(review.product?.imageUrl, review.product?.title)}
+                    src={getSafeProductImageUrl(review.product?.imageUrl, review.product?.title)} onError={handleProductImageError}
                     alt={review.product?.title || 'Sản phẩm'}
                     className="h-12 w-12 shrink-0 rounded-lg border border-[#EAE4D7] object-contain bg-[#FAF8F5]"
                   />
@@ -309,7 +306,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
                 </div>
 
                 {/* Nội dung nhận xét của khách */}
-                <p className="text-xs sm:text-[13px] text-[#1A1612] whitespace-pre-wrap break-words leading-relaxed m-0 bg-[#FAF8F5]/50 p-2.5 rounded-lg border border-[#EAE4D7]/60">
+                <p className="review-comment text-xs sm:text-[13px] text-[#1A1612] whitespace-pre-wrap break-words leading-relaxed m-0">
                   {review.comment}
                 </p>
 
@@ -351,23 +348,24 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
                 ))}
 
                 {/* Hàng nút hành động */}
-                <div className="flex items-center gap-2 pt-1 border-t border-[#EAE4D7]/60">
+                <div className="review-actions flex items-center gap-2">
+                  {review.status === 'APPROVED' && (review.product?.sku || review.product?.id || review.productId) && <a className="review-public-link" href={`/products/${encodeURIComponent(review.product?.sku || review.product?.id || review.productId)}?review=${encodeURIComponent(review.id)}#review-${encodeURIComponent(review.id)}`} target="_blank" rel="noreferrer">Xem tại sản phẩm<ExternalLink size={13}/></a>}
                   {admin ? (
                     <>
-                      <button
+                      {(review.status !== 'APPROVED' || pending(review)) && <button
                         type="button"
                         onClick={() => open(review.id, 'resolve', 'KEEP')}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E] hover:bg-[#F3EFE6] transition cursor-pointer"
                       >
-                        Giữ / Duyệt công khai
-                      </button>
-                      <button
+                        {review.status==='HIDDEN'?'Khôi phục':review.status==='APPROVED'?'Giữ công khai':'Duyệt công khai'}
+                      </button>}
+                      {review.status !== 'HIDDEN' && <button
                         type="button"
                         onClick={() => open(review.id, 'resolve', 'HIDE')}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#F8D7DA] text-[#DC2626] hover:bg-[#FDF2F2] transition cursor-pointer"
                       >
-                        Ẩn vi phạm
-                      </button>
+                        Ẩn đánh giá
+                      </button>}
                     </>
                   ) : (
                     <>

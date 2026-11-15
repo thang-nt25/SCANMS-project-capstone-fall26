@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   pricingApi,
@@ -5,6 +6,7 @@ import {
 } from "../../services/enterprise-pricing.service";
 import { Modal } from "../../components/ui/Modal";
 import { getSafeProductImageUrl } from "@/utils/marketplace.utils";
+import './product-pricing.css';
 import {
   ShieldCheck,
   Tag,
@@ -36,15 +38,15 @@ const statusBadges: Record<
   },
   APPROVED: {
     label: "Đã duyệt · Chờ kích hoạt",
-    bg: "bg-[#E0F2FE]",
-    text: "text-[#0369A1]",
-    border: "border-[#BAE6FD]",
+    bg: "bg-[#FBF5EB]",
+    text: "text-[#805B27]",
+    border: "border-[#EEDFC6]",
   },
   ACTIVE: {
     label: "Đang áp dụng",
-    bg: "bg-[#ECFDF5]",
-    text: "text-[#065F46]",
-    border: "border-[#A7F3D0]",
+    bg: "bg-[#FAF8F5]",
+    text: "text-[#715126]",
+    border: "border-[#EAE4D7]",
   },
   REJECTED: {
     label: "Bị từ chối",
@@ -98,7 +100,8 @@ export default function ProductPricingPage({
   );
   const [note, setNote] = useState("");
   const [approve, setApprove] = useState(true);
-  const [promoFilter, setPromoFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'HISTORY'>('ALL');
+  const [promoFilter, setPromoFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'ACTIVE' | 'HISTORY'>('ALL');
+  const [pricingSection, setPricingSection] = useState<'floor' | 'promotions'>('floor');
   const [storeFilter, setStoreFilter] = useState<string>('ALL');
   const [showMapInfoModal, setShowMapInfoModal] = useState<boolean>(false);
 
@@ -107,12 +110,14 @@ export default function ProductPricingPage({
   const product = catalog.find((item) => item.id === productId);
 
   const pendingCount = useMemo(() => promotions.filter((p) => p.status === "PENDING").length, [promotions]);
-  const activeCount = useMemo(() => promotions.filter((p) => ["ACTIVE", "APPROVED"].includes(p.status)).length, [promotions]);
+  const approvedCount = useMemo(() => promotions.filter((p) => p.status === 'APPROVED').length, [promotions]);
+  const activeCount = useMemo(() => promotions.filter((p) => p.status === 'ACTIVE').length, [promotions]);
   const historyCount = useMemo(() => promotions.filter((p) => ["REJECTED", "CANCELLED", "EXPIRED"].includes(p.status)).length, [promotions]);
 
   const filteredPromotions = useMemo(() => {
     if (promoFilter === "PENDING") return promotions.filter((p) => p.status === "PENDING");
-    if (promoFilter === "ACTIVE") return promotions.filter((p) => ["ACTIVE", "APPROVED"].includes(p.status));
+    if (promoFilter === "APPROVED") return promotions.filter((p) => p.status === 'APPROVED');
+    if (promoFilter === "ACTIVE") return promotions.filter((p) => p.status === 'ACTIVE');
     if (promoFilter === "HISTORY") return promotions.filter((p) => ["REJECTED", "CANCELLED", "EXPIRED"].includes(p.status));
     return promotions;
   }, [promotions, promoFilter]);
@@ -218,7 +223,11 @@ export default function ProductPricingPage({
   }
 
   return (
-    <div className={reviewer ? "space-y-4 text-[#1A1612] pb-6" : "space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen"}>
+    <div className={reviewer ? "product-pricing-review flex flex-col gap-3 text-[#1A1612] pb-6" : "space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen"}>
+      {reviewer && <div className="pricing-section-tabs" role="tablist" aria-label="Nghiệp vụ giá sản phẩm">
+        <button id="pricing-floor-tab" role="tab" type="button" aria-selected={pricingSection === 'floor'} aria-controls="pricing-floor-panel" onClick={() => setPricingSection('floor')}><ShieldCheck size={16}/>Giá sàn MAP</button>
+        <button id="pricing-promotions-tab" role="tab" type="button" aria-selected={pricingSection === 'promotions'} aria-controls="pricing-promotions-panel" onClick={() => setPricingSection('promotions')}><Tag size={16}/>Đề xuất giảm giá{pendingCount > 0 && <span>{pendingCount} chờ duyệt</span>}</button>
+      </div>}
       {/* Header section */}
       {!reviewer && (
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#EAE4D7]">
@@ -282,10 +291,10 @@ export default function ProductPricingPage({
       ) : (
         <>
           {/* Section 1: Promotion requests */}
-          <section className="space-y-3.5">
+          <section id={reviewer ? 'pricing-promotions-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'pricing-promotions-tab' : undefined} hidden={reviewer && pricingSection !== 'promotions'} className="pricing-promotions-panel space-y-3.5">
             <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Status Tabs */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>button]:flex [&>button]:min-h-11 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button[aria-pressed=true]]:bg-[#FBF5EB]">
+              <div className="pricing-promotion-filters grid grid-cols-2 gap-2 sm:grid-cols-5 [&>button]:flex [&>button]:min-h-11 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button[aria-pressed=true]]:bg-[#FBF5EB]">
                 <button
                   type="button"
                   onClick={() => setPromoFilter("ALL")}
@@ -311,6 +320,7 @@ export default function ProductPricingPage({
                   <Clock3 className="w-3 h-3 text-[#D97706]" />
                   <span>Chờ duyệt ({pendingCount})</span>
                 </button>
+                <button type="button" aria-pressed={promoFilter === 'APPROVED'} onClick={() => setPromoFilter('APPROVED')} className="flex items-center gap-1 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold text-[#805B27]"><Clock3 className="h-3 w-3"/>Đã duyệt ({approvedCount})</button>
                 <button
                   type="button"
                   onClick={() => setPromoFilter("ACTIVE")}
@@ -322,7 +332,7 @@ export default function ProductPricingPage({
                   }`}
                 >
                   <CheckCircle2 className="w-3 h-3 text-[#059669]" />
-                  <span>Đang chạy ({activeCount})</span>
+                  <span>Đang áp dụng ({activeCount})</span>
                 </button>
                 <button
                   type="button"
@@ -346,6 +356,8 @@ export default function ProductPricingPage({
                 <p className="text-xs font-semibold text-[#1A1612]">
                   {promoFilter === "PENDING"
                     ? "Không có yêu cầu chờ thẩm định"
+                    : promoFilter === "APPROVED"
+                      ? "Chưa có đề xuất đã duyệt chờ áp dụng"
                     : promoFilter === "ACTIVE"
                       ? "Không có chiến dịch đang áp dụng"
                       : promoFilter === "HISTORY"
@@ -385,7 +397,7 @@ export default function ProductPricingPage({
                           <div className="flex items-start gap-3 min-w-0">
                             {prodImg ? (
                               <img
-                                src={prodImg}
+                                src={prodImg} onError={handleProductImageError}
                                 alt={item.product?.title}
                                 className="w-11 h-11 rounded-xl object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
                               />
@@ -547,7 +559,7 @@ export default function ProductPricingPage({
           </section>
 
           {/* Section 2: Catalog and MAP configuration */}
-          <section className="space-y-3.5 pt-4">
+          <section id={reviewer ? 'pricing-floor-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'pricing-floor-tab' : undefined} hidden={reviewer && pricingSection !== 'floor'} className={reviewer ? "space-y-3" : "space-y-3.5 pt-4"}>
             <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Filter by In-house Store and Search */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

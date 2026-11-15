@@ -111,7 +111,7 @@ export function CustomerOrderSummary({
 }) {
   return (
     <header className="block min-w-0 text-left">
-      <div className="flex items-center justify-between flex-wrap gap-2.5 p-3.5 sm:px-4.5 sm:py-3.5 bg-[#FAF8F5]/60 border-b border-[#EAE4D7]">
+      <div className="flex items-center justify-between flex-wrap gap-2.5 p-3.5 sm:px-4.5 sm:py-3.5 bg-white rounded-t-2xl border-b border-[#EAE4D7]">
         <div className="flex items-center flex-wrap gap-2.5 min-w-0">
           <div className="inline-flex min-w-0 max-w-full items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
@@ -120,9 +120,6 @@ export function CustomerOrderSummary({
             <strong className="truncate font-bold text-sm text-[#1A1612]">
               {order.store?.name || 'Cửa hàng chính hãng'}
             </strong>
-            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-              Chính hãng
-            </span>
           </div>
           <div className="inline-flex items-center gap-1.5">
             <button

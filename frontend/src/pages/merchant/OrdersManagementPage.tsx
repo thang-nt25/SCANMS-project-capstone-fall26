@@ -234,6 +234,7 @@ export default function OrdersManagementPage({
   const searchField = "ALL";
   const [ordersRefreshCount, setOrdersRefreshCount] = useState(0);
   const ordersAutoRefreshPaused = useRef(false);
+  const fulfillmentRevision = useRef(0);
   ordersAutoRefreshPaused.current = action !== null || activeOrderView !== 'COMMERCIAL';
   const [activeDropdownOrderId, setActiveDropdownOrderId] = useState<string | null>(null);
   const [copiedTrackingId, setCopiedTrackingId] = useState<string | null>(null);
@@ -405,6 +406,7 @@ export default function OrdersManagementPage({
       if (!active || requestRunning) return;
       if (background && (document.hidden || ordersAutoRefreshPaused.current || Date.now() - lastStartedAt < 9000)) return;
       requestRunning = true;
+      const requestedRevision = fulfillmentRevision.current;
       lastStartedAt = Date.now();
       if (!background && orders.length === 0) setOrdersLoading(true);
       else setIsBackgroundRefreshing(true);
@@ -418,7 +420,7 @@ export default function OrdersManagementPage({
           limit: 12,
           storeId,
         }, isManualFresh);
-        if (active && res) {
+        if (active && res && requestedRevision === fulfillmentRevision.current) {
           lastOrdersSnapshot = {
             orders: res.items || [],
             total: res.pagination?.total || 0,
@@ -496,6 +498,18 @@ export default function OrdersManagementPage({
   const [trackingGhnDetail, setTrackingGhnDetail] = useState<GhnTrackingDetail | null>(null);
   const [loadingTracking, setLoadingTracking] = useState(false);
 
+  // A confirmed mutation already contains the new state. Do not wait for a
+  // second list request, and do not let an older poll restore the old state.
+  const applyFulfillment = (orderId: string, patch: Partial<StoreOrderRecord>) => {
+    fulfillmentRevision.current++;
+    const merge = (item: StoreOrderRecord) => item.id === orderId ? { ...item, ...patch } : item;
+    setOrders(current => current.map(merge));
+    setSelectedOrderDetails(current => current ? merge(current) : current);
+    if (lastOrdersSnapshot) lastOrdersSnapshot = {
+      ...lastOrdersSnapshot, orders: lastOrdersSnapshot.orders.map(merge),
+    };
+  };
+
   const handleOpenShippingModal = (order: StoreOrderRecord) => {
     if (order.status === 'PENDING' && !order.shopConfirmedAt) {
       toast.info('Vui lòng xác nhận đơn trước khi tạo vận đơn.');
@@ -515,6 +529,10 @@ export default function OrdersManagementPage({
     if (!shippingModalOrder || creatingGhnEnvironment !== null) return;
     const targetOrder = shippingModalOrder;
     const completeCreation = (trackingNumber: string, targetEnvironment?: "LIVE" | "TEST" | null) => {
+      applyFulfillment(targetOrder.id, {
+        status: 'SHIPPING', trackingNumber, carrierName: 'GHN',
+        ...(targetEnvironment ? { ghnEnvironment: targetEnvironment } : {}),
+      });
       setGhnCreateError(null);
       setShippingCarrier("GHN");
       setShippingTrackingNumber(trackingNumber);
@@ -596,6 +614,10 @@ export default function OrdersManagementPage({
         trackingNumber: shippingTrackingNumber.trim(),
         note: shippingNote.trim() || undefined,
       });
+      applyFulfillment(shippingModalOrder.id, {
+        status: 'SHIPPING', carrierName: shippingCarrier,
+        trackingNumber: shippingTrackingNumber.trim(),
+      });
       toast.success(`Đã giao bưu cục đơn #${shippingModalOrder.externalOrderSn}`, {
         description: `Mã vận đơn ${shippingTrackingNumber.trim()} (${shippingCarrier}) đã được lưu và chuyển sang Đang giao.`,
       });
@@ -619,6 +641,7 @@ export default function OrdersManagementPage({
       await orderService.updateOrderFulfillment(confirmDeliveredOrder.id, {
         status: "DELIVERED",
       });
+      applyFulfillment(confirmDeliveredOrder.id, { status: 'DELIVERED' });
       toast.success("Xác nhận giao hàng thành công!", {
         description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã hoàn tất và bắt đầu chu kỳ đối soát thu nhập đối tác.`,
       });

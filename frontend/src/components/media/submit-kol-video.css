@@ -1,0 +1,29 @@
+.kol-review-dialog { max-width: 680px; border-radius: 20px; background: #fff; }
+.kol-review-dialog .modal-header { padding: 14px 20px; }
+.kol-review-dialog .modal-header h3 { font-size: 18px; }
+.kol-review-body { padding: 18px 20px; }
+.kol-review-form { display: grid; gap: 16px; }
+.kol-review-form label { font-size: 13px; font-weight: 500; }
+.kol-review-form input:not([type="checkbox"]):not([type="file"]), .kol-review-form textarea { font-size: 13px; border-radius: 10px; background: #fff; }
+.kol-review-form input:not([type="checkbox"]):not([type="file"]) { min-height: 44px; }
+.kol-review-form textarea { min-height: 80px; }
+.kol-review-form > div:first-of-type img { width: 48px; height: 48px; border-radius: 10px; }
+.kol-review-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; border: 1px solid #EAE4D7; background: #fff; border-radius: 12px; padding: 4px; margin-bottom: 10px; }
+.kol-review-modes button { position: relative; height: 40px; min-width: 0; border: 1px solid transparent; border-radius: 8px; font-size: 13px; font-weight: 500; box-shadow: none; }
+.kol-review-modes button[aria-pressed="true"] { border-color: #EEDFC6; background: #FBF5EB; color: #855F2D; }
+.kol-review-modes button + button::before { content: ''; position: absolute; left: -5px; width: 1px; height: 20px; top: 9px; background: #EAE4D7; }
+.kol-review-video-upload { display: flex; align-items: center; gap: 9px; width: 100%; height: 44px; padding: 0 12px; border: 1px dashed #EEDFC6; border-radius: 10px; background: #FAF8F5; color: #855F2D; font-size: 13px; cursor: pointer; text-align: left; }
+.kol-review-video-upload > svg { flex-shrink: 0; }
+.kol-review-upload-hint { margin-left: auto; font-size: 11px; color: #7D715E; }
+.kol-review-video-upload:focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }
+.kol-review-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.kol-review-footer > span { font-size: 12px; }
+.kol-review-footer > div { display: grid; grid-template-columns: repeat(2, minmax(100px, 1fr)); gap: 8px; }
+.kol-review-footer button { min-height: 42px; justify-content: center; border-radius: 10px; font-size: 13px; }
+.kol-review-footer button[type="submit"] { background: #FBF5EB; color: #855F2D; border: 1px solid #EEDFC6; box-shadow: none; }
+@media (max-width: 480px) {
+  .kol-review-upload-hint { font-size: 10px; }
+  .kol-review-body { padding: 16px; }
+  .kol-review-footer { flex-wrap: wrap; }
+  .kol-review-footer > div { width: 100%; }
+}

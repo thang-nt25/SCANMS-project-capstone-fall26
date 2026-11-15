@@ -1,3 +1,4 @@
+import { handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -556,7 +557,7 @@ export default function KycApprovalPage() {
                           className={`h-9 w-9 shrink-0 overflow-hidden rounded-xl flex items-center justify-center font-bold text-xs ${u.avatarBg}`}
                         >
                           {u.avatarUrl ? (
-                            <img src={u.avatarUrl} alt={u.fullName} className="h-full w-full object-cover" />
+                            <img src={u.avatarUrl} onError={handleAvatarImageError} alt={u.fullName} className="h-full w-full object-cover" />
                           ) : (
                             u.avatar
                           )}
@@ -701,7 +702,7 @@ export default function KycApprovalPage() {
               <div className="flex items-center gap-3 min-w-0">
                 <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] font-bold text-sm text-[#8F682E]">
                   {inspectProfile.avatarUrl ? (
-                    <img src={inspectProfile.avatarUrl} alt={inspectProfile.fullName} className="h-full w-full object-cover" />
+                    <img src={inspectProfile.avatarUrl} onError={handleAvatarImageError} alt={inspectProfile.fullName} className="h-full w-full object-cover" />
                   ) : (
                     inspectProfile.avatar
                   )}

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Post,
@@ -24,16 +25,20 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 import { FinanceReportService } from './finance-report.service';
-import { PayoutTransferService } from './payout-transfer.service';
+import { isTestPayout } from './payout-environment';
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class FinanceReportController {
   constructor(
     private readonly reports: FinanceReportService,
-    private readonly transfers: PayoutTransferService,
     private readonly prisma: PrismaService,
   ) {}
+  @Get('admin/payouts/pending-work')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  pendingWork(@CurrentUser('id') userId: string) {
+    return this.reports.pendingWork(userId);
+  }
   @Get('stores/:storeId/pnl-report')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   storePnl(
@@ -72,6 +77,11 @@ export class FinanceReportController {
   reconcileLedger(@Query('yearMonth') month?: string) {
     return this.reports.reconcileLedger(month);
   }
+  @Get('admin/payouts/ledger-reconciliation/details')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  reconciliationDetails(@Query('yearMonth') month: string, @Query('account') account: string, @Query('page') page?: string) {
+    return this.reports.reconciliationDetails(month, account, page === undefined ? 1 : Number(page));
+  }
 
   @Post('admin/payouts/:id/tax-certificate')
   @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
@@ -108,6 +118,7 @@ export class FinanceReportController {
         throw new NotFoundException(
           'Không tìm thấy khoản chi đã khấu trừ thuế',
         );
+      if (isTestPayout(payout)) throw new BadRequestException('Không phát hành chứng từ thuế cho giao dịch thử nghiệm cũ');
       const certificate = await tx.payoutTaxCertificate.create({
         data: {
           payoutId: id,
@@ -145,9 +156,10 @@ export class FinanceReportController {
   ) {
     const payout = await this.prisma.payoutRequest.findFirst({
       where: { id, collaboratorId: user.id, status: 'APPROVED' },
-      select: { id: true },
+      select: { id: true, transferProvider: true, bankRefCode: true },
     });
     if (!payout) throw new NotFoundException('Không tìm thấy chứng từ của bạn');
+    if (isTestPayout(payout)) throw new BadRequestException('Giao dịch thử nghiệm cũ không có chứng từ thuế thực tế');
     const certificate = await this.prisma.payoutTaxCertificate.findUnique({
       where: { payoutId: id },
     });
@@ -165,30 +177,10 @@ export class FinanceReportController {
     return response.send(Buffer.from(certificate.fileData));
   }
   @Get('admin/payouts/escrow')
+  @Header('Cache-Control', 'private, no-store')
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   escrow(@Query('page') page?: string) {
     return this.reports.escrow(page === undefined ? 1 : Number(page));
-  }
-  @Get('admin/payouts/gateway')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  gateway() {
-    return this.transfers.availability();
-  }
-  @Post('payouts/:id/approve')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  transfer(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.transfers.transfer(id, user.id);
-  }
-  @Post('payouts/:id/reconcile')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  reconcile(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.transfers.transfer(id, user.id, true);
   }
   @Get('wallets/tax-invoices')
   @Roles(UserRole.COLLABORATOR)

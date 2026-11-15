@@ -1,6 +1,7 @@
 import {
   useState,
   useEffect,
+  useRef,
   type Dispatch,
   type FormEventHandler,
   type InputHTMLAttributes,
@@ -33,6 +34,8 @@ import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
 import type { ApplyKolData, SocialChannelFormItem } from '../../services/kyc.service';
 import { ApplicationBadge } from './PartnerUpgradeTab';
+import { socialChannelFields, socialChannelUrlError } from '../../utils/social-channel-form';
+import './partner-upgrade-form.css';
 
 const PRIMARY_CATEGORIES = [
   'Mỹ phẩm & Chăm sóc da chuyên sâu',
@@ -193,6 +196,8 @@ export function KolUpgradeForm({
 }) {
   // Stepper state: 1 = Hồ sơ sáng tạo, 2 = Định danh & thanh toán
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [stepError, setStepError] = useState<{ message: string; id: string } | null>(null);
+  const [editingSecondary, setEditingSecondary] = useState<number | null>(null);
 
   // User profile
   const currentUser = authService.getCurrentUser();
@@ -212,6 +217,9 @@ export function KolUpgradeForm({
   };
 
   const secondaryChannels = rawChannels.slice(1);
+  const primaryFields = socialChannelFields(primaryChannel.platform);
+  const primaryUrlError = primaryChannel.channelUrl?.trim() ? socialChannelUrlError(primaryChannel.platform, primaryChannel.channelUrl) : null;
+  const primaryDrafts = useRef<Record<string, SocialChannelFormItem>>({});
 
   const updatePrimary = (updates: Partial<SocialChannelFormItem>) => {
     const updatedPrimary: SocialChannelFormItem = {
@@ -231,6 +239,15 @@ export function KolUpgradeForm({
     }));
   };
 
+  const switchPrimaryPlatform = (platform: SocialChannelFormItem['platform']) => {
+    if (platform === primaryChannel.platform) return;
+    primaryDrafts.current[primaryChannel.platform] = { ...primaryChannel };
+    updatePrimary(primaryDrafts.current[platform] || {
+      platform, channelName: '', channelUrl: '', followerCount: '' as unknown as number,
+      channelProofUrl: '', isPrimary: true,
+    });
+  };
+
   // State cho Modal thêm kênh mạng xã hội phụ
   const [showAddChannel, setShowAddChannel] = useState(false);
   const [newPlatform, setNewPlatform] = useState<keyof typeof PLATFORM_CONFIG>('YOUTUBE');
@@ -240,13 +257,15 @@ export function KolUpgradeForm({
 
   const handleSaveSecondaryChannel = () => {
     if (!newHandle.trim()) {
-      toast.error('Vui lòng nhập tên kênh hoặc @handle');
+      toast.error(`Vui lòng nhập ${socialChannelFields(String(newPlatform)).nameLabel.toLowerCase()}`);
       return;
     }
     if (!newUrl.trim()) {
       toast.error('Vui lòng nhập liên kết kênh');
       return;
     }
+    const urlError = socialChannelUrlError(String(newPlatform), newUrl);
+    if (urlError) { toast.error(urlError); return; }
 
     const newChannelItem: SocialChannelFormItem = {
       platform: newPlatform as any,
@@ -256,13 +275,14 @@ export function KolUpgradeForm({
       isPrimary: false,
     };
 
-    const updated = [...rawChannels, newChannelItem];
+    const updated = [primaryChannel, ...(editingSecondary === null ? [...secondaryChannels, newChannelItem] : secondaryChannels.map((channel, index) => index === editingSecondary ? { ...channel, ...newChannelItem } : channel))];
     setForm((prev) => ({ ...prev, channels: updated }));
     setNewHandle('');
     setNewFollowers('');
     setNewUrl('');
     setShowAddChannel(false);
-    toast.success(`Đã thêm kênh ${PLATFORM_CONFIG[newPlatform]?.label || newPlatform}`);
+    setEditingSecondary(null);
+    toast.success(`Đã lưu kênh ${PLATFORM_CONFIG[newPlatform]?.label || newPlatform}`);
   };
 
   const removeSecondaryChannel = (indexInSecondary: number) => {
@@ -276,6 +296,10 @@ export function KolUpgradeForm({
     const match = form.bio?.match(/\[Thế mạnh:\s*(.*?)\]/);
     return match ? match[1].trim() : '';
   });
+  useEffect(() => {
+    const restoredCategory = form.specialtyCategories?.[0];
+    if (restoredCategory) setSelectedCategory(restoredCategory);
+  }, [form.specialtyCategories]);
 
   const handleCategoryChange = (cat: string) => {
     setSelectedCategory(cat);
@@ -321,47 +345,72 @@ export function KolUpgradeForm({
   }, []);
 
   // Chuyển bước kèm kiểm tra hợp lệ
+  const showStepError = (message: string, id: string) => {
+    setStepError({ message, id });
+    setCurrentStep(1);
+    window.requestAnimationFrame(() => {
+      const element = document.getElementById(id);
+      element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      element?.focus({ preventScroll: true });
+    });
+  };
   const handleNextStep = () => {
     if (!primaryChannel.channelName?.trim()) {
-      toast.error('Vui lòng nhập tên kênh hoặc @handle');
+      showStepError('Vui lòng nhập tên kênh hoặc tài khoản.', 'primary-channel-name');
       return;
     }
     if (!primaryChannel.channelUrl?.trim()) {
-      toast.error('Vui lòng nhập đường dẫn kênh');
+      showStepError('Vui lòng nhập đường dẫn kênh.', 'primary-channel-url');
       return;
     }
+    const urlError = socialChannelUrlError(primaryChannel.platform, primaryChannel.channelUrl);
+    if (urlError) { showStepError(urlError, 'primary-channel-url'); return; }
     if (!primaryChannel.followerCount || Number(primaryChannel.followerCount) <= 0) {
-      toast.error('Vui lòng nhập số người theo dõi');
+      showStepError(`Vui lòng nhập ${primaryFields.audienceLabel.toLowerCase()}.`, 'primary-channel-followers');
       return;
     }
     if (!primaryChannel.channelProofUrl?.trim()) {
-      toast.error('Vui lòng tải lên ảnh minh chứng quyền sở hữu kênh');
+      showStepError('Vui lòng tải ảnh quản trị kênh.', 'primary-channel-proof');
       return;
     }
     if (!selectedCategory) {
-      toast.error('Vui lòng chọn ngành hàng thế mạnh');
+      showStepError('Vui lòng chọn lĩnh vực hợp tác.', 'primary-channel-category');
       return;
     }
-    if (!form.bio?.trim()) {
-      toast.error('Vui lòng nhập phần giới thiệu thế mạnh nội dung');
+    if (!hasBio) {
+      showStepError('Giới thiệu bản thân cần ít nhất 11 ký tự.', 'kol-bio');
       return;
     }
 
+    setStepError(null);
     setCurrentStep(2);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.querySelector('.workspace-page-column')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Tính trạng thái hoàn thành
-  const hasChannel = Boolean(primaryChannel.channelName && primaryChannel.channelUrl);
+  const hasChannel = Boolean(primaryChannel.channelName && primaryChannel.channelUrl && !primaryUrlError);
   const hasCategory = Boolean(selectedCategory);
-  const hasBio = Boolean(form.bio && form.bio.trim().length > 10);
+  const hasBio = (form.bio || '').replace(/\[Thế mạnh: .*?\]\s*/, '').trim().length > 10;
   const hasProof = Boolean(primaryChannel.channelProofUrl);
   const hasIdCard = Boolean(form.idCardNumber && form.idCardNumber.trim().length >= 9);
   const hasPhotos = Boolean(form.frontCardUrl && form.backCardUrl);
   const hasBank = Boolean(form.bankAccountNumber && form.bankName);
 
-  const step1Complete = hasChannel && hasCategory && hasBio && hasProof;
+  const hasAudience = Number(primaryChannel.followerCount) > 0;
+  const step1Complete = hasChannel && hasAudience && hasCategory && hasBio && hasProof;
   const step2Ready = hasIdCard && hasPhotos;
+  const progressItems = currentStep === 1 ? [
+    { label: 'Kênh chính & minh chứng', done: hasChannel && hasAudience && hasProof, optional: false },
+    { label: 'Lĩnh vực hợp tác', done: hasCategory, optional: false },
+    { label: 'Giới thiệu bản thân', done: hasBio, optional: false },
+  ] : [
+    { label: 'Hồ sơ sáng tạo', done: step1Complete, optional: false },
+    { label: 'Định danh CCCD', done: hasIdCard && hasPhotos, optional: false },
+    { label: 'Ngân hàng', done: hasBank, optional: true },
+  ];
+  const requiredItems = progressItems.filter(item => !item.optional);
+  const completedItems = requiredItems.filter(item => item.done).length;
+  const completionPercent = Math.round(completedItems / requiredItems.length * 100);
 
   const isNeedsInfo = status === 'NEEDS_INFO';
   const isRejected = status === 'REJECTED';
@@ -376,7 +425,10 @@ export function KolUpgradeForm({
           e.preventDefault();
           return;
         }
+        const invalid = [primaryChannel, ...secondaryChannels].map(channel => socialChannelUrlError(channel.platform, channel.channelUrl)).find(Boolean);
+        if (invalid) { e.preventDefault(); toast.error(invalid); setCurrentStep(1); return; }
         onSubmit(e);
+
       }}
     >
       {readOnly && (
@@ -492,23 +544,24 @@ export function KolUpgradeForm({
       {/* ============================================================ */}
       {/* BỐ CỤC 2 CỘT: CỘT CHÍNH (TRÁI) & SIDEBAR TỔNG QUAN (PHẢI)    */}
       {/* ============================================================ */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+      <div className="partner-upgrade-layout grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
         {/* ========================================================== */}
         {/* CỘT CHÍNH (8 / 12 COLS): FORM NHẬP LIỆU GỌN GÀNG, KHÔNG THỪA*/}
         {/* ========================================================== */}
-        <div className="min-w-0 xl:col-span-8 flex flex-col">
+        <div className="partner-upgrade-main min-w-0 xl:col-span-8 flex flex-col">
           {/* -------------------------------------------------------- */}
           {/* BƯỚC 1: HỒ SƠ SÁNG TẠO                                   */}
           {/* -------------------------------------------------------- */}
           {currentStep === 1 && (
-            <div className="flex flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
+            <div className="partner-creator-form flex flex-1 flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
               <fieldset disabled={readOnly} className={`space-y-3.5 ${readOnly ? 'opacity-85 pointer-events-none select-text' : ''}`}>
+              <div className="partner-form-section-title"><span>01</span><h3>Kênh chính</h3></div>
               {/* 1. Nền tảng chính đại diện */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-[#1A1612]">
                   Nền tảng chính đại diện <span className="text-[#B88E4F]">*</span>
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                <div className="partner-platform-options grid grid-cols-5 gap-2">
                   {['TIKTOK', 'YOUTUBE', 'INSTAGRAM', 'FACEBOOK', 'OTHER'].map((platformKey) => {
                     const cfg = PLATFORM_CONFIG[platformKey] || { label: platformKey, icon: Globe };
                     const IconComp = cfg.icon;
@@ -517,8 +570,9 @@ export function KolUpgradeForm({
                       <button
                         key={platformKey}
                         type="button"
-                        onClick={() => updatePrimary({ platform: platformKey as any })}
-                        className={`flex min-w-0 items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-medium transition cursor-pointer border ${
+                        onClick={() => switchPrimaryPlatform(platformKey as SocialChannelFormItem['platform'])}
+                        aria-pressed={isSelected}
+                        className={`flex min-w-0 items-center justify-center gap-1.5 h-11 px-2 rounded-xl text-xs font-medium transition cursor-pointer border ${
                           isSelected
                             ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#C59B58] shadow-xs'
                             : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58] hover:text-[#1A1612]'
@@ -526,6 +580,7 @@ export function KolUpgradeForm({
                       >
                         <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
                         <span>{cfg.label}</span>
+                        {isSelected && <Check size={12} className="partner-platform-tick" aria-hidden="true"/>}
                       </button>
                     );
                   })}
@@ -535,14 +590,17 @@ export function KolUpgradeForm({
               {/* 2. Tên kênh (@Handle) & Số người theo dõi */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <TextField
-                  label="Tên kênh (@Handle)"
+                  label={primaryFields.nameLabel}
+                  id="primary-channel-name"
                   required
                   value={primaryChannel.channelName}
                   onChange={(e) => updatePrimary({ channelName: e.target.value })}
-                  placeholder="@thaonhi.skincare"
+                  placeholder={primaryFields.namePlaceholder}
+                  aria-invalid={stepError?.id === 'primary-channel-name' && !primaryChannel.channelName.trim()}
                 />
                 <TextField
-                  label="Số người theo dõi"
+                  label={primaryFields.audienceLabel}
+                  id="primary-channel-followers"
                   type="number"
                   min={0}
                   required
@@ -558,6 +616,7 @@ export function KolUpgradeForm({
                     })
                   }
                   placeholder="50000"
+                  aria-invalid={stepError?.id === 'primary-channel-followers' && !hasAudience}
                 />
               </div>
 
@@ -566,27 +625,32 @@ export function KolUpgradeForm({
                 <div className="space-y-2">
                   <TextField
                     label="Đường dẫn kênh (URL)"
+                    id="primary-channel-url"
                     type="url"
                     required
                     value={primaryChannel.channelUrl}
                     onChange={(e) => updatePrimary({ channelUrl: e.target.value })}
-                    placeholder="https://tiktok.com/@thaonhi.skincare"
+                    placeholder={primaryFields.urlPlaceholder}
+                    aria-invalid={Boolean(primaryUrlError)}
+                    aria-describedby={primaryUrlError ? 'primary-channel-url-error' : undefined}
                   />
+                  {primaryUrlError && <p id="primary-channel-url-error" className="m-0 text-xs text-[#DC2626]" role="alert">{primaryUrlError}</p>}
 
 
                 </div>
 
                 {/* Dropzone Ảnh quản trị đặt bên phải để lấp đầy tự nhiên */}
+                <div id="primary-channel-proof" tabIndex={-1}>
                 <ImageUploadDropzone
-                  variant="compact"
-                  className="min-w-0 space-y-1.5 [&>div:not(:first-child)]:h-10 [&>div:not(:first-child)]:min-h-10 [&>div:not(:first-child)]:py-0 [&>div:first-child]:min-h-[16px] [&>div:first-child>label]:font-semibold [&>div:first-child>span]:hidden"
-                  label="Ảnh chụp trang quản trị kênh"
+                  variant="channel"
+                  label={primaryFields.proofLabel}
                   value={primaryChannel.channelProofUrl}
                   onChange={(value) => updatePrimary({ channelProofUrl: value })}
                   iconType="camera"
                   folder="scanms/kyc/proofs"
                   required
                 />
+                </div>
               </div>
 
               {/* Kênh mạng xã hội bổ sung dạng chip nhỏ gọn, không làm dài form */}
@@ -597,7 +661,7 @@ export function KolUpgradeForm({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setShowAddChannel(true)}
+                    onClick={() => { setEditingSecondary(null); setNewHandle(''); setNewUrl(''); setNewFollowers(''); setShowAddChannel(true); }}
                     className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:text-[#8F682E] transition cursor-pointer"
                   >
                     <Plus size={12} /> Thêm kênh
@@ -617,6 +681,7 @@ export function KolUpgradeForm({
                         >
                           <IconComp className="w-3 h-3 text-[#B88E4F]" />
                           <span>{sec.channelName}</span>
+                          <button type="button" className="text-[#8F682E] underline" onClick={() => { setEditingSecondary(secIdx); setNewPlatform(sec.platform); setNewHandle(sec.channelName); setNewUrl(sec.channelUrl); setNewFollowers(sec.followerCount); setShowAddChannel(true); }} aria-label={`Sửa kênh ${sec.channelName}`}>Sửa</button>
                           <span className="text-[10px] text-[#7D715E]">
                             ({Number(sec.followerCount).toLocaleString('vi-VN')})
                           </span>
@@ -636,7 +701,8 @@ export function KolUpgradeForm({
               </div>
 
               {/* 4. Ngành hàng thế mạnh */}
-              <div className="space-y-1.5">
+              <div id="primary-channel-category" tabIndex={-1} className="partner-form-section space-y-1.5">
+                <div className="partner-form-section-title"><span>02</span><h3>Lĩnh vực hợp tác</h3></div>
                 <Field label="Ngành hàng thế mạnh" required>
                   <CustomSelect
                     value={selectedCategory}
@@ -666,34 +732,34 @@ export function KolUpgradeForm({
               </div>
 
               {/* 5. Giới thiệu phong cách sáng tạo & Tệp khán giả */}
-              <div className="space-y-1">
+              <div className="partner-form-section space-y-1">
+                <div className="partner-form-section-title"><span>03</span><h3>Giới thiệu</h3></div>
                 <div className="flex items-center justify-between">
                   <label htmlFor="kol-bio" className="text-xs font-semibold text-[#1A1612]">
                     Giới thiệu phong cách sáng tạo & Tệp khán giả <span className="text-[#B88E4F]">*</span>
                   </label>
-                  <span className="text-[11px] text-[#7D715E]">
-                    {(form.bio || '').length}/500
-                  </span>
                 </div>
                 <textarea
                   id="kol-bio"
                   rows={3}
                   maxLength={500}
-                  className="w-full min-w-0 p-3 border border-[#EAE4D7] rounded-xl bg-white text-xs text-[#1A1612] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#A39783] focus:border-[#C59B58] focus:shadow-[0_0_0_3px_#FBF5EB] resize-y min-h-[100px] leading-relaxed"
+                  className="w-full min-w-0 p-3 border border-[#EAE4D7] rounded-xl bg-white text-sm text-[#1A1612] outline-none focus:border-[#C59B58] resize-y min-h-[100px] leading-relaxed"
                   value={form.bio || ''}
                   onChange={(event) => patch('bio', event.target.value)}
                   placeholder="Mô tả phong cách sáng tạo, thế mạnh nội dung và tệp khán giả mục tiêu..."
                 />
+                <p className="m-0 text-right text-[11px] text-[#7D715E]">{(form.bio || '').length}/500</p>
               </div>
               </fieldset>
 
               {/* Cụm nút hành động chính ngay dưới chân form */}
-              <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#EAE4D7]">
+              {stepError && <p role="alert" className="partner-step-error"><span>{stepError.message}</span><button type="button" onClick={() => showStepError(stepError.message, stepError.id)}>Đến ô cần bổ sung <ArrowRight size={12}/></button></p>}
+              <div className="partner-form-actions flex items-center justify-between gap-3 pt-4 mt-4 border-t border-[#EAE4D7]">
                 {!readOnly ? (
                   <button
                     type="button"
                     onClick={handleSaveDraft}
-                    className="h-9 px-4 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
+                    className="h-11 px-4 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
                   >
                     Lưu nháp
                   </button>
@@ -705,7 +771,7 @@ export function KolUpgradeForm({
                 <button
                   type="button"
                   onClick={() => (readOnly ? setCurrentStep(2) : handleNextStep())}
-                  className="h-9 px-5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  className="h-11 px-5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#79592C] text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>{readOnly ? 'Xem bước 2' : 'Tiếp tục'}</span>
                   <ArrowRight size={14} />
@@ -718,7 +784,7 @@ export function KolUpgradeForm({
           {/* BƯỚC 2: ĐỊNH DANH eKYC & THANH TOÁN                      */}
           {/* -------------------------------------------------------- */}
           {currentStep === 2 && (
-            <div className="flex flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
+            <div className="flex flex-1 flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
               <fieldset disabled={readOnly} className={`space-y-4 ${readOnly ? 'opacity-85 pointer-events-none select-text' : ''}`}>
                 {/* Header Card Bước 2 */}
                 <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
@@ -897,11 +963,11 @@ export function KolUpgradeForm({
             </fieldset>
 
             {/* Cụm nút hành động chính ngay dưới chân form Bước 2 */}
-            <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#EAE4D7]">
+            <div className="flex items-center justify-between gap-3 pt-4 mt-auto border-t border-[#EAE4D7]">
               <button
                 type="button"
                 onClick={() => setCurrentStep(1)}
-                className="h-9 px-4 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition flex items-center gap-1.5 cursor-pointer"
+                className="h-11 px-4 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition flex items-center gap-1.5 cursor-pointer"
               >
                 <ChevronLeft size={14} />
                 <span>Quay lại</span>
@@ -910,7 +976,7 @@ export function KolUpgradeForm({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="h-9 px-5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+                  className="h-11 px-5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#79592C] text-xs font-bold transition shadow-xs flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                 >
                   <Send size={13} />
                   <span>
@@ -935,7 +1001,7 @@ export function KolUpgradeForm({
         {/* ========================================================== */}
         {/* CỘT PHẢI (4 / 12 COLS): HỒ SƠ & QUYỀN LỢI ĐỐI TÁC CÓ ĐIỂM NHẤN*/}
         {/* ========================================================== */}
-        <aside className="min-w-0 xl:col-span-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
+        <aside className="partner-profile-summary min-w-0 xl:col-span-4 flex flex-col rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-base font-semibold text-[#B88E4F]">
               <span>{currentUser?.fullName?.[0] || 'K'}</span>
@@ -952,41 +1018,33 @@ export function KolUpgradeForm({
           </div>
 
           <div className="mt-4 border-t border-[#EAE4D7] pt-3">
-            <p className="mb-2 text-xs font-medium text-[#7D715E]">Tiến độ hồ sơ</p>
+            <div className="partner-progress-heading"><span>{currentStep === 1 ? 'Hồ sơ sáng tạo' : 'Định danh & thanh toán'}</span><strong>{completedItems}/{requiredItems.length} mục</strong></div>
+            <div className="partner-progress-track" role="progressbar" aria-label="Tiến độ bước hiện tại" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionPercent}><span style={{ width: `${completionPercent}%` }}/></div>
             <ul className="m-0 list-none space-y-2 p-0">
-              {(currentStep === 1 ? [
-                { label: 'Kênh truyền thông', done: hasChannel && hasProof },
-                { label: 'Lĩnh vực hợp tác', done: hasCategory },
-                { label: 'Giới thiệu bản thân', done: hasBio },
-              ] : [
-                { label: 'Hồ sơ sáng tạo', done: step1Complete },
-                { label: 'Định danh CCCD', done: hasIdCard && hasPhotos },
-                { label: 'Ngân hàng (tùy chọn)', done: hasBank },
-              ]).map((item, index) => (
+              {progressItems.map((item, index) => (
                 <li key={item.label} className="flex items-center gap-2 text-xs leading-5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[10px] text-[#7D715E]">
                     {item.done ? <Check size={12} className="text-[#059669]" /> : index + 1}
                   </span>
                   <span className={item.done ? 'text-[#1A1612]' : 'text-[#7D715E]'}>{item.label}</span>
+                  <span className="ml-auto text-[10px] text-[#7D715E]">{item.done ? 'Đã đủ' : item.optional ? 'Tùy chọn' : 'Chưa đủ'}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <details className="group mt-4 border-t border-[#EAE4D7] pt-3">
-            <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 text-sm font-medium text-[#1A1612] [&::-webkit-details-marker]:hidden">
+          <section className="partner-benefits mt-5 border-t border-[#EAE4D7] pt-4" aria-label="Quyền lợi đối tác">
+            <h3 className="m-0 flex min-h-8 items-center gap-2 text-sm font-semibold text-[#1A1612]">
               <Award size={16} className="shrink-0 text-[#B88E4F]" />
               Quyền lợi đối tác
-              <span aria-hidden="true" className="ml-auto text-[#7D715E] transition-transform group-open:rotate-180">⌄</span>
-            </summary>
+            </h3>
             <ul className="mb-0 mt-3 list-none space-y-3 p-0">
               {[
-                { icon: Coins, title: 'Hoa hồng theo cấp bậc', description: 'Đồng 10% · Bạc 11% · Vàng 12% · Kim Cương 13%.' },
-                { icon: PackageCheck, title: 'Nhận mẫu trải nghiệm', description: 'Đăng ký mẫu và làm review theo chính sách từng gian hàng.' },
-                { icon: CreditCard, title: 'Rút thu nhập', description: 'Gửi yêu cầu rút từ số dư khả dụng về ngân hàng đã xác thực.' },
-                { icon: Award, title: 'Mã ưu đãi riêng', description: 'Hợp tác với shop để nhận coupon dành cho kênh của bạn.' },
+                { icon: Coins, title: 'Thù lao tiêu chuẩn 10–13%', description: 'Theo cấp bậc cộng tác viên.' },
+                { icon: PackageCheck, title: 'Đăng ký mẫu trải nghiệm', description: 'Theo thỏa thuận với cửa hàng.' },
+                { icon: CreditCard, title: 'Rút thu nhập về ngân hàng', description: 'Từ số dư khả dụng đã đối soát.' },
               ].map(({ icon: Icon, title, description }) => (
-                <li key={title} className="flex items-start gap-2">
+                <li key={title} className="flex items-start gap-3 py-2">
                   <Icon size={14} className="mt-0.5 shrink-0 text-[#B88E4F]" />
                   <div>
                     <p className="m-0 text-xs font-medium leading-5 text-[#1A1612]">{title}</p>
@@ -995,7 +1053,7 @@ export function KolUpgradeForm({
                 </li>
               ))}
             </ul>
-          </details>
+          </section>
         </aside>
       </div>
 
@@ -1019,7 +1077,7 @@ export function KolUpgradeForm({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#1A1612] m-0">
-                    Thêm kênh mạng xã hội bổ sung
+                    {editingSecondary === null ? 'Thêm kênh bổ sung' : 'Sửa kênh bổ sung'}
                   </h3>
                   <p className="text-[11px] text-[#7D715E] m-0 mt-0.5">
                     Liên kết các kênh khác để tăng uy tín và cơ hội nhận đề xuất hợp tác
@@ -1079,7 +1137,7 @@ export function KolUpgradeForm({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-[#1A1612]">
-                    Tên kênh (@Handle) <span className="text-[#DC2626]">*</span>
+                    {socialChannelFields(String(newPlatform)).nameLabel} <span className="text-[#DC2626]">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#B88E4F]">

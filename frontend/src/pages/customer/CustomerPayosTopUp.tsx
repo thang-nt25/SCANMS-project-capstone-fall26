@@ -175,9 +175,7 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
           {error}
         </p>
       )}
-      {!ready ? (
-        <p className="m-0 text-[12px] text-[#7D715E]" role="status">Đang tải payOS...</p>
-      ) : available === false ? (
+      {ready && available === false ? (
         <p className="m-0 text-[12px] text-[#7D715E]">Thanh toán payOS hiện chưa sẵn sàng. Vui lòng thử lại sau.</p>
       ) : (
         <>
@@ -188,18 +186,23 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
               <span className="ml-auto font-[600] text-[#1A1612]">{formatMoney(request.amount)}</span>
             </div>
           )}
-          {!open && (
-            <>
+            <div className="grid items-stretch gap-4 lg:grid-cols-2">
+              <div className="flex min-w-0 flex-col gap-5 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
+              <div className="flex items-center gap-2.5 border-b border-[#EAE4D7] pb-4">
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-xs font-semibold text-[#B88E4F]">1</span>
+                <h3 className="m-0 text-sm font-semibold text-[#1A1612]">Số tiền nạp</h3>
+                {open && <span className="ml-auto text-xs text-[#7D715E]">Đã tạo mã</span>}
+              </div>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2" role="group" aria-label="Chọn mức nạp payOS">
                 {AMOUNTS.map((value) => (
                   <button
                     type="button"
                     key={value}
-                    disabled={creating}
-                    aria-pressed={amount === String(value)}
+                    disabled={!ready || creating || open}
+                    aria-pressed={(open && request ? String(request.amount) : amount) === String(value)}
                     onClick={() => setAmount(String(value))}
-                    className={`min-h-[38px] p-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition ${
-                      amount === String(value)
+                    className={`min-h-11 p-2 border rounded-xl text-xs sm:text-sm font-semibold cursor-pointer transition disabled:cursor-default ${
+                      (open && request ? String(request.amount) : amount) === String(value)
                         ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F] font-bold shadow-2xs'
                         : 'bg-white border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5]'
                     }`}
@@ -209,89 +212,81 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
                 ))}
               </div>
 
-              <div className="space-y-3">
+              <div className="flex flex-1 flex-col gap-5">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label htmlFor="cw-payos-amount" className="block text-xs font-semibold text-[#1A1612]">
                       Số tiền muốn nạp
                     </label>
-                    {amount && Number(amount) > 0 && (
-                      <span className="text-xs font-bold font-mono text-[#B88E4F]">
-                        {Number(amount).toLocaleString('vi-VN')} ₫
-                      </span>
-                    )}
+                    <span className="text-[11px] text-[#7D715E]">VNĐ</span>
                   </div>
                   <div className="flex items-center gap-2 min-h-[44px] px-3.5 border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/15 rounded-xl bg-white transition-all">
                     <input
                       id="cw-payos-amount"
                       type="text"
                       inputMode="numeric"
-                      value={amount}
-                      disabled={creating}
+                      value={amount ? Number(open && request ? request.amount : amount).toLocaleString('vi-VN') : ''}
+                      disabled={!ready || creating || open}
                       onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
                       placeholder="Tối thiểu 10.000"
-                      className="w-full min-w-0 py-2 border-0 outline-none bg-transparent text-[#1A1612] text-base font-bold font-mono"
+                      className="w-full min-w-0 py-3 border-0 outline-none bg-transparent text-[#1A1612] text-2xl font-bold tabular-nums disabled:opacity-100 disabled:text-[#1A1612]"
                     />
-                    <span className="text-xs font-bold text-[#7D715E] shrink-0">VNĐ</span>
+                    <span className="text-base font-semibold text-[#7D715E] shrink-0">₫</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <p className="text-[11px] text-[#7D715E] leading-normal m-0">
-                    Quét mã bằng ứng dụng ngân hàng để nạp tiền vào ví SCANMS.
-                  </p>
+                <p className="m-0 text-xs leading-relaxed text-[#7D715E]">{open ? 'Đổi số tiền để tạo mã thanh toán mới.' : 'Chọn mức nạp hoặc nhập số tiền của bạn.'}</p>
+                <div className="mt-auto grid gap-3 pt-3">
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50 disabled:cursor-wait active:scale-[0.96] transition-all shrink-0"
-                    disabled={creating || available !== true}
-                    onClick={() => void createPayment()}
+                    className="inline-flex w-full items-center justify-center gap-2 min-h-[48px] px-5 py-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#1A1612] text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-wait transition-colors"
+                    disabled={!ready || creating || changingAmount || checking || available !== true}
+                    onClick={() => void (open ? changeAmount() : createPayment())}
                   >
-                    {creating ? <RefreshCw size={15} className="animate-spin" /> : <QrCode size={15} />}
-                    <span>{creating ? 'Đang tạo mã...' : 'Tạo mã payOS'}</span>
+                    {!ready || creating || changingAmount ? <RefreshCw size={15} className="animate-spin" /> : open ? <ArrowLeft size={15} /> : <QrCode size={15} />}
+                    <span role="status">{!ready ? 'Đang kiểm tra payOS…' : changingAmount ? 'Đang đổi...' : creating ? 'Đang tạo mã...' : open ? 'Đổi số tiền nạp' : 'Tạo mã nạp tiền'}</span>
                   </button>
                 </div>
               </div>
-            </>
-          )}
+              </div>
+              {!open && <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-5 text-center">
+                <span className="grid size-16 place-items-center rounded-2xl border border-[#EAE4D7] bg-white text-[#C59B58]"><QrCode size={32} strokeWidth={1.5} /></span>
+                <strong className="text-sm font-semibold text-[#1A1612]">Mã thanh toán sẽ hiện tại đây</strong>
+                <p className="m-0 max-w-[260px] text-xs leading-relaxed text-[#7D715E]">Số dư cập nhật sau khi hệ thống xác nhận thanh toán.</p>
+              </div>}
           {open && request && (
             <>
-              <div className="grid grid-cols-[192px_minmax(0,1fr)] gap-[18px] items-start w-full max-w-[650px] p-[16px] border border-[#EAE4D7] rounded-[12px] bg-white shadow-[0_3px_12px_#231D1504] @max-[599px]:grid-cols-[minmax(0,1fr)] @max-[599px]:gap-[12px] @max-[599px]:p-[12px]">
-                <div className="grid justify-items-center gap-[8px] p-[5px] bg-white @max-[599px]:w-[192px] @max-[599px]:justify-self-center">
+              <div className="grid content-start gap-4 min-w-0 w-full p-4 sm:p-5 border border-[#EAE4D7] rounded-2xl bg-white @container">
+                <div className="flex items-center gap-2.5 border-b border-[#EAE4D7] pb-4">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-xs font-semibold text-[#B88E4F]">2</span>
+                  <h3 className="m-0 text-sm font-semibold text-[#1A1612]">Thanh toán QR</h3>
+                  <span className="ml-auto text-xs font-medium text-[#B88E4F]">payOS</span>
+                </div>
+                <div className="grid items-center gap-4 @min-[380px]:grid-cols-[160px_minmax(0,1fr)]">
+                <div className="grid content-start justify-items-center gap-2 justify-self-center">
                   {qrImage ? (
-                    <img src={qrImage} alt="Mã QR nạp tiền payOS" className="block w-[182px] max-w-full h-auto border border-[#EAE4D7] rounded-[9px] bg-white [image-rendering:pixelated]" />
+                    <img src={qrImage} alt="Mã QR nạp tiền payOS" className="block size-[160px] max-w-full border border-[#EAE4D7] rounded-xl bg-white [image-rendering:pixelated]" />
                   ) : (
-                    <div className="grid place-content-center justify-items-center gap-[10px] w-[182px] h-[182px] max-w-full bg-[#FAF8F5] text-[#7D715E] text-[11px] rounded-[9px] border border-[#EAE4D7]">
+                    <div className="grid place-content-center justify-items-center gap-2 size-[160px] max-w-full bg-[#FAF8F5] text-[#7D715E] text-[11px] rounded-xl border border-[#EAE4D7]">
                       <QrCode size={32} />
                       <span>Đang chuẩn bị mã QR</span>
                     </div>
                   )}
-                  <span className="flex items-center gap-[5px] text-[10px] text-[#B88E4F]">
-                    <ShieldCheck size={13} /> Thanh toán qua payOS
-                  </span>
                 </div>
-                <div className="grid gap-[8px] min-w-0">
-                  <div className="justify-self-start flex items-center gap-[5px] p-[4px_8px] rounded-[6px] bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] text-[#7D715E]" role="status" data-status={request.status}>
+                <div className="grid content-center gap-3 min-w-0 text-center @min-[380px]:text-left">
+                  <div className="justify-self-center @min-[380px]:justify-self-start flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#7D715E]" role="status" data-status={request.status}>
                     <ShieldCheck size={13} className="text-[#B88E4F]" />
                     <strong className="text-[#1A1612] font-[550]">{LABELS[request.status]}</strong>
                   </div>
-                  <div className="flex items-baseline flex-wrap gap-[5px_10px]">
+                  <div className="grid gap-1">
                     <span className="text-[11px] text-[#7D715E]">Số tiền nạp</span>
-                    <strong className="text-[23px] leading-[1.3] font-[650] tracking-[-0.5px] break-words text-[#1A1612]">{formatMoney(request.amount)}</strong>
+                    <strong className="text-2xl leading-tight font-bold tabular-nums tracking-tight break-words text-[#1A1612]">{formatMoney(request.amount)}</strong>
                   </div>
-                  <p className="m-0 text-[11px] text-[#7D715E]">Quét QR bằng ứng dụng ngân hàng.</p>
+                  <p className="m-0 text-[11px] text-[#7D715E]">Hết hạn {new Date(request.expiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })}</p>
                   <div className="flex flex-wrap gap-[8px] pt-[2px]">
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-[6px] min-h-[32px] px-[9px] py-[6px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#1A1612] text-[11px] font-[550] cursor-pointer transition disabled:opacity-50"
-                      disabled={checking || changingAmount || creating}
-                      onClick={() => void changeAmount()}
-                    >
-                      {changingAmount ? <RefreshCw size={14} className="animate-spin text-[#B88E4F]" /> : <ArrowLeft size={14} className="text-[#B88E4F]" />}
-                      {changingAmount ? 'Đang đổi...' : 'Đổi số tiền'}
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-[6px] min-h-[32px] px-[9px] py-[6px] border border-[#EAE4D7] rounded-[8px] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[11px] font-[550] cursor-pointer transition disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center gap-2 min-h-11 px-3 py-2 border border-[#EEDFC6] rounded-xl bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold cursor-pointer transition disabled:opacity-50"
                       disabled={checking || changingAmount}
                       onClick={() => void checkPayment(true)}
                     >
@@ -309,8 +304,10 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
                       </button>
                     )}
                   </div>
-                  <details key={request.id} className="block border border-[#EAE4D7] rounded-[8px] overflow-hidden mt-[4px] [&[open]>summary_svg]:rotate-180">
-                    <summary className="flex items-center gap-[6px] min-h-[32px] px-[9px] py-[7px] bg-white hover:bg-[#FAF8F5] text-[11px] text-[#7D715E] cursor-pointer list-none select-none">
+                </div>
+                </div>
+                  <details key={request.id} className="block border border-[#EAE4D7] rounded-xl overflow-hidden [&[open]>summary_svg]:rotate-180">
+                    <summary className="flex items-center gap-2 min-h-11 px-3 py-2 bg-[#FAF8F5] hover:bg-[#FBF5EB] text-xs text-[#7D715E] cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
                       <span>Thông tin chuyển khoản</span>
                       <span className="text-[#B88E4F] text-[10px] font-medium ml-auto mr-[4px]">{bank?.shortName || request.bin || ''}</span>
                       <ChevronDown size={13} className="text-[#7D715E] transition-transform duration-200" />
@@ -351,8 +348,8 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
                       </div>
                     </dl>
                   </details>
-                  <div className="flex items-center justify-between gap-[10px] text-[#7D715E] text-[10px] pt-[2px]">
-                    <span>Hạn: {new Date(request.expiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[#7D715E] text-[11px]">
+                    <span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#B88E4F]" />Tự cập nhật sau xác nhận</span>
                     {safeCheckout && !changingAmount && (
                       <a href={safeCheckout} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-[4px] text-[#B88E4F] no-underline hover:underline font-medium">
                         <span>Mở payOS</span>
@@ -360,11 +357,10 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
                       </a>
                     )}
                   </div>
-                  <p className="m-0 text-[10px] leading-[1.4] text-[#7D715E]">Ví tự cập nhật khi payOS xác nhận.</p>
-                </div>
               </div>
             </>
           )}
+            </div>
         </>
       )}
     </div>

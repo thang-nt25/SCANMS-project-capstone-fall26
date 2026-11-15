@@ -59,5 +59,12 @@ const carrierLabels: Record<string, string> = {
   scrap: 'GHN báo kiện hàng đã xử lý tiêu hủy',
 };
 
-export const carrierStatusLabel = (status?: string | null) =>
-  status ? carrierLabels[status] ?? status : '';
+export const carrierStatusLabel = (status?: string | null, destination: 'shop' | 'customer' = 'shop') => {
+  if (!status) return '';
+  if (destination === 'customer') {
+    if (status === 'delivered') return 'Đã giao đến khách';
+    if (['delivering', 'money_collect_delivering'].includes(status)) return 'Đang giao đến khách';
+    if (status === 'delivery_fail') return 'Giao đến khách chưa thành công';
+  }
+  return carrierLabels[status] ?? status;
+};

@@ -1,3 +1,5 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
+import { handleAvatarImageError, handleProductImageError } from '@/utils/image-fallback.utils';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { normalizePartnerTier } from '../../utils/partner-tier';
@@ -1078,7 +1080,7 @@ return true;
       const response: any = await api.get('/stores/my-store');
       const store = response?.data || response;
       if (!store?.slug) throw new Error('Gian hàng chưa có đường dẫn công khai để chia sẻ.');
-      const link = new URL(`/shop/${encodeURIComponent(store.slug)}`, window.location.origin).href;
+      const link = publicWebsiteUrl(`/shop/${encodeURIComponent(store.slug)}`);
       if (!navigator.clipboard?.writeText) throw new Error('Trình duyệt không hỗ trợ sao chép tự động. Hãy chọn và chép liên kết bên dưới.');
       await navigator.clipboard.writeText(link);
       setCopiedLink(true);
@@ -1315,7 +1317,7 @@ return true;
                           {/* Top: Avatar + Name + Tier */}
                           <div className="creator-directory-identity flex items-start gap-3">
                             <div className="relative flex-shrink-0">
-                              {creator.avatarUrl ? <img src={creator.avatarUrl} alt={creator.fullName} className="w-10 h-10 rounded-full object-cover border border-[#EAE4D7]" /> : <span className="grid h-10 w-10 place-items-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#B88E4F]">{(creator.fullName || 'KOL').split(' ').filter(Boolean).slice(-2).map((part: string) => part[0]).join('')}</span>}
+                              {creator.avatarUrl ? <img src={creator.avatarUrl} onError={handleAvatarImageError} alt={creator.fullName} className="w-10 h-10 rounded-full object-cover border border-[#EAE4D7]" /> : <span className="grid h-10 w-10 place-items-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#B88E4F]">{(creator.fullName || 'KOL').split(' ').filter(Boolean).slice(-2).map((part: string) => part[0]).join('')}</span>}
                               {profile.kycStatus === 'VERIFIED' && (
                                 <span
                                   className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center"
@@ -2481,8 +2483,8 @@ return true;
                               <img
                                 src={
                                   item.product.thumbnail ||
-                                  'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=150&auto=format&fit=crop&q=80'
-                                }
+                                  '/assets/product-placeholder.svg'
+                                } onError={handleProductImageError}
                                 alt={item.product.title}
                                 className="h-12 w-12 shrink-0 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] object-cover shadow-[0_1px_3px_rgba(35,29,21,0.06)]"
                               />

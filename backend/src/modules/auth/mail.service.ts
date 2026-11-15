@@ -1,3 +1,4 @@
+import { resolvePublicAppUrl } from '../../common/public-app-url';
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import {
@@ -36,9 +37,7 @@ export class MailService {
     input: OrderConfirmationEmailInput,
   ): Promise<boolean> {
     const webUrl =
-      process.env.PUBLIC_WEB_URL ||
-      process.env.FRONTEND_URL ||
-      'http://localhost:5173';
+      resolvePublicAppUrl(process.env.PUBLIC_APP_URL, process.env.PUBLIC_WEB_URL, process.env.FRONTEND_URL);
     const message = renderOrderConfirmationEmail(input, webUrl);
     return this.sendMail(
       input.email,

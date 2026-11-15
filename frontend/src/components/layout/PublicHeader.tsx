@@ -41,7 +41,6 @@ export function PublicHeader({
   layout,
   sticky = true,
   cartCount,
-  onOpenCart,
   defaultSearchQuery = '',
   onSearchSubmit,
   onOpenFilter,
@@ -49,10 +48,10 @@ export function PublicHeader({
   const navigate = useNavigate();
   const location = useLocation();
   const loginUrl = productLoginUrl(`${location.pathname}${location.search}${location.hash}`);
-  const { totalCount, openCart } = useCart();
+  const { totalCount } = useCart();
 
   const effectiveCartCount = cartCount !== undefined ? cartCount : totalCount;
-  const handleCartClick = onOpenCart || openCart;
+  const handleCartClick = () => navigate('/cart');
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const [searchQuery, setSearchQuery] = useState(defaultSearchQuery);

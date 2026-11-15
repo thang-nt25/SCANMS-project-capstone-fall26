@@ -62,6 +62,9 @@ import { CustomerOrderTotals } from './CustomerOrderTotals';
 import { CustomerOrderProgress } from './CustomerOrderProgress';
 import { CustomerOrderDetailActions } from './CustomerOrderDetailActions';
 import { getCustomerOrderActions } from '../../utils/customer-order-actions';
+import { notificationTarget, localNotificationAction } from '../../utils/notification-target';
+import { Modal } from '../../components/ui/Modal';
+import { useReturnWindowClock } from '../../hooks/useReturnWindowClock';
 import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 import { CustomerVouchersTab } from './CustomerVouchersTab';
 import { CustomerNotificationsTab } from './CustomerNotificationsTab';
@@ -185,13 +188,22 @@ export default function CustomerPortalPage() {
 
   // Tab 1: Orders State
   const [orders, setOrders] = useState<CustomerOrder[]>(() => cachedCustomerOrders);
+  useReturnWindowClock(orders);
+  const [ordersPage,setOrdersPage] = useState(1);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState(false);
   const ordersRequestSequence = useRef(0);
+  const orderListsCache = useRef(new Map<string, CustomerOrder[]>());
   const refreshOrdersRef = useRef<() => void>(() => {});
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderFilterStatus>(() => placedOrderCodes.length ? 'PENDING' : 'ALL');
   const [orderSearch, setOrderSearch] = useState(orderSearchParam);
   const [appliedOrderSearch, setAppliedOrderSearch] = useState(orderSearchParam);
+  useEffect(()=>{setOrdersPage(1);},[orderStatusFilter,appliedOrderSearch]);
+  const sortedOrders=[...orders].sort((a,b)=>(Date.parse(b.createdAt)||0)-(Date.parse(a.createdAt)||0)||b.id.localeCompare(a.id));
+  const ordersPageCount=Math.max(1,Math.ceil(sortedOrders.length/10));
+  const currentOrdersPage=Math.min(ordersPage,ordersPageCount);
+  const pagedOrders=sortedOrders.slice((currentOrdersPage-1)*10,currentOrdersPage*10);
+  const changeOrdersPage=(page:number)=>{setOrdersPage(page);document.querySelector('.workspace-page-column')?.scrollTo({top:0,behavior:'smooth'});};
   useEffect(() => {
     setOrderSearch(orderSearchParam);
     setAppliedOrderSearch(orderSearchParam);
@@ -203,6 +215,7 @@ export default function CustomerPortalPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
   const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
+  const [openedNotification, setOpenedNotification] = useState<AppNotification | null>(null);
   const [reviewOrder, setReviewOrder] = useState<CustomerOrder | null>(null);
   const [viewedReviewOrder, setViewedReviewOrder] = useState<CustomerOrder | null>(null);
   const selectedGhnStatus = selectedOrderDetails && liveGhnTracking?.orderId === selectedOrderDetails.id
@@ -485,10 +498,6 @@ export default function CustomerPortalPage() {
     };
   }, []);
 
-  const setTab = (tab: CustomerTab) => {
-    navigate(`/customer/${tab}`);
-  };
-
   const handleOpenChat = (order: CustomerOrder, specificItem?: CustomerOrderItem) => {
     const item = specificItem || order.orderItems.find(candidate => candidate.productId || candidate.product?.id);
     const productInfo: ChatProductInfo | undefined = item
@@ -612,7 +621,9 @@ export default function CustomerPortalPage() {
       }
     }
 
-    let targetUrl = notif.data?.actionUrl;
+    const resolvedTarget = notificationTarget(notif, 'CUSTOMER');
+    if (resolvedTarget) { navigate(resolvedTarget); return; }
+    let targetUrl = localNotificationAction(notif.data?.actionUrl);
 
     // Chan triet de viec cac thong bao chung (WELCOME, SYSTEM) bi ep chuyen huong sang /customer/upgrade
     if (targetUrl === '/customer/upgrade' && (notif.type === 'WELCOME' || notif.type === 'SYSTEM' || !notif.type.includes('UPGRADE'))) {
@@ -660,7 +671,7 @@ export default function CustomerPortalPage() {
         navigate('/customer/upgrade');
       } else {
         // Mac dinh: Thong bao he thong hoac tin tuc thi giu nguoi dung o trang thong bao hien tai, khong ep sang upgrade
-        setTab('notifications');
+        setOpenedNotification(notif);
       }
     }
   };
@@ -704,7 +715,19 @@ export default function CustomerPortalPage() {
   const fetchOrders = async (searchOverride?: string, silent = false) => {
     const search = (searchOverride ?? orderSearch).trim();
     const sequence = ++ordersRequestSequence.current;
-    if (!silent && orders.length === 0 && cachedCustomerOrders.length === 0) { setOrdersLoading(true); setOrdersError(false); }
+    const cacheKey = JSON.stringify([orderStatusFilter, search]);
+    if (!silent) {
+      let cached = orderListsCache.current.get(cacheKey);
+      const allOrders = orderListsCache.current.get(JSON.stringify(['ALL', search]));
+      if (!cached && allOrders && orderStatusFilter !== 'ALL') {
+        cached = allOrders.filter(order => orderStatusFilter === 'RETURNED'
+          ? ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status)
+          : order.status === orderStatusFilter);
+      }
+      setOrders(cached ?? []);
+      setOrdersLoading(!cached);
+      setOrdersError(false);
+    }
     try {
       const statusParam = orderStatusFilter === 'ALL' ? undefined : orderStatusFilter;
 
@@ -714,6 +737,7 @@ export default function CustomerPortalPage() {
       });
       const loadedOrders = res.orders || [];
       if (sequence !== ordersRequestSequence.current) return;
+      orderListsCache.current.set(cacheKey, loadedOrders);
       cachedCustomerOrders = loadedOrders;
       setOrders(loadedOrders);
       setOrdersError(false);
@@ -1078,7 +1102,7 @@ export default function CustomerPortalPage() {
           {/* ========================================================= */}
           {/* RIGHT MAIN PANEL - CONTENT ACCORDING TO ACTIVE TAB */}
           {/* ========================================================= */}
-          <div className="workspace-page-column w-full flex-1 min-w-0 min-h-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div className="workspace-page-column w-full flex-1 min-w-0 min-h-0 lg:px-3 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
             {/* ------------------------------------------------------------- */}
             {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
@@ -1097,7 +1121,7 @@ export default function CustomerPortalPage() {
               <section className="customer-orders @container/orders grid gap-3.5 w-full max-w-[1200px] min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
                 {/* 1. Status Filter Tabs & Search Controls */}
                 <div className="customer-orders__filters min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
-                  <div className="customer-orders__tabs flex min-w-0 gap-1.5 overflow-x-auto border-b border-[#EAE4D7] p-2 bg-[#FAF8F5]/50 [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
+                  <div className="customer-orders__tabs flex min-w-0 gap-2 overflow-x-auto border-b border-[#EAE4D7] p-2 bg-white [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
                     {[
                       { key: 'ALL', label: 'Tất cả' },
                       { key: 'PENDING', label: 'Chờ Shop xác nhận' },
@@ -1114,13 +1138,14 @@ export default function CustomerPortalPage() {
                           type="button"
                           onClick={() => setOrderStatusFilter(tab.key as OrderFilterStatus)}
                           aria-pressed={orderStatusFilter === tab.key}
-                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-11 @max-[499px]:min-h-11 py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
+                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-12 @max-[499px]:min-h-11 py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
                             isActive
-                              ? 'border-[#231D15] bg-[#231D15] text-[#FAF8F5] font-bold shadow-xs'
+                              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#946B30] font-semibold shadow-xs'
                               : 'border-transparent bg-transparent text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] font-medium'
                           }`}
                         >
                           <span>{tab.label}</span>
+                          {tab.key !== 'RETURNED' && <span aria-hidden="true" className="pointer-events-none absolute -right-[5px] top-3 bottom-3 w-px bg-[#EAE4D7]" />}
                         </button>
                       );
                     })}
@@ -1128,13 +1153,13 @@ export default function CustomerPortalPage() {
 
                   {/* 2. Order Search Bar */}
                   <div className="customer-orders__search p-3 sm:p-4 bg-white">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_190px] items-stretch gap-3">
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
                           fetchOrders();
                         }}
-                        className="customer-orders__search-form relative flex min-h-11 items-center flex-1 min-w-0 group rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/50 px-3.5 focus-within:bg-white focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/20 transition-all"
+                        className="customer-orders__search-form relative flex h-11 items-center min-w-0 group rounded-xl border border-[#EAE4D7] bg-white px-3.5 focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/20 transition-all"
                       >
                         <Search className="w-4 h-4 text-[#7D715E] group-focus-within:text-[#B88E4F] shrink-0 mr-2.5 transition-colors" />
                         <input
@@ -1158,19 +1183,13 @@ export default function CustomerPortalPage() {
                             <X className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        <button
-                          type="submit"
-                          className="px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white font-semibold text-xs transition cursor-pointer active:scale-95 shrink-0 whitespace-nowrap shadow-xs"
-                        >
-                          Tìm kiếm
-                        </button>
                       </form>
                       <button
                         type="button"
                         aria-expanded={showOrderLookup}
                         aria-controls="customer-order-lookup"
                         onClick={() => setShowOrderLookup((value) => !value)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58] px-4 py-2.5 text-xs font-semibold text-[#1A1612] transition-colors cursor-pointer shadow-2xs"
+                        className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#FAF8F5] hover:border-[#C59B58] px-4 text-xs font-medium text-[#805B27] transition-colors cursor-pointer"
                       >
                         <Truck size={16} className="text-[#B88E4F]" />
                         {showOrderLookup ? 'Thu gọn tra cứu' : 'Tra cứu đơn hàng'}
@@ -1231,7 +1250,7 @@ export default function CustomerPortalPage() {
                   </div>
                 ) : (
                   <div className="grid gap-[12px] pb-16 sm:pb-20">
-                    {orders.map((order) => {
+                    {pagedOrders.map((order) => {
                       const isPending = order.status === 'PENDING';
                       const awaitingPayment = isPending && order.rawPayload?.paymentMethod === 'PAYOS' && order.rawPayload?.paymentStatus !== 'PAID';
                       const isShipping = order.status === 'SHIPPING';
@@ -1264,7 +1283,7 @@ export default function CustomerPortalPage() {
                             revealedCheckoutOrders.current.add(key);
                             if (returnedToOrder || order.externalOrderSn === placedOrderCodes[0]) element.scrollIntoView({ block: 'nearest' });
                           }}
-                          className="customer-order-card group/order min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_2px_12px_rgba(35,29,21,0.04)] hover:shadow-[0_4px_20px_rgba(35,29,21,0.07)] transition-shadow duration-200"
+                          className="customer-order-card group/order min-w-0 rounded-2xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_2px_12px_rgba(35,29,21,0.04)] hover:shadow-[0_4px_20px_rgba(35,29,21,0.07)] transition-shadow duration-200"
                         >
                           <CustomerOrderSummary order={order} statusLabel={statusLabel} statusIcon={StatusIcon} onChat={() => handleOpenChat(order)} />
 
@@ -1274,7 +1293,7 @@ export default function CustomerPortalPage() {
                               {order.orderItems.map((item) => (
                                 <div
                                   key={item.id}
-                                  className="customer-order-item relative flex items-center justify-between gap-3 sm:gap-4 py-3.5 sm:py-4 px-3.5 sm:px-4 hover:bg-[#FAF8F5]/60 transition-colors"
+                                  className="customer-order-item relative flex items-center justify-between gap-3 sm:gap-4 py-5 sm:py-6 px-3.5 sm:px-4 hover:bg-[#FAF8F5]/60 transition-colors"
                                 >
                                   {(completedActions || awaitingPayment) && (
                                     <Link
@@ -1293,7 +1312,7 @@ export default function CustomerPortalPage() {
                                       plain={completedActions || awaitingPayment}
                                       productId={item.productId || item.product?.id}
                                       title={item.product?.title}
-                                      className="w-18 h-18 sm:w-20 sm:h-20 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover/order:border-[#C59B58]/40 transition-colors relative z-20"
+                                      className="w-20 h-20 sm:w-22 sm:h-22 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover/order:border-[#C59B58]/40 transition-colors relative z-20"
                                     >
                                       <img
                                         src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
@@ -1391,20 +1410,20 @@ export default function CustomerPortalPage() {
                             )}
 
                             {/* Order Footer: Summary & Action Buttons */}
-                            <div className="customer-order-details-footer flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 border-t border-[#EAE4D7] p-3.5 sm:p-4 bg-[#FAF8F5]/30">
-                              <div className="flex items-center flex-wrap gap-3">
+                            <div className="customer-order-details-footer flex flex-col justify-between gap-3.5 border-t border-[#EAE4D7] p-3.5 sm:p-4 bg-[#FAF8F5]/30">
+                              <div className="flex w-full items-center justify-between flex-wrap gap-3">
                                 <div className="text-xs text-[#7D715E]">
                                   <span>Mã đơn: </span>
                                   <span className="font-mono font-bold text-[#1A1612]">#{order.externalOrderSn}</span>
+                                  <time dateTime={order.createdAt} className="mt-1.5 block text-xs font-normal text-[#7D715E]">Đặt lúc: {new Date(order.createdAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'})}</time>
                                 </div>
-                                <span className="text-[#EAE4D7] hidden sm:inline">|</span>
                                 <CustomerOrderTotals order={order} />
                               </div>
 
                               {isCancelled && <span className="customer-order-cancel-note text-xs text-[#7D715E] font-medium">Đơn hàng đã hủy</span>}
 
                               {/* Action Buttons Row */}
-                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-2 ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
+                              <div className="customer-order-actions ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 [&>a]:min-h-11 [&>a]:min-w-0 [&>a]:rounded-xl [&>a]:px-4 [&>a]:py-2 [&>a]:text-center [&>a]:text-[13px] [&>a]:leading-5 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:rounded-xl [&>button]:px-4 [&>button]:py-2 [&>button]:text-center [&>button]:text-[13px] [&>button]:leading-5">
                                 {completedActions && <Link
                                   to={`/customer/orders/${encodeURIComponent(order.id)}`}
                                   className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
@@ -1424,7 +1443,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleReorder(order)}
-                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#946B30] text-xs font-semibold transition-colors cursor-pointer"
                                   >
                                     <RotateCcw size={13} />
                                     <span>Mua lại</span>
@@ -1436,18 +1455,11 @@ export default function CustomerPortalPage() {
                                     {(order.returnRequests?.length ? order.returnRequests : [order.returnRequest]).map((request, index) => <Link
                                       key={request.id}
                                       to={`/customer/returns/${request.id}`}
-                                      className="inline-flex items-center justify-center min-h-11 min-w-0 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-medium transition-colors"
+                                      className="inline-flex items-center justify-center gap-2 min-h-11 min-w-0 px-3.5 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#1A1612] text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
                                     >
+                                      <RotateCcw size={15} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
                                       {order.returnRequests && order.returnRequests.length > 1 ? `Hồ sơ đổi trả ${index + 1}` : 'Xem yêu cầu đổi trả'}
                                     </Link>)}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenChat(order)}
-                                      className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium transition-colors cursor-pointer"
-                                    >
-                                      <MessageCircle size={13} />
-                                      <span>Liên hệ Shop</span>
-                                    </button>
                                     {mayEscalateReturn && (
                                       <Link
                                         to={`/customer/returns/${order.returnRequest.id}?dispute=1`}
@@ -1489,17 +1501,6 @@ export default function CustomerPortalPage() {
                                   )
                                 )}
 
-                                {(isCancelled || completedActions) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenChat(order)}
-                                    className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium transition-colors cursor-pointer"
-                                  >
-                                    <MessageCircle size={13} />
-                                    <span>Liên hệ Shop</span>
-                                  </button>
-                                )}
-
                                 {/* Cancel Button if Pending */}
                                 {isPending && (
                                   <button
@@ -1528,6 +1529,8 @@ export default function CustomerPortalPage() {
                                   </button>
                                 )}
 
+                                {(canRequestReturn || getCustomerOrderActions(order).review || (completedActions && Boolean(order.productReviews?.length))) && (
+                                  <>
                                 {/* Return Request Button */}
                                 {canRequestReturn && (
                                   <button
@@ -1561,12 +1564,18 @@ export default function CustomerPortalPage() {
                                     Xem đánh giá
                                   </button>
                                 )}
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
                         </article>
                       );
                     })}
+                    <nav aria-label="Phân trang đơn mua" className="customer-orders-pagination flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-white px-4 py-3 text-xs text-[#7D715E]">
+                      <span className="tabular-nums">{(currentOrdersPage-1)*10+1}–{Math.min(currentOrdersPage*10,sortedOrders.length)} / {sortedOrders.length} đơn</span>
+                      <div className="flex items-center gap-3"><button type="button" disabled={currentOrdersPage<=1} onClick={()=>changeOrdersPage(currentOrdersPage-1)} className="min-h-9 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-[#805B27] disabled:opacity-40">{"Tr\u01b0\u1edbc"}</button><span>{currentOrdersPage} / {ordersPageCount}</span><button type="button" disabled={currentOrdersPage>=ordersPageCount} onClick={()=>changeOrdersPage(currentOrdersPage+1)} className="min-h-9 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-[#805B27] disabled:opacity-40">Sau</button></div>
+                    </nav>
                   </div>
                 )}
               </section>
@@ -1604,11 +1613,11 @@ export default function CustomerPortalPage() {
             {currentTab === 'profile' && (
               <section className="@container/profile grid gap-[16px] w-full max-w-[1200px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
                 {/* Sub-tabs Navigation Bar - Segmented pill bar gọn gàng */}
-                <nav className="inline-flex flex-wrap items-center gap-1.5 p-1 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs w-fit" aria-label="Phân mục hồ sơ cá nhân">
+                <nav className="grid w-full grid-cols-3 items-stretch gap-2 p-2 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs" aria-label="Phân mục hồ sơ cá nhân">
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('info')}
-                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                    className={`flex min-w-0 min-h-12 items-center justify-center gap-1.5 px-2 py-3 rounded-xl text-[11px] sm:gap-2 sm:px-4 sm:text-sm font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'info'
                         ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
@@ -1621,7 +1630,7 @@ export default function CustomerPortalPage() {
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('addresses')}
-                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                    className={`flex min-w-0 min-h-12 items-center justify-center gap-1.5 px-2 py-3 rounded-xl text-[11px] sm:gap-2 sm:px-4 sm:text-sm font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'addresses'
                         ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
@@ -1643,7 +1652,7 @@ export default function CustomerPortalPage() {
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('security')}
-                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
+                    className={`flex min-w-0 min-h-12 items-center justify-center gap-1.5 px-2 py-3 rounded-xl text-[11px] sm:gap-2 sm:px-4 sm:text-sm font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'security'
                         ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
@@ -2471,6 +2480,7 @@ export default function CustomerPortalPage() {
         />
       )}
 
+      {openedNotification && <Modal isOpen onClose={() => setOpenedNotification(null)} title={openedNotification.title} subtitle={new Date(openedNotification.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} maxWidth="lg"><p className="m-0 whitespace-pre-line break-words text-sm leading-7 text-[#4A3F33]">{openedNotification.message}</p></Modal>}
       {returnOrder && (
         <ReturnRequestModal
           order={returnOrder}

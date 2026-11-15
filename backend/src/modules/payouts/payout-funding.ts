@@ -11,6 +11,7 @@ export async function assertPayoutFunding(
     amount: Prisma.Decimal;
     netAmount: Prisma.Decimal;
     taxAmount: Prisma.Decimal;
+    taxContext?: Prisma.JsonValue | null;
     status?: string;
   },
 ) {
@@ -22,7 +23,7 @@ export async function assertPayoutFunding(
   )
     throw new BadRequestException('Yêu cầu thiếu số tiền đối soát thuế hợp lệ');
   if (request.status === 'PENDING') {
-    const expected = new PayoutTaxService().calculateTax(request.amount);
+    const expected = new PayoutTaxService().calculateSnapshot(request.amount, request.taxContext);
     if (!expected.taxAmount.eq(request.taxAmount) || !expected.netAmount.eq(request.netAmount)) {
       throw new BadRequestException('Phiếu rút đang chờ có snapshot thuế khác chính sách hiện tại. Cần đối soát trước khi giải ngân.');
     }

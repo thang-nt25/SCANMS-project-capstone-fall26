@@ -22,6 +22,7 @@ function lazyRetry<T extends ComponentType<any>>(
 import MainLayout from '../components/layout/MainLayout';
 const DashboardDispatcher = lazyRetry(() => import('@/pages/DashboardDispatcher'));
 const KolDashboardPage = lazyRetry(() => import('@/pages/collaborator/KolDashboardPage'));
+const KolMarketingReportsPage = lazyRetry(() => import('@/pages/collaborator/KolMarketingReportsPage'));
 
 const LoginPage = lazyRetry(() => import('@/pages/auth/LoginPage'));
 const RegisterPage = lazyRetry(() => import('@/pages/auth/RegisterPage'));
@@ -244,6 +245,7 @@ function AppRoutes() {
           <Route element={<RoleGuard requiredWorkspace="kol" />}>
             <Route element={<RouteContent />}>
               <Route path="collaborator/dashboard" element={<KolDashboardPage />} />
+              <Route path="collaborator/reports" element={<KolMarketingReportsPage />} />
               <Route path="collaborator/wallet" element={<WalletPage />} />
 
               {/* Collaborator Consolidated Hubs */}
@@ -304,7 +306,7 @@ function AppRoutes() {
               <Route path="admin/fraud-sentinel" element={<Navigate to="/admin/security-audit?tab=fraud" replace />} />
               <Route path="admin/audit-logs" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
               <Route path="admin/audit" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
-              <Route path="admin/internal-traffic-test" element={<Navigate to="/admin/security-audit?tab=sandbox" replace />} />
+              <Route path="admin/internal-traffic-test" element={<Navigate to="/admin/security-audit?tab=fraud" replace />} />
 
               <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
               <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />

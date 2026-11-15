@@ -1,6 +1,12 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
+import { publicWebsiteUrl } from '@/utils/public-url';
+import './shop-collaboration-workspace.css';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Modal } from '../../components/ui/Modal';
+import { sampleHistoryEvents, sampleEventLabel } from '../../components/returns/SampleHistoryDialog';
 import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AddressLocationPicker, type AddressLocationResult } from '../../components/customer/AddressLocationPicker';
@@ -58,7 +64,7 @@ const SAMPLE_FILTER_GROUPS: {
   { id: 'ALL', label: 'Tất cả' },
   { id: 'PENDING', label: 'Chờ duyệt', statuses: ['PENDING'] },
   { id: 'SHIPPING', label: 'Đang giao', statuses: ['APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'] },
-  { id: 'TO_REVIEW', label: 'Cần nộp Review', statuses: ['RECEIVED', 'REVISION_REQUIRED', 'OVERDUE'], isWarning: true },
+  { id: 'TO_REVIEW', label: 'Cần review', statuses: ['RECEIVED', 'REVISION_REQUIRED', 'OVERDUE'], isWarning: true },
   { id: 'COMPLETED', label: 'Hoàn tất', statuses: ['VIDEO_SUBMITTED', 'COMPLETED'] },
   { id: 'CLOSED', label: 'Đã đóng', statuses: ['REJECTED', 'CANCELLED'] },
 ];
@@ -204,6 +210,7 @@ export default function ShopCollaborationPage() {
     if (cachedLastSelectedStoreId) return cachedLastSelectedStoreId;
     return cachedPartnerStores[0]?.id || '';
   });
+  const [chatSearchRequest, setChatSearchRequest] = useState(0);
   const [activeTab, setActiveTab] = useState<'messages' | 'products' | 'samples'>(
     (tabParam as any) === 'media' ? 'products' : ((tabParam as any) || 'messages')
   );
@@ -212,6 +219,7 @@ export default function ShopCollaborationPage() {
 
   const isMountedRef = useRef(true);
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -231,7 +239,6 @@ export default function ShopCollaborationPage() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productsLoadError, setProductsLoadError] = useState(false);
   const productLoadSequence = useRef(0);
-  const [productSearch, setProductSearch] = useState('');
 
   // Tab 3: Samples
   const [samples, setSamples] = useState<any[]>([]);
@@ -251,6 +258,9 @@ export default function ShopCollaborationPage() {
   const [linkModalProduct, setLinkModalProduct] = useState<any | null>(null);
   const [generatedShortlink, setGeneratedShortlink] = useState<string>('');
   const [generatedQr, setGeneratedQr] = useState<string>('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState('');
+  const linkRequest = useRef(0);
   const [exclusiveDeals, setExclusiveDeals] = useState<any[]>([]);
 
   // Modal 2: Xin Hàng Mẫu 4 Bước (Giải pháp 2)
@@ -568,7 +578,7 @@ export default function ShopCollaborationPage() {
             ownerName: st.owner?.fullName || undefined,
             category: st.description?.slice(0, 30) || 'Gian hàng chính hãng',
             defaultCommissionRate: st.defaultCommissionRate ? Number(st.defaultCommissionRate) : 10,
-            unreadCount: (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead) ? 1 : 0,
+            unreadCount: (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== viewer?.id) ? 1 : 0,
             lastMessageText: getChatMessagePreview(lastMsg?.messageText, lastMsg?.mediaName) || (hasDeal ? '🤝 Đã gửi đề xuất deal độc quyền' : ''),
             lastMessageAt: lastMsg?.createdAt || conv.lastMessageAt || conv.createdAt,
           });
@@ -662,6 +672,14 @@ export default function ShopCollaborationPage() {
       setActiveTargetStore(null);
     }
   }, [shopParam]);
+
+  const handleConversationRead = useCallback((conversationId: string) => {
+    setStores(previous => {
+      const updated = previous.map(store => store.conversationId === conversationId ? { ...store, unreadCount: 0 } : store);
+      cachedPartnerStores = updated;
+      return updated;
+    });
+  }, []);
 
   useEffect(() => {
     loadConversationsAndStores();
@@ -896,21 +914,42 @@ export default function ShopCollaborationPage() {
 
   // Open Link Generator Modal
   const handleOpenLinkModal = async (prod: any) => {
+    if (linkLoading) return;
+    const ticket = ++linkRequest.current;
     setLinkModalProduct(prod);
+    setGeneratedShortlink(''); setGeneratedQr(''); setLinkError(''); setLinkLoading(true);
     try {
-      const url = `${window.location.origin}/products/${prod.id}?ref=kol`;
+      let existing;
+      let page = 1;
+      do {
+        const result = await referralLinksService.getMyLinks({ storeId: selectedStore?.id, status: 'ACTIVE', page, limit: 100 });
+        existing = result.data.find(link => link.productId === prod.id && link.isActive !== false && (!link.expiresAt || Date.parse(link.expiresAt) > Date.now()));
+        if (existing || page >= (result.meta.totalPages || 1)) break;
+        page++;
+      } while (true);
+      if (ticket !== linkRequest.current) return;
+      const primaryPlatform = socialChannels.find(channel => channel.isPrimary)?.platformName?.toUpperCase();
+      const channel = primaryPlatform && ['TIKTOK', 'YOUTUBE', 'INSTAGRAM', 'FACEBOOK', 'OTHER'].includes(primaryPlatform) ? primaryPlatform : 'OTHER';
+      const link = existing || await referralLinksService.createLink({ productId: prod.id, label: `Chia sẻ: ${prod.title}`.slice(0, 150), channel });
+      if (!link.shortCode) throw new Error('Chưa có mã link tiếp thị hợp lệ.');
+      const url = publicWebsiteUrl(`/r/${encodeURIComponent(link.shortCode)}`);
+      const qrData = await QRCode.toDataURL(`${url}?via=qr`, { width: 512, margin: 2 });
+      if (ticket !== linkRequest.current) return;
       setGeneratedShortlink(url);
-      const qrData = await QRCode.toDataURL(url, { width: 320, margin: 2 });
       setGeneratedQr(qrData);
-    } catch {
-      // Fallback
+    } catch (error: any) {
+      if (ticket === linkRequest.current) setLinkError(error?.response?.data?.message || error?.message || 'Không tải được link tiếp thị.');
+    } finally {
+      if (ticket === linkRequest.current) setLinkLoading(false);
     }
   };
 
   const handleCopyLink = async () => {
     if (!generatedShortlink) return;
-    await navigator.clipboard.writeText(generatedShortlink);
-    toast.success('Đã sao chép link tiếp thị vào bộ nhớ tạm.');
+    try {
+      await navigator.clipboard.writeText(generatedShortlink);
+      toast.success('Đã sao chép link tiếp thị.');
+    } catch { toast.error('Không sao chép được. Vui lòng thử lại.'); }
   };
 
   // Submit sample request (Giải pháp 2)
@@ -1077,14 +1116,7 @@ setActiveTab('samples');
     });
   }, [stores, searchShopQuery, shopFilter]);
 
-  const filteredProducts = useMemo(() => {
-    const query = productSearch.trim().toLocaleLowerCase('vi');
-    if (!query) return products;
-    return products.filter((product) =>
-      (product.title || '').toLocaleLowerCase('vi').includes(query) ||
-      (product.sku || '').toLocaleLowerCase('vi').includes(query),
-    );
-  }, [products, productSearch]);
+  const filteredProducts = products;
 
   return (
     <div
@@ -1189,7 +1221,7 @@ setActiveTab('samples');
             /* EXPANDED VIEW: Tinh gọn, thanh mảnh, có nút thu nhỏ */
             <>
               {/* Top Search & Filter Bar */}
-              <div className="shrink-0 p-2.5 border-b border-[#EAE4D7] bg-white/95 backdrop-blur-xs flex flex-col gap-2">
+              <div className="collaboration-directory-toolbar shrink-0 p-2.5 border-b border-[#EAE4D7] bg-white/95 backdrop-blur-xs flex flex-col gap-2">
                 <div className="flex items-center gap-1.5">
                   <div className="relative flex-1">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
@@ -1215,7 +1247,7 @@ setActiveTab('samples');
                 </div>
 
                 {/* Filter chips */}
-                <div className="flex items-center justify-between px-1 py-0.5 border-b border-[#EAE4D7]/50" aria-label="Lọc danh sách gian hàng">
+                <div className="collaboration-directory-filters" aria-label="Lọc danh sách gian hàng">
                   {[
                     { id: 'ALL', label: 'Tất cả' },
                     { id: 'CHAT', label: 'Tin mới' },
@@ -1239,7 +1271,6 @@ setActiveTab('samples');
                 </div>
 
                 {/* Nút khám phá gian hàng như bố cục cũ */}
-                <button type="button" disabled={loadingCooperations} onClick={() => void reloadCooperations()} className="min-h-7 text-right text-[11px] font-semibold text-[#B88E4F] hover:underline disabled:opacity-60">{loadingCooperations ? 'Đang tải lời mời…' : 'Làm mới lời mời'}</button>
                 <button
                   id="btn-discover-stores"
                   type="button"
@@ -1250,7 +1281,7 @@ setActiveTab('samples');
                   className="w-full py-1 text-[#B88E4F] hover:text-[#9A7233] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer select-none group"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="truncate">Khám phá gian hàng trên Sàn</span>
+                  <span className="truncate">Khám phá cửa hàng</span>
                 </button>
 
               </div>
@@ -1405,26 +1436,25 @@ setActiveTab('samples');
                         <button
                           type="button"
                           onClick={() => openStorefront(selectedStore)}
-                          className="text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
+                          className="text-base font-semibold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
                           title={`Mở gian hàng ${selectedStore.name}`}
                         >
                           {selectedStore.name}
                         </button>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-                          <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" />
-                          <span>Đã xác minh</span>
-                        </span>
                       </div>
+                      <div className="collaboration-shop-status">
                       <div className="collaboration-cooperation-inline">
                         <StoreCooperationPanel mode="kol" storeId={selectedStoreId || undefined} />
+                      </div>
+                        <span className="collaboration-shop-verified"><CheckCircle2 size={13} aria-hidden="true" />Đã xác minh</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Nút Xem Trang Gian Hàng Trên Sàn */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="collaboration-heading-actions flex items-center gap-2 shrink-0">
                     <button type="button" onClick={() => setDealPickerStoreId(selectedStore.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-semibold cursor-pointer hover:bg-[#F3EFE6]">
-                      <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
+                      <Plus size={13} aria-hidden="true" /> Đề xuất Deal
                     </button>
                     <a
                       href={selectedStore.slug
@@ -1439,6 +1469,7 @@ setActiveTab('samples');
                       <span>Xem cửa hàng</span>
                       <ExternalLink className="w-3 h-3 text-[#B88E4F]" />
                     </a>
+                    <button type="button" className="collaboration-search-messages" aria-label="Tìm tin nhắn và tệp trong hội thoại" title="Tìm tin nhắn và tệp" onClick={() => { setActiveTab('messages'); setChatSearchRequest(value => value + 1); }}><Search size={17} /></button>
                   </div>
                 </div>
 
@@ -1501,6 +1532,8 @@ setActiveTab('samples');
                   targetStoreLogo={selectedStore.logoUrl}
                   hideSidebar
                   hideHeaderInChat
+                  searchRequestKey={chatSearchRequest}
+                  onConversationRead={handleConversationRead}
                   initialProductContext={initialProductContext}
                   initialConversations={cachedRawConversations}
                   className="h-full w-full border-0 rounded-none shadow-none bg-white"
@@ -1517,41 +1550,7 @@ setActiveTab('samples');
             >
               {/* 2. PRODUCTS & SMART REFERRAL LINKS */}
               {activeTab === 'products' && (
-                  <div className="grid content-start gap-3.5 min-w-0 animate-in fade-in-50 duration-200">
-                    <div className="flex items-center justify-between flex-wrap gap-3 min-w-0 p-3 sm:px-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-                        <h3 className="m-0 text-sm sm:text-base font-bold text-[#1A1612]">
-                          Kho sản phẩm <span className="text-[#B88E4F]">{selectedStore.name}</span>
-                        </h3>
-                        <span className="px-2.5 py-0.5 border border-[#EEDFC6] rounded-full bg-[#FBF5EB] text-[#8C6226] text-xs font-bold tabular-nums whitespace-nowrap">
-                          {products.length} sản phẩm
-                        </span>
-                        <button
-                          type="button"
-                          disabled={loadingProducts}
-                          onClick={() => {
-                            void loadStoreProducts(selectedStore.id);
-                            void loadStoreSamples(selectedStore.id);
-                          }}
-                          className="rounded-lg border border-[#EEDFC6] bg-white px-2.5 py-1 text-xs font-semibold text-[#795A2D] hover:bg-[#FBF5EB] disabled:opacity-50 cursor-pointer transition"
-                        >
-                          Làm mới
-                        </button>
-                      </div>
-
-                      <label className="flex items-center gap-2 px-3 py-1.5 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] text-xs text-[#7D715E] focus-within:border-[#C59B58] focus-within:bg-white w-full sm:w-64 transition shadow-2xs">
-                        <Search className="w-3.5 h-3.5 shrink-0 text-[#7D715E]" aria-hidden="true" />
-                        <input
-                          type="text"
-                          placeholder="Lọc theo tên, SKU..."
-                          aria-label="Lọc sản phẩm theo tên hoặc SKU"
-                          value={productSearch}
-                          onChange={(e) => setProductSearch(e.target.value)}
-                          className="w-full bg-transparent border-0 outline-none text-[#1A1612] text-xs"
-                        />
-                      </label>
-                    </div>
-
+                  <div className="collaboration-product-library grid content-start gap-3.5 min-w-0 animate-in fade-in-50 duration-200">
                     {/* Multi-select Action Bar */}
                     {filteredProducts.length > 0 && (
                       <div className="flex items-center justify-between flex-wrap gap-2.5 p-2.5 px-3.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]">
@@ -1563,7 +1562,7 @@ setActiveTab('samples');
                               onChange={handleSelectAllProducts}
                               className="rounded border-[#DEBE85] text-[#C59B58] focus:ring-[#C59B58] w-4 h-4 cursor-pointer"
                             />
-                            <span>Chọn tất cả ({filteredProducts.length} sản phẩm)</span>
+                            <span>Chọn tất cả</span>
                           </label>
                           {selectedProductIds.length > 0 && (
                             <span className="text-xs text-[#8D6936] font-semibold tabular-nums">
@@ -1587,14 +1586,10 @@ setActiveTab('samples');
                               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95"
                             >
                               <Handshake size={14} />
-                              <span>Đề xuất Deal Gói ({selectedProductIds.length} món)</span>
+                              <span>Đề xuất Deal · {selectedProductIds.length} sản phẩm</span>
                             </button>
                           </div>
-                        ) : (
-                          <span className="text-xs text-[#7D715E]">
-                            Tích chọn nhiều sản phẩm để gửi đề xuất Deal Gói đồng loạt tới Shop.
-                          </span>
-                        )}
+                        ) : null}
                       </div>
                     )}
 
@@ -1605,10 +1600,11 @@ setActiveTab('samples');
                       </div>
                     ) : filteredProducts.length === 0 ? (
                       <div className="grid place-items-center gap-2 min-h-[140px] p-6 border border-dashed border-[#EAE4D7] rounded-xl bg-white text-[#7D715E] text-xs text-center">
-                        {productsLoadError ? 'Chưa tải được sản phẩm. Bấm Làm mới sản phẩm để thử lại.' : products.length === 0 ? 'Chưa có sản phẩm đang bán đã được Admin duyệt tại gian hàng này. Bật xin mẫu không tự duyệt sản phẩm.' : 'Không tìm thấy sản phẩm phù hợp.'}
+                        {productsLoadError ? 'Chưa tải được sản phẩm.' : products.length === 0 ? 'Chưa có sản phẩm đang bán đã được duyệt.' : 'Không tìm thấy sản phẩm phù hợp.'}
+                        {productsLoadError && <button type="button" onClick={() => void loadStoreProducts(selectedStore.id)} className="underline">Thử lại</button>}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 min-w-0">
+                      <div className="collaboration-product-grid grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
                         {filteredProducts.map((prod) => {
                             const sampleHistoryReady = samplesStoreId === selectedStore.id;
                             const productSamples = sampleHistoryReady
@@ -1627,7 +1623,6 @@ setActiveTab('samples');
                               CANCELLED: 'Yêu cầu trước đã hủy',
                             };
                             const displayedSample = activeSample || productSamples[0];
-                            const isExclusive = prod.policyType === 'EXCLUSIVE';
                             const hasCompletedSample = Boolean(productSamples.some((s) => s.status === 'COMPLETED'));
                             const canRequestThisProduct = Boolean(
                               sampleHistoryReady && !activeSample && !hasCompletedSample && canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
@@ -1658,7 +1653,7 @@ setActiveTab('samples');
                             return (
                               <div
                                 key={prod.id}
-                                className={`flex flex-col justify-between min-w-0 p-3.5 border rounded-2xl bg-white shadow-2xs transition select-none ${
+                                className={`collaboration-product-card flex flex-col justify-between min-w-0 p-4 border rounded-[14px] bg-white transition ${
                                   isSelectedForBundle ? 'border-[#C59B58] ring-1.5 ring-[#C59B58] bg-[#FBF5EB]/30 shadow-xs' : 'border-[#EAE4D7] hover:border-[#C59B58]/60 hover:shadow-xs'
                                 }`}
                               >
@@ -1666,9 +1661,9 @@ setActiveTab('samples');
                                   <div className="flex items-start gap-3 min-w-0">
                                     <div className="relative shrink-0">
                                       <img
-                                        src={prod.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
+                                        src={prod.imageUrl || '/assets/product-placeholder.svg'} onError={handleProductImageError}
                                         alt={prod.title}
-                                        className="w-16 h-16 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] object-contain"
+                                        className="w-20 h-20 border border-[#EAE4D7] rounded-xl bg-white object-contain"
                                       />
                                       <label
                                         className="absolute -top-1 -left-1 p-0.5 rounded-md bg-white border border-[#EAE4D7] shadow-xs cursor-pointer hover:border-[#C59B58] transition"
@@ -1687,41 +1682,15 @@ setActiveTab('samples');
                                         <span className="text-[10px] text-[#7D715E] font-mono font-medium truncate max-w-[85px]">
                                           {prod.sku || 'SKU'}
                                         </span>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                          {activeDeal ? (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border border-[#E8D4B0] bg-[#FAF0DD] text-[#8C6226] whitespace-nowrap tabular-nums">
-                                              Deal {commRate}%
-                                            </span>
-                                          ) : isExclusive ? (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] whitespace-nowrap">
-                                              Deal VIP
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-[#F3EFE6] text-[#7D715E] whitespace-nowrap">
-                                              Mở tự do
-                                            </span>
-                                          )}
-                                          {prod.sampleEnabled && (
-                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${
-                                              Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0)
-                                                ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
-                                                : 'border-rose-200 bg-rose-50 text-rose-600'
-                                            } whitespace-nowrap tabular-nums`}>
-                                              {Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0)
-                                                ? `Mẫu: ${Number(prod.sampleQuota || 0) - Number(prod.sampleGrantedCount || 0)}`
-                                                : 'Hết mẫu'}
-                                            </span>
-                                          )}
-                                        </div>
                                       </div>
-                                      <h4 className="line-clamp-2 text-[#1A1612] text-xs font-bold leading-snug" title={prod.title}>
+                                      <h4 className="line-clamp-2 text-[#1A1612] text-sm font-semibold leading-5 min-h-10" title={prod.title}>
                                         {prod.title}
                                       </h4>
                                       <div className="flex items-baseline gap-1.5 mt-1 text-[#1A1612] text-sm font-bold tabular-nums">
                                         <span>
                                           {Number(prod.price).toLocaleString('vi-VN')} ₫
                                         </span>
-                                        {prod.originalPrice && (
+                                        {Number(prod.originalPrice) > Number(prod.price) && (
                                           <span className="text-[11px] text-[#7D715E] line-through font-normal">
                                             {Number(prod.originalPrice).toLocaleString('vi-VN')} ₫
                                           </span>
@@ -1731,36 +1700,32 @@ setActiveTab('samples');
                                   </div>
 
                                   {displayedSample && (
-                                    <button
+                                    <div className="mt-3 flex w-full items-center justify-between gap-2">
+                                      <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-normal text-[#7D715E]">
+                                        {displayedSample.status === 'COMPLETED' && <CheckCircle2 size={14} className="shrink-0 text-[#059669]" aria-hidden="true" />}
+                                        <span className="truncate">{sampleStatusLabels[displayedSample.status] || 'Đã xin mẫu'}</span>
+                                      </span>
+                                      <button
                                       type="button"
-                                      onClick={() => { setActiveTab('samples'); updateUrl(selectedStoreId || selectedStore?.id, 'samples'); }}
-                                      className="mt-2 w-full flex items-center justify-between px-2.5 py-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[11px] font-semibold text-[#8C6226] hover:bg-[#F3EFE6] transition cursor-pointer"
-                                      title="Xem trong tab Hàng mẫu"
+                                      onClick={() => { setSampleStatusFilter('ALL'); setTrackingSampleId(displayedSample.id); setActiveTab('samples'); updateUrl(selectedStoreId || selectedStore?.id, 'samples'); }}
+                                      className="inline-flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-[11px] font-medium text-[#855F2D] hover:bg-[#FBF5EB] transition cursor-pointer"
+                                      title="Xem yêu cầu hàng mẫu"
                                     >
-                                      <span className="truncate">{sampleStatusLabels[displayedSample.status] || 'Đã xin mẫu'}</span>
-                                      <span className="text-[10px] text-[#B88E4F] underline shrink-0 ml-1">Xem chi tiết</span>
+                                      Xem yêu cầu <ExternalLink size={12} aria-hidden="true" />
                                     </button>
+                                    </div>
                                   )}
+                                  {!displayedSample && <p className="mt-3 text-xs text-[#7D715E]">{!sampleHistoryReady ? (samplesLoadError ? 'Chưa tải được lịch sử mẫu' : 'Đang kiểm tra mẫu…') : prod.sampleEnabled ? `Còn ${Math.max(0, Number(prod.sampleQuota || 0) - Number(prod.sampleGrantedCount || 0))} mẫu` : 'Chưa cấp mẫu'}</p>}
 
                                   {/* Commission Box: 1 SINGLE LINE, ZERO WRAPPING */}
-                                  <div className={`mt-2.5 px-3 py-1.5 border rounded-xl flex items-center justify-between text-xs ${
-                                    activeDeal ? 'bg-[#FAF0DD]/80 border-[#E8D4B0]' : 'bg-[#FAF8F5] border-[#EAE4D7]'
-                                  }`}>
-                                    <span className="text-xs font-medium text-[#7D715E] whitespace-nowrap">
-                                      {activeDeal ? 'Thù lao Deal:' : 'Thù lao:'}
-                                    </span>
-                                    <span className="text-xs font-bold text-[#8C6226] tabular-nums whitespace-nowrap">
-                                      {commRate}%{' '}
-                                      <span className="text-[11px] font-semibold text-[#1A1612]">
-                                        (~{commAmount.toLocaleString('vi-VN')} ₫)
-                                      </span>
-                                    </span>
+                                  <div className="collaboration-product-commission">
+                                    <div><span>Thù lao áp dụng</span><strong>{commRate}%</strong></div>
+                                    <div><span>Ước tính</span><strong>{commAmount.toLocaleString('vi-VN')} ₫</strong></div>
                                   </div>
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="mt-3 pt-2.5 border-t border-[#EAE4D7] space-y-1.5">
-                                  <div className="grid grid-cols-2 gap-2">
+                                <div className="collaboration-product-actions mt-4 pt-3 border-t border-[#EAE4D7]">
                                     <button
                                       type="button"
                                       onClick={() => handleOpenLinkModal(prod)}
@@ -1795,7 +1760,6 @@ setActiveTab('samples');
                                       <Package className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
                                       <span className="whitespace-nowrap truncate">{sampleButtonText}</span>
                                     </button>
-                                  </div>
 
                                   <button
                                     type="button"
@@ -1803,7 +1767,7 @@ setActiveTab('samples');
                                     className="w-full inline-flex items-center justify-center gap-1.5 h-8 px-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#8C6226] text-xs font-bold hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:text-[#B88E4F] transition cursor-pointer whitespace-nowrap shadow-2xs"
                                   >
                                     <Handshake className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                                    <span className="whitespace-nowrap">Đề xuất Deal độc quyền</span>
+                                    <span className="whitespace-nowrap">Đề xuất Deal</span>
                                   </button>
                                 </div>
                               </div>
@@ -1816,33 +1780,8 @@ setActiveTab('samples');
 
                 {/* 3. SAMPLES TAB - 4 BƯỚC */}
                 {activeTab === 'samples' && (
-                  <div className="grid content-start gap-3 min-w-0 animate-in fade-in-50 duration-200">
-                    <section className="flex items-center justify-between gap-3 p-3.5 border border-[#EAE4D7] rounded-xl bg-white flex-wrap shadow-2xs" aria-labelledby="sample-guide-title">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="grid place-items-center shrink-0 w-8 h-8 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
-                          <Package size={16} aria-hidden="true" />
-                        </span>
-                        <div>
-                          <h3 id="sample-guide-title" className="m-0 text-[#1A1612] text-xs font-bold">
-                            Hàng mẫu trải nghiệm (SLA 14 ngày)
-                          </h3>
-                          <p className="m-0 mt-0.5 text-[#7D715E] text-[11px]">
-                            Nhận mẫu 0đ qua GHN · Nộp video review trong 14 ngày kể từ khi nhận hàng.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('products');
-                          updateUrl(selectedStoreId || selectedStore?.id, 'products');
-                        }}
-                        className="inline-flex items-center justify-center gap-1.5 shrink-0 px-3 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
-                      >
-                        <Plus size={13} aria-hidden="true" />
-                        <span>Tìm sản phẩm xin mẫu</span>
-                      </button>
-                    </section>
+                  <div className="collaboration-sample-workspace grid content-start gap-4 min-w-0 rounded-[14px] border border-[#EAE4D7] bg-white p-4 animate-in fade-in-50 duration-200">
+
 
                     {/* Banners cảnh báo hạn nộp video / khóa quyền xin mẫu */}
                     {overdueSamplesCount > 0 ? (
@@ -1865,15 +1804,8 @@ setActiveTab('samples');
                     ) : null}
 
                     {/* Danh sách mẫu & Bộ lọc vòng đời mẫu */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0 pt-1 pb-1">
-                      <div className="inline-flex items-center gap-2 text-[#1A1612] text-xs font-bold shrink-0">
-                        <Package size={15} className="text-[#B88E4F]" aria-hidden="true" />
-                        <span>Lịch sử yêu cầu</span>
-                        <strong className="grid place-items-center min-w-[21px] h-[21px] px-1.5 border border-[#EEDFC6] rounded-full bg-[#FBF5EB] text-[#8D6936] text-[10px] font-bold tabular-nums">
-                          {samples.length}
-                        </strong>
-                      </div>
-                      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5" role="tablist" aria-label="Lọc trạng thái yêu cầu mẫu">
+                    <div className="collaboration-sample-toolbar">
+                      <div className="collaboration-sample-filters" role="tablist" aria-label="Lọc trạng thái yêu cầu mẫu">
                         {SAMPLE_FILTER_GROUPS.map((group) => {
                           const isActive = sampleStatusFilter === group.id;
                           const count = groupCounts[group.id] || 0;
@@ -1910,6 +1842,17 @@ setActiveTab('samples');
                           );
                         })}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('products');
+                          updateUrl(selectedStoreId || selectedStore?.id, 'products');
+                        }}
+                        className="inline-flex h-10 items-center justify-center gap-1.5 shrink-0 px-4 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#855F2D] text-xs font-semibold hover:bg-[#F3EFE6] transition cursor-pointer"
+                      >
+                        <Plus size={13} aria-hidden="true" />
+                        <span>Xin mẫu</span>
+                      </button>
                     </div>
                     {loadingSamples ? (
                       <div className="grid place-items-center gap-2 min-h-[120px] text-xs text-[#7D715E] text-center" role="status">
@@ -1951,27 +1894,23 @@ setActiveTab('samples');
                           return (
                             <div
                               key={samp.id}
-                              className="grid grid-cols-1 items-start gap-3 min-w-0 p-3 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs hover:border-[#E2C99F] transition"
+                              className="collaboration-sample-card grid grid-cols-1 items-start gap-3 min-w-0 p-4 border border-[#EAE4D7] rounded-xl bg-white"
                               data-status={status.toLowerCase()}
                             >
                               <div className="flex items-start gap-3 min-w-0">
                                 <img
-                                  src={samp.product?.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
+                                  src={samp.product?.imageUrl || '/assets/product-placeholder.svg'} onError={handleProductImageError}
                                   alt={samp.product?.title || 'Sản phẩm'}
-                                  className="w-13 h-13 shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] object-cover"
+                                  className="w-16 h-16 shrink-0 border border-[#EAE4D7] rounded-xl bg-white object-contain"
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <strong className="block break-words text-[#1A1612] text-xs font-bold">
+                                  <div className="flex items-start justify-between gap-3"><strong className="block line-clamp-2 text-[#1A1612] text-sm font-semibold leading-5">
                                     {samp.product?.title || 'Sản phẩm mẫu'}
                                   </strong>
+                                  <span className="shrink-0 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[11px] text-[#855F2D]" data-status={status.toLowerCase()}>{sandboxShipment ? <SampleSandboxStatus charges={samp.shippingCharges} /> : statusLabel[status] || status}</span></div>
                                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                    <span className="inline-flex items-center px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#8D6936] text-[10px] font-semibold" data-status={status.toLowerCase()}>
-                                      {sandboxShipment ? <SampleSandboxStatus charges={samp.shippingCharges} /> : statusLabel[status] || status}
-                                    </span>
                                     {samp.trackingNumber && (
-                                      <span className="inline-flex max-w-full flex-wrap items-center gap-x-1 px-2 py-0.5 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#7D715E] font-mono text-[10px]">
-                                        Mã vận đơn: <strong className="ml-1 text-[#1A1612] font-bold">{samp.trackingNumber}</strong> ({samp.carrier || 'Đơn vị vận chuyển'})
-                                      </span>
+                                      <span className="inline-flex max-w-full items-center gap-2 text-xs text-[#7D715E]"><Truck size={13} className="shrink-0" /><span className="truncate">{samp.carrier || 'Vận đơn'} · {samp.trackingNumber}</span><button type="button" aria-label="Sao chép mã vận đơn" onClick={() => { void navigator.clipboard.writeText(samp.trackingNumber).then(() => toast.success('Đã sao chép mã vận đơn')).catch(() => toast.error('Không sao chép được mã vận đơn.')); }} className="shrink-0 p-1"><Copy size={13}/></button></span>
                                     )}
                                     {deadlineInfo && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(status) && (
                                       <span
@@ -1993,68 +1932,12 @@ setActiveTab('samples');
                                       </span>
                                     )}
                                   </div>
-                                  {/* Kênh cam kết (chỉ hiển thị khi có dữ liệu thật) */}
-                                  {((samp.socialPlatformSnapshot && samp.socialPlatformSnapshot !== '—') ||
-                                    (samp.socialChannelNameSnapshot && samp.socialChannelNameSnapshot !== '—') ||
-                                    (samp.socialChannel?.channelName && samp.socialChannel.channelName !== '—')) && (
-                                    <p className="mt-1 text-[11px] text-[#7D715E] leading-normal break-words flex items-center gap-1.5 flex-wrap">
-                                      <span>Kênh review:</span>
-                                      <strong className="text-[#1A1612] font-semibold">
-                                        {samp.socialPlatformSnapshot || samp.socialChannel?.platformName || ''}
-                                        {(samp.socialChannelNameSnapshot || samp.socialChannel?.channelName)
-                                          ? ` · @${samp.socialChannelNameSnapshot || samp.socialChannel?.channelName}`
-                                          : ''}
-                                      </strong>
-                                      {canSubmitVideo && !activeDeadline && samp.expectedVideoAt ? (
-                                        <span className="text-[#B88E4F]">
-                                          · Dự kiến đăng {new Date(samp.expectedVideoAt).toLocaleDateString('vi-VN')}
-                                        </span>
-                                      ) : null}
-                                    </p>
-                                  )}
-
-                                  {/* Người nhận & địa chỉ (chỉ hiển thị khi đơn chưa hoàn tất để tránh rối mắt) */}
-                                  {samp.recipientName && status !== 'COMPLETED' && (
-                                    <p className="mt-1 text-[11px] text-[#7D715E] leading-normal flex items-center gap-1 truncate" title={samp.shippingAddress}>
-                                      <MapPin size={11} className="text-[#B88E4F] shrink-0" />
-                                      <span className="truncate">
-                                        Giao đến: <strong className="text-[#1A1612] font-medium">{samp.recipientName}</strong> ({samp.recipientPhone})
-                                        {samp.shippingAddress ? ` · ${samp.shippingAddress}` : ''}
-                                      </span>
-                                    </p>
-                                  )}
-                                  {samp.videoRejectionReason && (
-                                    <p className="mt-1 text-[11px] text-[#DC2626] leading-normal font-semibold">Lý do cần sửa: {samp.videoRejectionReason}</p>
-                                  )}
-                                  {samp.rejectedReason && status === 'REJECTED' && (
-                                    <p className="mt-1 text-[11px] text-[#DC2626] leading-normal font-semibold">Lý do: {samp.rejectedReason}</p>
-                                  )}
-                                  {samp.videoAssets?.length > 0 && (
-                                    <details className="mt-1.5 text-[11px] text-[#7D715E]">
-                                      <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 font-semibold text-[#795A2D] [&::-webkit-details-marker]:hidden"><Video size={14} aria-hidden="true" />Video Review đã nộp <span className="ml-auto text-[10px] text-[#7D715E]">{samp.videoAssets.length}</span><ChevronDown size={14} aria-hidden="true" /></summary>
-                                      {samp.videoAssets?.length > 0 && <div className="mt-3 border-t border-[#EAE4D7] pt-2">
-                                        <p className="font-semibold text-[#1A1612]">Video đã nộp</p>
-                                        <ul className="mt-1 grid gap-2">
-                                        {(samp.videoAssets || []).map((asset: any) => (
-                                          <li key={asset.id}>
-                                            <a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="text-[#8D6936] underline">{asset.title || 'Video đã gửi'}</a>
-                                            {' · '}{sampleVideoStatusLabels[asset.status] || 'Đang xử lý'}{asset.rejectionReason ? ` · Lý do: ${asset.rejectionReason}` : ''}
-                                          </li>
-                                        ))}
-                                        </ul>
-                                      </div>}
-                                    </details>
-                                  )}
                                 </div>
                               </div>
 
+                              <div className="collaboration-sample-dates"><div><span>Ngày yêu cầu</span><strong>{samp.createdAt ? new Date(samp.createdAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}) : 'Chưa cập nhật'}</strong></div><div><span>Hạn nộp video</span><strong>{(activeDeadline || samp.deadlineAt) ? new Date(activeDeadline || samp.deadlineAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}) : 'Tính từ khi nhận hàng'}</strong></div></div>
+                              <div className="collaboration-sample-primary-actions"><button type="button" onClick={() => setTrackingSampleId(samp.id)}><Package size={14}/>Xem yêu cầu</button>{samp.videoAssets?.some((asset: any) => asset.urlOrContent) && <button type="button" onClick={() => { setTrackingSampleId(samp.id); }}><Video size={14}/>Xem video</button>}</div>
                               <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 border-t border-[#EAE4D7] pt-2.5">
-                                {status === 'COMPLETED' && (
-                                  <div className="inline-flex items-center gap-1.5 text-xs text-[#059669] font-semibold mr-auto">
-                                    <CheckCircle2 size={14} className="text-[#059669]" />
-                                    <span>Đã hoàn tất nghiệm thu video review</span>
-                                  </div>
-                                )}
                                 {status === 'APPROVED' && !sandboxShipment && !samp.trackingNumber && (
                                   <div role="status" className="flex w-full items-center gap-2.5 rounded-xl bg-[#FAF8F5] px-3 py-2">
                                     <Truck size={15} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
@@ -2080,20 +1963,6 @@ setActiveTab('samples');
                                 )}
                                 {awaitingReceipt && samp.carrier?.toUpperCase().includes('GHN') && (
                                   <span className="basis-full text-[10.5px] text-[#7D715E] italic">Hạn nộp video bắt đầu khi GHN xác nhận giao thành công.</span>
-                                )}
-                                {samp.trackingNumber && samp.carrier?.toUpperCase().includes('GHN') && (
-                                  <button
-                                    type="button"
-                                    className={`inline-flex items-center justify-center gap-1.5 min-h-[30px] px-2.5 py-1 border rounded-lg text-xs transition cursor-pointer ${
-                                      status === 'COMPLETED'
-                                        ? 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white text-[11px]'
-                                        : 'border-[#EAE4D7] bg-white text-[#1A1612] font-medium hover:bg-[#FAF8F5]'
-                                    }`}
-                                    onClick={() => setTrackingSampleId(trackingSampleId === samp.id ? null : samp.id)}
-                                  >
-                                    <Truck size={12} className="text-[#B88E4F]" />
-                                    <span>{status === 'COMPLETED' ? 'Chi tiết bưu kiện' : 'Theo dõi hành trình bưu kiện'}</span>
-                                  </button>
                                 )}
                                 {isShipped && !samp.receivedAt && (
                                   <button
@@ -2130,8 +1999,65 @@ setActiveTab('samples');
                                   </button>
                                 )}
                               </div>
-                              <SampleSandboxWaybills charges={samp.shippingCharges} primary={sandboxShipment} productId={samp.product?.id} productTitle={samp.product?.title} sampleRequestId={samp.id} />
-                              {trackingSampleId === samp.id && samp.trackingNumber && <GhnTrackingTimeline orderCode={samp.trackingNumber} environment="LIVE" sampleRequestId={awaitingReceipt ? samp.id : undefined} onSampleDelivered={() => loadStoreSamples(selectedStore.id)} />}
+                              {trackingSampleId === samp.id && createPortal(<Modal isOpen stickyHeader className="collaboration-sample-details" onClose={() => setTrackingSampleId(null)} title="Xem yêu cầu" subtitle={samp.product?.title} maxWidth="2xl" bodyClassName="space-y-4 text-sm">
+                                <p className="text-xs text-[#7D715E]">Hạn nộp video: 14 ngày từ khi nhận hàng.</p>
+                                  {/* Kênh cam kết (chỉ hiển thị khi có dữ liệu thật) */}
+                                  {((samp.socialPlatformSnapshot && samp.socialPlatformSnapshot !== '—') ||
+                                    (samp.socialChannelNameSnapshot && samp.socialChannelNameSnapshot !== '—') ||
+                                    (samp.socialChannel?.channelName && samp.socialChannel.channelName !== '—')) && (
+                                    <p className="mt-1 text-[11px] text-[#7D715E] leading-normal break-words flex items-center gap-1.5 flex-wrap">
+                                      <span>Kênh review:</span>
+                                      <strong className="text-[#1A1612] font-semibold">
+                                        {samp.socialPlatformSnapshot || samp.socialChannel?.platformName || ''}
+                                        {(samp.socialChannelNameSnapshot || samp.socialChannel?.channelName)
+                                          ? ` · @${samp.socialChannelNameSnapshot || samp.socialChannel?.channelName}`
+                                          : ''}
+                                      </strong>
+                                      {canSubmitVideo && !activeDeadline && samp.expectedVideoAt ? (
+                                        <span className="text-[#B88E4F]">
+                                          · Dự kiến đăng {new Date(samp.expectedVideoAt).toLocaleDateString('vi-VN')}
+                                        </span>
+                                      ) : null}
+                                    </p>
+                                  )}
+
+                                  {/* Người nhận & địa chỉ (chỉ hiển thị khi đơn chưa hoàn tất để tránh rối mắt) */}
+                                  {samp.recipientName && (
+                                    <p className="mt-1 text-[11px] text-[#7D715E] leading-normal flex items-center gap-1 truncate" title={samp.shippingAddress}>
+                                      <MapPin size={11} className="text-[#B88E4F] shrink-0" />
+                                      <span className="truncate">
+                                        Giao đến: <strong className="text-[#1A1612] font-medium">{samp.recipientName}</strong> ({samp.recipientPhone})
+                                        {samp.shippingAddress ? ` · ${samp.shippingAddress}` : ''}
+                                      </span>
+                                    </p>
+                                  )}
+                                  {samp.videoRejectionReason && (
+                                    <p className="mt-1 text-[11px] text-[#DC2626] leading-normal font-semibold">Lý do cần sửa: {samp.videoRejectionReason}</p>
+                                  )}
+                                  {samp.rejectedReason && status === 'REJECTED' && (
+                                    <p className="mt-1 text-[11px] text-[#DC2626] leading-normal font-semibold">Lý do: {samp.rejectedReason}</p>
+                                  )}
+                                  {samp.videoAssets?.length > 0 && (
+                                    <details open className="mt-1.5 text-[11px] text-[#7D715E]">
+                                      <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 font-semibold text-[#795A2D] [&::-webkit-details-marker]:hidden"><Video size={14} aria-hidden="true" />Video Review đã nộp <span className="ml-auto text-[10px] text-[#7D715E]">{samp.videoAssets.length}</span><ChevronDown size={14} aria-hidden="true" /></summary>
+                                      {samp.videoAssets?.length > 0 && <div className="mt-3 border-t border-[#EAE4D7] pt-2">
+                                        <p className="font-semibold text-[#1A1612]">Video đã nộp</p>
+                                        <ul className="mt-1 grid gap-2">
+                                        {(samp.videoAssets || []).map((asset: any) => (
+                                          <li key={asset.id}>
+                                            <a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="text-[#8D6936] underline">{asset.title || 'Video đã gửi'}</a>
+                                            {' · '}{sampleVideoStatusLabels[asset.status] || 'Đang xử lý'}{asset.rejectionReason ? ` · Lý do: ${asset.rejectionReason}` : ''}
+                                          </li>
+                                        ))}
+                                        </ul>
+                                      </div>}
+                                    </details>
+                                  )}
+
+                                <SampleSandboxWaybills charges={samp.shippingCharges} primary={sandboxShipment} productId={samp.product?.id} productTitle={samp.product?.title} sampleRequestId={samp.id} />
+                                {samp.trackingNumber && samp.carrier?.toUpperCase().includes('GHN') && !sandboxShipment && <GhnTrackingTimeline orderCode={samp.trackingNumber} environment="LIVE" sampleRequestId={awaitingReceipt ? samp.id : undefined} onSampleDelivered={() => loadStoreSamples(selectedStore.id)} />}
+                                <section><h3 className="font-semibold mb-2">Lịch sử xử lý</h3><div className="divide-y divide-[#EAE4D7]">{sampleHistoryEvents(samp).map(event => <div key={event.id} className="flex justify-between gap-3 py-2 text-xs"><span>{sampleEventLabel(event.action)}</span><time>{new Date(event.createdAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</time></div>)}</div></section>
+                              </Modal>, document.body)}
                             </div>
                           );
                         })}
@@ -2159,32 +2085,33 @@ setActiveTab('samples');
 
         return (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-md shadow-xl overflow-hidden text-left">
+            <div role="dialog" aria-modal="true" aria-label="Link và mã QR tiếp thị" className="collaboration-share-dialog bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-[660px] max-h-[88dvh] shadow-xl overflow-y-auto text-left">
               <div className="p-4 border-b border-[#EAE4D7] flex items-center justify-between bg-[#FAF8F5]">
                 <div className="flex items-center gap-2">
                   <Link2 className="w-4 h-4 text-[#B88E4F]" />
                   <h3 className="text-sm font-bold text-[#1A1612] m-0">
-                    Link tiếp thị &amp; Mã QR
+                    Chia sẻ sản phẩm
                   </h3>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setLinkModalProduct(null)}
+                  onClick={() => { linkRequest.current++; setLinkLoading(false); setLinkModalProduct(null); }}
+                  aria-label="Đóng chia sẻ sản phẩm"
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-4 flex flex-col gap-3.5">
+              <div className="p-5 sm:p-6 flex flex-col gap-5">
                 <div className="p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl flex items-center gap-3">
                   <img
-                    src={linkModalProduct.imageUrl}
+                    src={linkModalProduct.imageUrl} onError={handleProductImageError}
                     alt={linkModalProduct.title}
-                    className="w-12 h-12 rounded-lg object-cover border border-[#EAE4D7] bg-white shrink-0"
+                    className="w-16 h-16 rounded-xl object-contain border border-[#EAE4D7] bg-white shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <strong className="text-xs font-bold text-[#1A1612] line-clamp-1 block">
+                    <strong className="text-sm font-semibold text-[#1A1612] line-clamp-2 block">
                       {linkModalProduct.title}
                     </strong>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -2193,7 +2120,7 @@ setActiveTab('samples');
                           ? 'bg-[#FAF0DD] text-[#9E7332] border-[#E8D4B0]'
                           : 'bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]'
                       }`}>
-                        Hoa hồng: {effectiveRate}% {activeDeal ? '(Deal độc quyền)' : ''}
+                        Thù lao {effectiveRate}%
                       </span>
                       <span className="text-[11px] text-[#7D715E] font-medium">
                         (~{commissionAmount.toLocaleString('vi-VN')} ₫)
@@ -2204,19 +2131,21 @@ setActiveTab('samples');
 
                 <div>
                   <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                    Smart Link
+                    Link tiếp thị
                   </label>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="text"
                       readOnly
                       value={generatedShortlink}
-                      className="flex-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-mono text-[#1A1612] outline-none"
+                      placeholder={linkLoading ? 'Đang lấy link tiếp thị…' : 'Chưa có link tiếp thị'}
+                      className="min-w-0 h-11 flex-1 bg-white border border-[#EAE4D7] rounded-xl px-3 text-xs text-[#1A1612] outline-none"
                     />
                     <button
                       type="button"
                       onClick={handleCopyLink}
-                      className="px-3 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer transition"
+                      disabled={!generatedShortlink || linkLoading}
+                      className="h-11 px-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#855F2D] text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer transition disabled:opacity-50"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>Sao chép</span>
@@ -2224,17 +2153,19 @@ setActiveTab('samples');
                   </div>
                 </div>
 
+                {linkLoading && <div role="status" className="flex items-center justify-center gap-2 py-10 text-sm text-[#7D715E]"><Loader2 size={18} className="animate-spin"/>Đang tải link và mã QR…</div>}
+                {linkError && <p role="alert" className="text-sm text-[#DC2626]">{linkError} <button type="button" className="underline" onClick={() => void handleOpenLinkModal(linkModalProduct)}>Thử lại</button></p>}
                 {generatedQr && (
-                  <div className="flex items-center gap-3.5 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]">
-                    <img src={generatedQr} alt="QR Code" className="w-20 h-20 rounded-lg bg-white p-1 border border-[#EAE4D7] shrink-0" />
+                  <div className="flex items-center justify-center gap-6 p-5 bg-white rounded-xl border border-[#EAE4D7] max-sm:flex-col">
+                    <img src={generatedQr} alt="Mã QR tiếp thị" className="w-40 h-40 rounded-xl bg-white p-2 border border-[#EAE4D7] shrink-0" />
                     <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                       <span className="text-xs font-semibold text-[#1A1612]">Mã QR tiếp thị</span>
                       <a
                         href={generatedQr}
                         download={`QR_${linkModalProduct.sku || 'scanms'}.png`}
-                        className="inline-flex items-center gap-1.5 text-xs text-[#B88E4F] font-bold hover:underline"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-4 text-xs text-[#855F2D] font-semibold hover:bg-[#F3EFE6]"
                       >
-                        <Download className="w-3.5 h-3.5" /> Tải ảnh QR (PNG)
+                        <Download className="w-3.5 h-3.5" /> Tải PNG
                       </a>
                     </div>
                   </div>
@@ -2250,7 +2181,7 @@ setActiveTab('samples');
                   </button>
                   <button
                     type="button"
-                    onClick={() => setLinkModalProduct(null)}
+                    onClick={() => { linkRequest.current++; setLinkLoading(false); setLinkModalProduct(null); }}
                     className="px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] cursor-pointer"
                   >
                     Đóng
@@ -2295,7 +2226,7 @@ setActiveTab('samples');
             <div className="mx-5 mb-1 flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 sm:mx-6">
               <div className="flex items-center gap-2.5 min-w-0">
                 <img
-                  src={requestSampleModalProduct.imageUrl}
+                  src={requestSampleModalProduct.imageUrl} onError={handleProductImageError}
                   alt={requestSampleModalProduct.title}
                   className="h-12 w-12 shrink-0 rounded-xl border border-[#EAE4D7] bg-white object-cover"
                 />
@@ -2582,25 +2513,21 @@ setActiveTab('samples');
           onClick={() => setShowDiscoverModal(false)}
         >
           <div
-            className="bg-white w-full max-w-[560px] max-h-[calc(100dvh-32px)] border border-[#EAE4D7] rounded-2xl shadow-[0_20px_70px_rgba(35,29,21,0.12)] flex flex-col overflow-hidden text-left"
+            className="shop-discovery-dialog bg-white w-full border border-[#EAE4D7] rounded-2xl shadow-[0_20px_70px_rgba(35,29,21,0.12)] flex flex-col overflow-hidden text-left"
             role="dialog"
             aria-modal="true"
             aria-labelledby="shop-directory-title"
-            aria-describedby="shop-directory-description"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 p-4 sm:px-4.5 border-b border-[#EAE4D7]">
+            <div className="shop-discovery-header flex shrink-0 items-center justify-between gap-3 border-b border-[#EAE4D7]">
               <div className="flex items-center gap-3">
                 <div className="grid place-items-center shrink-0 w-[34px] h-[34px] rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
                   <Store className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 id="shop-directory-title" className="m-0 text-base font-bold leading-tight tracking-tight text-[#1A1612]">
-                    Shop đối tác SCANMS
+                  <h3 id="shop-directory-title" className="m-0 text-xl font-bold leading-tight tracking-tight text-[#1A1612]">
+                    Khám phá cửa hàng
                   </h3>
-                  <p id="shop-directory-description" className="mt-0.5 text-[11px] leading-normal text-[#7D715E]">
-                    Trao đổi hoa hồng riêng và xin mẫu thử từ Shop.
-                  </p>
                 </div>
               </div>
               <button
@@ -2613,22 +2540,22 @@ setActiveTab('samples');
               </button>
             </div>
 
-            <div className="p-3 sm:px-4.5 border-b border-[#EAE4D7]">
+            <div className="shop-discovery-search shrink-0 border-b border-[#EAE4D7]">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
                 <input
                   type="text"
                   aria-label="Tìm Shop theo tên hoặc ngành hàng"
                   autoFocus
-                  placeholder="Tìm tên Shop, ngành hàng..."
+                  placeholder="Tìm cửa hàng, ngành hàng…"
                   value={discoverSearch}
                   onChange={(e) => setDiscoverSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-medium text-[#1A1612] outline-none focus:bg-white focus:border-[#C59B58] transition"
+                  className="h-11 w-full pl-10 pr-4 bg-white border border-[#EAE4D7] rounded-xl text-sm text-[#1A1612] outline-none focus:border-[#C59B58] transition"
                 />
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 max-h-[min(360px,calc(100dvh-220px))] overflow-y-auto overscroll-contain px-3 sm:px-4.5 custom-scrollbar divide-y divide-[#EAE4D7]">
+            <div className="shop-discovery-list flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar divide-y divide-[#EAE4D7]">
               {loadingMarketplace ? (
                 <div className="py-16 text-center text-xs font-bold text-[#7D715E] flex flex-col items-center gap-2">
                   <div className="w-6 h-6 border-2 border-[#C59B58] border-t-transparent rounded-full animate-spin" />
@@ -2644,31 +2571,28 @@ setActiveTab('samples');
                     return (
                       <div
                         key={ms.id}
-                        className="grid grid-cols-[1fr_auto] items-start gap-2.5 sm:gap-3 py-3"
+                        className="shop-discovery-row"
                       >
                         <div className="flex items-start gap-2.5 min-w-0">
                           <StoreAvatar
                             name={ms.name}
                             logoUrl={getShopLogoUrl(ms.logoUrl)}
-                            className="w-9 h-9 shrink-0 grid place-items-center border border-[#EAE4D7] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-xs font-bold overflow-hidden"
+                            className="w-12 h-12 shrink-0 grid place-items-center border border-[#EAE4D7] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-sm font-bold overflow-hidden"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <h4 title={ms.name} className="m-0 text-xs font-bold text-[#1A1612] truncate max-w-full">{ms.name}</h4>
-                              <span className="inline-flex items-center gap-1 shrink-0 text-[9px] text-[#B88E4F] font-bold whitespace-nowrap" title="Gian hàng chính hãng">
+                              <h4 title={ms.name} className="m-0 text-sm font-semibold text-[#1A1612] line-clamp-2">{ms.name}</h4>
+                              <span className="inline-flex items-center shrink-0 text-[#B88E4F]" title="Cửa hàng đã xác minh" aria-label="Đã xác minh">
                                 <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-                                Chính hãng
                               </span>
                             </div>
-                            <details className="mt-1">
-                              <summary className="inline-flex items-center gap-1 list-none text-[#7D715E] text-[10px] cursor-pointer hover:text-[#B88E4F]">Giới thiệu Shop <ChevronDown size={12} aria-hidden="true" /></summary>
-                              <p className="mt-1.5 text-[11px] leading-relaxed text-[#7D715E] break-words">{ms.description || 'Gian hàng đối tác trên sàn SCANMS.'}</p>
-                            </details>
+                            <p className="mt-1 text-xs text-[#7D715E] line-clamp-1">{typeof ms.category === 'string' ? ms.category : ms.category?.name || 'Cửa hàng trực thuộc SCANMS'}</p>
+                            <a href={ms.slug ? `/shop/${encodeURIComponent(ms.slug)}` : `/marketplace?shop=${encodeURIComponent(ms.id)}`} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-[#B88E4F] hover:underline">Xem cửa hàng <ExternalLink size={12} /></a>
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-end gap-1.5 min-w-[82px] sm:min-w-[94px]">
-                          {isAlreadyConnected && <span className="text-[9px] text-[#7D715E] leading-tight">Đã kết nối</span>}
+                        <div className="shop-discovery-actions">
+                          <span className="text-[11px] text-[#7D715E] leading-tight">{isAlreadyConnected ? 'Đã kết nối' : 'Chưa kết nối'}</span>
                           {isAlreadyConnected ? (
                             <button
                               type="button"
@@ -2678,7 +2602,7 @@ setActiveTab('samples');
                                 setActiveTab('messages');
                                 updateUrl(ms.id, 'messages');
                               }}
-                              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-[11px] font-bold hover:bg-[#FBF5EB] hover:border-[#C59B58] transition-colors whitespace-nowrap cursor-pointer"
+                              className="shop-discovery-action border border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#FBF5EB]"
                             >
                               <MessageSquare size={13} aria-hidden="true" /> Mở chat
                             </button>
@@ -2687,10 +2611,10 @@ setActiveTab('samples');
                               type="button"
                               disabled={connectingStoreId === ms.id}
                               onClick={() => handleConnectStore(ms)}
-                              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#B88E4F] text-[11px] font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors whitespace-nowrap cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                              className="shop-discovery-action border border-[#EEDFC6] bg-[#FBF5EB] text-[#855F2D] hover:bg-[#F3EFE6] disabled:opacity-60 disabled:cursor-wait"
                             >
                               {connectingStoreId === ms.id ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                              <span>{connectingStoreId === ms.id ? 'Đang gửi' : 'Gửi yêu cầu hợp tác'}</span>
+                              <span>{connectingStoreId === ms.id ? 'Đang gửi' : 'Kết nối'}</span>
                             </button>
                           )}
                         </div>
@@ -2699,9 +2623,8 @@ setActiveTab('samples');
                   })
               )}
             </div>
-            <div className="flex items-center justify-between flex-wrap gap-1.5 px-3.5 sm:px-4.5 py-2.5 border-t border-[#EAE4D7] text-[#7D715E] text-[10px]" aria-live="polite">
-              {loadingMarketplace ? 'Đang tải danh bạ…' : `${discoveredStores.length} gian hàng`}
-              <span>Mở giới thiệu để xem chi tiết.</span>
+            <div className="shop-discovery-footer shrink-0 border-t border-[#EAE4D7] text-[#7D715E] text-xs" aria-live="polite">
+              {loadingMarketplace ? 'Đang tải…' : `${discoveredStores.length} cửa hàng`}
             </div>
           </div>
         </div>

@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router-dom';
 import { Link2, Tag, Radio } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
-import { PageHeader } from '../../components/ui/PageHeader';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import { KolCouponManagement } from '../../components/coupons/KolCouponManagement';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
+import './affiliate-oversight.css';
 
 const ADMIN_OVERSIGHT_TABS = ['links', 'coupons', 'live-sessions'] as const;
 type AdminOversightTab = (typeof ADMIN_OVERSIGHT_TABS)[number];
@@ -51,14 +51,8 @@ export default function AdminOversightHubPage() {
 
   return (
     <div className="w-full min-w-0 flex flex-col gap-3 text-[#1A1612]" id="admin-oversight-hub">
-      <PageHeader
-        title="Giám sát tiếp thị"
-        icon={<Link2 className="w-5 h-5 text-[#B88E4F]" />}
-      />
-
       <HubTabs
-        className="mb-2 shadow-none"
-        compact
+        className="mb-0 shadow-none"
         tabs={tabs}
         activeTab={activeTab}
         onChange={(id) => setActiveTab(id as AdminOversightTab)}

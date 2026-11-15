@@ -63,7 +63,7 @@ export default function AdminAnalyticsHubPage() {
   return (
     <div className="w-full min-w-0 text-[#1A1612]" id="admin-analytics-hub">
       {activeTab === 'realtime' ? (
-        <RealtimeAnalyticsPage headerTabs={headerTabs} />
+        <RealtimeAnalyticsPage headerTabs={headerTabs} headerColumnCount={tabs.length} />
       ) : activeTab === 'finance' && isAdmin ? (
         <div className="flex flex-col gap-3">
           <div className="flex justify-end pt-1 pb-2">

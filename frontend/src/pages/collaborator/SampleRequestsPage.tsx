@@ -6,6 +6,8 @@ import {
   Package,
   Search,
   Truck,
+  Video,
+  Gift,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/services/api';
@@ -18,6 +20,8 @@ import {
 import { useSandboxSampleState, type SandboxSampleState } from '@/components/shipping/useSandboxSampleState';
 import { SandboxSampleReceipt } from '@/components/shipping/SandboxSampleReceipt';
 import type { SampleRequest } from '@/types/samples.types';
+import './kol-samples-workspace.css';
+import { Select } from '@/components/ui/Select';
 import {
   canSubmitSampleVideo,
   SAMPLE_STATUS_LABELS,
@@ -44,7 +48,7 @@ const date = (value?: string | number | null) =>
       });
 type Action = 'video' | 'issue' | 'cancel';
 
-export default function SampleRequestsPage({ embedded: _embedded = false }: { embedded?: boolean } = {}) {
+export default function SampleRequestsPage({ embedded = false, onSubmitVideo }: { embedded?: boolean; onSubmitVideo?: () => void } = {}) {
   const { data, loading, error, refresh, updatedAt } = useWorkspaceResource<
     SampleRequest[]
   >('/sample-requests/my');
@@ -131,18 +135,18 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
   }
 
   return (
-    <main className="samples-page flex w-full min-w-0 flex-col bg-[#FAF8F5]">
+    <main className={`samples-page kol-samples-workspace ${embedded ? 'is-embedded' : ''}`}>
       {(data || []).map(item => {
         const code = sampleSandboxCode(item);
         return code ? <SandboxStateBridge key={code} code={code} onState={onSandboxState} /> : null;
       })}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="kol-samples-metrics">
         {[
           { label: 'Tổng yêu cầu', value: requests.length },
           { label: 'Đang giao', value: requests.filter(item => item.status === 'SHIPPED').length },
           { label: 'Cần chú ý', value: requests.filter(item => sampleNeedsAttention(item, now)).length, attention: true },
           { label: 'Hoàn thành', value: requests.filter(item => item.status === 'COMPLETED').length },
-        ].map(metric => <div key={metric.label} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 p-3 sm:px-4.25 sm:py-3.75 border border-[#EAE4D7] rounded-xl bg-white [&_p]:m-0 [&_p]:text-[#7D715E] [&_p]:text-xs [&_p]:font-medium [&_strong]:text-[#1A1612] [&_strong]:text-[22px] sm:[&_strong]:text-[26px] [&_strong]:font-semibold [&_strong]:tabular-nums [&>span]:col-span-full [&>span]:text-[#7D715E] [&>span]:text-[10px] [&>span]:leading-4 data-[attention=true]:border-[#EEDFC6] data-[attention=true]:[&_strong]:text-[#DC2626]" data-attention={Boolean(metric.attention && metric.value > 0)}>
+        ].map(metric => <div key={metric.label} className="kol-sample-metric" data-attention={Boolean(metric.attention && metric.value > 0)}>
           <p>{metric.label}</p><strong>{!data ? '—' : metric.value}</strong>
         </div>)}
       </div>
@@ -163,9 +167,10 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
-        <select
+        <div className="kol-samples-toolbar-actions">
+        <Select
           aria-label="Trạng thái yêu cầu"
-          className={`${workspaceInput} sm:!w-52`}
+          className="kol-samples-status-select"
           value={status}
           onChange={(event) => setStatus(event.target.value)}
         >
@@ -175,7 +180,10 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
               {label}
             </option>
           ))}
-        </select>
+        </Select>
+        {onSubmitVideo && <button type="button" className="kol-samples-toolbar-button" onClick={onSubmitVideo}><Video size={16} />Nộp video</button>}
+        <Link to="/marketplace" className="kol-samples-toolbar-button is-primary"><Gift size={16} />Khám phá sản phẩm</Link>
+        </div>
       </section>
       {error && (
         <WorkspaceState
@@ -202,7 +210,8 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
           }}
         />
       ) : (
-        <div className="samples-page-grid grid gap-4 xl:grid-cols-2">
+        <div className="samples-page-grid kol-samples-list">
+          <div className="kol-samples-columns" aria-hidden="true"><span>Sản phẩm</span><span>Thời hạn</span><span>Giao nhận</span><span>Thao tác</span></div>
           {visible.map((item) => {
             const deadline = sampleDeadline(item);
             const needsAttention = sampleNeedsAttention(item, now);
@@ -232,9 +241,6 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
                     <h2 className="my-1 text-sm font-bold text-[#1A1612]">
                       {item.product.title}
                     </h2>
-                    <span data-status={item.status} className="samples-page-status inline-block rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-semibold text-[#8C6226]">
-                      {SAMPLE_STATUS_LABELS[item.status]}
-                    </span>
                     {sandboxCode && <span className="samples-sandbox-label">Sandbox</span>}
                   </div>
                 </div>
@@ -252,7 +258,7 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
                         : 'Hạn nộp video'}
                     </dt>
                     <dd
-                      className={`ml-0 mt-1 font-semibold ${needsAttention ? 'text-[#DC2626]' : 'text-[#1A1612]'}`}
+                      className={`ml-0 mt-1 font-semibold ${needsAttention ? 'text-[#DC2626]' : item.status === 'COMPLETED' ? 'text-[#7D715E]' : 'text-[#1A1612]'}`}
                     >
                       {['CANCELLED', 'REJECTED'].includes(item.status) ? 'Không áp dụng'
                         : deadline === null && ['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'].includes(item.status)
@@ -260,7 +266,9 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
                     </dd>
                   </div>
                 </dl>
-                {item.trackingNumber && (
+                <div className="kol-samples-shipping">
+                  <span data-status={item.status} className="samples-page-status inline-block rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-semibold text-[#8C6226]">{SAMPLE_STATUS_LABELS[item.status]}</span>
+                {item.trackingNumber ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#7D715E]">
                     <Truck size={15} />
                     <span>
@@ -286,14 +294,15 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
                       <Copy size={13} />
                     </button>
                   </div>
-                )}
+                ) : <span className="kol-samples-no-tracking">Chưa có vận đơn</span>}
+                </div>
                 {(item.videoRejectionReason || item.rejectedReason) && (
                   <p className="mt-3 rounded-xl border border-[#EEDFC6] p-3 text-xs leading-5 text-[#7D715E]">
                     Phản hồi: {item.videoRejectionReason || item.rejectedReason}
                   </p>
                 )}
                 <div className="samples-page-actions mt-4 flex flex-wrap gap-2">
-                  <Link className={workspaceButton} to={sampleShopLink(item)}>Xem yêu cầu tại Shop<ExternalLink size={13} /></Link>
+                  <Link className={workspaceButton} to={sampleShopLink(item)}>Xem yêu cầu<ExternalLink size={13} /></Link>
                   {!sandboxCode && canSubmitSampleVideo(item.status) && (
                     <button
                       className={`${workspaceButton} !bg-[#C59B58]`}
@@ -339,7 +348,7 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
         </div>
       )}
       {updatedAt && (
-        <p className="m-0 text-right text-[10px] text-[#7D715E]">
+        <p className="kol-samples-sync m-0 text-right text-[10px] text-[#7D715E]">
           Đồng bộ lúc {date(updatedAt.getTime())} · {visible.length}/
           {requests.length} yêu cầu
         </p>

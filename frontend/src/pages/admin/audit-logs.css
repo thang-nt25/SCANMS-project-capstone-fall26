@@ -1,0 +1,47 @@
+#audit-logs-page .audit-filter-card { margin-top: 18px; padding: 14px; border: 1px solid #eae4d7; border-radius: 14px; background: #fff; }
+#audit-logs-page .audit-primary-filters { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(360px,1fr) 175px; gap: 10px; align-items: stretch; }
+#audit-logs-page .audit-secondary-filters { display: contents; }
+#audit-logs-page .audit-primary-filters > div { min-width: 0; }
+#audit-logs-page .audit-primary-filters input { height: 44px; font-size: 12px; background: #fff; }
+#audit-logs-page .audit-timeframes { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 3px; height: 44px; padding: 4px; border: 1px solid #eae4d7; border-radius: 10px; background: #fff; }
+#audit-logs-page .audit-timeframes button { min-width: 0; padding: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+#audit-logs-page .audit-timeframes button[aria-pressed="true"] { color: #805b27; background: #fbf5eb; box-shadow: none; }
+#audit-logs-page .audit-category-toolbar { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)) minmax(0,1.4fr) minmax(0,1fr); gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eae4d7; }
+#audit-logs-page .audit-category-filters, #audit-logs-page .audit-export-action { display: contents; }
+#audit-logs-page .audit-category-toolbar button { display: flex; align-items: center; justify-content: center; min-width: 0; width: 100%; min-height: 48px; height: auto; padding: 7px; border: 1px solid #eae4d7; border-radius: 9px; background: #fff; font-size: 12px; line-height: 1.45; font-weight: 500; white-space: normal; box-shadow: none; }
+#audit-logs-page .audit-category-toolbar button[aria-pressed="true"], #audit-logs-page .audit-export-action button { background: #fbf5eb; border-color: #eedfc6; color: #805b27; }
+#audit-logs-page .audit-table-card { min-width: 0; margin-top: 18px; overflow: hidden; border: 1px solid #eae4d7; border-radius: 14px; background: #fff; }
+#audit-logs-page .audit-table-region { width: 100%; min-width: 0; }
+#audit-logs-page .audit-table-header-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: end; gap: 12px; }
+#audit-logs-page .audit-table-header-actions .audit-export-action { display: block; }
+#audit-logs-page .audit-table-header-actions button { min-height: 36px; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 500; }
+#audit-logs-page .audit-activity-table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; text-align: left; }
+#audit-logs-page .audit-activity-table :is(th,td) { min-width: 0; padding: 12px 10px; vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
+#audit-logs-page .audit-activity-table thead tr { background: #faf8f5; }
+#audit-logs-page .audit-activity-table th { text-transform: none; font-size: 12px; font-weight: 500; letter-spacing: normal; color: #7d715e; }
+#audit-logs-page .audit-activity-table td { font-size: 12px; }
+#audit-logs-page .audit-activity-table td :is(div,span) { max-width: 100%; overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+#audit-logs-page .audit-activity-table .audit-action-name { display: block; font-size: 12px; font-weight: 500; line-height: 1.55; }
+#audit-logs-page .audit-activity-table td[data-label="Người thực hiện"] > div { align-items: flex-start; gap: 7px; }
+#audit-logs-page .audit-activity-table .audit-actor-role { display: block; margin: 3px 0; color: #805b27; font-weight: 400; }
+#audit-logs-page .audit-activity-table .audit-actor-email { display: block; font-size: 11px; color: #7d715e; }
+#audit-logs-page .audit-activity-table td[data-label="Phân loại"] > span, #audit-logs-page .audit-activity-table td[data-label="Mức độ"] > span { padding: 4px 6px; font-size: 11px; line-height: 1.5; }
+#audit-logs-page .audit-activity-table td[data-label="Thao tác"] button { justify-content: center; width: 100%; gap: 4px; padding: 7px 4px; border-color: #eedfc6; background: #fffdf9; font-size: 11px; font-weight: 500; }
+#audit-logs-page .audit-activity-table td svg { flex-shrink: 0; }
+#audit-logs-page .audit-activity-table td[data-label="Mức độ"] > span { gap: 4px; padding: 4px; font-size: 10px; }
+@media(max-width:900px) {
+  #audit-logs-page .audit-primary-filters { grid-template-columns: 1fr; }
+  #audit-logs-page .audit-category-toolbar { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  #audit-logs-page .audit-activity-table colgroup, #audit-logs-page .audit-activity-table thead { display: none; }
+  #audit-logs-page .audit-activity-table, #audit-logs-page .audit-activity-table tbody { display: block; }
+  #audit-logs-page .audit-activity-table tbody tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 10px; gap: 10px 14px; }
+  #audit-logs-page .audit-activity-table td[data-label] { display: block; padding: 0; }
+  #audit-logs-page .audit-activity-table td[data-label]::before { display: block; margin-bottom: 4px; content: attr(data-label); color: #7d715e; font-size: 11px; }
+  #audit-logs-page .audit-activity-table td[data-label="Hành động"] { grid-column: 1 / -1; }
+  #audit-logs-page .audit-activity-table td[data-label="Thao tác"] { text-align: left; }
+}
+.audit-summary-grid > div { min-width: 0; min-height: 130px; height: 100%; padding: 16px; border-radius: 12px; box-shadow: none; }
+.audit-summary-grid > div > div:first-child { align-items: center; }
+.audit-summary-grid > div > div:first-child > span { font-size: 12px; font-weight: 600; }
+.audit-summary-grid > div > div:last-child > strong { font-size: 24px; font-weight: 600; line-height: 1.25; }
+.audit-summary-grid > div > div:last-child > div { min-height: 18px; margin-top: 4px; }

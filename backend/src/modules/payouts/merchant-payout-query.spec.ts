@@ -82,4 +82,18 @@ describe('merchant payout filters and store-wide aggregates', () => {
     await expect(service.listPayouts(storeId, 'intruder', dto())).rejects.toThrow('forbidden');
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+  it('does not expose the KOL company-wide tax base through the store payout view', () => {
+    const { service } = createService();
+    const request = {
+      id: 'payout', collaboratorId: 'kol', storeId,
+      amount: new Prisma.Decimal(400000), taxAmount: new Prisma.Decimal(140000), netAmount: new Prisma.Decimal(260000),
+      taxContext: { policy: 'MONTHLY_PROGRESSIVE_V1', monthlyGrossBefore: '110000000', month: '2026-11' },
+      status: 'PENDING',
+    } as never;
+    const shop = service.serializeStorePayout(request);
+    expect(shop).toMatchObject({ storeId, amount: '400000.00', taxAmount: '140000.00', netAmount: '260000.00' });
+    expect(shop).not.toHaveProperty('taxContext');
+    expect(shop).not.toHaveProperty('monthlyWithdrawalSummary');
+    expect(service.serializePayout(request).taxContext).toMatchObject({ monthlyGrossBefore: '110000000' });
+  });
 });

@@ -1,0 +1,37 @@
+#partner-upgrade-form .partner-upgrade-main input:not([type='file']):not([type='checkbox']) { min-height: 44px; height: 44px; font-size: 14px; border-radius: 10px; }
+#partner-upgrade-form .partner-creator-form label { font-size: 13px; font-weight: 500; }
+#partner-upgrade-form .partner-form-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid #EAE4D7; }
+.partner-form-section-title { display: flex; align-items: center; gap: 8px; padding-bottom: 10px; }
+.partner-form-section-title > span { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #8F682E; font-size: 10px; font-variant-numeric: tabular-nums; }
+.partner-form-section-title h3 { margin: 0; color: #1A1612; font-size: 14px; font-weight: 600; }
+#partner-upgrade-form .partner-platform-options button { position: relative; height: 44px; box-shadow: none; border-radius: 10px; font-size: 12px; }
+.partner-platform-tick { position: absolute; right: 5px; top: 5px; width: 9px; height: 9px; }
+.partner-channel-proof { display: grid; gap: 6px; min-width: 0; }
+.partner-channel-proof-label { display: block; min-height: 20px; color: #1A1612; }
+.partner-channel-proof-label > span { color: #B88E4F; }
+.partner-channel-proof-control { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 8px; border: 1px dashed #EEDFC6; border-radius: 10px; background: #FFFFFF; }
+.partner-channel-proof-control > span { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 7px; background: #FBF5EB; }
+.partner-channel-proof-file { flex: 1; min-width: 0; }
+.partner-channel-proof-file strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 400; color: #7D715E; }
+.partner-channel-proof-file small { color: #8F682E; font-size: 10px; }
+.partner-channel-proof-pick, .partner-channel-proof-remove { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: 30px; padding: 4px 8px; border: 1px solid #EEDFC6; border-radius: 7px; background: #FBF5EB; color: #79592C; font-size: 11px; cursor: pointer; }
+.partner-channel-proof-remove { width: 30px; padding: 0; background: #FFFFFF; color: #7D715E; }
+.partner-channel-proof-preview { display: block; width: 34px; height: 34px; padding: 0; border: 1px solid #EAE4D7; border-radius: 7px; overflow: hidden; background: #FAF8F5; flex-shrink: 0; cursor: pointer; }
+.partner-channel-proof-preview img { width: 100%; height: 100%; object-fit: cover; }
+.partner-channel-proof-hint { margin: 0; color: #7D715E; font-size: 10px; }
+.partner-step-error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border: 1px solid #FECACA; border-radius: 9px; background: #FFFCFC; color: #DC2626; font-size: 12px; }
+.partner-step-error > button { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #79592C; cursor: pointer; font-size: 11px; }
+#partner-upgrade-form input[aria-invalid='true'] { border-color: #DC2626; }
+#partner-upgrade-form .partner-form-actions > button { display: inline-flex; align-items: center; justify-content: center; min-width: 130px; height: 42px; border-radius: 9px; font-size: 13px; font-weight: 500; box-shadow: none; }
+.partner-profile-summary { align-self: start; }
+.partner-progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #7D715E; font-size: 12px; }
+.partner-progress-heading > strong { color: #79592C; font-size: 11px; font-weight: 500; }
+.partner-progress-track { height: 5px; margin: 12px 0 16px; border-radius: 5px; background: #F3EFE6; overflow: hidden; }
+.partner-progress-track > span { display: block; height: 100%; border-radius: inherit; background: #C59B58; transition: width .2s ease; }
+.partner-benefits li + li { border-top: 1px solid #EAE4D7; }
+@media (max-width: 640px) {
+  #partner-upgrade-form .partner-platform-options { gap: 5px; }
+  #partner-upgrade-form .partner-platform-options button { flex-direction: column; gap: 3px; height: 54px; padding: 4px 1px; font-size: 9px; }
+  #partner-upgrade-form .partner-platform-options button svg:not(.partner-platform-tick) { width: 13px; height: 13px; }
+  #partner-upgrade-form .partner-form-actions > button { flex: 1; min-width: 0; }
+}

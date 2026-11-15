@@ -364,7 +364,7 @@ export class GhnService {
       const variant = item.variantId ? product.variants.find((row) => row.id === item.variantId) : null;
       if (item.variantId && !variant) throw new BadRequestException('Phân loại tính cước không hợp lệ.');
       insuranceValue += Number(variant?.price ?? product.price) * item.quantity;
-      return { product, quantity: item.quantity };
+      return { product, variant, quantity: item.quantity };
     });
     const parcel = buildShippingPackage(lines);
     return { ...await this.quoteAddress(address, parcel.weight, insuranceValue, storeId, parcel), shippingPackage: parcel };

@@ -1,0 +1,49 @@
+#shop-promotions-hub .promotion-primary-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px;
+  border: 1px solid #eae4d7;
+  background: #fff;
+  border-radius: 18px;
+}
+#shop-promotions-hub .promotion-primary-nav > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  gap: 9px;
+  min-height: 54px;
+  padding: 14px 16px;
+  border: 1px solid #eae4d7;
+  border-radius: 12px;
+  background: #fff;
+  color: #7d715e;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+#shop-promotions-hub .promotion-primary-nav > button::after {
+  content: none;
+}
+#shop-promotions-hub .promotion-primary-nav > button:hover { color: #805b27; background: #faf8f5; }
+#shop-promotions-hub .promotion-primary-nav > button[aria-pressed=true] { color: #805b27; font-weight: 600; background: #fbf5eb; border-color: #eedfc6; }
+#shop-promotions-hub .promotion-primary-nav > button:focus-visible { outline: 2px solid #b88e4f; outline-offset: 2px; }
+#shop-promotions-hub .promotion-primary-nav svg { flex-shrink: 0; }
+#shop-promotions-hub .promotion-secondary-nav { width: fit-content; max-width: 100%; padding: 4px; border: 1px solid #eae4d7; border-radius: 12px; background: #f3efe6; }
+#shop-promotions-hub .promotion-secondary-options { display: flex; align-items: stretch; gap: 4px; overflow-x: auto; }
+#shop-promotions-hub .promotion-secondary-option { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 8px; min-height: 40px; padding: 9px 15px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #7d715e; font-size: 13px; line-height: 20px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
+#shop-promotions-hub .promotion-secondary-option:hover { background: #faf8f5; color: #715126; }
+#shop-promotions-hub .promotion-secondary-option[aria-pressed=true] { border-color: #eae4d7; background: #fff; color: #1a1612; box-shadow: 0 1px 3px #231d1508; }
+#shop-promotions-hub .promotion-secondary-option > span:last-child:not(:first-of-type) { background: #f3efe6; }
+@media(max-width:540px) {
+  #shop-promotions-hub .promotion-primary-nav { gap: 8px; padding: 8px; }
+  #shop-promotions-hub .promotion-primary-nav > button { font-size: 12px; gap: 6px; padding: 12px 8px; white-space: normal; }
+  #shop-promotions-hub .promotion-secondary-option { padding-inline: 12px; font-size: 12px; }
+}

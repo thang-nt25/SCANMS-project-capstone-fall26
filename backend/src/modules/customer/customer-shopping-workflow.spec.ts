@@ -66,6 +66,21 @@ describe('Customer shopping rules', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it.each(['deadline', 'missing', 'future', 'invalid'])('rejects new returns with an expired or unverified delivery timestamp: %s', async mode => {
+    const now = Date.now();
+    const prisma = { $transaction: jest.fn() };
+    const service = serviceWith(prisma);
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({
+      status: OrderStatus.COMPLETED, returnRequests: [], completedAt: new Date(now),
+      deliveredAt: mode === 'missing' ? null : new Date(mode === 'deadline' ? now - 14 * 86400000 : mode === 'future' ? now + 86400000 : NaN),
+    } as any);
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      await expect(service.createReturnRequest('buyer', 'order', {} as any)).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    } finally { clock.mockRestore(); }
+  });
+
   it('stores the original status and customer identity when a return is requested', async () => {
     const tx = {
       order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
@@ -232,6 +247,7 @@ describe('Customer shopping rules', () => {
 
   it('replaces only the signed-in customer cart in PostgreSQL', async () => {
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       customerCartItem: {
         deleteMany: jest.fn(),
         createMany: jest.fn(),

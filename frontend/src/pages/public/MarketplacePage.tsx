@@ -99,7 +99,7 @@ export default function MarketplacePage() {
   const marketplaceStores = featuredStores;
 
   // Cart & Gateways
-  const { openCart, addItem, cart, startCheckout } = useCart();
+  const { addItem, buyNow, cart, startCheckout } = useCart();
 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
@@ -204,11 +204,7 @@ export default function MarketplacePage() {
     return () => window.removeEventListener('keydown', close);
   }, [isGuideOpen]);
 
-  const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string) => {
-    if (intent === 'buy') {
-      navigate(`/products/${product.sku || product.id}`);
-      return;
-    }
+  const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string, quantity = 1) => {
     if (!product.storeId) {
       toast.error('Chưa xác định được gian hàng. Vui lòng mở chi tiết sản phẩm.');
       return;
@@ -216,14 +212,15 @@ export default function MarketplacePage() {
     const payload = {
       product: { ...product, variants: product.variants?.filter((variant) => variant.isActive !== false) },
       store: { id: product.storeId, name: product.brand },
-      variantId, quantity: 1, openCartAfterAdd: false,
+      variantId, quantity, openCartAfterAdd: false,
     };
     if (!authService.getCurrentUser() || !localStorage.getItem('token')) {
       addItem(payload);
       setPendingPurchase({ productId: product.id, variantId, intent });
+    } else if (intent === 'buy') {
+      buyNow(payload);
     } else {
       addItem(payload);
-      openCart();
     }
   };
 
@@ -234,7 +231,6 @@ export default function MarketplacePage() {
     const intent = pendingPurchase.intent;
     setPendingPurchase(null);
     if (intent === 'buy' && matching.length) startCheckout(matching);
-    else openCart();
   };
 
   return (
@@ -257,23 +253,14 @@ export default function MarketplacePage() {
         <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
 
         {/* SCANMS Standard "KHÁM PHÁ SẢN PHẨM" Header */}
-        <div className="mb-4 bg-white border border-[#EAE4D7] border-b-[4px] border-b-[#B88E4F] shadow-[0_2px_8px_rgba(75,57,34,0.04)] max-sm:rounded-xl max-sm:border-b-2">
-          <div className="py-3.5 sm:py-4 px-4 text-center">
+        <div className="mb-4 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white shadow-[0_2px_8px_rgba(75,57,34,0.04)]">
+          <div className="flex min-h-12 items-center justify-center px-4 py-3 sm:min-h-14">
             <h2
               className="m-0 text-base sm:text-[17px] uppercase tracking-[0.04em] select-none"
               style={{ color: '#B88E4F', fontWeight: 500 }}
             >
               <span className="sm:hidden">Gợi ý hôm nay</span><span className="hidden sm:inline">ĐƠN HÀNG HÔM NAY</span>
             </h2>
-            <p className="text-xs text-[#7D715E] mt-1 m-0">
-              Sản phẩm chính hãng với thù lao bảo chứng và tài nguyên truyền thông cho Creator.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-[#EAE4D7] text-[#1A1612] shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-[#059669]" />
-              {items.length} Sản phẩm mở bán
-            </span>
           </div>
         </div>
 
@@ -314,7 +301,7 @@ export default function MarketplacePage() {
               <MarketplaceProductCard
                 key={product.id} product={product} wished={wishlistIds.has(product.id)}
                 onWishlist={() => void handleToggleWishlist(product.id)}
-                onPurchase={(intent, variantId) => handlePurchase(product, intent, variantId)}
+                onPurchase={(intent, variantId, quantity) => handlePurchase(product, intent, variantId, quantity)}
                 deal={liveDeals[product.id]} now={liveDealsNow}
               />
             ))}

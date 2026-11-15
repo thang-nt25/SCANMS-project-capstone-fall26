@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { escrowAmounts, escrowMoney, escrowNumber, escrowTotal } from '../../utils/escrow-amounts';
+import { handleProductImageError } from '@/utils/image-fallback.utils';
+import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../services/api";
 import { Modal } from "../ui/Modal";
 import { Clock3, History } from "lucide-react";
@@ -166,15 +168,15 @@ const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
   netPaid: {
     title: "Chi trả ngoài Sandbox trong tháng",
     badge: "Thực chi chuyển khoản",
-    meaning: "Tổng số tiền thực tế (Net 90% sau khi đã khấu trừ 10% thuế TNCN) đã được Kế toán duyệt chi và chuyển khoản thành công qua ngân hàng Napas 24/7 cho các đối tác trong tháng.",
-    formula: "Net Paid = 90% × Tổng số tiền rút được phê duyệt",
+    meaning: "Tổng số tiền thực tế (sau khi khấu trừ thuế theo từng lệnh) đã được Kế toán duyệt chi và chuyển khoản thành công qua ngân hàng Napas 24/7 cho các đối tác trong tháng.",
+    formula: "Thực chuyển = Tổng tiền gốc − Tổng thuế đã khấu trừ",
     impact: "Dòng tiền mặt thực tế đã xuất khỏi tài khoản ngân quỹ của công ty.",
   },
   taxWithheld: {
     title: "Thuế ngoài Sandbox trong tháng",
-    badge: "Thuế TNCN 10%",
-    meaning: "Tổng số tiền thuế thu nhập cá nhân 10% khấu trừ tại nguồn trên các lệnh rút tiền thực tế trong tháng để kê khai nộp ngân sách nhà nước.",
-    formula: "Thuế TNCN = 10% × Tổng số tiền rút",
+    badge: "Thuế TNCN",
+    meaning: "Tổng thuế đã khấu trừ trên các lệnh rút tiền hoàn tất trong kỳ.",
+    formula: "Thuế TNCN = Tổng thuế lưu trên từng lệnh đã hoàn tất",
     impact: "Nghĩa vụ thuế vãng lai của doanh nghiệp nộp cho cơ quan thuế thay cho đối tác.",
   },
   sandboxNetPaid: {
@@ -437,13 +439,13 @@ export function ExecutiveFinanceReport() {
                 "netPaid",
                 "Chi trả ngoài Sandbox trong tháng",
                 data.netPaid,
-                { subtext: "Thực nhận Net 90%" }
+                { subtext: "Thực nhận sau thuế" }
               )}
               {renderMetricCard(
                 "taxWithheld",
                 "Thuế ngoài Sandbox trong tháng",
                 data.taxWithheld,
-                { subtext: "Khấu trừ TNCN 10%" }
+                { subtext: "Thuế đã khấu trừ" }
               )}
             </div>
           </div>
@@ -499,8 +501,8 @@ export function ExecutiveFinanceReport() {
                     text: "(Thù lao đơn hoàn tất + Thưởng đạt KPI Deal + Thưởng mốc) ÷ Doanh thu sau hoàn trả × 100%. Luôn khống chế dưới trần tối đa 25%.",
                   },
                   {
-                    title: "Giải ngân & Thuế TNCN 10%",
-                    text: "Khấu trừ tại nguồn 10% thuế TNCN theo quy định khấu trừ thu nhập vãng lai khi đối tác tạo lệnh rút tiền được duyệt.",
+                    title: "Giải ngân & Thuế TNCN",
+                    text: "Thuế lũy tiến 5–35% theo tổng tiền yêu cầu rút trong tháng, theo chính sách SCANMS.",
                   },
                   {
                     title: "Bảo chứng Escrow 14 ngày",
@@ -591,6 +593,11 @@ interface Escrow {
   items: Array<{
     id: string;
     commissionAmount: string;
+    pendingStandardAmount?: string;
+    pendingDealAmount?: string;
+    dealBonusStatus?: string | null;
+    baseCommissionAmount?: string | null;
+    dealBonusAmount?: string | null;
     availableAt: string;
     order: {
       id: string;
@@ -608,13 +615,15 @@ interface Escrow {
       orderItems?: { quantity: number; unitPrice: string; appliedCommissionRate: string | null; product: { title: string; imageUrl?: string | null }; variant?: { name: string } | null }[];
       store: { name: string };
       returnRequest: { status: string } | null;
+      holdReasons: string[];
+      reviewReturnId?: string | null;
       referralReviewRequired?: boolean;
       testFixture?: boolean;
       referralRiskSignals?: string[];
     };
   }>;
 }
-export function EscrowFinanceReport() {
+export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = {}) {
   const [historyItem, setHistoryItem] = useState<Escrow["items"][number] | null>(null);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -628,6 +637,13 @@ export function EscrowFinanceReport() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const refreshedOldSnapshot = useRef(false);
+  useEffect(() => {
+    if (data?.items.some(item => escrowNumber(item.pendingStandardAmount) === null) && !refreshedOldSnapshot.current) {
+      refreshedOldSnapshot.current = true;
+      setRefresh(value => value + 1);
+    }
+  }, [data]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -663,6 +679,7 @@ export function EscrowFinanceReport() {
       {loading && <p role="status">Đang tải…</p>}
       {data && (
         <>
+          {data.items.some(item => escrowAmounts(item).standard === null) && <p role="alert" className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#805b27]">Chưa có dữ liệu tiền chờ đối soát. <button type="button" className="underline" onClick={() => setRefresh(value => value + 1)}>Tải lại dữ liệu</button></p>}
           <div className="min-w-0 w-full [overflow-wrap:anywhere]" hidden={!data.items.length}>
             <table className="block w-full min-w-0! table-fixed text-left text-sm xl:table [&_td]:min-w-0 [&_td]:align-top">
               <colgroup>
@@ -679,8 +696,8 @@ export function EscrowFinanceReport() {
                     "Đơn hàng",
                     "Sản phẩm / Gian hàng",
                     "Đơn giá",
-                    "Hoa hồng giữ",
-                    "Giải tỏa / Ngày giao",
+                    "Chờ đối soát",
+                    "Mốc đủ 14 ngày",
                     "Đổi trả",
                   ].map((label, index) => (
                     <th className={`px-3 py-4 font-medium text-[#7D715E] ${index === 2 || index === 3 ? 'text-right' : index === 5 ? 'text-center' : ''}`} key={label}>
@@ -701,17 +718,16 @@ export function EscrowFinanceReport() {
                       </button>
                     </td>
                     <td className="p-3">{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-product">
-                      {line.product.imageUrl && <img src={line.product.imageUrl} alt="" />}
+                      {line.product.imageUrl && <img src={line.product.imageUrl} onError={handleProductImageError} alt="" />}
                       <div className="min-w-0"><strong className="block leading-6">{line.product.title}</strong><small>{line.variant?.name || 'Không có biến thể'} · SL: {line.quantity}</small></div>
                     </div>)}<small className="escrow-store-name">{item.order.store.name}</small></td>
                     <td className="p-3 text-right tabular-nums"><span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Đơn giá</span>{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-unit-price leading-6">{money(line.unitPrice)}</div>)}</td>
                     <td className="p-3 text-right tabular-nums">
-                      <span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Hoa hồng giữ</span>
-                      <strong className="block leading-6">{money(item.commissionAmount)}</strong>
-                      {item.order.orderItems?.length === 1 && <small className="block text-[#7D715E]">{Number(item.order.orderItems[0].appliedCommissionRate)}% hoa hồng</small>}
+                      <span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Chờ đối soát</span>
+                      <strong className="block leading-6">{escrowMoney(escrowAmounts(item).standard)}</strong>
                     </td>
-                    <td className="p-3"><span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Giải tỏa / Ngày giao</span>
-                      <strong className="block font-semibold leading-6 tabular-nums" title="Hạn giải tỏa">{timestamp(item.availableAt)}</strong>
+                    <td className="p-3"><span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Mốc đủ 14 ngày</span>
+                      <strong className="block font-semibold leading-6 tabular-nums" title="Mốc thời gian; chỉ giải tỏa khi không còn điều kiện chặn">{timestamp(item.availableAt)}</strong>
                       <span className="mt-1 block text-xs text-[#7D715E]">Giao: {item.order.deliveredAt ? timestamp(item.order.deliveredAt) : 'Chưa có ngày giao'}</span>
                       <small className="mt-2 block font-medium text-[#8F682E]">{(() => {
                         const remaining = Date.parse(item.availableAt) - now;
@@ -722,17 +738,18 @@ export function EscrowFinanceReport() {
                         const hours = Math.floor(minutes % 1440 / 60);
                         return days > 0 ? `Còn ${days} ngày ${hours} giờ` : hours > 0 ? `Còn ${hours} giờ ${minutes % 60} phút` : `Còn ${minutes} phút`;
                       })()}</small>
-                      {(item.order.referralReviewRequired || (item.order.returnRequest && !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(item.order.returnRequest.status))) && <small className="mt-1 block text-[#DC2626]">Tiếp tục giữ khi hồ sơ đổi trả/thẩm định chưa được giải quyết.</small>}
+                      {item.order.holdReasons?.filter(reason => !['Cần kiểm tra ghi nhận tiếp thị', 'Chờ thẩm định tiếp thị'].includes(reason)).map(reason => <small key={reason} className="mt-1 block text-[#8F682E]">{item.order.reviewReturnId && ['Đang xử lý đổi trả', 'Đổi trả chưa hoàn tất', 'Tranh chấp chưa giải quyết'].includes(reason) ? <a className="underline underline-offset-2" href={`/admin/returns/${encodeURIComponent(item.order.reviewReturnId)}`} target="_blank" rel="noopener noreferrer">{reason === 'Đổi trả chưa hoàn tất' ? 'Đang xử lý đổi trả' : reason} · Xem hồ sơ ↗</a> : reason}</small>)}
+                      {item.order.referralReviewRequired && <ReferralReview compact orderId={item.order.id} signals={item.order.referralRiskSignals ?? []} onReviewed={() => { setRefresh(value => value + 1); onChanged?.(); }} />}
                     </td>
                     <td className="p-3 text-center">
                       <span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Đổi trả</span>
                       {item.order.returnRequest ? returnStatusLabel(item.order.returnRequest.status as ReturnStatus) : <span className="inline-flex max-w-full rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1 text-xs text-[#7D715E]">Không đổi trả</span>}
-                      {item.order.referralReviewRequired && <ReferralReview orderId={item.order.id} signals={item.order.referralRiskSignals ?? []} onReviewed={() => setRefresh(value => value + 1)} />}
                     </td>
                   </tr>
 
                 ))}
               </tbody>
+              <tfoot className="block bg-[#FAF8F5] xl:table-footer-group"><tr className="grid grid-cols-2 xl:table-row"><td colSpan={3} className="p-3 font-medium">Tổng trang · {data.items.length} khoản</td><td className="p-3 text-right font-semibold tabular-nums">{escrowMoney(escrowTotal(data.items, 'standard'))}</td><td colSpan={2} className="p-3 text-xs text-[#7D715E]">Chuyển sang ví khả dụng khi đủ điều kiện đối soát.</td></tr></tfoot>
             </table>
           </div>
           {!data.items.length && (
@@ -763,9 +780,10 @@ export function EscrowFinanceReport() {
       <Modal isOpen={!!historyItem} onClose={() => setHistoryItem(null)} title="Lịch sử đơn hàng" subtitle={historyItem?.order.externalOrderSn || historyItem?.order.id} icon={<Clock3 size={18} />} maxWidth="lg">
         {historyItem && <>
           <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
-            <div><span className="text-xs text-[#7D715E]">Hoa hồng tạm giữ</span><strong className="mt-1 block text-lg text-[#1A1612]">{money(historyItem.commissionAmount)}</strong></div>
-            <div><span className="text-xs text-[#7D715E]">Hạn giải tỏa</span><strong className="mt-1 block text-sm text-[#8F682E]">{timestamp(historyItem.availableAt)}</strong></div>
+            <div><span className="text-xs text-[#7D715E]">Chờ đối soát 14 ngày</span><strong className="mt-1 block text-lg text-[#1A1612]">{escrowMoney(escrowAmounts(historyItem).standard)}</strong></div>
+            <div><span className="text-xs text-[#7D715E]">Mốc đủ 14 ngày</span><strong className="mt-1 block text-sm text-[#8F682E]">{timestamp(historyItem.availableAt)}</strong></div>
           </div>
+          <p className="my-3 text-xs text-[#7D715E]">Chỉ chuyển sang ví khả dụng khi đủ 14 ngày và không còn hồ sơ đổi trả, tranh chấp hoặc thẩm định chưa giải quyết.</p>
           <dl className="m-0 divide-y divide-[#EAE4D7]">
             {([
               ['Tạo link', historyItem.order.referralLink?.createdAt],
@@ -784,7 +802,7 @@ export function EscrowFinanceReport() {
   );
 }
 
-function ReferralReview({ orderId, signals, onReviewed }: { orderId: string; signals: string[]; onReviewed: () => void }) {
+function ReferralReview({ orderId, signals, onReviewed, compact = false }: { orderId: string; signals: string[]; onReviewed: () => void; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [evidence, setEvidence] = useState<{
     orderCode: string; reviewRequired: boolean; customerName: string | null; collaboratorName: string | null;
@@ -814,7 +832,7 @@ function ReferralReview({ orderId, signals, onReviewed }: { orderId: string; sig
   };
   const label = (signal: string) => signal === 'SHARED_DELIVERY_ADDRESS' ? 'Trùng địa chỉ nhận hàng' : signal === 'SHARED_VERIFIED_BANK_ACCOUNT' ? 'Trùng tài khoản ngân hàng đã xác minh' : 'Cần đối soát';
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="mt-2 inline-flex max-w-full items-center justify-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-2 text-xs font-semibold text-[#8F682E]" title={signals.map(label).join('; ')}>Cần kiểm tra ›</button>
+    <button type="button" onClick={() => setOpen(true)} className={compact ? 'mt-1 block text-left text-xs leading-relaxed text-[#8F682E] underline underline-offset-2' : 'mt-2 inline-flex max-w-full items-center justify-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-2 text-xs font-semibold text-[#8F682E]'} title={signals.map(label).join('; ')}>{compact ? 'Cần kiểm tra ghi nhận tiếp thị · Kiểm tra ›' : 'Kiểm tra ›'}</button>
     <Modal isOpen={open} onClose={() => { if (!busy) setOpen(false); }} title="Đối chiếu đơn tiếp thị" subtitle={evidence?.orderCode} maxWidth="lg">
       <div className="space-y-4 text-left text-sm">
         {loading && <p role="status" className="text-[#7D715E]">Đang tải dữ liệu đối chiếu…</p>}
@@ -830,7 +848,7 @@ function ReferralReview({ orderId, signals, onReviewed }: { orderId: string; sig
           {evidence.reviewRequired ? <>
             <label className="block font-semibold" htmlFor={`review-reason-${orderId}`}>Căn cứ kết luận</label>
             <textarea id={`review-reason-${orderId}`} aria-label="Lý do kết luận thẩm định tự mua" className="min-h-24 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]" value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} placeholder="Ghi thông tin đã xác minh (ít nhất 10 ký tự)" disabled={busy} />
-            <p className="text-xs leading-relaxed text-[#7D715E]">Hợp lệ: tiếp tục theo điều kiện Escrow 14 ngày. Tự mua: thu hồi hoa hồng tạm giữ của đơn.</p>
+            <p className="text-xs leading-relaxed text-[#7D715E]">Đơn hợp lệ: tiếp tục đối soát 14 ngày. Đơn tự mua: thu hồi thù lao tạm giữ.</p>
             <div className="grid grid-cols-2 gap-2"><button type="button" className={`${button} bg-[#FBF5EB] font-semibold`} disabled={busy || reason.trim().length < 10} onClick={() => submit('CLEARED')}>Xác nhận hợp lệ</button><button type="button" className={`${button} bg-white font-semibold`} disabled={busy || reason.trim().length < 10} onClick={() => submit('SELF_REFERRAL')}>Xác nhận tự mua</button></div>
           </> : <p role="status" className="text-[#7D715E]">Đơn không còn chờ thẩm định. Đóng để xem danh sách mới.</p>}
         </>}
@@ -963,7 +981,7 @@ export function PartnerTaxStatements({ payoutId, taxAmount = '0', sandbox = fals
   if (payoutId) return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#795A2D] hover:border-[#C59B58] cursor-pointer" onClick={() => void printReceipt(payoutId)}>Bảng kê / PDF</button>
+        <button type="button" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#795A2D] hover:border-[#C59B58] cursor-pointer" onClick={() => void printReceipt(payoutId)}>Xem bảng kê</button>
         {!sandbox && Number(taxAmount) > 0 && <button type="button" className={button} onClick={() => void downloadCertificate(payoutId)}>Chứng từ thuế</button>}
       </div>
       {error && <p role="alert" className="max-w-64 whitespace-normal text-xs text-[#DC2626]">{error}</p>}

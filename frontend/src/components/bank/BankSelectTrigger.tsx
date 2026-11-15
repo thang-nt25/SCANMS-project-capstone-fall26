@@ -23,6 +23,7 @@ export const BankSelectTrigger: React.FC<BankSelectTriggerProps> = ({
   className,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [failedLogo, setFailedLogo] = useState<string | null>(null);
 
   const currentBank = findBankByQuery(value);
 
@@ -67,14 +68,12 @@ export const BankSelectTrigger: React.FC<BankSelectTriggerProps> = ({
           {currentBank ? (
             <>
               <div className="w-8 h-7 rounded-lg bg-white border border-[#EAE4D7] p-0.5 flex items-center justify-center shrink-0 shadow-2xs">
-                <img
+                {failedLogo === currentBank.logo ? <Landmark className="w-4 h-4 text-[#B88E4F]" aria-hidden="true"/> : <img
                   src={currentBank.logo}
                   alt={currentBank.shortName}
                   className="max-w-full max-h-full object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
+                  onError={() => setFailedLogo(currentBank.logo)}
+                />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">

@@ -39,6 +39,7 @@ describe('legacy orders without a completion period', () => {
       ]) },
       $transaction: jest.fn(fn => fn(tx)),
       store: { findUnique: jest.fn().mockResolvedValue({ name: 'Sora' }) },
+      storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
       monthlyBonusResult: { findUnique: jest.fn().mockResolvedValue(null) },
       bonusAdjustment: { findMany: jest.fn().mockResolvedValue([]) },
     };

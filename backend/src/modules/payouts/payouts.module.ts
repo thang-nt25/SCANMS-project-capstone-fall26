@@ -16,13 +16,10 @@ import { PayoutApprovalController } from './payout-approval.controller';
 import { AdminPayoutsController } from './admin-payouts.controller';
 import { FinanceReportController } from './finance-report.controller';
 import { FinanceReportService } from './finance-report.service';
-import { PayoutTransferService } from './payout-transfer.service';
 import { PayoutEmailScheduler } from './payout-email.scheduler';
 import { AuthModule } from '../auth/auth.module';
-import { BidvSandboxController } from './bidv-sandbox.controller';
-import { BidvSandboxClient } from './bidv-sandbox.client';
-import { BidvSandboxService } from './bidv-sandbox.service';
-import { BidvPayoutAdapter } from './bidv-payout.adapter';
+import { CustomerWithdrawalsService } from './customer-withdrawals.service';
+import { CustomerWithdrawalsController, AdminCustomerWithdrawalsController } from './customer-withdrawals.controller';
 
 @Module({
   imports: [ConfigModule],
@@ -45,26 +42,24 @@ class PayoutSettingsModule {}
         limits: {
           fileSize: Math.min(settings.maxBillBytes, 5 * 1024 * 1024),
           files: 1,
-          fields: 3,
+          fields: 4,
           fieldSize: 2048,
         },
       }),
     }),
   ],
   controllers: [
-    BidvSandboxController,
+    CustomerWithdrawalsController,
+    AdminCustomerWithdrawalsController,
     PayoutsController,
     MerchantPayoutsController,
     AdminPayoutsController,
     FinanceReportController,
   ],
   providers: [
-    BidvSandboxClient,
-    BidvPayoutAdapter,
-    BidvSandboxService,
+    CustomerWithdrawalsService,
     PayoutsService,
     FinanceReportService,
-    PayoutTransferService,
     PayoutEmailScheduler,
     PayoutTaxService,
     PayoutBillService,

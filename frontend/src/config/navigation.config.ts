@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import {
   TrendingUp,
+  BarChart3,
   Link2,
   Wallet,
   MessageSquare,
@@ -58,6 +59,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Nhà Sáng Tạo & KOC Tiếp Thị',
     items: [
       { path: '/collaborator/dashboard', label: 'Tổng quan', icon: TrendingUp, group: 1 },
+      { path: '/collaborator/reports', label: 'Báo cáo tiếp thị', icon: BarChart3, group: 1 },
       { path: '/collaborator/marketing', label: 'Công cụ tiếp thị', icon: Link2, group: 1 },
       { path: '/collaborator/collaboration', label: 'Hợp tác & Hàng mẫu', icon: MessageSquare, group: 1 },
       { path: '/collaborator/live-sessions', label: 'Phiên Live', icon: Radio, group: 1 },

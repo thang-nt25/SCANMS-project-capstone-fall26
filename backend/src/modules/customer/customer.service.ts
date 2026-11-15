@@ -636,14 +636,14 @@ export class CustomerService {
         'Đơn đang có hồ sơ đổi trả chưa kết thúc; vui lòng hoàn tất hồ sơ đó trước',
       );
 
-    const deliveredAt = order.deliveredAt || order.completedAt;
-    if (!deliveredAt) {
+    const deliveredAt = order.deliveredAt;
+    if (!deliveredAt || !Number.isFinite(deliveredAt.getTime()) || deliveredAt.getTime() > Date.now()) {
       throw new BadRequestException(
         'Chưa xác định được ngày giao hàng; vui lòng liên hệ hỗ trợ',
       );
     }
     const deadlineAt = new Date(deliveredAt.getTime() + RETURN_WINDOW_MS);
-    if (deadlineAt.getTime() < Date.now()) {
+    if (deadlineAt.getTime() <= Date.now()) {
       throw new BadRequestException('Đơn hàng đã quá thời hạn đổi trả 14 ngày');
     }
 
@@ -932,6 +932,9 @@ export class CustomerService {
     });
 
     await this.prisma.$transaction(async (tx) => {
+      // Serialize full-cart replacements, including when the cart is empty.
+      // Locking cart rows alone cannot protect concurrent first inserts.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
       await tx.customerCartItem.deleteMany({ where: { userId } });
       if (valid.length) await tx.customerCartItem.createMany({ data: valid });
     });

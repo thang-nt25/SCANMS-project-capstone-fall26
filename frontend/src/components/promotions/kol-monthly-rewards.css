@@ -1,0 +1,36 @@
+.kol-monthly-cards { display:grid; gap:16px; color:#1A1612; }
+.kol-monthly-card, .kol-monthly-empty { background:#fff; border:1px solid #EAE4D7; border-radius:14px; }
+.kol-monthly-card > header { display:flex; align-items:center; gap:12px; padding:20px 24px; border-bottom:1px solid #EAE4D7; }
+.kol-monthly-store-logo { width:44px; height:44px; flex-shrink:0; border:1px solid #EAE4D7; border-radius:11px; display:grid; place-items:center; color:#B88E4F; overflow:hidden; }
+.kol-monthly-store-logo img { width:100%; height:100%; object-fit:contain; }
+.kol-monthly-card h2 { margin:0; font-size:15px; font-weight:600; }
+.kol-monthly-card header p { margin:5px 0 0; font-size:12px; color:#7D715E; }
+.kol-monthly-policy-status { margin-left:auto; white-space:nowrap; font-size:11px; color:#946C32; background:#FBF5EB; border:1px solid #EEDFC6; border-radius:8px; padding:7px 10px; }
+.kol-monthly-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); padding:22px 24px; }
+.kol-monthly-metrics > div { display:grid; gap:8px; padding:0 20px; min-width:0; }
+.kol-monthly-metrics > div:first-child { padding-left:0; }
+.kol-monthly-metrics > div + div { border-left:1px solid #EAE4D7; }
+.kol-monthly-metrics span { color:#7D715E; font-size:12px; }
+.kol-monthly-metrics strong { font-size:23px; font-weight:600; font-variant-numeric:tabular-nums; }
+.kol-monthly-metrics > div:last-child strong { color:#B88E4F; }
+.kol-monthly-progress { margin:0 24px 22px; }
+.kol-monthly-progress > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; color:#7D715E; margin-bottom:10px; }
+.kol-monthly-progress strong { color:#946C32; font-weight:600; }
+.kol-monthly-track { height:7px; border-radius:10px; background:#F3EFE6; overflow:hidden; }
+.kol-monthly-track > span { display:block; height:100%; background:#C59B58; border-radius:inherit; }
+.kol-monthly-card > footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 24px; border-top:1px solid #EAE4D7; color:#7D715E; font-size:12px; }
+.kol-monthly-personal-status { display:flex; align-items:center; gap:6px; }
+.kol-monthly-personal-status svg { color:#059669; }
+.kol-monthly-card footer small { display:block; margin-top:5px; font-size:11px; color:#946C32; }
+.kol-monthly-card button, .kol-monthly-orders button { display:inline-flex; align-items:center; justify-content:center; gap:6px; height:36px; padding:0 12px; border:1px solid #EEDFC6; border-radius:9px; background:#FBF5EB; color:#946C32; font-size:12px; }
+.kol-monthly-card button:disabled { opacity:.45; cursor:not-allowed; }
+.kol-monthly-review-note { margin:0 24px 18px; font-size:12px; color:#DC2626; }
+.kol-monthly-empty { padding:28px; color:#7D715E; font-size:13px; }
+.kol-monthly-orders { display:grid; font-size:13px; color:#1A1612; }
+.kol-monthly-orders > header, .kol-monthly-orders > footer { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:12px 0; color:#7D715E; }
+.kol-monthly-orders > article { display:flex; justify-content:space-between; gap:16px; padding:16px 0; border-top:1px solid #EAE4D7; }
+.kol-monthly-orders > article > strong { white-space:nowrap; font-weight:600; }
+.kol-monthly-orders small { display:block; color:#7D715E; font-size:11px; margin-top:5px; }
+.kol-monthly-order-product { display:flex; align-items:center; gap:8px; margin-top:10px; color:#7D715E; font-size:12px; }
+.kol-monthly-order-product img { width:36px; height:36px; object-fit:contain; border:1px solid #EAE4D7; border-radius:6px; }
+@media(max-width:639px) { .kol-monthly-card > header { padding:16px; flex-wrap:wrap; } .kol-monthly-policy-status { margin-left:56px; } .kol-monthly-metrics { padding:18px 16px; } .kol-monthly-metrics > div { padding:0 8px; } .kol-monthly-metrics span { font-size:10px; min-height:28px; } .kol-monthly-metrics strong { font-size:14px; overflow-wrap:anywhere; } .kol-monthly-progress { margin:0 16px 18px; } .kol-monthly-card > footer { padding:14px 16px; flex-wrap:wrap; } .kol-monthly-orders > article { flex-wrap:wrap; } }

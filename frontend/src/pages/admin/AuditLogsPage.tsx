@@ -1,3 +1,4 @@
+import { handleAvatarImageError } from '@/utils/image-fallback.utils';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ShieldCheck,
@@ -31,7 +32,7 @@ import {
 } from '../../services/audit.service';
 import { Select } from '../../components/ui/Select';
 import { StatCard } from '../../components/ui/StatCard';
-import { Modal } from '../../components/ui/Modal';
+import './audit-logs.css';
 
 export const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
@@ -40,7 +41,6 @@ export const AuditLogsPage: React.FC = () => {
   const [exporting, setExporting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState('');
-  const [showComplianceModal, setShowComplianceModal] = useState<boolean>(false);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -210,6 +210,8 @@ export const AuditLogsPage: React.FC = () => {
     switch (role) {
       case 'SYSTEM_ADMIN':
         return 'Quản trị viên';
+      case 'SYSTEM_MANAGER':
+        return 'Vận hành / Kế toán';
       case 'SHOP_MANAGER':
         return 'Chủ gian hàng';
       case 'COLLABORATOR':
@@ -224,6 +226,11 @@ export const AuditLogsPage: React.FC = () => {
   };
 
   const ACTION_NAME_VI_FALLBACK: Record<string, string> = {
+    AI_FRAUD_FLAG: 'Ghi nhận cảnh báo gian lận',
+    CUSTOMER_WITHDRAWAL_APPROVED: 'Xác nhận rút tiền Customer',
+    ADMIN_APPROVE_PAYOUT: 'Xác nhận chi trả KOL',
+    HTTP_POST_AdminCustomerWithdrawalsController_approve: 'Gửi xác nhận rút tiền Customer',
+    HTTP_PUT_CustomerController_syncCart: 'Đồng bộ giỏ hàng',
     ANALYTICS_PAGE_VIEW: 'Xem trang phân tích & báo cáo',
     ANALYTICS_CTA_CLICK: 'Tương tác nút thao tác trên sàn',
     CREATE_REFERRAL_LINK: 'Tạo link tiếp thị liên kết',
@@ -258,8 +265,8 @@ export const AuditLogsPage: React.FC = () => {
   };
 
   const getActionNameVi = (action: string, actionNameVi?: string): string => {
-    if (actionNameVi && actionNameVi.trim()) return actionNameVi;
     if (ACTION_NAME_VI_FALLBACK[action]) return ACTION_NAME_VI_FALLBACK[action];
+    if (actionNameVi && actionNameVi.trim()) return actionNameVi;
     return action
       .toLowerCase()
       .replace(/_/g, ' ')
@@ -400,44 +407,12 @@ export const AuditLogsPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-w-0 text-[#1A1612] flex flex-col gap-3 pb-8">
-      {/* Action & Info Row */}
-      <div className="flex items-center justify-between gap-2 pb-1">
-        <button
-          type="button"
-          onClick={() => setShowComplianceModal(true)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-semibold border border-[#EEDFC6] transition cursor-pointer"
-        >
-          <Info className="w-3.5 h-3.5" />
-          <span>Quy chuẩn kiểm toán</span>
-        </button>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={loadLogs}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            disabled={exporting || loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-60"
-          >
-            <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
-            <span>{exporting ? 'Đang xuất CSV...' : 'Xuất CSV'}</span>
-          </button>
-        </div>
-      </div>
+    <div id="audit-logs-page" className="w-full min-w-0 text-[#1A1612] flex flex-col gap-3 pb-8">
       {statsError && <p role="alert" className="m-0 text-xs text-[#DC2626]">{statsError}<button className="ml-2 underline" onClick={() => void loadStatsAndActions()}>Thử lại thống kê</button></p>}
 
       <div className="w-full min-w-0">
         {/* 2. 4 KPI Cards Chuẩn Hóa */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+        <div className="audit-summary-grid grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           <StatCard
             title="Tổng hoạt động"
             value={stats?.totalEvents?.toLocaleString('vi-VN') || 0}
@@ -468,8 +443,8 @@ export const AuditLogsPage: React.FC = () => {
         </div>
 
         {/* Filters & Search Toolbar */}
-        <div className="mt-5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm sm:p-5 xl:mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,1fr)_auto] gap-3.5 items-center">
+        <div className="audit-filter-card">
+          <div className="audit-primary-filters">
             {/* Search Input */}
             <div className="relative min-w-0">
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
@@ -493,9 +468,9 @@ export const AuditLogsPage: React.FC = () => {
             </div>
 
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-[auto_195px] gap-3 items-center min-w-0">
+            <div className="audit-secondary-filters">
               {/* Timeframe Selector */}
-              <div className="grid grid-cols-4 gap-1 h-11 p-1 border border-[#EAE4D7] rounded-xl bg-white">
+              <div className="audit-timeframes">
                 <button
                   aria-pressed={selectedTimeframe === '24h'} onClick={() => { setSelectedTimeframe('24h'); setCurrentPage(1); }}
                   className={`h-full rounded-lg px-2 text-xs font-semibold transition-all ${
@@ -534,7 +509,7 @@ export const AuditLogsPage: React.FC = () => {
                       : 'text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  Tất cả
+                  Toàn thời gian
                 </button>
               </div>
 
@@ -557,14 +532,14 @@ export const AuditLogsPage: React.FC = () => {
           </div>
 
           {/* Category Tabs & Actions */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 mt-3 pt-3 border-t border-[#EAE4D7]">
-            <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto pb-1 scrollbar-thin">
+          <div className="audit-category-toolbar">
+            <div className="audit-category-filters">
               {[
                 { id: 'ALL', label: 'Tất cả' },
-                { id: 'AUTH', label: 'Tài khoản & Đăng nhập' },
-                { id: 'FINANCIAL', label: 'Tiền & Hoa hồng' },
-                { id: 'AI_SECURITY', label: 'Bảo mật & Cảnh báo' },
-                { id: 'PRODUCT', label: 'Hàng hóa & Sản phẩm' },
+                { id: 'AUTH', label: 'Tài khoản' },
+                { id: 'FINANCIAL', label: 'Tài chính' },
+                { id: 'AI_SECURITY', label: 'Bảo mật' },
+                { id: 'PRODUCT', label: 'Sản phẩm' },
                 { id: 'SAMPLE_CAMPAIGN', label: 'Hàng mẫu & Chiến dịch' },
                 { id: 'SYSTEM', label: 'Hệ thống' },
               ].map((tab) => (
@@ -586,31 +561,12 @@ export const AuditLogsPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="flex items-center shrink-0 gap-2 self-end lg:self-auto">
-              <button
-                onClick={handleExportCsv}
-                disabled={exporting}
-                className="inline-flex items-center justify-center gap-1.5 h-10 px-3.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] transition-colors cursor-pointer"
-              >
-                <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
-                <span>{exporting ? 'Đang xuất CSV...' : 'Xuất CSV'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  loadStatsAndActions();
-                  loadLogs();
-                }}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] shadow-sm transition hover:border-[#C59B58] hover:text-[#1A1612]"
-                aria-label="Làm mới nhật ký" title="Làm mới dữ liệu"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : ''}`} />
-              </button>
-            </div>
+
           </div>
         </div>
 
         {/* Audit Logs Table */}
-        <div className="mt-5 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm xl:mt-6">
+        <div className="audit-table-card">
           {error && (
             <div className="flex items-center gap-2 border-b border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C]">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -620,19 +576,21 @@ export const AuditLogsPage: React.FC = () => {
 
           <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] px-4 py-3">
             <h2 className="text-sm font-bold">Nhật ký hoạt động</h2>
-            <span className="text-xs text-[#7D715E]">{totalCount.toLocaleString('vi-VN')} sự kiện</span>
+            <div className="audit-table-header-actions">            <span className="text-xs text-[#7D715E]">{totalCount.toLocaleString('vi-VN')} sự kiện</span>            <div className="audit-export-action">
+              <button
+                onClick={handleExportCsv}
+                disabled={exporting}
+                className="inline-flex items-center justify-center gap-1.5 h-10 px-3.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] transition-colors cursor-pointer"
+              >
+                <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
+                <span>{exporting ? 'Đang xuất CSV...' : 'Xuất CSV'}</span>
+              </button>
+
+            </div></div>
           </div>
-          <div className="overflow-x-auto" role="region" aria-label="Bảng nhật ký hệ thống, có thể cuộn ngang" tabIndex={0}>
-            <table className="w-full min-w-[1180px] table-fixed border-collapse text-left">
-              <colgroup>
-                <col className="w-[12%]" />
-                <col className="w-[20%]" />
-                <col className="w-[23%]" />
-                <col className="w-[15%]" />
-                <col className="w-[11%]" />
-                <col className="w-[10%]" />
-                <col className="w-[9%]" />
-              </colgroup>
+          <div className="audit-table-region" role="region" aria-label="Audit log table">
+            <table className="audit-activity-table">
+              <colgroup><col style={{width:'11%'}}/><col style={{width:'20%'}}/><col style={{width:'24%'}}/><col style={{width:'15%'}}/><col style={{width:'11%'}}/><col style={{width:'10%'}}/><col style={{width:'9%'}}/></colgroup>
               <thead>
                 <tr className="border-b border-[#EAE4D7] bg-[#F3EFE6] text-[11px] font-bold uppercase tracking-[0.07em] text-[#5F5547]">
                   <th scope="col" className="px-4 py-4">Thời gian</th>
@@ -694,7 +652,7 @@ export const AuditLogsPage: React.FC = () => {
                             <div className="w-8 h-8 rounded-full bg-[#EBD08C]/15 text-[#B88E4F] border border-[#C59B58]/30 flex items-center justify-center font-bold text-xs flex-shrink-0">
                               {log.actor.avatarUrl ? (
                                 <img
-                                  src={log.actor.avatarUrl}
+                                  src={log.actor.avatarUrl} onError={handleAvatarImageError}
                                   alt={log.actor.name}
                                   className="w-full h-full rounded-full object-cover"
                                 />
@@ -707,7 +665,7 @@ export const AuditLogsPage: React.FC = () => {
                                 {log.actor.name}
                               </div>
                               <div className="max-w-[190px] truncate text-[11px] text-[#7D715E]">
-                                <span className="font-semibold text-[#8A642C]">{getRoleLabel(log.actor.role)}</span> • {log.actor.email}
+                                <span className="audit-actor-role">{getRoleLabel(log.actor.role)}</span><span className="audit-actor-email">{log.actor.email}</span>
                               </div>
                             </div>
                           </div>
@@ -828,6 +786,7 @@ export const AuditLogsPage: React.FC = () => {
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-5 text-sm">
+              <p className="m-0 break-words text-xs text-[#7D715E]">Mã hành động: <code className="[overflow-wrap:anywhere]">{selectedLog.action}</code></p>
               {/* Meta Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
                 <div>
@@ -926,54 +885,7 @@ export const AuditLogsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Quy chuẩn Bảo mật & Dấu vết Kiểm toán */}
-      {showComplianceModal && (
-        <Modal
-          isOpen
-          onClose={() => setShowComplianceModal(false)}
-          title="Quy chuẩn Bảo mật & Dấu vết Kiểm toán Hệ thống"
-          maxWidth="md"
-        >
-          <div className="space-y-3.5 text-xs text-[#1A1612]">
-            <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-1">
-              <span className="font-bold text-[#8C6226] block">
-                1. Nguyên tắc bất biến của Sổ cái Kiểm toán
-              </span>
-              <p className="text-[#7D715E]">
-                Mọi tác vụ quản trị, thay đổi cấu hình hoa hồng, duyệt giải ngân thù lao, duyệt đổi trả và can thiệp bảo mật đều được ghi nhận tự động vào cơ sở dữ liệu nhật ký bất biến.
-              </p>
-            </div>
 
-            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-              <span className="font-bold text-[#1A1612] block">
-                2. Bảo vệ dữ liệu nhạy cảm (Data Masking)
-              </span>
-              <p className="text-[#7D715E]">
-                Các thông tin định danh nhạy cảm bao gồm mật khẩu, mã OTP, token ủy quyền và số tài khoản ngân hàng đều được mã hóa hoặc che tự động trong quá trình lưu trữ, hiển thị và trích xuất.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-              <span className="font-bold text-[#1A1612] block">
-                3. Quy chuẩn xuất dữ liệu đối soát CSV
-              </span>
-              <p className="text-[#7D715E]">
-                Tập tin xuất CSV duy trì đồng nhất theo bộ lọc thời gian và danh mục đang chọn, hỗ trợ tối đa 2.000 bản ghi mới nhất cho mỗi lần tải về nhằm đảm bảo hiệu năng và tính tuân thủ.
-              </p>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowComplianceModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
-              >
-                Đã hiểu
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 };

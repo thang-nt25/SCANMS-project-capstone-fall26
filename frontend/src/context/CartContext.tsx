@@ -176,6 +176,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Only persisted fields trigger a write, never refreshed images or prices.
+  const cartSyncPayload = JSON.stringify(cart.map((item) => ({
+    productId: item.productId,
+    variantId: normalizeOrderVariantId(item.variantId),
+    quantity: item.quantity,
+  })));
+
   useEffect(() => {
     if (!activeUserId || hydratedUserRef.current !== activeUserId) return;
     const session = sessionRef.current;
@@ -190,15 +197,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const timer = window.setTimeout(() => {
       if (!isCurrent()) return;
       setIsCartSyncing(true);
-      customerService.syncCart(cart.map((item) => ({
-        productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity,
-      })), session)
+      customerService.syncCart(JSON.parse(cartSyncPayload), session)
         .then((result) => { if (isCurrent()) setCartSyncedAt(result.syncedAt || new Date().toISOString()); })
         .catch(() => { if (isCurrent()) toast.error('Chưa thể đồng bộ giỏ hàng. Sản phẩm vẫn được giữ trên thiết bị.'); })
         .finally(() => { if (isCurrent()) setIsCartSyncing(false); });
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [cart, activeUserId]);
+  }, [cartSyncPayload, activeUserId]);
 
   // Sync cart to active user's localStorage
   useEffect(() => {
@@ -263,12 +268,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (cancelled || imageByProductId.size === 0) return;
       const refreshItem = (item: CartItem): CartItem => {
         const imageUrl = imageByProductId.get(item.productId);
-        return imageUrl
-          ? { ...item, imageUrl: getSafeProductImageUrl(imageUrl, item.title, item.variantName) }
-          : item;
+        if (!imageUrl) return item;
+        const nextImage = getSafeProductImageUrl(imageUrl, item.title, item.variantName);
+        return nextImage === item.imageUrl ? item : { ...item, imageUrl: nextImage };
       };
-      setCart((previous) => previous.map(refreshItem));
-      setCheckoutItems((previous) => previous.map(refreshItem));
+      const refreshList = (previous: CartItem[]) => {
+        const next = previous.map(refreshItem);
+        return next.some((item, index) => item !== previous[index]) ? next : previous;
+      };
+      setCart(refreshList);
+      setCheckoutItems(refreshList);
     };
 
     void refreshImages();
@@ -401,7 +410,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Add Item to Cart
   const addItem = useCallback(
-    ({ product, variantId, quantity = 1, store, openCartAfterAdd = true, liveSessionId, liveCouponCode }: AddItemParams) => {
+    ({ product, variantId, quantity = 1, store, openCartAfterAdd = false, liveSessionId, liveCouponCode }: AddItemParams) => {
       const prodTitle = product.title || product.name || 'Sản phẩm';
       const prodImage = getSafeProductImageUrl(product.imageUrl || product.image, prodTitle);
       const availableVariants = product.variants || [];

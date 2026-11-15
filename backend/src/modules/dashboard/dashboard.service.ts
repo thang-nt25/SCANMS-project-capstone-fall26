@@ -1185,6 +1185,7 @@ export class DashboardService {
 
     const where: any = {
       attributedCollaboratorId: collaboratorId,
+      ...(query.storeId ? { storeId: query.storeId } : {}),
     };
 
     if (query.status && query.status !== 'ALL') {
@@ -1208,7 +1209,7 @@ export class DashboardService {
       ];
     }
 
-    const [total, orders] = await Promise.all([
+    const [total, orders, storeOrders] = await Promise.all([
       this.prisma.order.count({ where }),
       this.prisma.order.findMany({
         where,
@@ -1274,7 +1275,22 @@ export class DashboardService {
           },
         },
       }),
+      this.prisma.order.findMany({
+        where: { attributedCollaboratorId: collaboratorId, status: { in: ['PENDING', 'SHIPPING', 'DELIVERED', 'COMPLETED'] } },
+        select: { storeId: true, finalAmount: true, store: { select: { name: true, logoUrl: true } }, orderItems: { select: { calculatedCommissionAmount: true } } },
+      }),
     ]);
+
+    const storeMap = new Map<string, { storeId: string; storeName: string; storeLogo: string | null; ordersCount: number; totalRevenue: number; totalCommission: number }>();
+    for (const order of storeOrders) {
+      const store = storeMap.get(order.storeId) || { storeId: order.storeId, storeName: order.store?.name || 'Cửa hàng', storeLogo: order.store?.logoUrl || null, ordersCount: 0, totalRevenue: 0, totalCommission: 0 };
+      store.ordersCount++;
+      store.totalRevenue += Number(order.finalAmount);
+      store.totalCommission += order.orderItems.reduce((sum, item) => sum + Number(item.calculatedCommissionAmount || 0), 0);
+      storeMap.set(order.storeId, store);
+    }
+    const storeTotal = [...storeMap.values()].reduce((sum, store) => sum + store.totalCommission, 0);
+    const stores = [...storeMap.values()].sort((a, b) => b.totalCommission - a.totalCommission).map(store => ({ ...store, percentage: storeTotal > 0 ? store.totalCommission / storeTotal * 100 : 0 }));
 
     const items = orders.map((order) => {
       const totalCommission = order.orderItems.reduce(
@@ -1296,6 +1312,7 @@ export class DashboardService {
           ? order.customerPhone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2')
           : '***',
         storeName: order.store?.name || 'Gian hàng',
+        storeId: order.store?.id,
         storeLogo: order.store?.logoUrl,
         finalAmount: Number(order.finalAmount),
         commissionAmount: totalCommission,
@@ -1325,6 +1342,7 @@ export class DashboardService {
       limit,
       totalPages: Math.ceil(total / limit),
       items,
+      stores,
     };
   }
 

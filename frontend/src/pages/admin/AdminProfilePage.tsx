@@ -1,3 +1,4 @@
+import { handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import { Loader2, UserRound, ShieldCheck, Camera, LockKeyhole, Eye, EyeOff, Check, Mail, Phone, Save } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -107,7 +108,7 @@ export default function AdminProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr] gap-5 items-start">
           <aside className="flex flex-col items-center p-6 sm:p-7 border border-[#EAE4D7] rounded-2xl bg-white text-center shadow-2xs">
             <div className="relative w-20 h-20 mx-auto mb-3.5">
-              {user?.avatarUrl ? <img src={user.avatarUrl} alt="Ảnh đại diện" className="w-20 h-20 rounded-full object-cover border border-[#EEDFC6] bg-[#FBF5EB]" /> : <span className="grid place-items-center w-20 h-20 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] text-2xl font-semibold">{user?.fullName?.charAt(0).toUpperCase() || 'A'}</span>}
+              {user?.avatarUrl ? <img src={user.avatarUrl} onError={handleAvatarImageError} alt="Ảnh đại diện" className="w-20 h-20 rounded-full object-cover border border-[#EEDFC6] bg-[#FBF5EB]" /> : <span className="grid place-items-center w-20 h-20 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] text-2xl font-semibold">{user?.fullName?.charAt(0).toUpperCase() || 'A'}</span>}
               <button type="button" className="grid place-items-center absolute -bottom-0.5 -right-0.5 w-7 h-7 border border-[#EAE4D7] rounded-full bg-white text-[#B88E4F] hover:bg-[#FBF5EB] transition-colors cursor-pointer shadow-xs" onClick={() => avatarInput.current?.click()} disabled={busy} aria-label="Đổi ảnh đại diện">{uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}</button>
             </div>
             <h2 className="m-0 mb-1.5 text-base font-semibold text-[#1A1612] break-all">{user?.fullName || 'Tài khoản quản trị'}</h2>

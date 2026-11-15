@@ -1,27 +1,29 @@
 import { useEffect, useState } from "react";
 import { createPortal } from 'react-dom';
 import { Modal } from '@/components/ui/Modal';
-import { TrendingUp, CheckCircle, ChevronRight, Calendar, Clock, ShieldAlert, Lock } from "lucide-react";
+import { CheckCircle, Lock } from "lucide-react";
+import { getSafeProductImageUrl, handleProductImageError } from '@/utils/marketplace.utils';
+import './deal-kpi-progress.css';
 import {
   referralLinksService,
   type DealKpiProgress as Progress,
 } from "@/services/referral-links.service";
 
 const labels: Record<Progress["state"], string> = {
-  PENDING_ADMIN_APPROVAL: "Chờ Admin duyệt ngoại lệ — chưa bắt đầu tính giờ",
-  PENDING: "Chờ Shop duyệt — chưa bắt đầu tính giờ",
-  ACTIVE: "Đang chạy cam kết KPI sản lượng",
-  SETTLING: "Đang chờ đối soát đơn hàng",
-  ACHIEVED: "Đã đạt KPI cam kết",
-  REVIEW_REQUIRED: "Chưa đạt KPI — chờ Shop xem xét",
+  PENDING_ADMIN_APPROVAL: "Chờ Admin phê duyệt",
+  PENDING: "Chờ Shop chấp thuận",
+  ACTIVE: "Đang thực hiện",
+  SETTLING: "Chờ đối soát",
+  ACHIEVED: "Đã đạt KPI",
+  REVIEW_REQUIRED: "Chờ cửa hàng xem xét",
   CLOSED: "Deal đã đóng",
-  LEGACY: "Cam kết chỉ tiêu sản lượng",
+  LEGACY: "Cam kết cũ",
   REJECTED: "Đề xuất đã bị từ chối",
 };
 
 const formatVnd = (val: number) => (val || 0).toLocaleString('vi-VN') + ' ₫';
 
-export function DealKpiProgress({ id }: { id: string }) {
+export function DealKpiProgress({ id, product, storeName, triggerLabel = 'Xem chi tiết' }: { id: string; product?: { title?: string; imageUrl?: string | null }; storeName?: string; triggerLabel?: string }) {
   const [open, setOpen] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState("");
@@ -69,153 +71,48 @@ export function DealKpiProgress({ id }: { id: string }) {
   }, [id, open, reload]);
 
   return (
-    <div className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden text-xs">
+    <div className="deal-kpi-entry">
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        className="w-full flex min-h-11 items-center justify-between gap-2 px-3 py-2 hover:bg-[#FAF8F5] transition-colors text-left font-medium text-[#1A1612]"
+        className="deal-kpi-details-button"
+        title="Xem tiến độ và thời hạn Deal"
       >
-        <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-[#B88E4F]" />
-          <span>Tiến độ &amp; thời hạn</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E]">
-          <span>Xem chi tiết</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-        </div>
+        {triggerLabel}
       </button>
 
       {open && createPortal(
-        <Modal isOpen={open} onClose={() => setOpen(false)} title="Tiến độ & thời hạn" maxWidth="lg" stickyHeader>
-        <div className="bg-white space-y-3 text-xs">
-          {busy && !progress && (
-            <p className="text-[#7D715E] text-[11px]">Đang tải số liệu...</p>
-          )}
-          {error && (
-            <p className="text-rose-700 bg-rose-50 p-2 rounded-lg border border-rose-200 text-[11px]">
-              {error}
-            </p>
-          )}
-          {progress && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="font-semibold text-[#1A1612]">
-                  {labels[progress.state]}
-                </span>
-                <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
-                  {progress.percent}% hoàn thành
-                </span>
+        <Modal isOpen={open} onClose={() => setOpen(false)} title="Tiến độ Deal" maxWidth="3xl" stickyHeader className="deal-kpi-dialog" bodyClassName="deal-kpi-body">
+          {product && <div className="deal-kpi-product">
+            <img src={getSafeProductImageUrl(product.imageUrl)} onError={handleProductImageError} alt={product.title || 'Sản phẩm'} />
+            <div><h4>{product.title || 'Sản phẩm tiếp thị'}</h4><p>{storeName}</p></div>
+          </div>}
+          {busy && !progress && <p role="status" className="deal-kpi-loading">Đang tải tiến độ…</p>}
+          {error && <p role="alert" className="deal-kpi-error">{error}</p>}
+          {progress && <div className="deal-kpi-content">
+            <section className="deal-kpi-overview" aria-label="Tiến độ KPI">
+              <div className="deal-kpi-progress-heading"><div><span>Hoàn thành KPI</span><strong>{Number(progress.percent).toLocaleString('vi-VN')}<small>%</small></strong></div>
+                <div className="deal-kpi-state"><span>{labels[progress.state]}</span></div>
               </div>
-              <div className="space-y-1">
-                <div className="flex flex-wrap justify-between gap-1.5 text-[11px] text-[#7D715E]">
-                  <span>{progress.targetRevenue ? 'Doanh thu hợp lệ đã chốt' : 'Đơn hàng hợp lệ đã chốt'}</span>
-                  <strong className="text-[#1A1612] tabular-nums">
-                    {progress.targetRevenue ? `${Number(progress.validRevenue || 0).toLocaleString('vi-VN')} / ${Number(progress.targetRevenue).toLocaleString('vi-VN')} đ` : `${progress.completedOrders} / ${progress.targetOrders ?? '—'} đơn`}
-                  </strong>
-                </div>
-                <div className="w-full h-2 bg-[#F3EFE6] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#C59B58] transition-all"
-                    style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
-                  />
-                </div>
-              </div>
-
-              <section className="rounded-xl border border-[#EAE4D7] bg-white" aria-label="Chi tiết thù lao">
-                <div className="flex min-h-10 items-center gap-2 px-3 py-2 text-xs font-medium text-[#1A1612]">
-                  <ShieldAlert className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-                  Chi tiết thù lao
-                  <span className="ml-auto text-[11px] font-normal text-[#7D715E]">
-                    {progress.rebateStatus === 'UNLOCKED' ? 'Đã mở khóa' : progress.rebateStatus === 'FORFEITED' ? 'Không đạt KPI' : 'Đang bảo lưu'}
-                  </span>
-                </div>
-                <div className="border-t border-[#EAE4D7] p-3">
-                  <div className="grid grid-cols-2 divide-x divide-[#EAE4D7]">
-                    <div className="min-w-0 pr-3">
-                      <p className="m-0 text-[11px] text-[#7D715E]">Hoa hồng cơ sở</p>
-                      <p className="mb-0 mt-1 text-sm font-semibold tabular-nums text-[#1A1612]">{formatVnd(progress.baseCommissionEarned || 0)}</p>
-                    </div>
-                    <div className="min-w-0 pl-3">
-                      <p className="m-0 text-[11px] text-[#7D715E]">Thưởng cam kết +{progress.rebateBonusRate || 0}%</p>
-                      <p className="mb-0 mt-1 text-sm font-semibold tabular-nums text-[#B88E4F]">{formatVnd(progress.vipRebateEscrow || 0)}</p>
-                    </div>
-                  </div>
-                  <p className="mb-0 mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-[#7D715E]">
-                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                    <span>{progress.rebateStatus === 'UNLOCKED'
-                      ? 'Khoản thưởng cam kết đã được mở khóa.'
-                      : progress.rebateStatus === 'FORFEITED'
-                        ? 'Khoản thưởng không được mở khóa do chưa đạt KPI.'
-                        : progress.targetRevenue
-                          ? `Thưởng được mở khóa khi đạt doanh số hợp lệ ${formatVnd(Number(progress.targetRevenue))} theo cam kết.`
-                          : progress.targetOrders
-                            ? `Thưởng được mở khóa khi đạt ${progress.targetOrders} đơn hợp lệ theo cam kết.`
-                            : 'Chưa có chỉ tiêu mở khóa được ghi nhận.'}</span>
-                  </p>
-                </div>
-              </section>
-
-              <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] text-[#7D715E] border-t border-[#EAE4D7]">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-[#B88E4F]" />
-                  <span>
-                    Bắt đầu:{" "}
-                    <strong className="text-[#1A1612]">
-                      {progress.startsAt
-                        ? new Date(progress.startsAt).toLocaleDateString("vi-VN")
-                        : "—"}
-                    </strong>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-[#B88E4F]" />
-                  <span>
-                    Hạn chốt:{" "}
-                    <strong className="text-[#1A1612]">
-                      {progress.endsAt
-                        ? new Date(progress.endsAt).toLocaleDateString("vi-VN")
-                        : "—"}
-                    </strong>
-                  </span>
-                </div>
-              </div>
-
-              {progress.state === 'ACHIEVED' && progress.rebateStatus !== 'UNLOCKED' && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      setBusy(true);
-                      await referralLinksService.settleDeal(id);
-                      setReload((n) => n + 1);
-                    } catch (e: any) {
-                      setError(e?.response?.data?.message || 'Không thể quyết toán Deal');
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                  disabled={busy}
-                  className="w-full py-2 px-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#1A1612] font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  <span>Quyết toán &amp; Mở khóa Quỹ Escrow ({formatVnd(progress.vipRebateEscrow || 0)})</span>
-                </button>
-              )}
-
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={() => setReload((n) => n + 1)}
-                  disabled={busy}
-                  className="px-2 py-1 rounded bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] text-[10.5px] disabled:opacity-50"
-                >
-                  Làm mới số liệu
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+              <div role="progressbar" aria-label="Tỷ lệ hoàn thành KPI" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progress.percent))} className="deal-kpi-track"><div style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }} /></div>
+              <div className="deal-kpi-target"><span>Đã đạt <strong>{progress.targetRevenue ? formatVnd(Number(progress.validRevenue || 0)) : `${progress.completedOrders} đơn`}</strong></span><span>Mục tiêu <strong>{progress.targetRevenue ? formatVnd(Number(progress.targetRevenue)) : progress.targetOrders != null ? `${progress.targetOrders} đơn` : 'Chưa thiết lập'}</strong></span></div>
+            </section>
+            <section className="deal-kpi-money" aria-label="Chi tiết thù lao">
+              <div><span>Thù lao cơ sở</span><strong>{formatVnd(progress.baseCommissionEarned || 0)}</strong></div>
+              <div><span>{progress.rebateStatus === 'UNLOCKED' ? 'Chênh lệch Deal đã mở khóa' : progress.rebateStatus === 'FORFEITED' ? 'Chênh lệch Deal không được mở khóa' : 'Chênh lệch Deal đang giữ'}</span><strong>{formatVnd(progress.vipRebateEscrow || 0)}</strong></div>
+            </section>
+            <p className="deal-kpi-note"><Lock size={15} /><span>{progress.rebateStatus === 'UNLOCKED' ? 'Chênh lệch Deal đã được mở khóa.' : progress.rebateStatus === 'FORFEITED' ? 'Chênh lệch không được mở khóa do chưa đạt KPI.' : progress.state === 'PENDING' || progress.state === 'PENDING_ADMIN_APPROVAL' ? 'Thời hạn bắt đầu khi Deal được duyệt.' : 'Mở khóa chênh lệch khi đủ KPI và hoàn tất đối soát 14 ngày.'}</span></p>
+            <dl className="deal-kpi-dates">
+              <div><dt>Ngày bắt đầu</dt><dd>{progress.startsAt ? new Date(progress.startsAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa bắt đầu'}</dd></div>
+              <div><dt>Hạn hoàn thành</dt><dd>{progress.endsAt ? new Date(progress.endsAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa thiết lập'}</dd></div>
+            </dl>
+            {progress.state === 'ACHIEVED' && progress.rebateStatus !== 'UNLOCKED' && <button type="button" disabled={busy} className="deal-kpi-settle" onClick={async () => {
+              try { setBusy(true); await referralLinksService.settleDeal(id); setReload(n => n + 1); }
+              catch (e: any) { setError(e?.response?.data?.message || 'Không thể quyết toán Deal'); }
+              finally { setBusy(false); }
+            }}><CheckCircle size={16} />Quyết toán &amp; mở khóa chênh lệch</button>}
+          </div>}
         </Modal>, document.body
       )}
     </div>

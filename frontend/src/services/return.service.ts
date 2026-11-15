@@ -82,12 +82,12 @@ export interface ReturnDetail {
     proofUrl?: string;
     updatedAt: string;
   } | null;
-  order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null; outboundGhnTrackingNumber?: string | null };
+  order: { id: string; externalOrderSn: string; storeName: string; storeId?: string; products?: { id: string; title: string; imageUrl?: string | null; variantName?: string | null; quantity: number; unitPrice: string | number }[]; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null; outboundGhnTrackingNumber?: string | null };
   items: Array<{
     id: string;
     quantity: number;
     unitPrice: number | string;
-    orderItem: { product: { title: string; imageUrl?: string | null } };
+    orderItem: { product: { title: string; imageUrl?: string | null }; variant?: { name: string } | null };
   }>;
   customerShipment?: ReturnShipment | null;
   exchangeShipment?: ReturnShipment | null;
@@ -124,10 +124,10 @@ const unwrap = <T,>(response: unknown): T => {
 
 export const returnService = {
   getOversightQueue: async <T extends ReturnDetail | ReturnDisputeRecord>(
-    kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes', page = 1,
+    kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes', page = 1, filters?: { query?: string; storeId?: string },
   ) => unwrap<{ total: number; page: number; pageSize: number; items: T[] }>(
     await api.get('/admin/return-disputes/queue', {
-      params: { kind, page }, headers: { 'x-skip-cache': 'true' },
+      params: { kind, page, ...filters }, headers: { 'x-skip-cache': 'true' },
     })),
   getOne: async (id: string) => unwrap<ReturnDetail>(await api.get(`/returns/${id}`, {
     headers: { 'x-skip-cache': 'true' },
@@ -201,9 +201,9 @@ export const returnService = {
   getAdminStalled: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/overdue-inspections', {
     headers: { 'x-skip-cache': 'true' },
   })),
-  getAdminHistory: async (page = 1, query = '') => unwrap<{ total: number; page: number; pageSize: number; items: ReturnDetail[] }>(
+  getAdminHistory: async (page = 1, query = '', storeId?: string) => unwrap<{ total: number; page: number; pageSize: number; items: ReturnDetail[] }>(
     await api.get('/admin/return-disputes/history', {
-      params: { page, query },
+      params: { page, query, ...(storeId ? { storeId } : {}) },
       headers: { 'x-skip-cache': 'true' },
     })),
   resolveDispute: async (id: string, data: {

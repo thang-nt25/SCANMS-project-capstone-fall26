@@ -1,0 +1,8 @@
+#creator-profile-hub .kol-profile-tabs > div { padding: 8px; border-radius: 12px; }
+#creator-profile-hub .kol-profile-tabs [role=tablist] { gap: 8px; align-items: stretch; }
+#creator-profile-hub .kol-profile-tabs [role=tab] { position:relative; min-height: 48px; padding: 8px 12px; border: 1px solid transparent; border-radius: 10px; font-size: 14px; font-weight: 600; justify-content: center; gap: 8px; box-shadow: none; }
+#creator-profile-hub .kol-profile-tabs [role=tab]:not(:last-child)::after { content:''; position:absolute; right:-5px; top:14px; bottom:14px; width:1px; background:#EAE4D7; }
+#creator-profile-hub .kol-profile-tabs [role=tab][aria-selected=true] { background: #FBF5EB; border-color: #EEDFC6; }
+#creator-profile-hub .kol-profile-tabs [role=tab] > span:first-child { width: 20px; height: 20px; }
+#creator-profile-hub .kol-profile-tabs [role=tab] svg { width: 16px; height: 16px; }
+@media(max-width:639px) { #creator-profile-hub .kol-profile-tabs [role=tab] { font-size: 12px; min-height: 48px; padding: 8px; } #creator-profile-hub .kol-profile-tabs [role=tab]:nth-child(2)::after { display:none; } }

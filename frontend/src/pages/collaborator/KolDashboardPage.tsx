@@ -1,5 +1,5 @@
 import AffiliatePerformanceChart from '../../components/affiliate/AffiliatePerformanceChart';
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
@@ -14,10 +14,6 @@ import {
   Clock,
   RefreshCw,
   PlusCircle,
-  Copy,
-  Check,
-  Package,
-  Store,
   type LucideIcon,
 } from 'lucide-react';
 import { tierService, type TierStatus } from '@/services/tier.service';
@@ -28,10 +24,10 @@ import {
   type TimeSeriesPoint,
 } from '@/services/analytics.service';
 import { Select } from '@/components/ui/Select';
-import KolProductCommissionTable from '../../components/affiliate/KolProductCommissionTable';
-import KolLivePerformanceCard from '../../components/affiliate/KolLivePerformanceCard';
 import { kolDashboardRange } from '@/utils/kol-dashboard';
 import { ledgerAmountPresentation } from '@/utils/ledger-amount';
+import { KolRecentReferralOrders } from '../../components/affiliate/KolRecentReferralOrders';
+import './kol-dashboard.css';
 
 function DashboardMetric({ label, value, note, growth, icon: Icon }: {
   label: string;
@@ -74,8 +70,6 @@ export default function KolDashboardPage() {
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState('7');
   const [metric, setMetric] = useState<'clicks' | 'orders' | 'revenue' | 'commission'>('clicks');
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'stores' | 'live'>('orders');
-  const [copiedOrderSn, setCopiedOrderSn] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<'wallet' | 'ledger' | 'overview' | 'series' | 'tier', string>>>({});
 
   // TanStack Query Hooks with 3-minute stale cache and seamless keepPreviousData
@@ -134,82 +128,6 @@ export default function KolDashboardPage() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: referralOrdersData } = useQuery({
-    queryKey: ['kol-referral-orders'],
-    queryFn: () => analyticsService.getCollaboratorReferralOrders({ limit: 10 }).catch(() => null),
-    staleTime: 1000 * 60 * 2,
-    placeholderData: keepPreviousData,
-  });
-
-  const { data: topProductsData, isFetching: isFetchingProducts } = useQuery({
-    queryKey: ['kol-top-products'],
-    queryFn: () => analyticsService.getCollaboratorTopProducts(10).catch(() => null),
-    staleTime: 1000 * 60 * 3,
-    placeholderData: keepPreviousData,
-  });
-
-  const { data: liveData, isFetching: isFetchingLive } = useQuery({
-    queryKey: ['kol-live-summary'],
-    queryFn: () => analyticsService.getCollaboratorLiveSessionsSummary().catch(() => null),
-    staleTime: 1000 * 60 * 3,
-    placeholderData: keepPreviousData,
-  });
-
-  const referralOrders = referralOrdersData?.items || [];
-  const topProducts = topProductsData?.items || [];
-  const liveSummary = {
-    sessions: liveData?.sessions || [],
-    totals: liveData?.totals || { totalLiveRevenue: 0, totalLiveCommission: 0, totalLiveOrders: 0 },
-  };
-
-  const storeBreakdown = useMemo(() => {
-    const storeMap = new Map<string, { storeName: string; ordersCount: number; totalRevenue: number; totalCommission: number }>();
-
-    referralOrders.forEach((order) => {
-      const sName = order.storeName || 'Sora Skin Official';
-      const existing = storeMap.get(sName) || {
-        storeName: sName,
-        ordersCount: 0,
-        totalRevenue: 0,
-        totalCommission: 0,
-      };
-      existing.ordersCount += 1;
-      existing.totalRevenue += Number(order.finalAmount || 0);
-      existing.totalCommission += Number(order.commissionAmount || 0);
-      storeMap.set(sName, existing);
-    });
-
-    topProducts.forEach((prod) => {
-      if (prod.storeName && !storeMap.has(prod.storeName)) {
-        storeMap.set(prod.storeName, {
-          storeName: prod.storeName,
-          ordersCount: prod.ordersCount || 0,
-          totalRevenue: prod.grossRevenue || 0,
-          totalCommission: Math.round((prod.grossRevenue || 0) * 0.1),
-        });
-      }
-    });
-
-    if (storeMap.size === 0) {
-      storeMap.set('Sora Skin Official', {
-        storeName: 'Sora Skin Official',
-        ordersCount: 0,
-        totalRevenue: 0,
-        totalCommission: 0,
-      });
-    }
-
-    const items = Array.from(storeMap.values());
-    const grandTotalCommission = items.reduce((sum, s) => sum + s.totalCommission, 0) || 1;
-
-    return items
-      .map((item) => ({
-        ...item,
-        percentage: Math.min(100, Math.round((item.totalCommission / grandTotalCommission) * 100)),
-      }))
-      .sort((a, b) => b.totalCommission - a.totalCommission);
-  }, [referralOrdersData?.items, topProductsData?.items]);
-
   const loading = isFetchingOverview || isFetchingWallet;
 
   const handleRefresh = async () => {
@@ -219,6 +137,7 @@ export default function KolDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['kol-wallet'] }),
       queryClient.invalidateQueries({ queryKey: ['kol-ledger'] }),
       queryClient.invalidateQueries({ queryKey: ['kol-referral-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['kol-recent-referral-orders'] }),
       queryClient.invalidateQueries({ queryKey: ['kol-top-products'] }),
       queryClient.invalidateQueries({ queryKey: ['kol-live-summary'] }),
     ]);
@@ -242,7 +161,7 @@ export default function KolDashboardPage() {
 
 
   return (
-    <section className="flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] text-left pb-12" aria-label="Tổng quan hiệu quả KOL">
+    <section id="kol-overview" className="flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] text-left pb-12" aria-label="Tổng quan hiệu quả KOL">
       {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
         <p className="m-0">{Object.values(errors).join(' ')} Dấu — nghĩa là chưa có dữ liệu xác nhận, không phải số dư bằng 0.</p>
         <button type="button" disabled={loading} onClick={() => void handleRefresh()} className="mt-2 font-semibold text-[#B88E4F] underline disabled:opacity-50">Thử tải lại</button>
@@ -282,7 +201,6 @@ export default function KolDashboardPage() {
             </button>
           </div>
       </section>
-
       <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
         <section className="grid grid-cols-1 md:grid-cols-3 items-stretch gap-2.5 p-3.5" aria-label="Số dư ví KOL" aria-busy={loading}>
           {/* 1. Số dư khả dụng */}
@@ -293,7 +211,7 @@ export default function KolDashboardPage() {
                 Số dư khả dụng
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF8F5] text-[#059669] border border-[#EAE4D7]">
-                Rút ngay 24/7
+                Có thể yêu cầu rút
               </span>
             </div>
             <strong className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#1A1612] my-0.5">
@@ -306,7 +224,7 @@ export default function KolDashboardPage() {
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
                 <Clock size={14} className="text-[#B88E4F]" aria-hidden="true" />
-                Chờ đối soát Escrow
+                Chờ đối soát
               </span>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white text-[#B88E4F] border border-[#EEDFC6]">
                 14 ngày bảo chứng
@@ -322,14 +240,14 @@ export default function KolDashboardPage() {
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8C6226]">
                 <ShoppingBag size={14} className="text-[#B88E4F]" aria-hidden="true" />
-                Hoa hồng tạm tính
+                Thù lao tạm tính
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#B88E4F] border border-[#EEDFC6]">
                 {(metrics?.pendingOrdersCount || 0)} đơn mới
               </span>
             </div>
             <strong className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#B88E4F] my-0.5">
-              {(metrics?.estimatedCommission || 0).toLocaleString('vi-VN')} ₫
+              {metrics?.estimatedCommission !== undefined ? `${metrics.estimatedCommission.toLocaleString('vi-VN')} ₫` : '—'}
             </strong>
           </div>
         </section>
@@ -350,10 +268,10 @@ export default function KolDashboardPage() {
             note={`Chu kỳ ${period} ngày gần nhất`}
           />
           <DashboardMetric
-            label="Tỷ lệ chuyển đổi"
+            label="Đơn phát sinh / Lượt nhấp"
             icon={Target}
             value={metrics ? `${metrics.conversionRate.toFixed(2)}%` : '—'}
-            note={metrics ? `Trung bình đơn: ${metrics.averageOrderValue.toLocaleString('vi-VN')} ₫` : 'Chưa tải được số liệu'}
+            note={metrics ? `${metrics.totalOrders} đơn phát sinh / ${metrics.totalClicks} lượt nhấp` : 'Chưa tải được số liệu'}
           />
           <DashboardMetric
             label="Doanh số tiếp thị (GMV)"
@@ -428,7 +346,7 @@ export default function KolDashboardPage() {
               <span className="grid place-items-center w-7 h-7 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <Wallet size={15} aria-hidden="true" />
               </span>
-              <h2 className="text-sm font-semibold text-[#1A1612] m-0">Hoa hồng gần đây</h2>
+              <h2 className="text-sm font-semibold text-[#1A1612] m-0">Giao dịch ví gần đây</h2>
             </div>
             <button
               type="button"
@@ -467,12 +385,14 @@ export default function KolDashboardPage() {
                           ? 'Hoa hồng khả dụng'
                           : entry.transactionType === 'PAYOUT_WITHDRAW'
                           ? 'Rút tiền về ngân hàng'
-                          : entry.transactionType}
+                          : entry.transactionType === 'REVERSAL' ? 'Thu hồi thù lao' : entry.transactionType === 'PAYOUT_REJECT_REFUND' ? 'Hoàn tiền rút bị từ chối' : 'Điều chỉnh ví'}
                       </strong>
                       <span className="text-[10px] text-[#7D715E] leading-tight block">
                         {new Date(entry.createdAt).toLocaleDateString('vi-VN', {
+                          timeZone: 'Asia/Ho_Chi_Minh',
                           day: '2-digit',
                           month: '2-digit',
+                          year: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
@@ -497,7 +417,7 @@ export default function KolDashboardPage() {
               <Crown className="w-4 h-4 text-[#B88E4F] shrink-0" />
               <strong className="text-xs font-semibold text-[#1A1612]">
                 {loading ? 'Đang tải cấp bậc…' : errors.tier ? 'Chưa tải được cấp bậc' : tierStatus?.currentTier
-                  ? `${tierStatus.assessmentIncomplete ? 'Hạng đang lưu' : 'Hạng'} ${tierStatus.currentTier.name} (+${tierStatus.currentTier.extraBonusPercentage || 0}% Thưởng)`
+                  ? `${tierStatus.assessmentIncomplete ? 'Hạng đang lưu' : 'Hạng'} ${tierStatus.currentTier.name} · Tiêu chuẩn ${10 + Number(tierStatus.currentTier.extraBonusPercentage || 0)}%`
                   : 'Cấp bậc khởi đầu (Hạng Đồng)'}
               </strong>
             </div>
@@ -521,240 +441,7 @@ export default function KolDashboardPage() {
       </div>
 
       {/* KHỐI BÁO CÁO CHI TIẾT GỌN GÀNG DẠNG SUB-TABS (TRÁNH KÉO DÀI TRANG) */}
-      <div className="flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
-        {/* Khay tab điều hướng */}
-        <div className="px-3 py-3 border-b border-[#EAE4D7] bg-white">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5" role="group" aria-label="Loại báo cáo tiếp thị">
-            {([
-              { id: 'orders', label: 'Đơn hàng', count: referralOrders.length },
-              { id: 'products', label: 'Sản phẩm', count: topProducts.length },
-              { id: 'stores', label: 'Gian hàng', count: storeBreakdown.length },
-              { id: 'live', label: 'Livestream', count: liveSummary.sessions.length },
-            ] as const).map((tab, index) => (
-              <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center justify-center gap-2 min-h-[42px] sm:min-h-[46px] px-2.5 py-2 border rounded-[10px] text-[11px] sm:text-[12px] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#b88e4f] focus-visible:outline-offset-2 ${activeTab === tab.id ? "border-[#eedfc6] bg-[#fbf5eb] text-[#1a1612] font-semibold" : "border-[#eae4d7] bg-white text-[#7d715e] font-medium"}`}>
-                <span className={`grid place-items-center shrink-0 w-[25px] h-[25px] border rounded-full text-[11px] font-normal ${activeTab === tab.id ? "border-[#c59b58] text-[#9a7135]" : "border-[#eae4d7]"}`} aria-hidden="true">{index + 1}</span>
-                <span>{tab.label}</span><small className="rounded-[5px] px-[5px] py-[1px] bg-[#faf8f5] text-[10px] tabular-nums text-[#7d715e]">{tab.count}</small>
-              </button>
-            ))}
-          </div>
-
-          {activeTab !== 'orders' && <span className="block mt-2 text-[11px] text-[#7D715E]">
-            {activeTab === 'products' && `${topProducts.length} sản phẩm ghi nhận doanh số`}
-            {activeTab === 'stores' && `${storeBreakdown.length} gian hàng đối tác`}
-            {activeTab === 'live' && `${liveSummary.sessions.length} phiên Live có ghim giỏ hàng`}
-          </span>}
-        </div>
-
-        {/* Nội dung Tab 1: Đơn hàng tiếp thị */}
-        {activeTab === 'orders' &&
-          (referralOrders.length === 0 ? (
-          <div className="py-10 px-4 text-center flex flex-col items-center justify-center">
-            <div className="w-12 h-12 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center mb-2.5">
-              <Package size={22} />
-            </div>
-            <strong className="text-sm font-semibold text-[#1A1612]">Chưa phát sinh đơn hàng qua liên kết</strong>
-            <p className="text-xs text-[#7D715E] max-w-md mt-1 mb-3.5">
-              Khi khách hàng nhấp vào link tiếp thị và đặt mua sản phẩm, đơn hàng và hoa hồng tạm tính sẽ xuất hiện ngay tại đây.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate('/collaborator/marketing?tab=links')}
-              className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
-            >
-              Lấy link chia sẻ ngay
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-[#FAF8F5] text-[#7D715E] border-b border-[#EAE4D7]">
-                <tr>
-                  <th className="px-3.5 py-2.5 font-bold">Mã đơn hàng</th>
-                  <th className="px-3.5 py-2.5 font-bold">Thời gian đặt</th>
-                  <th className="px-3.5 py-2.5 font-bold">Sản phẩm & Gian hàng</th>
-                  <th className="px-3.5 py-2.5 font-bold text-right">Giá trị đơn</th>
-                  <th className="px-3.5 py-2.5 font-bold text-right">Hoa hồng ({referralOrders[0]?.commissionRate || 10}%)</th>
-                  <th className="px-3.5 py-2.5 font-bold text-center">Trạng thái đối soát</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EAE4D7]">
-                {referralOrders.map((order) => {
-                  const isDelivered = order.status === 'DELIVERED';
-                  const isCompleted = order.status === 'COMPLETED';
-                  const isCancelled = order.status === 'CANCELLED';
-                  const isReturned = order.status === 'RETURNED' || order.status === 'REFUNDED';
-                  const firstProduct = order.products?.[0];
-                  const otherCount = (order.products?.length || 1) - 1;
-
-                  return (
-                    <tr key={order.id} className="hover:bg-[#FAF8F5]/60 transition-colors">
-                      <td className="px-3.5 py-3 font-mono font-bold text-[#1A1612]">
-                        <div className="flex items-center gap-1.5">
-                          <span>{order.orderCode}</span>
-                          <button
-                            type="button"
-                            aria-label={`Sao chép mã đơn ${order.orderCode}`}
-                            onClick={() => {
-                              navigator.clipboard.writeText(order.orderCode);
-                              setCopiedOrderSn(order.orderCode);
-                              setTimeout(() => setCopiedOrderSn(null), 1500);
-                            }}
-                            className="text-[#7D715E] hover:text-[#B88E4F] p-0.5 rounded cursor-pointer"
-                            title="Sao chép mã đơn"
-                          >
-                            {copiedOrderSn === order.orderCode ? (
-                              <Check size={12} className="text-[#059669]" />
-                            ) : (
-                              <Copy size={12} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-3.5 py-3 text-[#7D715E] whitespace-nowrap">
-                        {new Date(order.createdAt).toLocaleDateString('vi-VN', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="px-3.5 py-3">
-                        <div className="flex items-center gap-2.5 min-w-0 max-w-xs">
-                          {firstProduct?.imageUrl ? (
-                            <img
-                              src={firstProduct.imageUrl}
-                              alt={firstProduct.title}
-                              className="w-8 h-8 rounded-lg object-cover border border-[#EAE4D7] shrink-0"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center shrink-0">
-                              <ShoppingBag size={14} className="text-[#B88E4F]" />
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <span className="font-semibold text-[#1A1612] truncate block" title={firstProduct?.title}>
-                              {firstProduct?.title || 'Sản phẩm tiếp thị'}
-                              {otherCount > 0 && ` (+${otherCount})`}
-                            </span>
-                            <span className="text-[10px] text-[#7D715E] truncate block">
-                              {order.storeName}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3.5 py-3 text-right font-bold text-[#1A1612] tabular-nums whitespace-nowrap">
-                        {order.finalAmount.toLocaleString('vi-VN')} ₫
-                      </td>
-                      <td className="px-3.5 py-3 text-right font-extrabold text-[#B88E4F] tabular-nums whitespace-nowrap">
-                        {isReturned ? (
-                          <span className="text-rose-600">0 ₫</span>
-                        ) : (
-                          `+${order.commissionAmount.toLocaleString('vi-VN')} ₫`
-                        )}
-                      </td>
-                      <td className="px-3.5 py-3 text-center whitespace-nowrap">
-                        {isCompleted ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#059669] border border-[#EEDFC6]">
-                            ✓ Đã hoàn tất (Khả dụng)
-                          </span>
-                        ) : isDelivered ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF8F5] text-[#B88E4F] border border-[#EAE4D7]">
-                            <Clock size={11} /> Chờ đối soát Escrow
-                          </span>
-                        ) : isCancelled ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
-                            ✕ Đã hủy
-                          </span>
-                        ) : isReturned ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
-                            ⟲ Đã hoàn trả — Thu hồi thù lao (0 ₫)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
-                            <Clock size={11} /> Hoa hồng tạm tính
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))}
-
-      {/* Nội dung Tab 2: Hiệu suất theo sản phẩm */}
-      {activeTab === 'products' && (
-        <div className="p-0">
-          <KolProductCommissionTable items={topProducts} loading={isFetchingProducts} />
-        </div>
-      )}
-
-      {/* Nội dung Tab: Phân bổ hoa hồng theo gian hàng */}
-      {activeTab === 'stores' && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-semibold text-[#7D715E]">
-                <th className="py-3 px-4">Gian hàng</th>
-                <th className="py-3 px-4 text-center">Số đơn</th>
-                <th className="py-3 px-4 text-right">Doanh số (GMV)</th>
-                <th className="py-3 px-4 text-right">Hoa hồng nhận</th>
-                <th className="py-3 px-4 text-right">Tỷ trọng</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EAE4D7]">
-              {storeBreakdown.map((item, idx) => (
-                <tr key={item.storeName || idx} className="hover:bg-[#FBF5EB]/40 transition">
-                  <td className="py-3 px-4 font-semibold text-[#1A1612]">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-center text-[#B88E4F] shrink-0">
-                        <Store size={14} />
-                      </div>
-                      <span>{item.storeName}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-center text-[#1A1612] tabular-nums font-medium">
-                    {item.ordersCount}
-                  </td>
-                  <td className="py-3 px-4 text-right font-semibold text-[#1A1612] tabular-nums">
-                    {item.totalRevenue.toLocaleString('vi-VN')} ₫
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold text-[#B88E4F] tabular-nums">
-                    {item.totalCommission.toLocaleString('vi-VN')} ₫
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="inline-flex items-center gap-2 justify-end">
-                      <div className="w-16 h-1.5 rounded-full bg-[#EAE4D7] overflow-hidden">
-                        <div
-                          className="h-full bg-[#C59B58] rounded-full"
-                          style={{ width: `${item.percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-[11px] font-mono text-[#7D715E] w-8 tabular-nums">
-                        {item.percentage}%
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Nội dung Tab 3: Phiên Livestream */}
-      {activeTab === 'live' && (
-        <div className="p-0">
-          <KolLivePerformanceCard
-            sessions={liveSummary.sessions}
-            totals={liveSummary.totals}
-            loading={isFetchingLive}
-          />
-        </div>
-      )}
-    </div>
+      <KolRecentReferralOrders />
   </section>
   );
 }

@@ -1,0 +1,59 @@
+.wallet-withdraw-history { border: 1px solid #EAE4D7; border-radius: 16px; background: #fff; overflow: hidden; color: #1A1612; }
+.wallet-withdraw-history > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 20px; }
+.wallet-withdraw-history h2 { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 0; font-size: 16px; font-weight: 600; }
+.wallet-withdraw-history h2 svg { color: #B88E4F; }
+.wallet-withdraw-history h2 > span { font-size: 11px; font-weight: 400; color: #7D715E; }
+.wallet-withdraw-history select { min-height: 38px; width: 180px; padding: 6px 12px; border: 1px solid #EAE4D7; border-radius: 9px; background: white; color: #7D715E; font-size: 12px; }
+.wallet-withdraw-history-table { overflow-x: auto; }
+.wallet-withdraw-history table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wallet-withdraw-history th { background: #FAF8F5; font-size: 12px; font-weight: 500; color: #7D715E; }
+.wallet-withdraw-history th,.wallet-withdraw-history td { padding: 16px 20px; text-align: left; vertical-align: middle; border-top: 1px solid #EAE4D7; }
+.wallet-withdraw-history th:nth-child(3),.wallet-withdraw-history td:nth-child(3) { text-align: right; min-width: 175px; }
+.wallet-withdraw-history th:nth-child(n+4),.wallet-withdraw-history td:nth-child(n+4) { text-align: center; }
+.wallet-history-code { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.wallet-history-code strong { font-size: 12px; font-weight: 600; }
+.wallet-history-code button { display: grid; place-items: center; width: 28px; height: 28px; color: #7D715E; cursor: pointer; border-radius: 6px; }
+.wallet-withdraw-history time { display: block; margin-top: 5px; font-size: 11px; color: #7D715E; }
+.wallet-history-money { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; font-variant-numeric: tabular-nums; }
+.wallet-history-money strong { font-size: 18px; font-weight: 600; white-space: nowrap; }
+.wallet-history-money-caption,.wallet-history-money small { font-size: 11px; color: #7D715E; }
+.wallet-history-money dl { width: 100%; margin: 3px 0 0; font-size: 11px; color: #7D715E; }
+.wallet-history-money dl > div { display: flex; justify-content: space-between; gap: 14px; line-height: 19px; }
+.wallet-history-money dd { margin: 0; white-space: nowrap; }
+.wallet-history-status { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; width: 148px; padding: 5px 7px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; font-size: 11px; }
+.wallet-history-status[data-status=APPROVED] svg { color: #059669; }
+.wallet-history-status[data-status=REJECTED] { color: #DC2626; border-color: #FECACA; background: #FFFCFC; }
+.wallet-history-action { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 7px 12px; border: 1px solid #EEDFC6; border-radius: 9px; color: #79592C; background: #FBF5EB; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.wallet-withdraw-history td:last-child > div > div { justify-content: center; }
+.wallet-history-muted { font-size: 12px; color: #7D715E; }
+.wallet-withdraw-history > footer { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 20px; border-top: 1px solid #EAE4D7; color: #7D715E; font-size: 12px; }
+.wallet-withdraw-history footer > div { display: flex; align-items: center; gap: 12px; }
+.wallet-withdraw-history footer button { min-height: 32px; padding: 5px 10px; border: 1px solid #EAE4D7; border-radius: 8px; cursor: pointer; }
+.wallet-withdraw-history button:disabled { opacity: .45; cursor: default; }
+.wallet-history-empty { text-align: center; padding: 28px; font-size: 13px; color: #7D715E; }
+.wallet-rejection-dialog { max-width: 600px !important; }
+.wallet-rejection-values { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
+.wallet-rejection-values > div { padding: 16px; display: flex; flex-direction: column; gap: 9px; border: 1px solid #EAE4D7; border-radius: 12px; }
+.wallet-rejection-values span { font-size: 12px; color: #7D715E; }
+.wallet-rejection-values strong { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wallet-rejection-reason { padding: 16px; border: 1px solid #FECACA; background: #FFFCFC; border-radius: 12px; }
+.wallet-rejection-reason > span { font-size: 12px; color: #7D715E; }
+.wallet-rejection-reason p { margin: 8px 0 0; font-size: 14px; line-height: 22px; white-space: pre-line; overflow-wrap: anywhere; }
+.wallet-rejection-note { margin: 12px 0 0; font-size: 12px; color: #7D715E; line-height: 19px; }
+.wallet-rejection-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.wallet-rejection-actions > * { display: flex; align-items: center; justify-content: center; min-height: 42px; padding: 8px; border: 1px solid #EAE4D7; border-radius: 10px; color: #7D715E; font-size: 13px; cursor: pointer; }
+.wallet-rejection-actions > :last-child { background: #FBF5EB; border-color: #EEDFC6; color: #79592C; }
+.wallet-rejection-actions button:disabled { opacity: .5; cursor: default; }
+@media(max-width:1023px) {
+  .wallet-withdraw-history > header { flex-wrap: wrap; padding: 16px; }
+  .wallet-withdraw-history table,.wallet-withdraw-history tbody { display: block; }
+  .wallet-withdraw-history thead { display: none; }
+  .wallet-withdraw-history tr { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); padding: 14px 16px; gap: 12px; border-top: 1px solid #EAE4D7; }
+  .wallet-withdraw-history td { display: block; padding: 0; border: 0; min-width: 0 !important; }
+  .wallet-withdraw-history td:first-child { grid-column: 1 / -1; }
+  .wallet-withdraw-history td:nth-child(4) { text-align: left; }
+  .wallet-withdraw-history td:nth-child(5) { text-align: right; }
+  .wallet-withdraw-history td:last-child > div > div { justify-content: flex-end; }
+  .wallet-history-code { white-space: normal; }
+  .wallet-rejection-values strong { font-size: 17px; }
+}

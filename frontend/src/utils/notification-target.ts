@@ -8,6 +8,14 @@ const param = (value: unknown) => typeof value === 'string' && value.trim() ? en
 export function notificationTarget(notification: Notification, role: Role): string | null {
   const { type, data = {} } = notification;
   const admin = role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER';
+  if (role === 'CUSTOMER') {
+    if (param(data.withdrawalId)) return '/customer/wallet?history=withdrawals&withdrawalId=' + param(data.withdrawalId);
+    const returnId = param(data.returnRequestId) || param(data.returnId);
+    if (returnId) return '/customer/returns/' + returnId;
+    if (type.startsWith('ORDER_') && param(data.orderId)) return '/customer/orders/' + param(data.orderId);
+    const local = localNotificationAction(data.actionUrl) || localNotificationAction(data.url);
+    if (local && !((type === 'WELCOME' || type === 'SYSTEM') && local === '/customer/upgrade')) return local;
+  }
   if (type.startsWith('CAMPAIGN_')) {
     if (role === 'COLLABORATOR') return '/collaborator/collaboration?tab=messages' + (param(data.storeId) ? '&shop=' + param(data.storeId) : '');
     if (role === 'SHOP_MANAGER') return '/merchant/kol-hub?tab=messages' + (param(data.collaboratorId) ? '&kol=' + param(data.collaboratorId) : '');

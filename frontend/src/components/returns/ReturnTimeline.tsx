@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Check, ChevronDown, ChevronUp, Clock3 } from 'lucide-react';
 import type { ReturnDetail, ReturnStatus } from '../../services/return.service';
 import { returnStatusLabel } from '@/utils/return-status.utils';
 
@@ -57,14 +59,22 @@ function currentStep(status: ReturnStatus): number {
   return 4;
 }
 
-export function ReturnTimeline({ request }: { request: ReturnDetail }) {
+export function ReturnTimeline({ request, compact = false }: { request: ReturnDetail; compact?: boolean }) {
   const active = currentStep(request.status);
+  const [expanded, setExpanded] = useState(false);
   const interrupted = ['SHOP_REJECTED', 'EXPIRED', 'INSPECTION_REJECTED', 'REFUND_FAILED', 'DISPUTED', 'CLOSED'].includes(request.status);
   const events = [...request.events];
   if (!events.some(event => event.type === 'REQUEST_CREATED') && Number.isFinite(Date.parse(request.submittedAt))) {
     events.push({ id: `${request.id}-submitted`, type: 'REQUEST_CREATED', createdAt: request.submittedAt });
   }
-  events.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  events.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const visibleEvents = expanded ? events : events.slice(0, 2);
+
+  if (compact) return <section className="return-case-history" aria-label="Lịch sử xử lý">
+    <header><h2>Tiến trình hồ sơ</h2><span>{returnStatusLabel(request.status)}</span></header>
+    <ol className="return-history-steps">{steps.map((step,index)=><li key={step} aria-current={index===active?'step':undefined}><span>{index<active?<Check size={12}/>:index+1}</span>{step}</li>)}</ol>
+    <div className="return-history-table"><table><thead><tr><th>Thời gian</th><th>Nội dung</th></tr></thead><tbody>{events.map(event=><tr key={event.id}><td><time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'})}</time></td><td>{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}{event.type==='GHN_COMPENSATION_CLAIM_UPDATED' && event.data?.status ? ` · ${ghnClaimStatusLabels[event.data.status] || event.data.status}` : ''}</td></tr>)}</tbody></table></div>
+  </section>;
 
   return (
     <section aria-label="Tiến trình đổi trả" className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
@@ -76,25 +86,26 @@ export function ReturnTimeline({ request }: { request: ReturnDetail }) {
           {returnStatusLabel(request.status)}
         </span>
       </div>
-      <ol className="mt-4 grid gap-2 sm:grid-cols-5">
+      <ol className="mt-4 grid grid-cols-5 gap-1 sm:gap-3">
         {steps.map((step, index) => (
           <li key={step} aria-current={index === active ? 'step' : undefined}
-            className={`rounded-xl border p-3 text-sm ${index <= active
-              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
-              : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'}`}>
-            <span className="mb-1 block text-xs font-bold text-[#B88E4F]">{index + 1}/5</span>
-            {step}
+            className="min-w-0 text-center">
+            <div className={`mb-2 flex h-1 rounded-full ${index <= active ? 'bg-[#C59B58]' : 'bg-[#EAE4D7]'}`} />
+            <span className={`mx-auto mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${index <= active ? 'bg-[#FBF5EB] text-[#B88E4F]' : 'bg-[#FAF8F5] text-[#7D715E]'}`}>
+              {index < active ? <Check className="h-3.5 w-3.5" /> : index + 1}
+            </span>
+            <span className={`block text-[10px] leading-4 sm:text-xs ${index === active ? 'font-semibold text-[#1A1612]' : 'text-[#7D715E]'}`}>{step}</span>
           </li>
         ))}
       </ol>
       {interrupted && <p className="mt-3 text-sm text-[#7D715E]">Quy trình đang tạm dừng; xem lý do và hướng xử lý bên dưới.</p>}
       {events.length > 0 && <section aria-label="Lịch sử xử lý" className="return-processing-history mt-4 border-t border-[#EAE4D7] pt-3">
-        <header className="flex items-center justify-between gap-3 text-sm text-[#8A6736]"><h3 className="font-semibold">Lịch sử xử lý</h3><span className="text-xs">{events.length} mốc xử lý</span></header>
-        <ol className="mt-3 space-y-2 text-sm">
-          {events.map((event) => <li key={event.id} className="flex flex-wrap justify-between gap-2">
-            <span>{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}{event.type === 'GHN_COMPENSATION_CLAIM_UPDATED' && event.data?.status ? ` · ${ghnClaimStatusLabels[event.data.status] || event.data.status}` : ''}</span>
-            <time className="text-[#7D715E]" dateTime={event.createdAt}>
-              {new Date(event.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+        <header className="flex items-center justify-between gap-3 text-sm"><h3 className="flex items-center gap-2 font-semibold"><Clock3 className="h-4 w-4 text-[#B88E4F]" />Cập nhật gần nhất</h3>{events.length > 2 && <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="inline-flex min-h-9 items-center gap-1 text-xs font-medium text-[#8A6736]">{expanded ? 'Thu gọn' : `Lịch sử (${events.length})`}{expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}</button>}</header>
+        <ol className={`mt-1 divide-y divide-[#EAE4D7] text-sm ${expanded ? 'max-h-40 overflow-y-auto pr-2' : ''}`}>
+          {visibleEvents.map((event) => <li key={event.id} className="grid gap-1 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4">
+            <span className="min-w-0 text-xs leading-5 text-[#1A1612]">{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}{event.type === 'GHN_COMPENSATION_CLAIM_UPDATED' && event.data?.status ? ` · ${ghnClaimStatusLabels[event.data.status] || event.data.status}` : ''}</span>
+            <time className="text-[11px] tabular-nums text-[#7D715E]" dateTime={event.createdAt}>
+              {new Date(event.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
             </time>
           </li>)}
         </ol>

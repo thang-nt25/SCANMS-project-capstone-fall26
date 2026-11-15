@@ -1,0 +1,28 @@
+.chat-exclusive-deal {width:360px;max-width:100%;border-radius:14px;background:#fff;box-shadow:none;}
+.chat-exclusive-deal>header {padding:10px 12px;}
+.chat-exclusive-deal>header>span:last-child {max-width:160px;font-size:10px;}
+.chat-exclusive-deal .chat-deal-product {background:#fff;padding:0;border:0;gap:10px;}
+.chat-exclusive-deal .chat-deal-product>img {width:48px;height:48px;border-radius:10px;object-fit:contain;}
+.chat-exclusive-deal .chat-deal-product h3 {white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:18px;}
+.chat-exclusive-deal .chat-deal-rates {padding:0;border:1px solid #EAE4D7;overflow:hidden;}
+.chat-exclusive-deal .chat-deal-rates>div {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:64px;padding:8px;background:#fff;}
+.chat-exclusive-deal .chat-deal-rates>div+div {background:#FBF5EB;border-left:1px solid #EAE4D7;}
+.chat-exclusive-deal .chat-deal-rates strong {font-size:21px;line-height:1.3;}
+.chat-deal-targets {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0 0;}
+.chat-deal-targets>div+div {padding-left:10px;border-left:1px solid #EAE4D7;}
+.chat-deal-targets dt {font-size:10px;color:#7D715E;}
+.chat-deal-targets dd {margin:4px 0 0;font-size:12px;font-weight:500;}
+.chat-exclusive-deal>footer {display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;}
+.chat-exclusive-deal>footer>.space-y-3 {order:-1;width:100%;}
+.chat-exclusive-deal>footer>.space-y-3>div>div {border-radius:9px;background:#fff;}
+.chat-exclusive-deal .chat-deal-details-button {flex:1;display:flex;align-items:center;justify-content:center;min-height:36px;padding:6px 10px;border:1px solid #EEDFC6;border-radius:8px;background:#FBF5EB;color:#855F2D;font-size:11px;font-weight:500;cursor:pointer;}
+.chat-exclusive-deal .chat-deal-review {flex-basis:100%;}
+.chat-exclusive-deal .chat-deal-review>button {min-height:36px;background:#fff;color:#855F2D;border-color:#EEDFC6;font-weight:500;}
+.chat-exclusive-deal .chat-deal-review>button:first-child {color:#DC2626;border-color:#FECACA;}
+.chat-exclusive-deal .chat-deal-review>button:last-child {background:#FBF5EB;}
+.chat-exclusive-deal>footer>p {width:100%;}
+.chat-deal-detail-fields {margin:0;font-size:13px;}
+.chat-deal-detail-fields>div {display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;padding:12px 0;border-bottom:1px solid #EAE4D7;}
+.chat-deal-detail-fields dt {color:#7D715E;font-size:12px;}
+.chat-deal-detail-fields dd {margin:0;white-space:pre-wrap;overflow-wrap:anywhere;}
+@media(max-width:600px) {.chat-exclusive-deal{width:320px}.chat-deal-detail-fields>div{grid-template-columns:110px minmax(0,1fr)}}

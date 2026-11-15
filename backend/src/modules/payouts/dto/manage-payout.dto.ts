@@ -21,11 +21,6 @@ export enum MerchantPayoutFilter {
 }
 
 export class QueryMerchantPayoutsDto extends QueryWithdrawalsDto {
-  @ApiPropertyOptional({ enum: PayoutStatus })
-  @IsOptional()
-  @IsEnum(PayoutStatus)
-  status?: PayoutStatus;
-
   @ApiPropertyOptional({ maxLength: 200, description: 'Tên/email KOL, ngân hàng, tài khoản hoặc UUID đầy đủ của yêu cầu' })
   @IsOptional()
   @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value)
@@ -40,6 +35,10 @@ export class QueryMerchantPayoutsDto extends QueryWithdrawalsDto {
 }
 
 export class PayoutApprovalNoteDto {
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{1,13}(\.\d{1,2})?$/)
+  expectedNetAmount?: string;
   @ApiPropertyOptional({ maxLength: 500 })
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>

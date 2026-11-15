@@ -15,6 +15,9 @@ import {
   Layers,
   X,
   Calendar,
+  Copy,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -25,9 +28,11 @@ import {
   type FraudMitigationAction,
 } from '../../services/ai-fraud.service';
 import { Select } from '../../components/ui/Select';
-import { Modal } from '../../components/ui/Modal';
+import './security-audit.css';
 import { useRef } from 'react';
 import { workspaceButton } from '@/components/ui/FeatureWorkspace';
+import { getSafeProductImageUrl,handleProductImageError } from '@/utils/marketplace.utils';
+import './fraud-oversight.css';
 
 export default function AiFraudSentinelPage() {
   const [summary, setSummary] = useState<FraudScanSummary | null>(null);
@@ -35,11 +40,12 @@ export default function AiFraudSentinelPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'ALL' | 'CRITICAL' | 'SUSPICIOUS' | 'LOW' | 'FROZEN'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page,setPage] = useState(1);
   const [activeIncident, setActiveIncident] = useState<FraudIncident | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionNote, setActionNote] = useState('');
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
-  const [showRuleModal, setShowRuleModal] = useState(false);
+  useEffect(()=>{setPage(1);},[searchQuery,selectedTab,timeframe]);
   const requestSequence = useRef(0);
   const mutationLock = useRef(false);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -68,7 +74,7 @@ export default function AiFraudSentinelPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await aiFraudService.scanTraffic({ timeframe });
+      const data = await aiFraudService.scanTraffic({ timeframe }, true);
       if (request !== requestSequence.current) return;
       setSummary(data);
     } catch (err: any) {
@@ -116,28 +122,28 @@ export default function AiFraudSentinelPage() {
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-1 text-[10px] font-bold text-[#B91C1C]">
             <Flame className="h-3.5 w-3.5" />
-            Nguy cơ cao · {score}đ
+            Nguy cơ cao · {score}/100
           </span>
         );
       case 'SUSPICIOUS':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[10px] font-bold text-[#8A642C]">
             <AlertTriangle className="h-3.5 w-3.5" />
-            Cần lưu ý · {score}đ
+            Cần lưu ý · {score}/100
           </span>
         );
       case 'LOW_RISK':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EAE4D7] bg-[#F3EFE6] px-2.5 py-1 text-[10px] font-semibold text-[#5F5547]">
             <Info className="h-3.5 w-3.5" />
-            Theo dõi · {score}đ
+            Theo dõi · {score}/100
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[10px] font-semibold text-[#5F5547]">
             <ShieldCheck className="h-3.5 w-3.5 text-[#059669]" />
-            An toàn · {score}đ
+            Rủi ro thấp · {score}/100
           </span>
         );
     }
@@ -146,7 +152,7 @@ export default function AiFraudSentinelPage() {
   const getAnomalyLabel = (type: string) => {
     switch (type) {
       case 'ZOMBIE_TRAFFIC':
-        return { label: 'Bơm click ảo (Không có đơn)', color: 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]' };
+        return { label: 'Nghi vấn click không chuyển đổi', color: 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]' };
       case 'CLICK_BURST_BOT':
         return { label: 'Spam click dồn dập (Dấu hiệu máy tự động)', color: 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]' };
       case 'IP_CLUSTER':
@@ -156,7 +162,7 @@ export default function AiFraudSentinelPage() {
       case 'CONVERSION_SPIKE':
         return { label: 'Đột biến đơn hàng bất thường', color: 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]' };
       case 'SELF_REFERRAL':
-        return { label: 'Tự mua qua link của mình', color: 'border-[#EAE4D7] bg-[#F3EFE6] text-[#5F5547]' };
+        return { label: 'Nghi vấn tự mua qua link', color: 'border-[#EAE4D7] bg-[#F3EFE6] text-[#5F5547]' };
       default:
         return { label: type, color: 'border-[#EAE4D7] bg-[#FAF8F5] text-[#5F5547]' };
     }
@@ -186,27 +192,7 @@ export default function AiFraudSentinelPage() {
   };
 
   return (
-    <div className="w-full min-w-0 space-y-4 pb-8">
-      <div className="flex items-center justify-between gap-2 pb-1">
-        <button
-          type="button"
-          onClick={() => setShowRuleModal(true)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-semibold border border-[#EEDFC6] transition cursor-pointer"
-        >
-          <Info className="w-3.5 h-3.5" />
-          <span>Quy chuẩn đối soát</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={loadData}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#7D715E] ${loading ? 'animate-spin' : ''}`} />
-          <span>Quét toàn hệ thống</span>
-        </button>
-      </div>
+    <div id="fraud-oversight-page" className="w-full min-w-0 space-y-4 pb-8">
       {/* KPI Metric Cards - Nhỏ gọn, cân xứng, chuẩn 4 cột trên desktop */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {/* Total Clicks Scanned */}
@@ -272,7 +258,7 @@ export default function AiFraudSentinelPage() {
         {/* Healthy Traffic Ratio */}
         <div className="flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5 transition hover:border-[#C59B58]/50">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E] truncate">Tỷ lệ khách thật</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E] truncate">Link rủi ro thấp</span>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#059669]">
               <ShieldCheck className="h-4 w-4" />
             </div>
@@ -283,19 +269,17 @@ export default function AiFraudSentinelPage() {
                 <span aria-hidden="true" className="inline-block h-7 w-16 animate-pulse rounded bg-[#F3EFE6] align-middle" />
               ) : !summary && loadError ? '—' : summary && summary.totalScannedLinks > 0
                 ? `${Math.round(((summary.cleanCount + summary.lowRiskCount) / summary.totalScannedLinks) * 100)}%`
-                : '100%'}
+                : '—'}
             </div>
-            <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">{isInitialLoading ? 'Đang phân tích dữ liệu…' : !summary && loadError ? 'Chưa tải được số liệu' : 'Lượt truy cập tự nhiên đạt chuẩn an toàn'}</div>
+            <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">{isInitialLoading ? 'Đang phân tích dữ liệu…' : !summary && loadError ? 'Chưa tải được số liệu' : 'Link chưa có cảnh báo cao hoặc đáng ngờ'}</div>
           </div>
         </div>
       </div>
 
       {/* Main Table & Filter Container */}
       <div className="min-w-0 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
-        {/* Filter Navigation Bar */}
-        <div className="flex min-w-0 flex-col gap-2 border-b border-[#EAE4D7] bg-white p-3">
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 w-full">
-            <div className="flex min-w-0 max-w-full flex-1 items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
+        <div className="fraud-filter-scroll">
+          <div className="fraud-filter-toolbar" aria-label="Incident filters">
             <button
               type="button"
               onClick={() => setSelectedTab('ALL')}
@@ -354,12 +338,9 @@ export default function AiFraudSentinelPage() {
               }`}
             >
               <Lock className="h-3.5 w-3.5" />
-              Đã khóa hoa hồng ({countLabel(summary?.incidents.filter((i) => i.status === 'FROZEN').length)})
+              Đã khóa ({countLabel(summary?.incidents.filter((i) => i.status === 'FROZEN').length)})
             </button>
-            </div>
-
-            <div className="flex shrink-0 items-center justify-end gap-1">
-              <div className="relative w-[156px] shrink-0">
+              <div className="fraud-time-filter relative min-w-0">
                 <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#8A642C]" />
                 <Select
                   id="timeframe-select"
@@ -374,39 +355,22 @@ export default function AiFraudSentinelPage() {
                   <option value="all">Toàn thời gian</option>
                 </Select>
               </div>
-
-              <button
-                type="button"
-                onClick={loadData}
-                disabled={loading}
-                aria-label={loading ? 'Đang quét toàn hệ thống' : 'Quét toàn hệ thống'}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-[#8C6226] transition hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-wait disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-                Quét toàn hệ thống
-              </button>
-            </div>
-          </div>
-
-          <div className="flex min-w-0 items-center justify-end gap-2">
-            <div className="relative min-w-0">
+            <div className="fraud-search-field relative min-w-0">
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
               <input
                 id="search-incident-input"
                 aria-label="Tìm sự vụ gian lận"
                 type="text"
-                placeholder="Tìm theo mã sự vụ, tên KOL, link..."
+                placeholder="Tìm sự vụ, KOL…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-9 w-full rounded-lg border border-[#EAE4D7] bg-white pl-9 pr-3 text-xs text-[#1A1612] outline-none transition placeholder:text-[#7D715E] focus:border-[#C59B58]"
               />
-            </div>
-
-          </div>
+            </div>          </div>
         </div>
 
         {/* Table Content */}
-        <div className="overflow-x-auto">
+        <div className="fraud-table-region">
           <table className="w-full min-w-[1120px] table-fixed border-collapse text-left">
             <colgroup>
               <col style={{width:'12%'}} /><col style={{width:'16%'}} /><col style={{width:'16%'}} /><col style={{width:'10%'}} /><col style={{width:'16%'}} /><col style={{width:'10%'}} /><col style={{width:'10%'}} /><col style={{width:'10%'}} />
@@ -461,14 +425,14 @@ export default function AiFraudSentinelPage() {
                     <div className="flex flex-col items-center gap-2">
                       <ShieldCheck className="h-10 w-10 stroke-1 text-[#059669]" />
                       <p className="font-bold text-[#1A1612]">Không tìm thấy sự vụ nghi vấn nào</p>
-                      <p className="text-xs font-normal text-[#7D715E]">Toàn bộ lượt truy cập và đơn hàng đều hợp lệ, an toàn.</p>
+                      <p className="text-xs font-normal text-[#7D715E]">Không có hồ sơ phù hợp với bộ lọc đang chọn.</p>
                     </div>
                   </td>
                 </tr>
               )}
 
               {!loading &&
-                filteredIncidents.map((inc) => (
+                filteredIncidents.slice((Math.min(page,Math.max(1,Math.ceil(filteredIncidents.length/10)))-1)*10,Math.min(page,Math.max(1,Math.ceil(filteredIncidents.length/10)))*10).map((inc) => (
                   <tr
                     key={inc.id}
                     id={`incident-row-${inc.id}`}
@@ -501,12 +465,15 @@ export default function AiFraudSentinelPage() {
                     </td>
 
                     <td data-label="Sản phẩm & Link" className="px-3 py-3">
+                      <div className="fraud-product-cell"><img src={getSafeProductImageUrl(inc.productImageUrl)} onError={handleProductImageError} alt={inc.productName||'Sản phẩm'}/><div>
                       <div className="truncate font-semibold text-[#1A1612]">
                         {inc.productName}
                       </div>
                       <div className="truncate text-[10px] font-mono text-[#7D715E]">
                         Mã link: {inc.referralLinkCode}
+                        {inc.referralLinkCode&&<button type="button" aria-label="Sao chép mã link" onClick={event=>{event.stopPropagation();void navigator.clipboard.writeText(inc.referralLinkCode!).then(()=>toast.success('Đã sao chép mã link')).catch(()=>toast.error('Không sao chép được mã'));}}><Copy size={12}/></button>}
                       </div>
+                      </div></div>
                     </td>
 
                     <td data-label="Click & Đơn mua" className="px-2 py-3 text-center">
@@ -523,7 +490,7 @@ export default function AiFraudSentinelPage() {
                         {inc.anomalyTypes.length === 0 ? (
                           <span className="inline-flex items-center gap-1 rounded-md border border-[#EAE4D7] bg-[#F3EFE6] px-2 py-1 text-[10px] font-medium text-[#5F5547]">
                             <ShieldCheck className="h-3 w-3 text-[#059669]" />
-                            Lượt truy cập thật
+                            Chưa ghi nhận dấu hiệu
                           </span>
                         ) : (
                           inc.anomalyTypes.map((type, idx) => {
@@ -578,7 +545,7 @@ export default function AiFraudSentinelPage() {
                         className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1.5 text-[11px] font-semibold text-[#8A642C] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>Xem chi tiết</span>
+                        <span>Xem hồ sơ</span>
                       </button>
                     </td>
                   </tr>
@@ -586,6 +553,7 @@ export default function AiFraudSentinelPage() {
             </tbody>
           </table>
         </div>
+        <footer className="fraud-pagination"><span>{filteredIncidents.length} hồ sơ · 10 mỗi trang</span><div><button type="button" disabled={page<=1} onClick={()=>setPage(page-1)}><ChevronLeft size={14}/>Trước</button><span>{page} / {Math.max(1,Math.ceil(filteredIncidents.length/10))}</span><button type="button" disabled={page*10>=filteredIncidents.length} onClick={()=>setPage(page+1)}>Sau<ChevronRight size={14}/></button></div></footer>
       </div>
 
       {/* Incident Detail & AI Evidence Modal */}
@@ -652,7 +620,7 @@ export default function AiFraudSentinelPage() {
               <div className="space-y-2 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-xs text-[#1A1612]">
                 <div className="flex items-center gap-2 font-semibold text-[#8A642C]">
                   <Sparkles className="h-4 w-4 text-[#B88E4F]" />
-                  <span>Kết Luận Phân Tích Của AI:</span>
+                  <span>Nhận định tự động cần xác minh</span>
                 </div>
                 <p className="font-medium leading-relaxed text-[#5F5547]">
                   {activeIncident.aiReasoning}
@@ -752,54 +720,7 @@ export default function AiFraudSentinelPage() {
         </div>
       )}
 
-      {/* Modal tra cứu Quy chuẩn Đối soát Rủi ro & An ninh Traffic */}
-      {showRuleModal && (
-        <Modal
-          isOpen
-          onClose={() => setShowRuleModal(false)}
-          title="Quy chuẩn Đối soát Rủi ro & An ninh Traffic"
-          maxWidth="md"
-        >
-          <div className="space-y-3.5 text-xs text-[#1A1612]">
-            <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-1">
-              <span className="font-bold text-[#8C6226] block">
-                1. Cơ chế đối soát traffic & chuyển đổi
-              </span>
-              <p className="text-[#7D715E]">
-                Hệ thống tự động thống kê số lượt click và lượng đơn hàng phát sinh trong kỳ được chọn. Phân tích mô hình hành vi truy cập của người dùng trên các liên kết tiếp thị để bảo vệ tính toàn vẹn của dữ liệu bán hàng.
-              </p>
-            </div>
 
-            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-              <span className="font-bold text-[#1A1612] block">
-                2. Mục đích đánh giá rủi ro (Risk Scoring)
-              </span>
-              <p className="text-[#7D715E]">
-                Điểm rủi ro là chỉ số cảnh báo nội bộ hỗ trợ kiểm toán viên đối chiếu, không phải kết luận vi phạm hành chính. Mọi biện pháp tạm ngưng hoặc đóng băng thù lao đều cần sự thẩm định và xác nhận từ Quản trị viên.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-              <span className="font-bold text-[#1A1612] block">
-                3. Ngưỡng kiểm tra an ninh đặc biệt
-              </span>
-              <p className="text-[#7D715E]">
-                Khi một liên kết tiếp thị ghi nhận lượng truy cập bất thường vượt ngưỡng lớn nhưng không phát sinh bất kỳ chuyển đổi mua hàng nào, hệ thống sẽ đề xuất đưa vào diện thẩm tra để ngăn ngừa rủi ro cho các nhãn hàng nội bộ.
-              </p>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowRuleModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
-              >
-                Đã hiểu
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { handleProductImageError, handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Radar,
@@ -460,7 +461,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
               <div className="w-12 h-12 shrink-0 rounded-xl border border-[#EAE4D7] bg-white overflow-hidden shadow-2xs flex items-center justify-center">
                 {targetProduct?.imageUrl || selectedProduct?.imageUrl ? (
                   <img
-                    src={targetProduct?.imageUrl || selectedProduct?.imageUrl}
+                    src={targetProduct?.imageUrl || selectedProduct?.imageUrl} onError={handleProductImageError}
                     alt={targetProduct?.title || selectedProduct?.title}
                     className="w-full h-full object-cover"
                   />
@@ -744,7 +745,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                     <div className="relative shrink-0">
                       {kol.avatarUrl ? (
                         <img
-                          src={kol.avatarUrl}
+                          src={kol.avatarUrl} onError={handleAvatarImageError}
                           alt={kol.fullName}
                           className="w-12 h-12 rounded-2xl object-cover border border-[#EAE4D7] shadow-2xs"
                         />
@@ -1138,7 +1139,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
               <div className="flex items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                 {invitingKol.avatarUrl ? (
                   <img
-                    src={invitingKol.avatarUrl}
+                    src={invitingKol.avatarUrl} onError={handleAvatarImageError}
                     alt={invitingKol.fullName}
                     className="h-11 w-11 shrink-0 rounded-xl object-cover"
                   />
@@ -1160,7 +1161,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                 <div className="flex items-center gap-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB]/60 p-2.5">
                   {selectedProduct.thumbnailUrl ? (
                     <img
-                      src={selectedProduct.thumbnailUrl}
+                      src={selectedProduct.thumbnailUrl} onError={handleProductImageError}
                       alt={selectedProduct.title}
                       className="h-10 w-10 shrink-0 rounded-xl object-cover border border-[#EAE4D7]"
                     />

@@ -2,6 +2,31 @@ import { Prisma } from '@prisma/client';
 import { WalletSummaryService } from './wallet-summary.service';
 
 describe('wallet cooperation visibility', () => {
+  it('allocates only held Deal commissions by order store and reports a mismatch without changing balances', async () => {
+    const d = (value: number) => new Prisma.Decimal(value);
+    const prisma: any = {
+      payoutRequest: { aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null } }) },
+      wallet: { upsert: jest.fn().mockResolvedValue({ availableBalance: d(0), pendingBalance: d(0), conditionalDealEscrowBalance: d(150), storeWallets: [] }) },
+      collaboratorProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+      storeCollaborator: { findMany: jest.fn().mockResolvedValue(['sora', 'aura'].map(storeId => ({ storeId, status: 'APPROVED', requestedByKol: false, store: { name: storeId, logoUrl: null } }))) },
+      commission: { findMany: jest.fn().mockResolvedValue([
+        { dealBonusAmount: d(60), order: { storeId: 'sora' } },
+        { dealBonusAmount: d(40), order: { storeId: 'sora' } },
+        { dealBonusAmount: d(30), order: { storeId: 'aura' } },
+      ]) },
+    };
+    const service = new WalletSummaryService(prisma, { minimumAmount: d(200000) } as any);
+    const result = await service.getMyWallet('kol');
+    expect(prisma.commission.findMany).toHaveBeenCalledWith({
+      where: { collaboratorId: 'kol', dealBonusStatus: 'PENDING_KPI', dealBonusAmount: { gt: 0 } },
+      select: { dealBonusAmount: true, order: { select: { storeId: true } } },
+    });
+    expect(result.cooperationStores.map(store => store.conditionalDealEscrowBalance)).toEqual(['100.00', '30.00']);
+    expect(result.conditionalDealEscrowBalance).toBe('150.00');
+    expect(result.dealBalanceConsistency).toEqual({ allocatedBalance: '130.00', requiresReview: true });
+    prisma.wallet.upsert.mockResolvedValue({ availableBalance: d(0), pendingBalance: d(0), conditionalDealEscrowBalance: d(130), storeWallets: [] });
+    expect((await service.getMyWallet('kol')).dealBalanceConsistency?.requiresReview).toBe(false);
+  });
   it('does not advertise withdrawal eligibility when store pending exceeds global pending', async () => {
     const d = (value: number) => new Prisma.Decimal(value);
     const service = new WalletSummaryService({
@@ -72,9 +97,11 @@ describe('wallet cooperation visibility', () => {
       minimumAmount: decimal(200000),
     } as never);
     const result = await service.getMyWallet('kol');
-    expect(result.withdrawalTaxPolicy).toEqual({
+    expect(result.withdrawalTaxPolicy).toMatchObject({
       threshold: '0.00',
-      rate: '0.10',
+      rate: '0.05',
+      policy: 'MONTHLY_PROGRESSIVE_V1',
+      monthlyGross: '0.00',
     });
     expect(prisma.storeCollaborator.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

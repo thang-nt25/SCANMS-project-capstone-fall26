@@ -46,6 +46,24 @@ describe('WalletsService', () => {
     };
   }
 
+  it('reserves only shopping funds for a Customer withdrawal under a row lock', async () => {
+    const { tx, wallet, getWalletUpdateInput } = createTransaction('800000', '900000');
+    wallet.shoppingBalance = new Prisma.Decimal(300000);
+    await new WalletsService(new FinancialLedgerService()).reserveCustomerWithdrawal(tx as unknown as Prisma.TransactionClient, collaboratorId, new Prisma.Decimal(200000), reference.id);
+    const update = getWalletUpdateInput() as { data: { shoppingBalance: Prisma.Decimal; availableBalance?: Prisma.Decimal; pendingBalance?: Prisma.Decimal } };
+    expect(update.data.shoppingBalance.toString()).toBe('100000');
+    expect(update.data.availableBalance).toBeUndefined();
+    expect(update.data.pendingBalance).toBeUndefined();
+    expect(tx.$queryRaw).toHaveBeenCalled();
+    expect(tx.financePosting.create).toHaveBeenCalledWith({ data: expect.objectContaining({ debitAccount: 'CUSTOMER_FUNDS', creditAccount: 'CUSTOMER_WITHDRAWAL_RESERVED' }) });
+  });
+
+  it('cannot withdraw KOL earnings when the shopping balance is insufficient', async () => {
+    const { tx } = createTransaction('800000', '900000');
+    await expect(new WalletsService(new FinancialLedgerService()).reserveCustomerWithdrawal(tx as unknown as Prisma.TransactionClient, collaboratorId, new Prisma.Decimal(200000), reference.id)).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.wallet.update).not.toHaveBeenCalled();
+  });
+
   it.each([undefined, 'sora'])('blocks inconsistent balances before debiting with store scope %s', async storeId => {
     const { tx } = createTransaction('0', '1580000');
     tx.storeWallet.findMany.mockResolvedValueOnce([{

@@ -379,6 +379,8 @@ export class ReturnService {
         id: order.id,
         externalOrderSn: order.externalOrderSn,
         storeName: order.store.name,
+        storeId: order.store.id,
+        products: (order.orderItems ?? []).map(line => ({ id: line.id, title: line.product.title, imageUrl: line.product.imageUrl, variantName: line.variant?.name ?? null, quantity: line.quantity, unitPrice: line.unitPrice })),
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         shippingAddress: order.shippingAddress,
@@ -554,6 +556,8 @@ export class ReturnService {
     role: UserRole,
     kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes',
     page: number,
+    query = '',
+    storeId?: string,
   ) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
       throw new ForbiddenException(
@@ -562,7 +566,7 @@ export class ReturnService {
     const pageSize = 20;
     const skip = (page - 1) * pageSize;
     if (kind === 'disputes') {
-      const where: Prisma.DisputeWhereInput = { status: 'OPEN' };
+      const where: Prisma.DisputeWhereInput = { status: 'OPEN', ...(query.trim() || storeId ? { returnRequest: this.oversightSearch(query, storeId) } : {}) };
       const [total, rows] = await this.prisma.$transaction([
         this.prisma.dispute.count({ where }),
         this.prisma.dispute.findMany({
@@ -621,6 +625,7 @@ export class ReturnService {
         : kind === 'stalled'
           ? { receivedAt: 'asc' }
           : { updatedAt: 'desc' };
+    if (query.trim() || storeId) where.AND = [this.oversightSearch(query, storeId)];
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.returnRequest.count({ where }),
       this.prisma.returnRequest.findMany({
@@ -639,7 +644,27 @@ export class ReturnService {
     };
   }
 
-  async listHistory(role: UserRole, page = 1, query = '') {
+  private oversightSearch(query: string, storeId?: string): Prisma.ReturnRequestWhereInput {
+    if (storeId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId)) throw new BadRequestException('Cửa hàng không hợp lệ');
+    if (query.length > 80) throw new BadRequestException('Từ khóa tối đa 80 ký tự');
+    const search = query.trim();
+    return {
+      ...(storeId ? { order: { storeId } } : {}),
+      ...(search ? { OR: [
+        { order: { OR: [
+          { externalOrderSn: { contains: search, mode: 'insensitive' } },
+          { customerName: { contains: search, mode: 'insensitive' } },
+          { customerPhone: { contains: search } },
+          { store: { name: { contains: search, mode: 'insensitive' } } },
+          { rawPayload: { path: ['ghnOrderCode'], string_contains: search } },
+        ] } },
+        { shipments: { some: { trackingNumber: { contains: search, mode: 'insensitive' } } } },
+        { events: { some: { data: { path: ['ghnReference'], string_contains: search } } } },
+      ] } : {}),
+    };
+  }
+
+  async listHistory(role: UserRole, page = 1, query = '', storeId?: string) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
       throw new ForbiddenException(
         'Chỉ vận hành hệ thống được xem lịch sử đổi trả',
@@ -656,32 +681,7 @@ export class ReturnService {
           ReturnRequestStatus.EXPIRED,
         ],
       },
-      ...(search
-        ? {
-            order: {
-              OR: [
-                {
-                  externalOrderSn: {
-                    contains: search,
-                    mode: 'insensitive' as const,
-                  },
-                },
-                {
-                  customerName: {
-                    contains: search,
-                    mode: 'insensitive' as const,
-                  },
-                },
-                { customerPhone: { contains: search } },
-                {
-                  store: {
-                    name: { contains: search, mode: 'insensitive' as const },
-                  },
-                },
-              ],
-            },
-          }
-        : {}),
+      ...this.oversightSearch(search, storeId),
     };
     const [total, records] = await this.prisma.$transaction([
       this.prisma.returnRequest.count({ where }),

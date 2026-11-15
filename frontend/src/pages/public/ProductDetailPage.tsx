@@ -1,3 +1,5 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
+import { publicWebsiteUrl, publicShareUrl } from '@/utils/public-url';
 import { CustomerReviews } from '../../components/product/CustomerReviews';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
@@ -440,6 +442,7 @@ export default function ProductDetailPage() {
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const targetReviewParam = searchParams.get('review') || undefined;
   const isCheckoutParam = searchParams.get('checkout') === '1' || searchParams.get('checkout') === 'true';
   const isCheckoutOpen = isCheckoutParam;
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -528,13 +531,13 @@ export default function ProductDetailPage() {
 
   const getShareUrls = () => {
     const identifier = data?.product?.sku || data?.product?.id || slug || '';
-    const productUrl = new URL(window.location.pathname, window.location.origin).toString();
+    const productUrl = publicWebsiteUrl(window.location.pathname);
     const apiBase = String(api.defaults.baseURL || '/api').replace(/\/+$/, '');
     const previewUrl = new URL(
       `${apiBase}/public/products/${encodeURIComponent(identifier)}/seo`,
       window.location.origin,
     ).toString();
-    return { productUrl, previewUrl };
+    return { productUrl, previewUrl: publicShareUrl(previewUrl) };
   };
 
   const copyShareUrl = async (url: string) => {
@@ -634,9 +637,10 @@ export default function ProductDetailPage() {
         try {
           res = await api.get(
             `/public/products/${encodeURIComponent(slug)}/landing`,
+            { params: { review: targetReviewParam } },
           );
         } catch {
-          res = await api.get(`/products/${encodeURIComponent(slug)}/landing`);
+          res = await api.get(`/products/${encodeURIComponent(slug)}/landing`, {params:{review:targetReviewParam}});
         }
 
         const landingPayload = res?.data?.product
@@ -727,7 +731,7 @@ export default function ProductDetailPage() {
     }
 
     loadLanding();
-  }, [slug]);
+  }, [slug,targetReviewParam]);
 
   useEffect(() => {
     let active = true;
@@ -807,7 +811,7 @@ export default function ProductDetailPage() {
       canonicalLink.setAttribute('rel', 'canonical');
       document.head.appendChild(canonicalLink);
     }
-    canonicalLink.setAttribute('href', window.location.origin + window.location.pathname);
+    canonicalLink.setAttribute('href', publicWebsiteUrl(window.location.pathname));
 
     let metaDesc = document.querySelector('meta[name="description"]');
     if (!metaDesc) {
@@ -834,7 +838,7 @@ export default function ProductDetailPage() {
     setOg('og:description', data.product.description || data.product.title);
     setOg('og:image', data.product.imageUrl || '');
     setOg('og:type', 'product');
-    setOg('og:url', window.location.href);
+    setOg('og:url', publicShareUrl(window.location.href));
 
 
     const setTwitter = (name: string, content: string) => {
@@ -878,7 +882,7 @@ export default function ProductDetailPage() {
       },
       offers: {
         '@type': 'Offer',
-        url: window.location.href,
+        url: publicShareUrl(window.location.href),
         priceCurrency: 'VND',
         price: data.product.price,
         availability: data.availability.inStock
@@ -1234,7 +1238,7 @@ export default function ProductDetailPage() {
       },
       variantId: selectedVariant?.id,
       quantity: safeQuantity,
-      openCartAfterAdd: true,
+      openCartAfterAdd: false,
     });
     toast.success('Đã thêm sản phẩm vào giỏ hàng thành công!');
     trackAnalytics('add_to_cart', { productId: data.product.id, variantId: selectedVariant?.id, quantity });
@@ -1898,7 +1902,7 @@ export default function ProductDetailPage() {
                                 }`}
                               >
                                 <img
-                                  src={variantImg}
+                                  src={variantImg} onError={handleProductImageError}
                                   alt={v.name}
                                   className="w-7 h-7 object-cover rounded-lg border border-[#EAE4D7] shrink-0"
                                 />

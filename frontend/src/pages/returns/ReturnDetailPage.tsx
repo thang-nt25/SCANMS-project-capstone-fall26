@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Download, Truck, ClipboardCheck, Play, Copy, Check } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { returnService, type ReturnAddress, type ReturnDetail } from '../../services/return.service';
 import { useReturnAction, useReturnDetail } from '../../hooks/useReturnDetail';
@@ -18,6 +19,9 @@ import { downloadReturnCaseReport } from '../../utils/return-case-report';
 import { analyzeReturnCase } from '../../utils/return-case-audit';
 import { ExchangeShipmentPanel } from '../../components/returns/ExchangeShipmentPanel';
 import { ShopReturnDecisionForm } from '../../components/returns/ShopReturnDecisionForm';
+import { ReturnOversightDetail, type ReturnDetailPanel } from '../../components/returns/ReturnOversightDetail';
+import { caseProducts, CaseProductImage } from '../../components/returns/ReturnCaseProducts';
+import '../admin/return-oversight.css';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const liabilityLabels: Record<string, string> = {
@@ -32,6 +36,11 @@ const ghnClaimLabels: Record<string, string> = {
   NEEDS_MORE_EVIDENCE: 'GHN yêu cầu bổ sung bằng chứng', ACCEPTED: 'GHN đã chấp thuận',
   REJECTED: 'GHN từ chối bồi hoàn', PAID: 'Đã ghi nhận GHN thanh toán',
 };
+
+function TrackingCode({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return <div className="mt-2 flex items-center gap-1"><span className="min-w-0 break-all text-xs font-semibold tabular-nums">{value}</span><button type="button" aria-label={copied ? 'Đã sao chép mã vận đơn' : 'Sao chép mã vận đơn'} title={copied ? 'Đã sao chép' : 'Sao chép mã vận đơn'} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#B88E4F] hover:bg-[#FBF5EB]" onClick={() => { void navigator.clipboard.writeText(value).then(() => setCopied(true)).catch(() => setCopied(false)); }}>{copied ? <Check size={14} /> : <Copy size={14} />}</button></div>;
+}
 
 function ReturnCaseAudit({ request }: { request: ReturnDetail }) {
   const findings = analyzeReturnCase(request);
@@ -113,7 +122,7 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
     catch { /* Keep input for retry; error is rendered below. */ }
   }
 
-  return <div className="space-y-4">
+  return <div className="grid gap-3 sm:grid-cols-2 [&>form]:col-span-full [&>div]:col-span-full">
     {inspectionOverdue && <section role="alert" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
       Shop đã nhận hàng hơn 48 giờ nhưng chưa hoàn tất kiểm tra. Hệ thống đã đưa hồ sơ vào diện cần xử lý; bạn có thể gửi khiếu nại.
     </section>}
@@ -127,19 +136,31 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
     {request.status === 'SHOP_APPROVED' && request.returnWarehouse && request.shipByAt &&
       <PickupBookingForm request={request} />}
 
-    {request.customerShipment && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Vận chuyển hàng trả</h3>
-      <p className="mt-2 text-sm">{request.customerShipment.carrierName} · {request.customerShipment.trackingNumber}</p>
-      <p className="mt-1 text-sm text-[#7D715E]">{request.customerShipment.receivedAt
-        ? 'Hàng đã đến Shop, chờ kiểm tra.' : request.status === 'PICKUP_BOOKED'
-          ? 'Đã đặt lấy hàng, đang chờ shipper đến.' : 'Shipper đã lấy hàng, đang chuyển về Shop.'}</p>
-      {request.customerShipment.providerStatus && <p className="mt-1 text-xs text-[#7D715E]">Trạng thái đơn vị vận chuyển: {carrierStatusLabel(request.customerShipment.providerStatus)}</p>}
-      {request.customerShipment.provider === 'MOCK' && <p className="mt-1 text-xs text-[#8A6736]">Vận đơn demo, không có chuyến giao nhận thật.</p>}
+
+
+    {(request.customerShipment || request.inspectionNotes || request.exchangeShipment) && <section className="col-span-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white"><h3 className="border-b border-[#EAE4D7] px-4 py-3 text-sm font-bold">Vận chuyển & kiểm tra</h3><div className="grid divide-y divide-[#EAE4D7] sm:grid-flow-col sm:auto-cols-fr sm:divide-x sm:divide-y-0">
+    {request.customerShipment && <section className="min-w-0 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-bold"><Truck size={17} className="text-[#B88E4F]" />Hàng trả về Shop</h3>
+      <TrackingCode value={request.customerShipment.trackingNumber} />
+      <p className="mt-1 text-xs text-[#7D715E]">{request.customerShipment.carrierName}{request.customerShipment.provider === 'MOCK' ? ' · Mô phỏng' : ''}</p>
+      <p className="mt-3 text-xs font-medium text-[#8A6736]">{request.customerShipment.providerStatus ? carrierStatusLabel(request.customerShipment.providerStatus) : request.customerShipment.receivedAt ? 'Đã đến Shop' : request.status === 'PICKUP_BOOKED' ? 'Chờ lấy hàng' : 'Đang chuyển về Shop'}</p>
       {request.customerShipment.receiptImageUrl && <a href={request.customerShipment.receiptImageUrl}
         target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-[#B88E4F] underline">
         Xem ảnh biên nhận</a>}
     </section>}
-
+    {request.inspectionNotes && <section className="min-w-0 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-bold"><ClipboardCheck size={17} className="text-[#B88E4F]" />Shop kiểm tra</h3>
+      {liabilityEvent?.data?.liability &&
+        <p className="mt-2 text-sm font-semibold">Trách nhiệm: {liabilityLabels[liabilityEvent.data.liability] || 'Chưa xác định'}</p>}
+      <p className="mt-2 whitespace-pre-wrap text-sm">{request.inspectionNotes}</p>
+    </section>}
+    {request.exchangeShipment && <section className="min-w-0 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-bold"><Truck size={17} className="text-[#B88E4F]" />Hàng đổi gửi đến bạn</h3>
+      <TrackingCode value={request.exchangeShipment.trackingNumber} />
+      <p className="mt-1 text-xs text-[#7D715E]">{request.exchangeShipment.carrierName}{['MOCK', 'GHN_STAGING'].includes(request.exchangeShipment.provider || '') ? ' · Mô phỏng' : ''}</p>
+      {request.exchangeShipment.providerStatus && <p className="mt-3 text-xs font-medium text-[#8A6736]">{carrierStatusLabel(request.exchangeShipment.providerStatus, 'customer')}</p>}
+    </section>}
+    </div></section>}
     {request.status === 'RETURN_SHIPPED' && !request.customerShipment?.provider && <form onSubmit={(event) => void correct(event)}
       className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Nhập sai vận đơn?</h3>
@@ -158,18 +179,13 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
       <ErrorText error={correction.error} />
     </form>}
 
-    {request.inspectionNotes && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Kết quả kiểm tra của Shop</h3>
-      {liabilityEvent?.data?.liability &&
-        <p className="mt-2 text-sm font-semibold">Trách nhiệm: {liabilityLabels[liabilityEvent.data.liability] || 'Chưa xác định'}</p>}
-      <p className="mt-2 whitespace-pre-wrap text-sm">{request.inspectionNotes}</p>
-    </section>}
+
 
     {request.refund && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
-      <h3 className="font-bold">Tình trạng hoàn tiền</h3>
-      <p className="mt-2 text-sm">Số tiền dự kiến: <strong>{money(request.refund.amount)}</strong></p>
-      <p className="mt-1 text-sm">Phương thức: {request.refund.method}</p>
-      <p className="mt-1 text-sm font-semibold">{request.refund.status === 'SUCCEEDED'
+      <h3 className="flex items-center gap-2 text-sm font-bold"><ClipboardCheck size={17} className="text-[#B88E4F]" />Hoàn tiền</h3>
+      <p className="mt-3 text-2xl font-bold tabular-nums text-[#1A1612]">{money(request.refund.amount)}</p>
+      <p className="mt-1 text-xs text-[#7D715E]">{request.refund.method === 'WALLET' ? 'Ví SCANMS' : request.refund.method}</p>
+      <p className="mt-3 border-t border-[#EEDFC6] pt-3 text-xs font-semibold">{request.refund.status === 'SUCCEEDED'
         ? 'Đã hoàn tiền vào Ví SCANMS'
         : request.refund.status === 'FAILED' ? 'Hoàn tiền gặp lỗi; đang cần xử lý'
           : request.refund.status === 'PROCESSING' ? 'Đang xử lý tại bên thanh toán'
@@ -180,20 +196,12 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
         <p className="mt-1 text-xs text-[#7D715E]">Bạn có thể xác nhận hoàn tất. Sau 7 ngày, hồ sơ đã hoàn tiền sẽ tự đóng.</p>}
     </section>}
 
-    {request.exchangeShipment && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Vận đơn giao sản phẩm thay thế</h3>
-      <p className="mt-2 text-sm">{request.exchangeShipment.carrierName} · {request.exchangeShipment.trackingNumber}</p>
-      {request.exchangeShipment.providerStatus && <p className="mt-1 text-sm text-[#7D715E]">{carrierStatusLabel(request.exchangeShipment.providerStatus)}</p>}
-      {request.exchangeShipment.provider === 'MOCK' && <p className="mt-1 text-xs text-[#7D715E]">Vận đơn mô phỏng để test; không có chuyến giao thật.</p>}
-      {request.exchangeShipment.provider === 'GHN_STAGING' && <p className="mt-1 text-xs text-[#7D715E]">Vận đơn GHN Staging dùng để thử tích hợp; không có chuyến giao thật.</p>}
-      {request.exchangeShipment.provider && request.exchangeShipment.providerStatus !== 'delivered' && <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">Hãng vận chuyển chưa báo giao thành công nên chưa thể xác nhận nhận hàng đổi. Nếu bạn đã nhận, liên hệ Shop để đồng bộ trạng thái vận đơn.</p>}
-      {!request.exchangeShipment.receivedAt && <p className="mt-1 text-xs text-[#7D715E]">Chỉ xác nhận đã nhận hàng đổi khi kiện thực sự đến tay bạn. Nếu chưa nhận hoặc hàng có vấn đề, giữ hồ sơ mở và liên hệ hỗ trợ.</p>}
-    </section>}
+
 
     {request.dispute && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Khiếu nại: {request.dispute.status === 'OPEN' ? 'Đang chờ phân xử' : 'Đã phân xử'}</h3>
-      <p className="mt-2 text-sm">{request.dispute.details}</p>
-      {request.dispute.resolutionNotes && <p className="mt-2 text-sm">Quyết định: {request.dispute.resolutionNotes}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-bold">Kết quả khiếu nại</h3><span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-medium text-[#8A6736]">{request.dispute.status === 'OPEN' ? 'Chờ phân xử' : 'Đã phân xử'}</span></div>
+      <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-[#7D715E]">{request.dispute.details}</p>
+      {request.dispute.resolutionNotes && <div className="mt-3 border-t border-[#EAE4D7] pt-3"><p className="text-[11px] text-[#7D715E]">Quyết định xử lý</p><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{request.dispute.resolutionNotes}</p></div>}
     </section>}
 
     <div className="flex flex-wrap gap-2">
@@ -512,7 +520,7 @@ function AdminRefundRetry({ request }: { request: ReturnDetail }) {
   </section>;
 }
 
-export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' }) {
+function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const detail = useReturnDetail(id);
@@ -522,28 +530,27 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
   if (!user) return <div className="min-h-screen bg-[#FAF8F5] p-6"><p>Bạn cần đăng nhập để xem hồ sơ.</p>
     <button onClick={() => navigate('/login')} className={`${primary} mt-3`}>Đăng nhập</button></div>;
 
-  return <>
-    {mode === 'customer' && <MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />}
-    <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6 ${mode === 'customer' ? 'grid w-full lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto' : ''}`}>
-      {mode === 'customer' && <aside className="min-w-0 hidden lg:block"><Sidebar currentUser={user} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
-      <div className={`mx-auto max-w-5xl space-y-4 ${mode === 'customer' ? 'min-w-0 w-full max-w-none border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-[0_8px_30px_rgba(110,84,39,.06)] [&>div]:p-4 sm:[&>div]:p-[22px] [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0' : ''}`}>
+  return <div className={mode === 'customer' ? 'customer-portal-layout min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans' : ''}>
+    {mode === 'customer' && <div className="shrink-0 z-40"><MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} /></div>}
+    <main className={mode === 'customer' ? 'w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col' : 'min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6'}>
+      <div className={mode === 'customer' ? 'flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0 lg:h-full' : ''}>
+      {mode === 'customer' && <aside className="relative hidden w-full lg:w-[265px] lg:shrink-0 lg:h-full lg:flex lg:flex-col after:pointer-events-none after:absolute after:top-7 after:bottom-5 after:-right-3 after:w-px after:bg-[#EAE4D7]"><Sidebar currentUser={user} className="px-0 lg:h-full lg:overflow-y-auto no-scrollbar" onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
+      <div className={mode === 'customer' ? 'workspace-page-column w-full flex-1 min-w-0 min-h-0 lg:px-3 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]' : ''}>
+      <div className={`mx-auto space-y-4 ${mode === 'customer' ? 'shrink-0 min-w-0 w-full border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-[0_8px_30px_rgba(110,84,39,.06)] [&>div]:p-4 sm:[&>div]:p-4 [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0' : 'max-w-5xl'}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
             <ArrowLeft className="h-4 w-4" /> Quay lại đơn hàng
           </Link>
-          {mode === 'customer' && detail.data && <div className="min-w-0">
+          {mode === 'customer' && detail.data && <div className="ml-auto min-w-0 text-right">
             <h1 className="text-base font-bold">Hồ sơ đổi trả</h1>
-            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 text-xs sm:text-sm [&_strong]:font-medium [&>*:last-child]:border-l [&>*:last-child]:border-[#EAE4D7] [&>*:last-child]:pl-3 [&>*:last-child]:text-[#B88E4F] [&>*:last-child]:font-semibold"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>
+            <p className="mt-0.5 text-xs text-[#7D715E]">Đơn <strong className="font-medium text-[#1A1612]">{detail.data.order.externalOrderSn}</strong></p>
           </div>}
-          <div className="flex flex-wrap items-center gap-2">
+          {mode === 'admin' && <div className="flex flex-wrap items-center gap-2">
             {mode === 'admin' && detail.data && <button type="button" onClick={() => downloadReturnCaseReport(detail.data, analyzeReturnCase(detail.data))}
               className="inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-sm font-semibold text-[#795A2D] hover:bg-[#F3EFE6]">
               <Download className="h-4 w-4" /> Tải hồ sơ đối soát
             </button>}
-            <button type="button" onClick={() => void detail.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm">
-              <RefreshCw className="h-4 w-4" /> Tải lại
-            </button>
-          </div>
+          </div>}
         </div>
         {detail.isLoading && <p role="status">Đang tải hồ sơ đổi trả…</p>}
         {detail.error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-[#DC2626]">
@@ -578,12 +585,12 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
               <div><strong>{detail.data.order.storeName}</strong><Link to={`/customer/orders/${encodeURIComponent(detail.data.order.id)}`}>Xem đơn hàng gốc</Link></div></div>
           </section>}
           {detail.data.shopResponse && <section className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm">
-            <h2 className="font-semibold">Phản hồi của Shop</h2>
+            <h2 className="text-sm font-semibold">Phản hồi của Shop</h2>
             {(() => {
               const event = [...detail.data.events].reverse().find(event => ['REQUESTED_TO_SHOP_APPROVED', 'REQUESTED_TO_SHOP_REJECTED'].includes(event.type));
               return event && <time dateTime={event.createdAt} className="mt-1 block text-xs text-[#7D715E]">Phản hồi lúc {new Date(event.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</time>;
             })()}
-            <p className="mt-3 whitespace-pre-wrap break-words leading-relaxed">{detail.data.shopResponse}</p>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{detail.data.shopResponse}</p>
             {mode === 'customer' && ['SHOP_REJECTED', 'INSPECTION_REJECTED'].includes(detail.data.status) && <p className="mt-3 rounded-lg bg-[#FBF5EB] p-3 text-xs leading-relaxed text-[#7D715E]">
               Đây là phản hồi của Shop, chưa phải kết quả phân xử của SCANMS. Nếu không đồng ý, bạn có thể yêu cầu SCANMS xem xét hồ sơ và bằng chứng.
             </p>}
@@ -603,31 +610,88 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
               <p className="mt-1 text-[#7D715E]">Khách cần mở hồ sơ đổi trả và xác nhận đã nhận kết quả để đóng đơn.</p>}
           </section>}
           <section className="return-evidence-section rounded-2xl border border-[#EAE4D7] bg-white p-4">
-            <h2 className="font-bold">Sản phẩm và bằng chứng</h2>
+            <h2 className="text-sm font-bold">Sản phẩm & bằng chứng</h2>
             <ReturnProducts request={detail.data} customer={mode === 'customer'} />
-             <div className="my-4.5 text-sm leading-relaxed [&_p+p]:mt-1.25"><p><strong>Lý do đổi trả:</strong> {returnReasonLabel(detail.data.reason)}</p>
-             {detail.data.preferredResolution && <p><strong>Khách mong muốn:</strong> {detail.data.preferredResolution === 'REFUND' ? 'Hoàn tiền vào Ví SCANMS' : 'Đổi sản phẩm mới'}</p>}
-            {detail.data.details && <p className="whitespace-pre-wrap text-[#7D715E]">{detail.data.details}</p>}</div>
-            <div className="flex flex-wrap items-start gap-3.5">
+            <div className="mt-4 grid gap-4 border-t border-[#EAE4D7] pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(180px,auto)]">
+              <div className="min-w-0 text-sm leading-6">
+                <dl className="grid grid-cols-[76px_minmax(0,1fr)] gap-x-3 gap-y-1.5">
+                  <dt className="text-xs text-[#7D715E]">Lý do</dt><dd className="m-0 font-medium">{returnReasonLabel(detail.data.reason)}</dd>
+                  {detail.data.preferredResolution && <><dt className="text-xs text-[#7D715E]">Phương án</dt><dd className="m-0 font-medium">{detail.data.preferredResolution === 'REFUND' ? 'Hoàn tiền vào Ví SCANMS' : 'Đổi sản phẩm mới'}</dd></>}
+                </dl>
+                {detail.data.details && <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-[#7D715E]">{detail.data.details}</p>}
+              </div>
+            <div className="flex max-w-sm flex-wrap items-start gap-2.5 sm:justify-end">
               {detail.data.imageUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"
-                className="grid gap-2 w-[132px] text-[#795A2D] text-xs no-underline [&_img]:w-[132px] [&_img]:h-[110px] [&_img]:object-contain [&_img]:border [&_img]:border-[#EAE4D7] [&_img]:rounded-md [&_img]:bg-[#FAF8F5]"><img src={getSafeProductImageUrl(url)} onError={handleProductImageError} alt={`Ảnh bằng chứng ${index + 1}`} loading="lazy" /><span>Ảnh bằng chứng {index + 1}</span></a>)}
-              {detail.data.unboxingVideoUrl && <div className="w-[min(100%,280px)] grid gap-2 text-xs [&_video]:block [&_video]:w-full [&_video]:h-[158px] [&_video]:border [&_video]:border-[#EAE4D7] [&_video]:rounded-md [&_video]:bg-[#FAF8F5] [&_a]:text-[#795A2D]"><video src={detail.data.unboxingVideoUrl} controls preload="metadata" aria-label="Video mở hộp" /><a href={detail.data.unboxingVideoUrl} target="_blank" rel="noreferrer">Mở video trong tab mới</a></div>}
+                className="grid w-20 gap-1 text-center text-[11px] text-[#795A2D] no-underline [&_img]:h-20 [&_img]:w-20 [&_img]:rounded-xl [&_img]:border [&_img]:border-[#EAE4D7] [&_img]:bg-[#FAF8F5] [&_img]:object-contain"><img src={getSafeProductImageUrl(url)} onError={handleProductImageError} alt={`Ảnh bằng chứng ${index + 1}`} loading="lazy" /><span>Ảnh {index + 1}</span></a>)}
+              {detail.data.unboxingVideoUrl && <a href={detail.data.unboxingVideoUrl} target="_blank" rel="noreferrer" aria-label="Xem video bằng chứng" className="grid w-20 gap-1 text-center text-[11px] text-[#795A2D]"><span className="relative flex h-20 overflow-hidden items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]"><video src={detail.data.unboxingVideoUrl} preload="metadata" muted playsInline aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover" /><span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#EEDFC6] bg-white/95 shadow-sm"><Play size={16} /></span></span><span>Video</span></a>}
               {!detail.data.imageUrls.length && !detail.data.unboxingVideoUrl && <p className="text-sm text-[#7D715E]">Chưa có bằng chứng đính kèm.</p>}
+            </div>
             </div>
           </section>
           {detail.data.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').map((event) => <section key={event.id}
-            className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
-            <h2 className="font-bold">Bằng chứng Shop gửi Manager</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm">{event.data?.details}</p>
-            <div className="mt-2 flex flex-wrap gap-3">
+            className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
+            <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0"><h2 className="flex items-center gap-2 text-sm font-bold"><ClipboardCheck size={17} className="text-[#B88E4F]" />Bằng chứng từ Shop</h2>
+            <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-[#7D715E]">{event.data?.details}</p></div>
+            <div className="flex flex-wrap gap-2">
               {event.data?.evidenceUrls?.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"
-                className="text-sm font-semibold text-[#8A6736] underline">Tệp bằng chứng {index + 1}</a>)}
-            </div>
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#8A6736]"><Download size={14} />Bằng chứng {index + 1}</a>)}
+            </div></div>
           </section>)}
           {mode === 'shop' ? <><ShopEscalation request={detail.data} /><ShopActions request={detail.data} /></> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
             <><AdminRefundRetry request={detail.data} /><AdminGhnClaim request={detail.data} /><AdminActions request={detail.data} /></>}
         </>}
       </div>
+      </div>
+      </div>
     </main>
-  </>;
+  </div>;
+}
+
+function AdminReturnWorkspace() {
+  const { id } = useParams();
+  const client = useQueryClient();
+  const detail = useReturnDetail(id);
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const rawPanel = params.get('panel');
+  const panel: ReturnDetailPanel = rawPanel === 'handling' || rawPanel === 'evidence' || rawPanel === 'shipping' || rawPanel === 'history' ? rawPanel : 'products';
+  const setPanel = (next: ReturnDetailPanel) => setParams(previous => { const updated = new URLSearchParams(previous); updated.set('panel',next); return updated; },{replace:true,state:location.state});
+  const savedReturnTo = location.state?.returnTo;
+  const returnTo = typeof savedReturnTo === 'string' && /^\/admin\/arbitration\?/.test(savedReturnTo) ? savedReturnTo : '/admin/arbitration?tab=returns';
+  const request = detail.data;
+  const products = request ? caseProducts(request) : [];
+  const findings = request ? analyzeReturnCase(request) : [];
+  const destinations: Record<string, ReturnDetailPanel> = {
+    WAREHOUSE_MISSING: 'shipping', GHN_TRACKING_MISSING: 'shipping', GHN_CLAIM_MISSING: 'shipping',
+    GHN_REPLY_OVERDUE: 'shipping', GHN_EVIDENCE_REQUIRED: 'evidence', GHN_CLAIM_REJECTED: 'shipping',
+    REFUND_FAILED: 'handling', INSPECTION_OVERDUE: 'handling', DISPUTE_OPEN: 'handling',
+  };
+  function openPanel(next: ReturnDetailPanel) {
+    setPanel(next);
+    document.getElementById('return-admin-workspace-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  return <div className="return-admin-workspace">
+    <section className="return-workspace-card" aria-label="Hồ sơ đổi trả">
+    <div className="return-workspace-toolbar"><Link to={returnTo}><ArrowLeft size={15}/>Danh sách đổi trả</Link>
+      {request && <button type="button" onClick={() => downloadReturnCaseReport(request, findings)}><Download size={15}/>Tải hồ sơ</button>}</div>
+    {!request && <p role={detail.error ? 'alert' : 'status'}>{detail.error ? 'Không tải được hồ sơ đổi trả.' : 'Đang tải hồ sơ…'}{detail.error && <button type="button" onClick={() => void detail.refetch()}>Thử lại</button>}</p>}
+    {request && <><header className="return-workspace-summary">
+      {products[0] && <CaseProductImage product={products[0]} size={56}/>}
+      <div><h1>Hồ sơ #{request.order.externalOrderSn}</h1><p>{request.order.storeName} · {request.order.customerName || 'Chưa có tên khách'}</p></div>
+      <span className="return-workspace-status">{returnStatusLabel(request.status)}</span>
+    </header>
+    {!!findings.length && <section className="return-workspace-findings" aria-label="Mục cần xử lý"><h2>Cần kiểm tra <span>{findings.length}</span></h2>
+      <div className="return-finding-items">{findings.map(finding => <article key={finding.code} className="return-finding-item"><div><h3>{finding.title}</h3><p>{finding.detail}</p></div><button type="button" onClick={() => openPanel(destinations[finding.code] || 'handling')} aria-label={`Xử lý: ${finding.title}`}>Đến xử lý<span aria-hidden="true">↗</span></button></article>)}</div>
+    </section>}
+    <div id="return-admin-workspace-content"><ReturnOversightDetail key={request.id} snapshot={request} activePanel={panel} onPanelChange={setPanel}
+      onChanged={async () => { await Promise.all([detail.refetch(),...['rejected-return-reviews','active-return-oversight','ghn-claims','stalled-return-inspections','return-disputes','return-history'].map(key=>client.invalidateQueries({queryKey:[key]}))]); }}
+      handlingActions={current => <><AdminRefundRetry request={current}/>{!current.dispute && <AdminActions request={current}/>}{current.partnerIncome && <section className="return-detail-box"><h4>Thu nhập KOL của đơn</h4><strong>{money(current.partnerIncome.amount)}</strong><p>{({REVERSED:'Đã thu hồi',PENDING:'Đang tạm giữ',AVAILABLE:'Đã khả dụng',NOT_POSTED:'Dự kiến theo đơn'})[current.partnerIncome.status]}</p></section>}</>}
+      shippingActions={current => <div className="return-workspace-ghn-actions"><AdminGhnClaim request={current}/></div>}/></div>
+    </>}
+    </section>
+  </div>;
+}
+
+export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' }) {
+  return mode === 'admin' ? <AdminReturnWorkspace/> : <LegacyReturnDetailPage mode={mode}/>;
 }

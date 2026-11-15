@@ -49,6 +49,9 @@ const Wallet = z.object({
     }),
   ),
   withdrawalTaxPolicy: z.object({
+    policy: z.string().optional(),
+    month: z.string().optional(),
+    monthlyGross: amount.optional(),
     threshold: amount.transform(Number),
     rate: amount.transform(Number).refine(value => value >= 0 && value <= 1),
   }),
@@ -155,7 +158,7 @@ export function WalletScreen() {
             <>
               <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 14, gap: 6 }}>
                 <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "600" }}>Rút từ {money(wallet.data.minimumWithdrawalAmount)}</Text>
-                <Caption>Từ {money(wallet.data.withdrawalTaxPolicy.threshold)}, khấu trừ {wallet.data.withdrawalTaxPolicy.rate * 100}% theo chính sách hệ thống.</Caption>
+                <Caption>{wallet.data.withdrawalTaxPolicy.policy === 'MONTHLY_PROGRESSIVE_V1' ? `Thuế lũy tiến 5–35% · Đã yêu cầu tháng này: ${money(wallet.data.withdrawalTaxPolicy.monthlyGross || 0)}` : `Khấu trừ ${wallet.data.withdrawalTaxPolicy.rate * 100}% theo chính sách hệ thống.`}</Caption>
               </View>
               {!wallet.data.canWithdraw && (
                 <Caption>

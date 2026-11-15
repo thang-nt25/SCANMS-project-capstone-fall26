@@ -34,6 +34,7 @@ export interface FraudIncident {
   referralLinkId?: string;
   referralLinkCode?: string;
   productName?: string;
+  productImageUrl?: string | null;
   riskScore: number;
   riskLevel: FraudRiskLevel;
   anomalyTypes: FraudAnomalyType[];

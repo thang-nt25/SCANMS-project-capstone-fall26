@@ -6,7 +6,7 @@ const claims = ['/admin/customer-reviews', '/admin/return-disputes', '/admin/ret
 export const WORKSPACE_MOBILE_ITEMS: Record<WorkspaceMobileRole, MobileItem[]> = {
   COLLABORATOR: [
     { label: 'Tổng quan', icon: LayoutDashboard, to: '/collaborator/dashboard' },
-    { label: 'Tiếp thị', icon: Link2, to: '/collaborator/marketing', paths: ['/collaborator/marketing', '/collaborator/campaigns'] },
+    { label: 'Tiếp thị', icon: Link2, to: '/collaborator/marketing', paths: ['/collaborator/marketing', '/collaborator/campaigns', '/collaborator/reports'] },
     { label: 'Hợp tác', icon: Handshake, to: '/collaborator/collaboration' },
     { label: 'Ví thù lao', icon: Wallet, to: '/collaborator/wallet' },
     { label: 'Tôi', icon: UserRound, menu: 'all' },

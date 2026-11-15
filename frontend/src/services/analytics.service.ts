@@ -68,6 +68,7 @@ export interface ReferralOrderItem {
   customerName: string;
   customerPhoneMasked: string;
   storeName: string;
+  storeId?: string;
   storeLogo?: string;
   finalAmount: number;
   commissionAmount: number;
@@ -96,6 +97,7 @@ export interface ReferralOrdersResponse {
   limit: number;
   totalPages: number;
   items: ReferralOrderItem[];
+  stores?: Array<{ storeId: string; storeName: string; storeLogo: string | null; ordersCount: number; totalRevenue: number; totalCommission: number; percentage: number }>;
 }
 
 export interface TimeSeriesPoint {
@@ -310,6 +312,7 @@ export const analyticsService = {
     limit?: number;
     status?: string;
     search?: string;
+    storeId?: string;
   }, fresh = false): Promise<ReferralOrdersResponse> => {
     const res = await api.get<{ data?: ReferralOrdersResponse } | ReferralOrdersResponse>(
       '/dashboard/collaborator/referral-orders',

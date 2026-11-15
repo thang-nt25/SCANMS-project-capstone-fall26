@@ -1322,6 +1322,9 @@ export class CommissionRulesService {
 
     return await this.prisma.$transaction(async (tx) => {
       await this.lockBonusLedger(tx, storeId, collaboratorId);
+      if (await tx.storeMonthlyRewardPolicy.findUnique({ where: { storeId_yearMonth: { storeId, yearMonth } } })) {
+        throw new BadRequestException('Kỳ này dùng chính sách thưởng riêng của Shop; hãy gửi đề nghị tại Thưởng doanh số tháng');
+      }
       // 3. Kiểm tra Idempotency
       await this.assertCompletionDatesResolved(tx, storeId, collaboratorId);
       const existingSettlement = await tx.monthlyBonusResult.findUnique({
@@ -1636,6 +1639,11 @@ export class CommissionRulesService {
         );
       }
 
+      await this.lockBonusLedger(tx, storeId, settlement.collaboratorId);
+      if (await tx.storeMonthlyRewardPolicy.findUnique({ where: { storeId_yearMonth: { storeId, yearMonth: settlement.yearMonth } } })) {
+        throw new BadRequestException('Kỳ này phải duyệt qua đề nghị thưởng riêng của Shop');
+      }
+
       await this.assertCompletionDatesResolved(
         tx,
         storeId,
@@ -1701,6 +1709,10 @@ export class CommissionRulesService {
       });
       if (!settlement)
         throw new NotFoundException('Bản ghi chốt thưởng không tồn tại');
+
+      if (await tx.storeMonthlyRewardPolicy.findUnique({ where: { storeId_yearMonth: { storeId, yearMonth: settlement.yearMonth } } })) {
+        throw new BadRequestException('Kỳ này phải cộng ví qua đề nghị thưởng riêng của Shop');
+      }
 
       if (
         settlement.status === CommissionStatus.PAID ||

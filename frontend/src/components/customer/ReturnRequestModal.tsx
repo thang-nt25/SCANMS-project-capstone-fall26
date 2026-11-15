@@ -4,6 +4,8 @@ import { customerService, type CustomerOrder, type CustomerReturnRequest } from 
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { Select } from '../ui/Select';
+import { getCustomerOrderActions } from '../../utils/customer-order-actions';
+import { useReturnWindowClock } from '../../hooks/useReturnWindowClock';
 
 interface Props {
   order: CustomerOrder;
@@ -20,6 +22,8 @@ const reasons: Array<{ value: CustomerReturnRequest['reason']; label: string }> 
 ];
 
 export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
+  const now = useReturnWindowClock([order]);
+  const returnAllowed = getCustomerOrderActions(order, now).requestReturn;
   const dialogRef = useRef<HTMLFormElement>(null);
   const alreadyRequested = useMemo(() => {
     const quantities = new Map<string, number>();
@@ -41,9 +45,9 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const daysLeft = useMemo(() => {
-    const anchor = new Date(order.deliveredAt || order.completedAt || 0).getTime();
-    return Math.max(0, Math.ceil((anchor + 14 * 24 * 60 * 60 * 1000 - Date.now()) / 86400000));
-  }, [order.deliveredAt, order.completedAt]);
+    const anchor = Date.parse(order.deliveredAt || '');
+    return Number.isFinite(anchor) ? Math.max(0, Math.ceil((anchor + 14 * 86400000 - now) / 86400000)) : 0;
+  }, [order.deliveredAt, now]);
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -58,6 +62,10 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!getCustomerOrderActions(order).requestReturn) {
+      toast.error('Đơn hàng không còn trong thời hạn hoặc không đủ điều kiện đổi trả');
+      return;
+    }
     const items = Object.entries(selectedItems).filter(([, quantity]) => quantity > 0)
       .map(([orderItemId, quantity]) => ({ orderItemId, quantity }));
     if (!items.length) { toast.error('Vui lòng chọn ít nhất một sản phẩm cần đổi trả'); return; }
@@ -104,7 +112,7 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
         <div className="sticky top-0 z-10 -mx-4 flex items-start justify-between gap-4 border-b border-[#EAE4D7] bg-white px-4 py-4 sm:-mx-6 sm:px-6">
           <div>
             <h2 id="return-request-title" className="text-lg font-black text-[#1A1612]">Yêu cầu trả hàng / hoàn tiền</h2>
-            <p className="text-xs text-[#7D715E] mt-1">Đơn #{order.externalOrderSn} · còn khoảng {daysLeft} ngày trong thời hạn 14 ngày</p>
+            <p className="text-xs text-[#7D715E] mt-1">Đơn #{order.externalOrderSn} · {returnAllowed ? `còn khoảng ${daysLeft} ngày trong thời hạn 14 ngày` : 'Đã hết hạn hoặc không còn đủ điều kiện đổi trả'}</p>
           </div>
           <button type="button" onClick={onClose} disabled={submitting} className="p-2 rounded-full bg-[#F3EFE6] text-[#7D715E] disabled:opacity-50" aria-label="Đóng"><X className="w-4 h-4" /></button>
         </div>
@@ -175,7 +183,7 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
 
         <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex gap-2 border-t border-[#EAE4D7] bg-white px-4 py-4 shadow-[0_-8px_20px_rgba(35,29,21,.05)] sm:-mx-6 sm:px-6">
           <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-3 rounded-xl bg-[#F3EFE6] text-[#7D715E] text-xs font-bold">Đóng</button>
-          <button type="submit" disabled={submitting || !Object.values(selectedItems).some(quantity => quantity > 0) || !images.length || (reason === 'DAMAGED' && !video)} className="flex-[2] py-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-[#231D15] text-xs font-bold flex items-center justify-center gap-2">
+          <button type="submit" disabled={!returnAllowed || submitting || !Object.values(selectedItems).some(quantity => quantity > 0) || !images.length || (reason === 'DAMAGED' && !video)} className="flex-[2] py-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-[#231D15] text-xs font-bold flex items-center justify-center gap-2">
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {submitting ? 'Đang tải bằng chứng...' : 'Gửi yêu cầu'}
           </button>

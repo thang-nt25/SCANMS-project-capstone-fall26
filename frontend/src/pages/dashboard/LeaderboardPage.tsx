@@ -1,3 +1,4 @@
+import { handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
@@ -29,6 +30,7 @@ import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
 import { WorkspaceMetrics, workspaceButton } from '@/components/ui/FeatureWorkspace';
+import './leaderboard-refresh.css';
 
 export default function LeaderboardPage({ alignToContainer = false }: { alignToContainer?: boolean } = {}) {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);
@@ -175,14 +177,14 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
   const metricLabels: Record<LeaderboardMetric, string> = {
     REVENUE: 'Doanh số GMV',
     ORDERS: 'Đơn hàng',
-    CONVERSION_RATE: 'Tỷ lệ chốt',
+    CONVERSION_RATE: 'Đơn / lượt nhấp',
     COMMISSION: 'Hoa hồng đã duyệt',
   };
   const formatMetricValue = (item?: LeaderboardItem | null) => {
     if (!item) return 'Chưa có dữ liệu';
     switch (metric) {
       case 'ORDERS': return `${formatNumber(item.totalOrders)} đơn`;
-      case 'CONVERSION_RATE': return `${formatNumber(item.conversionRate)}%`;
+      case 'CONVERSION_RATE': return item.totalClicks > 0 ? `${formatNumber(item.conversionRate)}%` : '—';
       case 'COMMISSION': return formatVND(item.totalCommission);
       case 'REVENUE':
       default: return formatVND(item.grossRevenue);
@@ -191,8 +193,8 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
   const podium = data?.podium;
   const rankings = data?.rankings || [];
-  const allTop = [podium?.rank1, podium?.rank2, podium?.rank3, ...rankings]
-    .filter((item): item is LeaderboardItem => Boolean(item));
+  const allTop = [...new Map([podium?.rank1, podium?.rank2, podium?.rank3, ...rankings]
+    .filter((item): item is LeaderboardItem => Boolean(item)).map(item => [item.collaboratorId, item])).values()];
   const myRank = data?.myRankStatus;
 
   const timeOptions: { value: LeaderboardTimeRange; label: string }[] = [
@@ -206,7 +208,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
     { slot: 1, creator: podium?.rank1 },
     { slot: 3, creator: podium?.rank3 },
   ].filter((entry): entry is { slot: number; creator: LeaderboardItem } => Boolean(entry.creator));
-  const scopeLabel = scope === 'GLOBAL' ? 'Toàn sàn' : isAdmin
+  const scopeLabel = scope === 'GLOBAL' ? 'Toàn hệ thống' : isAdmin
     ? (stores.find(store => store.id === selectedStoreId)?.name || 'Gian hàng')
     : 'Gian hàng của bạn';
 
@@ -244,7 +246,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
             {/* Select Metric */}
             <div className="relative w-full min-w-0">
               <select
-                id="lb-metric-select"
+                id="lb-metric-select" title="Đơn đã giao/hoàn tất trong kỳ / lượt nhấp hợp lệ trong kỳ × 100. Hai tập ghi nhận khác nhau; có thể vượt 100%."
                 aria-label="Tiêu chí xếp hạng"
                 value={metric}
                 onChange={(event) => setMetric(event.target.value as LeaderboardMetric)}
@@ -272,7 +274,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                     onChange={(event) => setScope(event.target.value as LeaderboardScope)}
                     className="flex w-full h-11 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white px-8 text-center [text-align-last:center] text-xs font-semibold text-[#1A1612] appearance-none [&::picker-icon]:hidden focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer hover:border-[#C59B58]"
                   >
-                    <option value="GLOBAL">Toàn sàn</option>
+                    <option value="GLOBAL">Toàn hệ thống</option>
                     <option value="STORE">{isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</option>
                   </select>
                   <ChevronDown
@@ -318,6 +320,28 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
         {loading && <span className="sr-only" role="status" aria-live="polite">Đang cập nhật bảng xếp hạng…</span>}
       </section>
 
+      {!loading && !loadError && myRank && (
+        <section className="leaderboard-my-rank flex items-center justify-between flex-wrap gap-4 p-4 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Vị trí của bạn trên bảng xếp hạng">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="grid place-items-center w-10 h-10 shrink-0 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-base font-bold">{myRank.myRank === null ? <Award aria-hidden="true" className="w-5 h-5" /> : `#${myRank.myRank}`}</span>
+            <div>
+              <div className="flex items-center flex-wrap gap-2"><h2 className="m-0 text-sm font-semibold text-[#1A1612]">{myRank.myRank === null ? 'Bạn chưa được xếp hạng trong kỳ' : `Hạng của bạn theo ${metricLabels[metric]}`}</h2>
+                {metric === 'REVENUE' && myRank.rankDelta > 0 && <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-[#B88E4F]"><TrendingUp aria-hidden="true" className="w-3.5 h-3.5" /> Tăng {myRank.rankDelta} bậc</span>}
+              </div>
+              <p className="m-0 mt-0.5 text-xs text-[#7D715E]">{myRank.currentPeriodLabel} · {metricLabels[metric]} hiện tại: <strong className="text-[#1A1612] font-semibold">{metric === 'REVENUE' ? formatVND(myRank.myRevenue) : metric === 'ORDERS' ? `${formatNumber(myRank.myOrders)} đơn` : metric === 'CONVERSION_RATE' ? `${formatNumber(myRank.myConversionRate)}%` : formatVND(myRank.myCommission)}</strong></p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end flex-wrap gap-2.5">
+            {metric === 'REVENUE' && myRank.myRank !== null && (myRank.myRank > 10
+              ? <div className="flex flex-col gap-0.5 text-right"><span className="text-[11px] text-[#7D715E]">Chênh lệch doanh số với Top 10</span><strong className="text-xs font-semibold text-[#1A1612]">{formatVND(myRank.gapToTop10Revenue)}</strong></div>
+              : <span className="inline-flex items-center gap-1 text-xs text-[#7D715E]"><Check aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Đang trong Top 10</span>)}
+            {currentUser?.role === 'COLLABORATOR' ? <Link className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors" to="/collaborator/marketing">Tạo link tiếp thị<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></Link>
+              : <button className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Xem bộ lọc<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></button>}
+          </div>
+        </section>
+      )}
+
+
       {loadError && <div role="alert" className="p-3 sm:px-4 border border-[#EEDFC6] rounded-xl bg-white text-xs sm:text-sm text-[#DC2626]">{loadError}</div>}
 
       {loading ? (
@@ -340,7 +364,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end" aria-label="Các nhà sáng tạo dẫn đầu">
+        <div className="leaderboard-podium grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch" aria-label="Các nhà sáng tạo dẫn đầu">
           {podiumEntries.map(({ slot, creator }) => {
             const rank = creator.rank;
             const isRank1 = rank === 1;
@@ -354,10 +378,10 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                 data-current={creator?.isCurrentUser || undefined}
                 className={`flex flex-col p-4 sm:p-4.5 rounded-2xl transition shadow-2xs ${
                   isRank1
-                    ? 'order-1 md:order-2 border-2 border-[#C59B58] bg-[#FDFBF7] shadow-sm md:min-h-[290px]'
+                    ? 'order-1 md:order-2 border-2 border-[#C59B58] bg-[#FDFBF7] shadow-sm md:min-h-[286px]'
                     : isRank2
-                    ? 'order-2 md:order-1 border border-slate-200 bg-white md:min-h-[265px]'
-                    : 'order-3 md:order-3 border border-orange-200 bg-white md:min-h-[255px]'
+                    ? 'order-2 md:order-1 border border-slate-200 bg-white md:min-h-[286px]'
+                    : 'order-3 md:order-3 border border-orange-200 bg-white md:min-h-[286px]'
                 }`}
               >
                 {/* Header: Avatar, Name, Tier & Rank badge */}
@@ -369,7 +393,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                   onClick={() => creator && handleOpenCreatorModal(creator.collaboratorId)}
                 >
                   <span
-                    className={`relative grid place-items-center w-12 h-12 overflow-hidden shrink-0 border-2 rounded-full bg-[#FAF8F5] text-[#B88E4F] text-lg font-bold shadow-2xs ${
+                    className={`relative grid place-items-center w-14 h-14 overflow-hidden shrink-0 border-2 rounded-full bg-[#FAF8F5] text-[#B88E4F] text-lg font-bold shadow-2xs ${
                       isRank1 ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20' : isRank2 ? 'border-slate-300' : 'border-orange-300'
                     }`}
                     aria-hidden="true"
@@ -448,9 +472,9 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                       </strong>
                     </div>
                     <div>
-                      <span className="text-[10px] text-[#7D715E] block font-medium">Tỷ lệ chốt</span>
+                      <span title="Đơn đã giao/hoàn tất chia lượt nhấp hợp lệ trong kỳ; có thể vượt 100%." className="text-[10px] text-[#7D715E] block font-medium">Đơn / lượt nhấp</span>
                       <strong className="text-xs font-bold text-[#B88E4F] tabular-nums mt-0.5 block">
-                        {formatNumber(creator.conversionRate)}%
+                        {creator.totalClicks > 0 ? `${formatNumber(creator.conversionRate)}%` : '—'}
                       </strong>
                     </div>
                   </div>
@@ -467,7 +491,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
             <thead className="bg-[#FAF8F5]"><tr>
               <th scope="col" className="text-center px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Hạng</th><th scope="col" className="px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Creator / Đối tác</th><th scope="col" className="px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Cấp bậc</th>
               <th scope="col" className="text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Lượt click</th><th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'ORDERS' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Đơn hàng</th>
-              <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Tỷ lệ chốt</th>
+              <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Đơn / lượt nhấp</th>
               <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'REVENUE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Doanh số GMV</th>
               <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Hoa hồng đã duyệt</th><th scope="col" className="text-center px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Hồ sơ</th>
             </tr></thead>
@@ -489,7 +513,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                   <td className="px-3.5 py-3 border-t border-[#EAE4D7]"><span className="inline-flex items-center px-2 py-0.5 border border-[#EAE4D7] rounded-md bg-white text-[11px] font-medium text-[#7D715E]">{item.tierName}</span></td>
                   <td className="text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap">{formatNumber(item.totalClicks)}</td>
                   <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'ORDERS' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatNumber(item.totalOrders)} đơn</td>
-                  <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatNumber(item.conversionRate)}%</td>
+                  <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{item.totalClicks > 0 ? `${formatNumber(item.conversionRate)}%` : '—'}</td>
                   <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'REVENUE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatVND(item.grossRevenue)}</td>
                   <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatVND(item.totalCommission)}</td>
                   <td className="text-center px-3.5 py-3 border-t border-[#EAE4D7]"><button className="inline-flex items-center justify-center gap-1 px-2.5 py-1 border border-[#EAE4D7] rounded-md bg-white text-[#7D715E] text-xs hover:bg-[#FBF5EB] hover:text-[#1A1612] transition-colors cursor-pointer" onClick={() => handleOpenCreatorModal(item.collaboratorId)}>Xem <ChevronRight aria-hidden="true" className="w-3.5 h-3.5" /></button></td>
@@ -499,27 +523,6 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
           </table>
         </div>
       </section>}
-
-      {!loading && !loadError && myRank && (
-        <section className="leaderboard-my-rank flex items-center justify-between flex-wrap gap-4 p-4 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Vị trí của bạn trên bảng xếp hạng">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="grid place-items-center w-10 h-10 shrink-0 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-base font-bold">{myRank.myRank === null ? <Award aria-hidden="true" className="w-5 h-5" /> : `#${myRank.myRank}`}</span>
-            <div>
-              <div className="flex items-center flex-wrap gap-2"><h2 className="m-0 text-sm font-semibold text-[#1A1612]">{myRank.myRank === null ? 'Bạn chưa được xếp hạng trong kỳ' : `Hạng của bạn theo ${metricLabels[metric]}`}</h2>
-                {metric === 'REVENUE' && myRank.rankDelta > 0 && <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-[#B88E4F]"><TrendingUp aria-hidden="true" className="w-3.5 h-3.5" /> Tăng {myRank.rankDelta} bậc</span>}
-              </div>
-              <p className="m-0 mt-0.5 text-xs text-[#7D715E]">{myRank.currentPeriodLabel} · {metricLabels[metric]} hiện tại: <strong className="text-[#1A1612] font-semibold">{metric === 'REVENUE' ? formatVND(myRank.myRevenue) : metric === 'ORDERS' ? `${formatNumber(myRank.myOrders)} đơn` : metric === 'CONVERSION_RATE' ? `${formatNumber(myRank.myConversionRate)}%` : formatVND(myRank.myCommission)}</strong></p>
-            </div>
-          </div>
-          <div className="flex items-center justify-end flex-wrap gap-2.5">
-            {metric === 'REVENUE' && myRank.myRank !== null && (myRank.myRank > 10
-              ? <div className="flex flex-col gap-0.5 text-right"><span className="text-[11px] text-[#7D715E]">Chênh lệch doanh số với Top 10</span><strong className="text-xs font-semibold text-[#1A1612]">{formatVND(myRank.gapToTop10Revenue)}</strong></div>
-              : <span className="inline-flex items-center gap-1 text-xs text-[#7D715E]"><Check aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Đang trong Top 10</span>)}
-            {currentUser?.role === 'COLLABORATOR' ? <Link className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors" to="/collaborator/marketing">Tạo link tiếp thị<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></Link>
-              : <button className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Xem bộ lọc<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></button>}
-          </div>
-        </section>
-      )}
 
       {/* ─── 5. MODAL HỒ SƠ VINH DANH CREATOR (CREATOR HALL OF FAME) ─────── */}
       {selectedCreatorId && createPortal(
@@ -551,7 +554,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                   <div className="w-20 h-20 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] p-1 flex-shrink-0 shadow-lg">
                     <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-2xl font-bold text-[#8F682E] overflow-hidden">
                       {creatorProfile.avatarUrl ? (
-                        <img src={creatorProfile.avatarUrl} alt={creatorProfile.fullName} className="w-full h-full object-cover" />
+                        <img src={creatorProfile.avatarUrl} onError={handleAvatarImageError} alt={creatorProfile.fullName} className="w-full h-full object-cover" />
                       ) : (
                         creatorProfile.fullName?.charAt(0)
                       )}

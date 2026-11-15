@@ -1,3 +1,5 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
+import { handleAvatarImageError, handleProductImageError } from '@/utils/image-fallback.utils';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   UserCheck,
@@ -217,7 +219,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       toast.error('Chưa có mã liên kết tiếp thị');
       return;
     }
-    const url = `${window.location.origin}/r/${deal.referralLink.shortCode}`;
+    const url = publicWebsiteUrl(`/r/${deal.referralLink.shortCode}`);
     navigator.clipboard.writeText(url);
     setCopiedId(deal.id);
     toast.success('Đã sao chép link thỏa thuận độc quyền!');
@@ -486,7 +488,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                       <div className="w-9 h-9 rounded-full bg-[#F3EFE6] border border-[#EEDFC6] overflow-hidden shrink-0 flex items-center justify-center text-[#B88E4F] font-bold text-xs">
                         {creator.collaboratorAvatar ? (
                           <img
-                            src={creator.collaboratorAvatar}
+                            src={creator.collaboratorAvatar} onError={handleAvatarImageError}
                             alt={creator.collaboratorName}
                             className="w-full h-full object-cover"
                           />
@@ -553,7 +555,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {deal.productImage ? (
                                   <img
-                                    src={deal.productImage}
+                                    src={deal.productImage} onError={handleProductImageError}
                                     alt={deal.productTitle || ''}
                                     className="w-10 h-10 rounded-lg object-cover shrink-0 border border-[#EAE4D7] bg-white"
                                   />
@@ -669,7 +671,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                               <div className="w-8 h-8 rounded-full bg-[#F3EFE6] border border-[#EEDFC6] overflow-hidden shrink-0 flex items-center justify-center text-[#B88E4F] font-bold text-xs">
                                 {deal.collaboratorAvatar ? (
                                   <img
-                                    src={deal.collaboratorAvatar}
+                                    src={deal.collaboratorAvatar} onError={handleAvatarImageError}
                                     alt={deal.collaboratorName}
                                     className="w-full h-full object-cover"
                                   />
@@ -702,7 +704,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             <div className="flex items-center gap-2 min-w-0 max-w-[200px]">
                               {deal.productImage && (
                                 <img
-                                  src={deal.productImage}
+                                  src={deal.productImage} onError={handleProductImageError}
                                   alt=""
                                   className="w-8 h-8 rounded-lg object-cover shrink-0 border border-[#EAE4D7]"
                                 />
@@ -812,7 +814,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                       <div className="flex items-center gap-2.5">
                         <div className="w-10 h-10 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0 flex items-center justify-center">
                           {item.product?.imageUrl ? (
-                            <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
+                            <img src={item.product.imageUrl} onError={handleProductImageError} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
                           )}

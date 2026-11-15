@@ -6,6 +6,7 @@ import CreatorAccountDetails from './CreatorAccountDetails';
 import KycSubmissionPage from './KycSubmissionPage';
 import SocialChannelsPage from './SocialChannelsPage';
 import KolTierStatusPage from './KolTierStatusPage';
+import './creator-profile-tabs.css';
 
 const CREATOR_PROFILE_TABS = ['profile', 'kyc', 'social', 'tiers'] as const;
 type CreatorProfileTab = (typeof CREATOR_PROFILE_TABS)[number];
@@ -33,7 +34,7 @@ export default function CreatorProfilePage() {
   const tabs: HubTabItem[] = [
     {
       id: 'profile',
-      label: 'Hồ sơ của tôi',
+      label: 'Hồ sơ',
       icon: User,
     },
     {
@@ -48,7 +49,7 @@ export default function CreatorProfilePage() {
     },
     {
       id: 'tiers',
-      label: 'Cấp bậc & Vinh danh',
+      label: 'Cấp bậc',
       icon: Award,
     },
   ];

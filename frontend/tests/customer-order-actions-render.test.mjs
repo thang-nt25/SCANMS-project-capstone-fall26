@@ -65,6 +65,26 @@ function render(item) {
 }
 const text = node => renderToStaticMarkup(node).replace(/<[^>]+>/g, '').trim();
 
+test('returns expire exactly 14 days after delivery, independently of completion and order dates', () => {
+  const delivery = Date.parse('2026-11-01T10:00:00Z');
+  const deadline = delivery + 14 * 86400000;
+  const item = order({ deliveredAt: new Date(delivery).toISOString(), completedAt: new Date(deadline).toISOString() });
+  assert.equal(getCustomerOrderActions(item, deadline - 1).requestReturn, true);
+  assert.equal(getCustomerOrderActions(item, deadline).requestReturn, false);
+  assert.equal(getCustomerOrderActions(item, deadline + 1).requestReturn, false);
+  for (const deliveredAt of [null, undefined, 'invalid', new Date(deadline + 1).toISOString()]) {
+    assert.equal(getCustomerOrderActions(order({ deliveredAt }), deadline).requestReturn, false);
+  }
+});
+
+test('expired orders retain access to a return case submitted within the window', () => {
+  const item = order({ deliveredAt: new Date(Date.now() - 16 * 86400000).toISOString(),
+    returnRequest: { id: 'case-in-window', status: 'REQUESTED' } });
+  const { html } = render(item);
+  assert.match(html, /case-in-window/);
+  assert.equal(getCustomerOrderActions(item).requestReturn, false);
+});
+
 test('a received/completed order exposes its return action, details and only one reorder action', () => {
   const item = order();
   const { calls, html, buttons } = render(item);
