@@ -5,6 +5,11 @@ import {
 } from "../../services/enterprise-pricing.service";
 import { Modal } from "../../components/ui/Modal";
 import { getSafeProductImageUrl } from "@/utils/marketplace.utils";
+import { authService } from "../../services/auth.service";
+import {
+  calculateMinSafePrice,
+  estimateMaxLossPerUnit,
+} from "../../utils/pricing-math";
 import {
   ShieldCheck,
   Tag,
@@ -549,37 +554,75 @@ export default function ProductPricingPage({
                       </div>
 
                       {/* Action buttons */}
-                      <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-end gap-2">
-                        {reviewer && item.status === "PENDING" && (
-                          <>
-                            <button
-                              type="button"
-                              className="px-3.5 py-1.5 rounded-lg border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-semibold transition cursor-pointer"
-                              onClick={() => open("review", item, false)}
-                            >
-                              Từ chối
-                            </button>
-                            <button
-                              type="button"
-                              className="px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-2xs transition cursor-pointer"
-                              onClick={() => open("review", item, true)}
-                            >
-                              Phê duyệt
-                            </button>
-                          </>
-                        )}
-                        {["PENDING", "APPROVED", "ACTIVE"].includes(
-                          item.status,
-                        ) && (
-                          <button
-                            type="button"
-                            className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-[#7D715E] hover:text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-medium transition cursor-pointer"
-                            onClick={() => open("cancel", item)}
-                          >
-                            Hủy khuyến mãi
-                          </button>
-                        )}
-                      </div>
+                      {(() => {
+                        const floorVal = Number(item.variant?.floorPrice ?? item.product?.floorPrice ?? 0);
+                        const safePrice = Number(item.minSafePrice || calculateMinSafePrice(floorVal));
+                        const isClearance =
+                          item.isClearanceBelowSafeFloor ??
+                          (safePrice > 0 && Number(item.proposedPrice || 0) < safePrice);
+                        const maxLoss =
+                          item.maxLossPerUnit ??
+                          (isClearance ? estimateMaxLossPerUnit(Number(item.proposedPrice || 0), floorVal) : 0);
+                        const isAdmin = authService.getCurrentUser()?.role === "SYSTEM_ADMIN";
+
+                        return (
+                          <div className="pt-3 border-t border-[#EAE4D7] flex flex-wrap items-center justify-between gap-2">
+                            {isClearance ? (
+                              <span
+                                title={`Giá đề xuất thấp hơn ngưỡng an toàn (${money(safePrice)}). Lỗ tối đa ước tính ${money(maxLoss)}/sp.`}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFFBEB] border border-[#D97706] text-[11px] font-bold text-[#92400E]"
+                              >
+                                <span>Xả hàng dưới sàn</span>
+                                <span className="font-mono text-[#DC2626]">
+                                  · Lỗ tối đa {money(maxLoss)} / sản phẩm
+                                </span>
+                              </span>
+                            ) : (
+                              <span />
+                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {reviewer && item.status === "PENDING" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="px-3.5 py-1.5 rounded-lg border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-semibold transition cursor-pointer"
+                                    onClick={() => open("review", item, false)}
+                                  >
+                                    Từ chối
+                                  </button>
+                                  {isClearance && !isAdmin ? (
+                                    <span
+                                      title="Khuyến mãi xả hàng dưới ngưỡng an toàn bắt buộc SYSTEM_ADMIN phê duyệt."
+                                      className="px-3 py-1.5 rounded-lg bg-[#F3EFE6] border border-[#EEDFC6] text-[#7D715E] text-xs font-bold cursor-not-allowed"
+                                    >
+                                      Chỉ SYSTEM_ADMIN duyệt
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-2xs transition cursor-pointer"
+                                      onClick={() => open("review", item, true)}
+                                    >
+                                      Phê duyệt
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              {["PENDING", "APPROVED", "ACTIVE"].includes(
+                                item.status,
+                              ) && (
+                                <button
+                                  type="button"
+                                  className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-[#7D715E] hover:text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-medium transition cursor-pointer"
+                                  onClick={() => open("cancel", item)}
+                                >
+                                  Hủy khuyến mãi
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </article>
                   );
                 })}

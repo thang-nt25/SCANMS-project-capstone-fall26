@@ -59,10 +59,10 @@ const formatMoney = (val: string | number) =>
   `${Number(val || 0).toLocaleString('vi-VN')} ₫`;
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  PENDING: { label: 'Chờ duyệt', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  PROCESSING: { label: 'Chờ đối soát', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  APPROVED: { label: 'Đã giải ngân', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  REJECTED: { label: 'Đã từ chối', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+  PENDING: { label: 'Chờ duyệt', className: 'bg-[#FFFBEB] text-[#D97706] border-[#FDE68A]' },
+  PROCESSING: { label: 'Chờ đối soát', className: 'bg-[#F3EFE6] text-[#231D15] border-[#EAE4D7]' },
+  APPROVED: { label: 'Đã giải ngân', className: 'bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]' },
+  REJECTED: { label: 'Đã từ chối', className: 'bg-rose-50 text-[#DC2626] border-rose-200' },
 };
 
 let lastAdminPayoutsSnapshot: { payouts: PayoutItem[]; stats: PayoutStats | null; total: number } | null = null;
@@ -222,36 +222,56 @@ export default function AdminFinancePayoutsPage() {
   return (
     <div className="w-full min-w-0 space-y-4 pb-12" id="admin-finance-payouts-page">
       {/* 2. Top Tabs */}
-      <div className="finance-main-tabs">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#EAE4D7] pb-3">
         <button
           type="button"
           aria-pressed={activeTab === 'kol'}
           onClick={() => setActiveTab('kol')}
-          className={`pb-3 px-4 text-xs font-bold transition flex items-center gap-2 border-b-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 border cursor-pointer ${
             activeTab === 'kol'
-              ? 'border-[#B88E4F] text-[#B88E4F]'
-              : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+              ? 'bg-[#231D15] text-white border-[#231D15] shadow-xs'
+              : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58] hover:text-[#1A1612]'
           }`}
         >
-          <span className="finance-tab-number">1</span>
-          <span>Yêu cầu chi trả</span><span className="finance-tab-count">{stats?.pending.count ?? 0}</span>
+          <span className={`w-5 h-5 rounded-full text-[11px] font-extrabold flex items-center justify-center ${
+            activeTab === 'kol' ? 'bg-[#C59B58] text-[#1A1612]' : 'bg-[#F3EFE6] text-[#7D715E]'
+          }`}>1</span>
+          <span>Yêu cầu chi trả</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold tabular-nums ${
+            activeTab === 'kol' ? 'bg-[#C59B58]/20 text-[#FBF5EB]' : 'bg-[#FBF5EB] text-[#B88E4F]'
+          }`}>{stats?.pending.count ?? 0}</span>
         </button>
 
         <button
           type="button"
           aria-pressed={activeTab === 'escrow'}
           onClick={() => setActiveTab('escrow')}
-          className={`pb-3 px-4 text-xs font-bold transition flex items-center gap-2 border-b-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 border cursor-pointer ${
             activeTab === 'escrow'
-              ? 'border-[#B88E4F] text-[#B88E4F]'
-              : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+              ? 'bg-[#231D15] text-white border-[#231D15] shadow-xs'
+              : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58] hover:text-[#1A1612]'
           }`}
         >
-          <span className="finance-tab-number">2</span>
-          <span>Bảo chứng Escrow · 7 ngày</span>
+          <span className={`w-5 h-5 rounded-full text-[11px] font-extrabold flex items-center justify-center ${
+            activeTab === 'escrow' ? 'bg-[#C59B58] text-[#1A1612]' : 'bg-[#F3EFE6] text-[#7D715E]'
+          }`}>2</span>
+          <span>Bảo chứng Escrow · 14 ngày</span>
         </button>
-        <button type="button" aria-pressed={activeTab === 'operations'} onClick={() => setActiveTab('operations')} className="flex items-center gap-2 cursor-pointer">
-          <span className="finance-tab-number">3</span><span>Thuế &amp; Đối soát</span>
+
+        <button
+          type="button"
+          aria-pressed={activeTab === 'operations'}
+          onClick={() => setActiveTab('operations')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 border cursor-pointer ${
+            activeTab === 'operations'
+              ? 'bg-[#231D15] text-white border-[#231D15] shadow-xs'
+              : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58] hover:text-[#1A1612]'
+          }`}
+        >
+          <span className={`w-5 h-5 rounded-full text-[11px] font-extrabold flex items-center justify-center ${
+            activeTab === 'operations' ? 'bg-[#C59B58] text-[#1A1612]' : 'bg-[#F3EFE6] text-[#7D715E]'
+          }`}>3</span>
+          <span>Thuế &amp; Đối soát</span>
         </button>
       </div>
 
@@ -259,52 +279,84 @@ export default function AdminFinancePayoutsPage() {
       {activeTab === 'kol' && (
         <div className="space-y-4">
           {/* KPI Cards */}
-          <div className="finance-kpis grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Chờ phê duyệt
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+            <div className="bg-gradient-to-br from-white to-[#FFFBEB]/60 border border-[#EAE4D7] border-l-4 border-l-[#D97706] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[11px] font-bold text-[#92400E] uppercase tracking-wider inline-flex items-center gap-1">
+                  Chờ phê duyệt
+                  <span
+                    title={`Thực chi Net 90%. Tổng yêu cầu Gross: ${formatMoney(stats?.pending.grossAmount || '0')} · Thuế TNCN 10%: ${formatMoney(stats?.pending.taxAmount || '0')}`}
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FEF3C7] border border-[#FDE68A] text-[10px] font-bold text-[#92400E] cursor-help"
+                  >
+                    ?
+                  </span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#D97706] text-[10px] font-bold tabular-nums">
+                  {stats?.pending.count ?? 0} yêu cầu
+                </span>
               </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-amber-700">
+              <div className="text-2xl font-extrabold font-mono tabular-nums text-[#D97706]">
                 {formatMoney(stats?.pending.netAmount || '0')}
               </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">
-                {stats?.pending.count ?? 0} yêu cầu chờ thẩm định
-              </div>
             </div>
 
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Đã giải ngân
+            <div className="bg-gradient-to-br from-white to-[#FBF5EB]/70 border border-[#EAE4D7] border-l-4 border-l-[#C59B58] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[11px] font-bold text-[#8C6226] uppercase tracking-wider inline-flex items-center gap-1">
+                  Đã giải ngân
+                  <span
+                    title={`${stats?.approved.count ?? 0} lệnh chuyển khoản thành công (số tiền Net thực chi cho KOL).`}
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
+                  >
+                    ?
+                  </span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-[10px] font-bold tabular-nums">
+                  {stats?.approved.count ?? 0} lệnh
+                </span>
               </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-emerald-700">
+              <div className="text-2xl font-extrabold font-mono tabular-nums text-[#B88E4F]">
                 {formatMoney(stats?.approved.netAmount || '0')}
               </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">
-                {stats?.approved.count ?? 0} lệnh chuyển thành công
-              </div>
             </div>
 
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Thuế TNCN đã khấu trừ (10%)
+            <div className="bg-white border border-[#EAE4D7] border-l-4 border-l-[#231D15] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[11px] font-bold text-[#574C3D] uppercase tracking-wider inline-flex items-center gap-1">
+                  Thuế thu nhập (10%)
+                  <span
+                    title="Lũy kế thuế thu nhập cá nhân 10% đã khấu trừ tại nguồn trên các lệnh chi đã duyệt."
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#F3EFE6] border border-[#EAE4D7] text-[10px] font-bold text-[#231D15] cursor-help"
+                  >
+                    ?
+                  </span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#F3EFE6] text-[#231D15] text-[10px] font-bold">
+                  10%
+                </span>
               </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
+              <div className="text-2xl font-extrabold font-mono tabular-nums text-[#1A1612]">
                 {formatMoney(stats?.approved.taxAmount || '0')}
               </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">
-                Lũy kế thuế TNCN khấu trừ 10%
-              </div>
             </div>
 
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Chờ đối soát ngân hàng
+            <div className="bg-white border border-[#EAE4D7] border-l-4 border-l-[#7D715E] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider inline-flex items-center gap-1">
+                  Đối soát ngân hàng
+                  <span
+                    title="Số lệnh chi đang ở trạng thái chờ kết quả đối soát từ ngân hàng."
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#F3EFE6] border border-[#EAE4D7] text-[10px] font-bold text-[#7D715E] cursor-help"
+                  >
+                    ?
+                  </span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] text-[10px] font-bold whitespace-nowrap">
+                  Chờ kết quả
+                </span>
               </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-blue-700">
+              <div className="text-2xl font-extrabold font-mono tabular-nums text-[#1A1612]">
                 {stats?.processingCount ?? 0}
-              </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">
-                Lệnh chi đang chờ kết quả
               </div>
             </div>
           </div>

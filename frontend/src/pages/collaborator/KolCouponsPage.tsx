@@ -908,8 +908,14 @@ export const KolCouponsPage: React.FC = () => {
                 {/* 1. Nhập mã voucher */}
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <label htmlFor="coupon-proposal-code" className="block text-xs font-semibold text-[#1A1612]">
-                      Mã ưu đãi mong muốn <span className="text-[#DC2626]">*</span>
+                    <label htmlFor="coupon-proposal-code" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
+                      <span>Mã ưu đãi mong muốn <span className="text-[#DC2626]">*</span></span>
+                      <span
+                        title="Quy tắc: 4–20 ký tự, chỉ dùng chữ cái & số, có ít nhất 1 chữ cái và không chứa từ khóa cấm."
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
+                      >
+                        ?
+                      </span>
                     </label>
                     <span className="text-[11px] font-medium text-[#7D715E]">
                       {proposeCode.length}/20 ký tự
@@ -941,22 +947,38 @@ export const KolCouponsPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Gợi ý đuôi mã nhanh */}
+                  {/* Gợi ý đuôi mã nhanh theo Store (tránh trùng toàn hệ thống) */}
                   <div className="mt-2 flex items-center gap-1.5 flex-wrap">
                     <span className="text-[11px] text-[#7D715E]">Gợi ý nhanh:</span>
-                    {['VIP10', 'SALE15', 'DEAL20', 'SPECIAL'].map((suf) => (
-                      <button
-                        key={suf}
-                        type="button"
-                        onClick={() => {
-                          const prefix = trimmedCode ? trimmedCode.replace(/\d+$/, '') : 'THANG';
-                          setProposeCode((prefix + suf).slice(0, 20));
-                        }}
-                        className="px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] hover:bg-[#FBF5EB] text-[10.5px] font-semibold text-[#7D715E] hover:text-[#B88E4F] transition-colors cursor-pointer"
-                      >
-                        +{suf}
-                      </button>
-                    ))}
+                    {(() => {
+                      const activeStore = approvedStores.find(
+                        (s) => (s.id || s.storeId) === selectedStoreId,
+                      );
+                      const storeTag = (activeStore?.name || activeStore?.storeName || '')
+                        .trim()
+                        .split(/\s+/)[0]
+                        ?.replace(/[^A-Za-z0-9]/g, '')
+                        .toUpperCase();
+                      const suggestions = [
+                        ...(storeTag ? [`_${storeTag}`] : []),
+                        'VIP10',
+                        'KOL10',
+                        'SPECIAL',
+                      ];
+                      return suggestions.map((suf) => (
+                        <button
+                          key={suf}
+                          type="button"
+                          onClick={() => {
+                            const prefix = trimmedCode ? trimmedCode.replace(/\d+$/, '') : 'KOL';
+                            setProposeCode((prefix + suf).slice(0, 20));
+                          }}
+                          className="px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] hover:bg-[#FBF5EB] text-[10.5px] font-semibold text-[#7D715E] hover:text-[#B88E4F] transition-colors cursor-pointer"
+                        >
+                          +{suf}
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </div>
 
@@ -1014,29 +1036,9 @@ export const KolCouponsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* 4. Kiểm tra điều kiện mã trực quan (Real-time Checklist) */}
-                <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px]">
-                  <div className={`flex items-center gap-1.5 ${isLengthValid ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    {isLengthValid ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
-                    <span>Từ 4 đến 20 ký tự</span>
-                  </div>
-                  <div className={`flex items-center gap-1.5 ${isAlphanumeric && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    {isAlphanumeric && proposeCode ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
-                    <span>Chỉ dùng chữ cái & số</span>
-                  </div>
-                  <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    {hasLetter ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
-                    <span>Có ít nhất 1 chữ cái</span>
-                  </div>
-                  <div className={`flex items-center gap-1.5 ${!isBanned && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    {!isBanned && proposeCode ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
-                    <span>Không chứa từ khóa cấm</span>
-                  </div>
-                </div>
               </div>
 
-              <div className="kol-coupon-proposal-footer pt-4 mt-2 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
+              <div className="pt-4 mt-2 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
 
                 <button
                   type="button"

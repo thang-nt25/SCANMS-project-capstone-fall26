@@ -9,7 +9,7 @@ import {
   PauseCircle,
   Eye,
   Activity,
-  Sparkles,
+  Cpu,
   Info,
   Shield,
   Layers,
@@ -651,7 +651,7 @@ export default function AiFraudSentinelPage() {
               {/* AI Reasoning Narrative */}
               <div className="space-y-2 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-xs text-[#1A1612]">
                 <div className="flex items-center gap-2 font-semibold text-[#8A642C]">
-                  <Sparkles className="h-4 w-4 text-[#B88E4F]" />
+                  <Cpu className="h-4 w-4 text-[#B88E4F]" />
                   <span>Kết Luận Phân Tích Của AI:</span>
                 </div>
                 <p className="font-medium leading-relaxed text-[#5F5547]">
