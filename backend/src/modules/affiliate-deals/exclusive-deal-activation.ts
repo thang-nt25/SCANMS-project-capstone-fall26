@@ -202,17 +202,6 @@ export async function decideExclusiveDeal(
               : requestedTerms,
           );
 
-          // C-10: Floor price guard - verify that discountPercent does not drop any scoped product below floorPrice
-          if (terms.discountPercent > 0) {
-            for (const p of products) {
-              const floor = Number((p as any).floorPrice || 0);
-              const price = Number(p.price || 0);
-              if (floor > 0 && price > 0) {
-                const discountedPrice = price * (1 - terms.discountPercent / 100);
-                // Clearance / liquidation allowed without hard blocking
-              }
-            }
-          }
           if (rate > 16 && !exceptionReview) {
             status = 'PENDING_ADMIN_APPROVAL';
             await tx.exclusiveDealProposal.update({
@@ -315,59 +304,7 @@ export async function decideExclusiveDeal(
                 proposal.productId,
                 products,
               );
-            const vipCode = deps.voucherCode(
-              id,
-              creator.fullName,
-              terms.discountPercent,
-            );
-            const coupon = await tx.coupon.create({
-              data: {
-                storeId: proposal.storeId,
-                collaboratorId: proposal.collaboratorId,
-                codeNormalized: vipCode,
-                displayCode: vipCode,
-                status: 'ACTIVE',
-                discountType: 'PERCENTAGE',
-                discountValue: terms.discountPercent,
-                minimumOrderAmount: terms.minimumOrderAmount,
-                maximumDiscountAmount: terms.maximumDiscountAmount,
-                usageLimitTotal: terms.usageLimitTotal,
-                usageLimitPerCustomer: 1,
-                budgetTotal: terms.budgetTotal,
-                budgetUsed: 0,
-                startsAt: now,
-                expiresAt: new Date(
-                  Math.min(
-                    now.getTime() + terms.validDays * 86400000,
-                    now.getTime() + kpi.commitmentDays * 86400000,
-                  ),
-                ),
-                scopeType:
-                  proposal.scopeType === 'STORE_WIDE'
-                    ? 'STORE_WIDE'
-                    : 'PRODUCTS',
-                fundingSource: 'SHOP_FUNDED',
-                shopFundingRate: 100,
-                platformFundingRate: 0,
-                stackableWithProductDiscount: true,
-                stackableWithShopVoucher: false,
-                stackableWithPlatformVoucher: true,
-                approvedBy:
-                  proposal.initiatedById || proposal.reviewerId || actorId,
-                approvedAt: now,
-              },
-            });
-            if (proposal.scopeType !== 'STORE_WIDE')
-              await tx.couponProduct.createMany({
-                data: products.map((product) => ({
-                  couponId: coupon.id,
-                  productId: product.id,
-                })),
-              });
-            await tx.referralLink.updateMany({
-              where: { id: { in: links.map((link) => link.id) } },
-              data: { customCouponCode: vipCode },
-            });
+            // Deal activation issues Smart Link + Dynamic QR only; coupons are created explicitly on request.
             for (const link of links)
               await tx.exclusiveDealProduct.upsert({
                 where: {
@@ -396,7 +333,7 @@ export async function decideExclusiveDeal(
               id,
               status,
               approvedCommissionRate: rate,
-              vipVoucherCode: vipCode,
+              vipVoucherCode: null,
               resources: links,
               previousCommissionRate: current
                 ? Number(current.approvedCommissionRate)

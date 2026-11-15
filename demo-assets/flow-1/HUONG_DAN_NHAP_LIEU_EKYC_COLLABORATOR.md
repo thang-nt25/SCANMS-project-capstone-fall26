@@ -8,7 +8,7 @@
 2. **Tên kênh (@Handle):** `@quynhne6288`
 3. **Số người theo dõi:** `52800`
 4. **Đường dẫn kênh (URL):** `https://www.tiktok.com/@quynhne6288`
-5. **Ảnh chụp trang quản trị kênh:** Tải lên [02_tiktok_profile_50k_proof_desktop.png](file:///c:/HW/CAPSTONE/demo-assets/02_tiktok_profile_50k_proof_desktop.png)
+5. **Ảnh chụp trang quản trị kênh:** Tải lên [02_tiktok_profile_50k_proof_desktop.png](file:///c:/HW/CAPSTONE/demo-assets/flow-1/02_tiktok_profile_50k_proof_desktop.png)
 6. **Ngành hàng thế mạnh:** Chọn `Mỹ phẩm & Chăm sóc da chuyên sâu`
 7. **Giới thiệu phong cách:**  
    `KOC chuyên review mỹ phẩm, routine phục hồi da dầu mụn khoa học. #Skincare #DaDầuMụn #RoutineKhoaHọc`
@@ -21,8 +21,8 @@
 
 1. **Số CCCD (12 số):** `079302015849`
 2. **Mã số thuế cá nhân:** `8012345678` *(tùy chọn, có thể để trống)*
-3. **Ảnh CCCD mặt trước:** Tải lên [04_cccd_mat_truoc_demo.png](file:///c:/HW/CAPSTONE/demo-assets/04_cccd_mat_truoc_demo.png)
-4. **Ảnh CCCD mặt sau:** Tải lên [05_cccd_mat_sau_demo.png](file:///c:/HW/CAPSTONE/demo-assets/05_cccd_mat_sau_demo.png)
+3. **Ảnh CCCD mặt trước:** Tải lên [04_cccd_mat_truoc_demo.png](file:///c:/HW/CAPSTONE/demo-assets/flow-1/04_cccd_mat_truoc_demo.png)
+4. **Ảnh CCCD mặt sau:** Tải lên [05_cccd_mat_sau_demo.png](file:///c:/HW/CAPSTONE/demo-assets/flow-1/05_cccd_mat_sau_demo.png)
 5. **Ngân hàng thụ hưởng:** Chọn `Vietcombank` *(hoặc MB Bank)*
 6. **Số tài khoản:** `1023456789`
 7. **Tên chủ tài khoản:** `NGUYEN NHU QUYNH`

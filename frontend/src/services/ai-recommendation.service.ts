@@ -21,6 +21,7 @@ export interface KolLifetimeStatsSummary {
   totalOrders: number;
   grossRevenue: number;
   conversionRate: number;
+  avgSellingPrice?: number;
   primaryCategory: string;
 }
 
@@ -59,6 +60,10 @@ export interface AiRecommendationResponse {
   targetProduct?: TargetProductSummary;
   totalKolsScanned: number;
   recommendedKols: KolMatchResult[];
+  summaryCounts?: {
+    performanceCount: number;
+    coldStartCount: number;
+  };
 }
 
 export interface RecommendKolsParams {
@@ -68,6 +73,7 @@ export interface RecommendKolsParams {
   minTier?: string;
   minConversionRate?: number;
   limit?: number;
+  mode?: 'ALL' | 'PERFORMANCE' | 'COLD_START';
 }
 
 export const aiRecommendationService = {

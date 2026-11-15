@@ -9,10 +9,16 @@ export function matchingScore(
   tierAndSocial: number,
 ) {
   const coldStart = orders < 5;
-  const social = Math.min(
-    100,
-    Math.round((Math.log10(1 + Math.max(0, followers)) / 6) * 100),
-  );
+  const safeFollowers = Math.max(0, followers);
+  const social =
+    safeFollowers <= 200
+      ? 0
+      : Math.min(
+          100,
+          Math.round(
+            (Math.log10(safeFollowers / 200) / Math.log10(500000 / 200)) * 100,
+          ),
+        );
   const weights = coldStart
     ? {
         categoryScore: 0.7,
