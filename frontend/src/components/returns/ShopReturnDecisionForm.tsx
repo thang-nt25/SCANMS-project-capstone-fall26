@@ -1,3 +1,4 @@
+import { ReturnActionDialog } from './ReturnActionDialog';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -73,6 +74,7 @@ export function ShopReturnDecisionForm({ orderId, request, onProcessed }: Props)
   if (request.status !== 'REQUESTED') return null;
 
   return <div className="min-w-0 space-y-4" aria-label="Shop phản hồi yêu cầu đổi trả">
+    <ReturnActionDialog title={approvalLabel} busy={Boolean(working)} onSelect={() => setError('')}>
     <form onSubmit={event => { event.preventDefault(); void decide('APPROVE'); }} className="min-w-0 space-y-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
       <h3 className="text-sm font-bold text-[#1A1612]">Khách đề nghị: {exchange ? 'Đổi sản phẩm mới' : refund ? 'Trả hàng / Hoàn tiền' : 'Đổi trả sản phẩm'}</h3>
       <p className="text-sm leading-relaxed text-[#7D715E]">{exchange
@@ -85,10 +87,11 @@ export function ShopReturnDecisionForm({ orderId, request, onProcessed }: Props)
         {working === 'APPROVE' ? 'Đang chấp nhận…' : approvalLabel}
       </button>
       <p className="text-xs leading-relaxed text-[#7D715E]">Không cần chọn lý do từ chối hay đính kèm bằng chứng khi chấp nhận. Chưa giao hàng thay thế hoặc hoàn tiền ở bước này.</p>
+      {error && <p role="alert" className="text-sm text-[#DC2626]">{error}</p>}
     </form>
-    <details className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white p-4">
-      <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-[#DC2626]">Từ chối yêu cầu và chuyển Manager phân xử</summary>
-      <form onSubmit={event => { event.preventDefault(); void decide('REJECT'); }} className="mt-3 min-w-0 space-y-3">
+    </ReturnActionDialog>
+    <ReturnActionDialog title="Từ chối & chuyển Manager" busy={Boolean(working)} onSelect={() => setError('')} choices={[{ label: "Từ chối & chuyển Manager", value: "REJECT", danger: true }]}>
+      <form onSubmit={event => { event.preventDefault(); void decide('REJECT'); }} className="min-w-0 space-y-3">
         <label className="block text-sm font-semibold">Lý do từ chối
           <select disabled={Boolean(working)} required value={reason} onChange={event => setReason(event.target.value as RejectionReason | '')} className={input}>
             <option value="">Chọn lý do</option>{reasons.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -109,8 +112,9 @@ export function ShopReturnDecisionForm({ orderId, request, onProcessed }: Props)
         <button type="submit" disabled={Boolean(working) || !reason || rejectionNote.trim().length < 20 || files.length < 1 || files.length > 5} className="min-h-11 w-full rounded-xl border border-[#DC2626] px-4 py-2.5 text-sm font-bold text-[#DC2626] disabled:opacity-50 sm:w-auto">
           {working === 'REJECT' ? 'Đang gửi bằng chứng…' : 'Từ chối & chuyển Manager'}
         </button>
+        {error && <p role="alert" className="text-sm text-[#DC2626]">{error}</p>}
       </form>
-    </details>
-    {error && <p role="alert" className="text-sm text-[#DC2626] [overflow-wrap:anywhere]">{error}</p>}
+    </ReturnActionDialog>
+
   </div>;
 }
