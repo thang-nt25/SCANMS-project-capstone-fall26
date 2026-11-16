@@ -17,6 +17,7 @@ const { buildShopApprovalResponse } = helpers.exports;
 const module = { exports: {} };
 vm.runInNewContext(ts.transpileModule(source, { compilerOptions: options }).outputText, {
   module, exports: module.exports, require: name => {
+    if (name.endsWith('ReturnActionDialog')) return { ReturnActionDialog: ({ children }) => React.createElement('div', null, children) };
     if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => {} }) };
     if (name.endsWith('order.service')) return { orderService: {} };
     if (name.endsWith('upload.service')) return { uploadService: {} };
@@ -58,7 +59,7 @@ test('blank notes keep approval enabled, while rejection remains protected by ev
   assert.ok(!forms[0].includes('required=""'));
   assert.match(forms[0], /không bắt buộc/);
   assert.match(forms[1], /<button[^>]*disabled=""/);
-  assert.match(html, /<details class=/);
+  assert.ok(!html.includes("<details"));
 });
 
 test('approval posts a valid customer-facing explanation with no refusal fields or media upload', async () => {

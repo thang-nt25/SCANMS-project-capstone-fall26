@@ -1,19 +1,20 @@
+import { createPortal } from 'react-dom';
+import { Modal } from '../../components/ui/Modal';
+import ReturnDetailPage from '../returns/ReturnDetailPage';
+import { ReturnActionDialog } from '../../components/returns/ReturnActionDialog';
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { RefreshCw, Scale, Search, X } from 'lucide-react';
 import { returnService, type ReturnDetail, type ReturnDisputeRecord } from '../../services/return.service';
 import { ReturnTimeline } from '../../components/returns/ReturnTimeline';
 import { toast } from '../../utils/toast';
-import { returnStatusLabel } from '../../utils/return-status.utils';
 import { searchReturnCases } from '../../utils/return-case-search';
+
+const caseButton = 'min-h-14 w-full min-w-0 rounded-xl border border-[#EAE4D7] bg-white p-4 text-left text-sm font-bold text-[#1A1612] [overflow-wrap:anywhere] hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F]';
 
 type Ruling = 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP';
 type Liability = 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON';
-const ghnClaimLabels: Record<string, string> = {
-  DRAFT: 'Chờ gửi GHN', SUBMITTED: 'Đã gửi GHN', NEEDS_MORE_EVIDENCE: 'Cần bổ sung bằng chứng',
-  ACCEPTED: 'GHN chấp thuận', REJECTED: 'GHN từ chối', PAID: 'GHN đã thanh toán',
-};
 const disputeReasonLabels: Record<string, string> = {
   SHOP_REQUESTED_REVIEW: 'Shop đề nghị Manager xem xét',
   CUSTOMER_DISAGREES: 'Khách không đồng ý với Shop',
@@ -33,6 +34,14 @@ function QueuePager({ page, total, onPage }: { page: number; total?: number; onP
 
 export default function AdminReturnDisputesPage() {
   const client = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queueIds = ['shop-rejected', 'active-returns', 'ghn-claims', 'stalled-returns', 'open-disputes', 'return-history'];
+  const requestedQueue = searchParams.get('queue');
+  const activeQueue = requestedQueue && queueIds.includes(requestedQueue) ? requestedQueue : 'open-disputes';
+  function selectQueue(id: string) {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('queue', id); return next; }, { preventScrollReset: true });
+  }
+  const [openedCase, setOpenedCase] = useState<ReturnDetail | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ruling, setRuling] = useState<Ruling>('APPROVE_REFUND');
   const [liability, setLiability] = useState<Liability | ''>('');
@@ -97,6 +106,8 @@ export default function AdminReturnDisputesPage() {
         client.invalidateQueries({ queryKey: ['return-disputes'] }),
       ]);
       toast.success('Đã mở hồ sơ phân xử cho Manager.');
+      setOpenedCase(null);
+      selectQueue('open-disputes');
     },
     onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Không thể mở phân xử.'),
   });
@@ -110,7 +121,7 @@ export default function AdminReturnDisputesPage() {
     ...rows.map((item) => item.returnRequest),
   ], caseSearch);
   const queuesLoading = disputes.isLoading || activeReturns.isLoading || rejectedReturns.isLoading || ghnClaims.isLoading || stalled.isLoading || history.isLoading;
-  const selected: ReturnDisputeRecord | undefined = rows.find((item) => item.id === selectedId) ?? rows[0];
+  const selected: ReturnDisputeRecord | undefined = rows.find((item) => item.id === selectedId);
   const canUpholdShop = !selected?.returnRequest.customerShipment?.receivedAt;
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -131,8 +142,23 @@ export default function AdminReturnDisputesPage() {
         </button>
       </div>
 
+      <nav aria-label="Chọn nhóm hồ sơ đổi trả" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        {[
+          { href: '#shop-rejected', label: 'Shop từ chối', count: rejectedReturns.data?.total, loading: rejectedReturns.isLoading },
+          { href: '#active-returns', label: 'Đang xử lý', count: activeReturns.data?.total, loading: activeReturns.isLoading },
+          { href: '#ghn-claims', label: 'Bồi hoàn GHN', count: ghnClaims.data?.total, loading: ghnClaims.isLoading },
+          { href: '#stalled-returns', label: 'Quá 48 giờ', count: stalled.data?.total, loading: stalled.isLoading },
+          { href: '#open-disputes', label: 'Cần phân xử', count: disputes.data?.total, loading: disputes.isLoading },
+          { href: '#return-history', label: 'Đã kết thúc', count: history.data?.total, loading: history.isLoading },
+        ].map((item) => <button key={item.href} type="button" aria-pressed={activeQueue === item.href.slice(1)} aria-controls={item.href.slice(1)} onClick={() => selectQueue(item.href.slice(1))}
+          className="flex min-h-14 min-w-0 items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3 text-left transition hover:border-[#C59B58] hover:bg-[#FBF5EB] aria-pressed:border-[#C59B58] aria-pressed:bg-[#FBF5EB] aria-pressed:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
+          <span className="text-xs font-semibold text-[#7D715E] sm:text-sm">{item.label}</span>
+          <strong className="text-xl tabular-nums text-[#795A2D]" aria-label={item.loading ? 'Đang tải' : `${item.count ?? 0} hồ sơ`}>{item.loading ? '…' : item.count ?? 0}</strong>
+        </button>)}
+      </nav>
+
       <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5" aria-label="Tìm hồ sơ đổi trả">
-        <label htmlFor="return-case-search" className="text-sm font-bold">Tìm nhanh hồ sơ Flow 4</label>
+        <label htmlFor="return-case-search" className="text-sm font-bold">Tìm hồ sơ đổi trả</label>
         <p className="mt-1 text-xs text-[#7D715E]">Tìm trong các hàng đợi đã tải theo mã đơn, khách, gian hàng hoặc vận đơn GHN.</p>
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 focus-within:border-[#B88E4F]">
           <Search className="h-4 w-4 shrink-0 text-[#B88E4F]" />
@@ -144,56 +170,27 @@ export default function AdminReturnDisputesPage() {
         {caseSearch.trim() && <div className="mt-3" aria-live="polite">
           <p className="text-xs text-[#7D715E]">{queuesLoading ? 'Đang tải thêm hồ sơ…' : `${searchResults.length} hồ sơ phù hợp trong các hàng đợi hiện tại`}</p>
           {searchResults.length > 0 && <ul className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {searchResults.slice(0, 12).map((item) => <li key={item.id}>
-              <Link to={`/admin/returns/${item.id}`} className="block rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 hover:border-[#C59B58] focus-visible:outline-2 focus-visible:outline-[#B88E4F]">
-                <strong className="block text-sm">#{item.order.externalOrderSn}</strong>
-                <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · {item.order.customerName || 'Khách hàng'}</span>
-                <span className="mt-1 block text-xs font-semibold text-[#795A2D]">{returnStatusLabel(item.status)}</span>
-              </Link>
-            </li>)}</ul>}
+            {searchResults.slice(0, 12).map((item) => <li key={item.id}><button type="button" onClick={() => setOpenedCase(item)} className={caseButton}>#{item.order.externalOrderSn}</button></li>)}</ul>}
           {!queuesLoading && searchResults.length === 0 && <p className="mt-2 text-sm text-[#7D715E]">Không thấy hồ sơ phù hợp trong dữ liệu đã tải.</p>}
           {searchResults.length > 12 && <p className="mt-2 text-xs text-[#7D715E]">Hiển thị 12 hồ sơ mới nhất; nhập thêm thông tin để thu hẹp kết quả.</p>}
         </div>}
       </section>
 
-      <nav aria-label="Đi nhanh đến nhóm hồ sơ" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-        {[
-          { href: '#shop-rejected', label: 'Shop từ chối', count: rejectedReturns.data?.total, loading: rejectedReturns.isLoading },
-          { href: '#active-returns', label: 'Đang xử lý', count: activeReturns.data?.total, loading: activeReturns.isLoading },
-          { href: '#ghn-claims', label: 'Bồi hoàn GHN', count: ghnClaims.data?.total, loading: ghnClaims.isLoading },
-          { href: '#stalled-returns', label: 'Quá 48 giờ', count: stalled.data?.total, loading: stalled.isLoading },
-          { href: '#open-disputes', label: 'Cần phân xử', count: disputes.data?.total, loading: disputes.isLoading },
-          { href: '#return-history', label: 'Đã kết thúc', count: history.data?.total, loading: history.isLoading },
-        ].map((item) => <a key={item.href} href={item.href}
-          className="flex min-h-20 items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3 transition last:col-span-2 sm:last:col-span-1 hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
-          <span className="text-xs font-semibold text-[#7D715E] sm:text-sm">{item.label}</span>
-          <strong className="text-xl tabular-nums text-[#795A2D]" aria-label={item.loading ? 'Đang tải' : `${item.count ?? 0} hồ sơ`}>{item.loading ? '…' : item.count ?? 0}</strong>
-        </a>)}
-      </nav>
 
-      <section id="shop-rejected" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Shop đã từ chối đổi trả">
+
+      <section hidden={activeQueue !== 'shop-rejected'} id="shop-rejected" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Shop đã từ chối đổi trả">
         <h2 className="font-bold">Shop đã từ chối · Chờ Manager xem xét</h2>
         <p className="mt-1 text-xs text-[#7D715E]">Bao gồm cả đơn bị từ chối trước khi có nút gửi bằng chứng. Manager xem hồ sơ rồi mở phân xử khi cần; việc mở phân xử chưa phải kết luận Shop hay GHN có lỗi.</p>
         {rejectedReturns.isLoading && <p role="status" className="mt-3 text-sm">Đang tải đơn Shop từ chối…</p>}
         {rejectedReturns.error && <p role="alert" className="mt-3 text-sm text-[#DC2626]">Không tải được đơn Shop từ chối.</p>}
         {!rejectedReturns.isLoading && !rejectedReturns.error && rejectedReturns.data?.items.length === 0 && <p className="mt-3 text-sm text-[#7D715E]">Không có đơn Shop từ chối đang chờ xem xét.</p>}
         {!!rejectedReturns.data?.items.length && <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {rejectedReturns.data.items.map((item) => <div key={item.id} className="rounded-xl border border-[#EAE4D7] bg-white p-3">
-            <strong className="block text-sm">#{item.order.externalOrderSn}</strong>
-            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName}</span>
-            {item.shopResponse && <p className="mt-2 line-clamp-2 text-xs">Shop: {item.shopResponse}</p>}
-            <p className="mt-2 text-xs text-[#7D715E]">Bằng chứng Shop: {item.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').flatMap((event) => event.data?.evidenceUrls || []).length} tệp</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link to={`/admin/returns/${item.id}`} className="rounded-lg border border-[#EEDFC6] px-3 py-2 text-xs font-semibold text-[#8A6736]">Xem hồ sơ</Link>
-              <button type="button" disabled={openReview.isPending} onClick={() => openReview.mutate(item.id)}
-                className="rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-bold text-[#231D15] disabled:opacity-50">Mở phân xử</button>
-            </div>
-          </div>)}
+          {rejectedReturns.data.items.map(item => <button key={item.id} type="button" onClick={() => setOpenedCase(item)} className={caseButton}>#{item.order.externalOrderSn}</button>)}
         </div>}
         <QueuePager page={queuePages.rejected} total={rejectedReturns.data?.total} onPage={(page) => setQueuePage('rejected', page)} />
       </section>
 
-      <section id="active-returns" className="scroll-mt-6 rounded-2xl border border-[#EAE4D7] bg-white p-5" aria-label="Hồ sơ đổi trả đang xử lý">
+      <section hidden={activeQueue !== 'active-returns'} id="active-returns" className="scroll-mt-6 rounded-2xl border border-[#EAE4D7] bg-white p-5" aria-label="Hồ sơ đổi trả đang xử lý">
         <h2 className="font-bold">Hồ sơ đổi trả đang xử lý</h2>
         <p className="mt-1 text-xs text-[#7D715E]">System Manager xác minh lỗi vận chuyển hoặc lỗi hàng hóa trước khi Shop xử lý đổi, hoàn.</p>
         {activeReturns.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ…</p>}
@@ -201,34 +198,24 @@ export default function AdminReturnDisputesPage() {
         {!activeReturns.isLoading && !activeReturns.error && activeReturns.data?.items.length === 0 &&
           <p className="mt-3 text-sm text-[#7D715E]">Chưa có hồ sơ đang xử lý.</p>}
         {!!activeReturns.data?.items.length && <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {activeReturns.data.items.map((item) => <Link key={item.id} to={`/admin/returns/${item.id}`}
-            className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 hover:border-[#C59B58]">
-            <span className="block text-sm font-bold">#{item.order.externalOrderSn}</span>
-            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · {returnStatusLabel(item.status)}</span>
-            <span className="mt-1 block text-xs font-semibold text-[#8A6736]">Xem bằng chứng và xác định trách nhiệm →</span>
-          </Link>)}
+          {activeReturns.data.items.map((item) => <button key={item.id} type="button" onClick={() => setOpenedCase(item)} className={caseButton}>#{item.order.externalOrderSn}</button>)}
         </div>}
         <QueuePager page={queuePages.active} total={activeReturns.data?.total} onPage={(page) => setQueuePage('active', page)} />
       </section>
 
-      <section id="ghn-claims" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Yêu cầu GHN bồi hoàn">
+      <section hidden={activeQueue !== 'ghn-claims'} id="ghn-claims" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Yêu cầu GHN bồi hoàn">
         <h2 className="font-bold">Đối soát bồi hoàn GHN</h2>
         <p className="mt-1 text-xs text-[#7D715E]">Theo dõi yêu cầu từ lúc gửi GHN đến khi có phản hồi và chứng từ thanh toán. Việc xử lý cho khách đi theo luồng riêng.</p>
         {ghnClaims.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ GHN…</p>}
         {ghnClaims.error && <p role="alert" className="mt-3 text-sm text-[#DC2626]">Không tải được hồ sơ GHN.</p>}
         {!ghnClaims.isLoading && !ghnClaims.error && ghnClaims.data?.items.length === 0 && <p className="mt-3 text-sm text-[#7D715E]">Chưa có hồ sơ bồi hoàn GHN.</p>}
         {!!ghnClaims.data?.items.length && <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {ghnClaims.data.items.map((item) => <Link key={item.id} to={`/admin/returns/${item.id}`}
-            className="rounded-xl border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]">
-            <strong className="block text-sm">#{item.order.externalOrderSn}</strong>
-            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · Vận đơn {item.ghnClaim?.originalTrackingNumber}</span>
-            <span className="mt-1 block text-xs font-semibold text-[#8A6736]">{ghnClaimLabels[item.ghnClaim?.status || ''] || 'Chờ đối soát'} → Mở hồ sơ</span>
-          </Link>)}
+          {ghnClaims.data.items.map((item) => <button key={item.id} type="button" onClick={() => setOpenedCase(item)} className={caseButton}>#{item.order.externalOrderSn}</button>)}
         </div>}
         <QueuePager page={queuePages.ghn} total={ghnClaims.data?.total} onPage={(page) => setQueuePage('ghn', page)} />
       </section>
 
-      <section id="stalled-returns" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Hồ sơ quá hạn kiểm tra">
+      <section hidden={activeQueue !== 'stalled-returns'} id="stalled-returns" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Hồ sơ quá hạn kiểm tra">
         <h2 className="font-bold">Shop chậm kiểm tra quá 48 giờ</h2>
         <p className="mt-1 text-xs text-[#7D715E]">Các hồ sơ này vẫn đang chờ Shop xử lý; khách có quyền gửi khiếu nại.</p>
         {stalled.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ quá hạn…</p>}
@@ -236,16 +223,13 @@ export default function AdminReturnDisputesPage() {
         {!stalled.isLoading && !stalled.error && stalled.data?.items.length === 0 &&
           <p className="mt-3 text-sm text-[#7D715E]">Không có hồ sơ quá hạn kiểm tra.</p>}
         {!!stalled.data?.items.length && <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {stalled.data.items.map((item) => <Link key={item.id} to={`/admin/returns/${item.id}`}
-            className="rounded-xl border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]">
-            <span className="block text-sm font-bold">#{item.order.externalOrderSn}</span>
-            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · Nhận lúc {item.receivedAt ? new Date(item.receivedAt).toLocaleString('vi-VN') : 'Không rõ'}</span>
-          </Link>)}
+          {stalled.data.items.map((item) => <button key={item.id} type="button" onClick={() => setOpenedCase(item)} className={caseButton}>#{item.order.externalOrderSn}</button>)}
         </div>}
         <QueuePager page={queuePages.stalled} total={stalled.data?.total} onPage={(page) => setQueuePage('stalled', page)} />
       </section>
 
-      <div id="open-disputes" className="scroll-mt-6">
+      <section hidden={activeQueue !== 'open-disputes'} id="open-disputes" aria-label="Hồ sơ cần phân xử">
+      <div className="scroll-mt-6">
         <h2 className="text-lg font-bold">Hồ sơ cần phân xử</h2>
         <p className="mt-1 text-sm text-[#7D715E]">Chọn một hồ sơ để xem bằng chứng và lưu quyết định.</p>
       </div>
@@ -256,16 +240,10 @@ export default function AdminReturnDisputesPage() {
       {!disputes.isLoading && !disputes.error && rows.length === 0 &&
         <p className="rounded-2xl border border-[#EAE4D7] bg-white p-6 text-sm text-[#7D715E]">Không có khiếu nại đang mở.</p>}
 
-      {selected && <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="space-y-2" aria-label="Danh sách khiếu nại">
-          {rows.map((item) => <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setRuling('APPROVE_REFUND'); setLiability(''); setNotes(''); }}
-            className={`w-full rounded-xl border p-4 text-left ${selected.id === item.id
-              ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'}`}>
-            <span className="block text-sm font-bold">#{item.returnRequest.order.externalOrderSn}</span>
-            <span className="mt-1 block text-xs text-[#7D715E]">{item.returnRequest.order.storeName}</span>
-            <span className="mt-2 block text-xs">{new Date(item.openedAt).toLocaleString('vi-VN')}</span>
-          </button>)}
-        </aside>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Danh sách khiếu nại">
+        {rows.map(item => <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setRuling('APPROVE_REFUND'); setLiability(''); setNotes(''); }} className={caseButton}>#{item.returnRequest.order.externalOrderSn}</button>)}
+      </div>
+      {selected && createPortal(<Modal isOpen stickyHeader maxWidth="4xl" title={`Hồ sơ #${selected.returnRequest.order.externalOrderSn}`} onClose={() => { if (!resolve.isPending) setSelectedId(null); }}>
         <div className="space-y-4">
           <section className="rounded-2xl border border-[#EAE4D7] bg-white p-5">
             <div className="flex items-center gap-2"><Scale className="h-5 w-5 text-[#B88E4F]" />
@@ -291,16 +269,11 @@ export default function AdminReturnDisputesPage() {
             <Link to={`/admin/disputes`} className="mt-4 inline-block text-xs text-[#7D715E] underline">Xem khiếu nại đơn hàng cũ</Link>
           </section>
           <ReturnTimeline request={selected.returnRequest} />
-          <form onSubmit={submit} className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5">
+          <ReturnActionDialog key={selected.id} title="Phân xử khiếu nại" busy={resolve.isPending}
+            choices={[{ label: 'Chấp thuận hoàn tiền', value: 'APPROVE_REFUND' }, { label: 'Chấp thuận đổi hàng', value: 'APPROVE_EXCHANGE' }, ...(canUpholdShop && liability !== 'LOGISTICS_FAULT' ? [{ label: 'Giữ quyết định của Shop', value: 'UPHOLD_SHOP', danger: true }] : [])]}
+            onSelect={value => setRuling(value as Ruling)}><form onSubmit={submit} className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5">
             <h2 className="font-bold">Phân xử</h2>
-            <label className="block text-sm">Quyết định
-              <select value={ruling} onChange={(event) => setRuling(event.target.value as Ruling)}
-                className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3">
-                <option value="APPROVE_REFUND">Chấp thuận hoàn tiền</option>
-                <option value="APPROVE_EXCHANGE">Chấp thuận đổi hàng</option>
-                {canUpholdShop && <option value="UPHOLD_SHOP" disabled={liability === 'LOGISTICS_FAULT'}>Giữ quyết định của Shop</option>}
-              </select>
-            </label>
+            <p className="text-sm font-semibold">{ruling === 'APPROVE_REFUND' ? 'Chấp thuận hoàn tiền' : ruling === 'APPROVE_EXCHANGE' ? 'Chấp thuận đổi hàng' : 'Giữ quyết định của Shop'}</p>
             <label className="block text-sm">Bên chịu trách nhiệm
               <select value={liability} onChange={(event) => { const next = event.target.value as Liability; setLiability(next); if (next === 'LOGISTICS_FAULT' && ruling === 'UPHOLD_SHOP') setRuling('APPROVE_REFUND'); }}
                 className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3">
@@ -324,12 +297,13 @@ export default function AdminReturnDisputesPage() {
               className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-[#231D15] disabled:opacity-50">
               {resolve.isPending ? 'Đang lưu…' : 'Lưu quyết định'}</button>
             {resolve.error && <p role="alert" className="text-sm text-[#DC2626]">Không thể lưu quyết định. Vui lòng thử lại.</p>}
-          </form>
+          </form></ReturnActionDialog>
         </div>
-      </div>}
+      </Modal>, document.body)}
 
       <QueuePager page={queuePages.disputes} total={disputes.data?.total} onPage={(page) => { setSelectedId(null); setQueuePage('disputes', page); }} />
-      <section id="return-history" className="scroll-mt-6 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5" aria-label="Lịch sử hồ sơ đổi trả đã kết thúc">
+      </section>
+      <section hidden={activeQueue !== 'return-history'} id="return-history" className="scroll-mt-6 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5" aria-label="Lịch sử hồ sơ đổi trả đã kết thúc">
         <h2 className="text-lg font-bold">Lịch sử đổi trả đã kết thúc</h2>
         <p className="mt-1 text-xs text-[#7D715E]">Giữ kết quả hoàn tiền, đổi hàng và phân xử để đối chiếu sau khi hồ sơ rời hàng đợi đang xử lý.</p>
         <form onSubmit={(event) => { event.preventDefault(); setHistoryPage(1); setHistoryQuery(historyInput.trim()); }}
@@ -346,14 +320,7 @@ export default function AdminReturnDisputesPage() {
         {!history.isLoading && !history.error && history.data?.items.length === 0 &&
           <p className="mt-4 text-sm text-[#7D715E]">Không có hồ sơ đã kết thúc phù hợp.</p>}
         {!!history.data?.items.length && <ul className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {history.data.items.map((item) => <li key={item.id}>
-            <Link to={`/admin/returns/${item.id}`} className="block rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 hover:border-[#C59B58]">
-              <strong className="block text-sm">#{item.order.externalOrderSn}</strong>
-              <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · {item.order.customerName || 'Khách hàng'}</span>
-              <span className="mt-2 block text-xs font-semibold text-[#795A2D]">{returnStatusLabel(item.status)}</span>
-              <span className="mt-1 block text-xs text-[#7D715E]">{new Date(item.submittedAt).toLocaleDateString('vi-VN')}</span>
-            </Link>
-          </li>)}</ul>}
+          {history.data.items.map((item) => <li key={item.id}><button type="button" onClick={() => setOpenedCase(item)} className={caseButton}>#{item.order.externalOrderSn}</button></li>)}</ul>}
         {!!history.data?.total && history.data.total > history.data.pageSize && <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] pt-4 text-sm">
           <span className="text-[#7D715E]">Trang {historyPage} / {Math.ceil(history.data.total / history.data.pageSize)} · {history.data.total} hồ sơ</span>
           <div className="flex gap-2">
@@ -365,5 +332,12 @@ export default function AdminReturnDisputesPage() {
         </div>}
       </section>
     </div>
+    {openedCase && createPortal(<Modal isOpen stickyHeader maxWidth="4xl" title={`Hồ sơ #${openedCase.order.externalOrderSn}`} onClose={() => { if (!openReview.isPending) setOpenedCase(null); }}>
+      {openedCase.status === 'SHOP_REJECTED' && <div className="mb-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
+        <p className="mb-3 text-sm text-[#7D715E]">Xem bằng chứng trong hồ sơ trước khi mở phân xử.</p>
+        <button type="button" disabled={openReview.isPending} onClick={() => openReview.mutate(openedCase.id)} className="min-h-11 rounded-xl bg-[#C59B58] px-4 py-2 text-sm font-bold text-[#231D15] disabled:opacity-50">{openReview.isPending ? 'Đang mở…' : 'Mở phân xử'}</button>
+      </div>}
+      <ReturnDetailPage key={openedCase.id} mode="admin" returnId={openedCase.id} embedded />
+    </Modal>, document.body)}
   </div>;
 }

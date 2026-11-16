@@ -1,3 +1,4 @@
+import { ReturnActionDialog } from '../../components/returns/ReturnActionDialog';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
@@ -203,10 +204,10 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
           {exchangeReceipt.isPending ? 'Đang xác nhận…' : 'Tôi đã nhận hàng đổi'}
         </button>}
       <ErrorText error={exchangeReceipt.error} />
-      {mayComplete && <button type="button" disabled={completion.isPending}
+      {mayComplete && <ReturnActionDialog title={awaitingRefund ? "Đồng ý nhận tiền hoàn" : "Xác nhận hoàn tất"} busy={completion.isPending}><p className="text-sm text-[#7D715E]">{awaitingRefund ? `Số tiền hoàn: ${money(request.refund?.amount || 0)}. Xác nhận để nhận tiền vào Ví SCANMS.` : "Chỉ xác nhận khi bạn đã nhận được kết quả xử lý."}</p><button type="button" disabled={completion.isPending}
         onClick={() => void completion.mutateAsync(undefined).catch(() => undefined)} className={`${primary} min-h-11 max-w-full`}>
         {completion.isPending ? 'Đang xác nhận…' : awaitingRefund ? 'Xác nhận đồng ý · Nhận tiền hoàn' : 'Tôi đã nhận kết quả · Hoàn tất'}
-      </button>}
+      </button><ErrorText error={completion.error} /></ReturnActionDialog>}
       {mayDispute && <button type="button" onClick={() => setShowDispute(true)}
         className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-sm font-semibold text-[#8A6736]">Yêu cầu SCANMS xem xét</button>}
     </div>
@@ -319,16 +320,14 @@ function ShopActions({ request }: { request: ReturnDetail }) {
         Bắt đầu kiểm tra
       </button><ErrorText error={startAction.error} />
     </div>}
-    {request.status === 'INSPECTING' && <form
+    {request.status === 'INSPECTING' && <ReturnActionDialog title="Kết quả kiểm tra" busy={inspectAction.isPending}
+      choices={[{ label: 'Đồng ý hoàn tiền', value: 'REFUND' }, { label: 'Đồng ý đổi sản phẩm', value: 'EXCHANGE' }, { label: 'Từ chối sau kiểm tra', value: 'REJECT', danger: true }]}
+      onSelect={value => setResolution(value as typeof resolution)}><form
       onSubmit={(event) => void submit(event, inspectAction, { resolution, liability: (managerAssessment?.data?.liability as typeof liability) || liability, notes: notes.trim() })}
       className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Kết quả kiểm tra</h3>
       {request.preferredResolution && <p className="text-sm text-[#7D715E]">Khách mong muốn: {request.preferredResolution === 'REFUND' ? 'hoàn tiền vào Ví SCANMS' : 'đổi sản phẩm mới'}. Nếu xử lý khác, ghi rõ căn cứ trong phần ghi chú.</p>}
-      <select value={resolution} onChange={(event) => setResolution(event.target.value as typeof resolution)} className={field}>
-        <option value="REFUND">Chấp nhận hoàn tiền</option>
-        <option value="EXCHANGE">Chấp nhận đổi sản phẩm</option>
-        <option value="REJECT">Từ chối sau kiểm tra</option>
-      </select>
+      <p className="rounded-xl bg-[#FBF5EB] p-3 text-sm font-semibold">{resolution === 'REFUND' ? 'Chấp nhận hoàn tiền' : resolution === 'EXCHANGE' ? 'Chấp nhận đổi sản phẩm' : 'Từ chối sau kiểm tra'}</p>
       <label className="block text-sm font-semibold">Bên chịu trách nhiệm</label>
       <select value={managerAssessment?.data?.liability || liability} disabled={Boolean(managerAssessment)} onChange={(event) => setLiability(event.target.value as typeof liability)} className={field}>
         <option value="LOGISTICS_FAULT" disabled={!managerAssessment}>GHN / vận chuyển (cần System Manager xác minh)</option>
@@ -341,7 +340,7 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       <p className="text-xs text-[#7D715E]">Hoàn tiền chỉ chuyển vào ví sau khi khách xác nhận đồng ý trong đơn. Nếu đổi sản phẩm, Shop tạo vận đơn giao hàng thay thế sau khi duyệt.</p>
       <button disabled={inspectAction.isPending} className={primary}>Lưu kết quả kiểm tra</button>
       <ErrorText error={inspectAction.error} />
-    </form>}
+    </form></ReturnActionDialog>}
     <ExchangeShipmentPanel key={request.id} request={request} />
   </div>;
 }
@@ -366,7 +365,7 @@ function ShopEscalation({ request }: { request: ReturnDetail }) {
     } catch (cause) { setError(cause); }
     finally { setUploading(false); }
   }
-  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
+  return <ReturnActionDialog title="Gửi bằng chứng cho Manager" busy={uploading || action.isPending}><form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
     <h2 className="font-bold">Gửi bằng chứng cho System Manager</h2>
     <p className="text-sm text-[#7D715E]">Nếu Shop cho rằng hàng vỡ trong lúc GHN vận chuyển, gửi ảnh đóng gói, bàn giao, biên bản hoặc video. Manager sẽ đối chiếu bằng chứng của cả hai bên; Shop chưa được tự quy lỗi cho GHN.</p>
     <p className="text-xs text-[#7D715E]">Vận đơn GHN gốc: {request.order.outboundGhnTrackingNumber || 'Chưa có; Manager cần xác minh trước khi kết luận lỗi GHN'}.</p>
@@ -381,7 +380,7 @@ function ShopEscalation({ request }: { request: ReturnDetail }) {
       {uploading || action.isPending ? 'Đang gửi hồ sơ…' : request.status === 'DISPUTED' ? 'Bổ sung bằng chứng cho Manager' : 'Chuyển bằng chứng cho Manager'}
     </button>
     <ErrorText error={error || action.error} />
-  </form>;
+  </form></ReturnActionDialog>;
 }
 
 function AdminActions({ request }: { request: ReturnDetail }) {
@@ -403,7 +402,7 @@ function AdminActions({ request }: { request: ReturnDetail }) {
   if (!mayAssess) return <p className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
     Hồ sơ đã qua bước xác định trách nhiệm. Xem kết quả kiểm tra và thu nhập đối tác ở trên.
   </p>;
-  return <form className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4"
+  return <ReturnActionDialog title="Xác định bên chịu trách nhiệm" busy={assessment.isPending}><form className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4"
     onSubmit={(event) => { event.preventDefault(); if (liability) void assessment.mutateAsync({ liability, notes: notes.trim() }).catch(() => undefined); }}>
     <h2 className="font-bold">System Manager xác định bên chịu trách nhiệm</h2>
     <p className="text-sm text-[#7D715E]">Đối chiếu ảnh, video mở hộp, biên bản đóng gói và lịch sử vận đơn trước khi kết luận. Nếu chưa đủ chứng cứ, giữ hồ sơ để xác minh thêm.</p>
@@ -422,7 +421,7 @@ function AdminActions({ request }: { request: ReturnDetail }) {
       {assessment.isPending ? 'Đang lưu…' : 'Lưu kết luận trách nhiệm'}
     </button>
     <ErrorText error={assessment.error} />
-  </form>;
+  </form></ReturnActionDialog>;
 }
 
 type GhnClaimAction = 'SUBMIT' | 'REQUEST_MORE' | 'ACCEPT' | 'REJECT' | 'APPEAL' | 'PAID';
@@ -512,8 +511,9 @@ function AdminRefundRetry({ request }: { request: ReturnDetail }) {
   </section>;
 }
 
-export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' }) {
-  const { id } = useParams();
+export default function ReturnDetailPage({ mode, returnId, embedded = false }: { mode: 'customer' | 'shop' | 'admin'; returnId?: string; embedded?: boolean }) {
+  const params = useParams();
+  const id = returnId || params.id;
   const navigate = useNavigate();
   const detail = useReturnDetail(id);
   const user = authService.getCurrentUser();
@@ -524,13 +524,13 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
 
   return <>
     {mode === 'customer' && <MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />}
-    <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6 ${mode === 'customer' ? 'grid w-full lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto' : ''}`}>
+    <main className={embedded ? 'min-w-0 text-[#1A1612]' : `min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6 ${mode === 'customer' ? 'grid w-full lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto' : ''}`}>
       {mode === 'customer' && <aside className="min-w-0 hidden lg:block"><Sidebar currentUser={user} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
       <div className={`mx-auto max-w-5xl space-y-4 ${mode === 'customer' ? 'min-w-0 w-full max-w-none border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-[0_8px_30px_rgba(110,84,39,.06)] [&>div]:p-4 sm:[&>div]:p-[22px] [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
+          {!embedded && <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
             <ArrowLeft className="h-4 w-4" /> Quay lại đơn hàng
-          </Link>
+          </Link>}
           {mode === 'customer' && detail.data && <div className="min-w-0">
             <h1 className="text-base font-bold">Hồ sơ đổi trả</h1>
             <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 text-xs sm:text-sm [&_strong]:font-medium [&>*:last-child]:border-l [&>*:last-child]:border-[#EAE4D7] [&>*:last-child]:pl-3 [&>*:last-child]:text-[#B88E4F] [&>*:last-child]:font-semibold"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>
