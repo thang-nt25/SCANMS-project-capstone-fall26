@@ -247,14 +247,22 @@ export class CommissionsService {
 
         for (const item of calculation.items) {
           const appliedRate = Number(item.appliedCommissionRate || 0);
-          if (appliedRate > tierBaseRateNum) {
-            // The snapshot may already exclude refunded quantities before income is posted.
-            const basePortion = item.calculatedCommissionAmount
-              .times(tierBaseRateNum)
+          const orderItem = order.orderItems.find(
+            (oi) => oi.id === item.orderItemId,
+          );
+          // Isolate liveBonus (+2%) into 14-day pendingBalance; only Exclusive Deal uplift enters KPI Deal Escrow.
+          const dealCompareRate =
+            orderItem?.regularCommissionRate != null
+              ? Number(orderItem.regularCommissionRate)
+              : appliedRate;
+          if (dealCompareRate > tierBaseRateNum && appliedRate > 0) {
+            const dealUpliftRate = dealCompareRate - tierBaseRateNum;
+            const dealPortion = item.calculatedCommissionAmount
+              .times(dealUpliftRate)
               .dividedBy(appliedRate)
               .toDecimalPlaces(2);
-            const dealPortion =
-              item.calculatedCommissionAmount.minus(basePortion);
+            const basePortion =
+              item.calculatedCommissionAmount.minus(dealPortion);
             totalBaseCommission = totalBaseCommission.plus(basePortion);
             totalDealCommission = totalDealCommission.plus(
               dealPortion.greaterThan(0) ? dealPortion : new Prisma.Decimal(0),

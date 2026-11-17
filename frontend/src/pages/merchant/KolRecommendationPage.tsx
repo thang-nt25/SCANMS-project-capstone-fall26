@@ -12,12 +12,14 @@ import {
   ChevronDown,
   MessageSquare,
   Info,
-  Crown,
   RotateCcw,
   TrendingUp,
   MousePointerClick,
   ShoppingBasket,
   SlidersHorizontal,
+  UserPlus,
+  Users,
+  Globe,
 } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -30,18 +32,7 @@ import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
 import { AiRadarChart } from '../../components/ai/AiRadarChart';
 import { KolComparisonModal, KolComparisonDock } from '../../components/ai/KolComparisonPanel';
-
-const CATEGORIES = [
-  'Tất cả danh mục',
-  'Thời trang & Phụ kiện',
-  'Mỹ phẩm & Làm đẹp',
-  'Đồ gia dụng & Đời sống',
-  'Công nghệ & Thiết bị số',
-  'Ăn vặt & Ẩm thực',
-  'Sách & Văn phòng phẩm',
-  'Mẹ & Bé',
-  'Thể thao & Dã ngoại',
-];
+import { getKolPriceComparison } from '../../utils/ai-price.utils';
 
 const PRICE_RANGES = [
   { label: 'Tất cả khoảng giá', value: 'ALL' },
@@ -59,6 +50,13 @@ const TIERS = [
   { label: 'Bạch Kim (Platinum) trở lên', value: 'PLATINUM' },
   { label: 'Kim Cương (Diamond)', value: 'DIAMOND' },
 ];
+
+function formatFollowersCompact(count: number): string {
+  if (!count || count <= 0) return '0';
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
+  return count.toLocaleString('vi-VN');
+}
 
 function matchingPreferencesKey() {
   return `scanms-kol-matching:v3:${window.location.pathname}:${localStorage.getItem('current_store_id') || 'platform'}`;
@@ -92,8 +90,15 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   const scanVersion = useRef(0);
   const scanBusy = useRef(false);
 
-  // Filters
-  const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả danh mục');
+  // Filters & Mode Tabs
+  const urlKolTab = searchParams.get('kolTab');
+  const [activeMode, setActiveMode] = useState<'PERFORMANCE' | 'COLD_START'>(
+    urlKolTab === 'COLD_START' ? 'COLD_START' : 'PERFORMANCE',
+  );
+  const [summaryCounts, setSummaryCounts] = useState<{ performanceCount: number; coldStartCount: number }>({
+    performanceCount: 0,
+    coldStartCount: 0,
+  });
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('ALL');
   const [selectedMinTier, setSelectedMinTier] = useState<string>('');
   const [minConversionRate, setMinConversionRate] = useState<number>(0);
@@ -174,18 +179,17 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
     setScanError('');
     setLoading(true);
     try {
-      const params: any = { limit };
-      if (selectedCategory && selectedCategory !== 'Tất cả danh mục') {
-        params.category = selectedCategory;
-      }
-      if (selectedPriceRange && selectedPriceRange !== 'ALL') {
-        params.priceRange = selectedPriceRange;
+      const params: any = { limit, mode: activeMode };
+      if (activeMode !== 'COLD_START') {
+        if (selectedPriceRange && selectedPriceRange !== 'ALL') {
+          params.priceRange = selectedPriceRange;
+        }
+        if (minConversionRate > 0) {
+          params.minConversionRate = minConversionRate;
+        }
       }
       if (selectedMinTier) {
         params.minTier = selectedMinTier;
-      }
-      if (minConversionRate > 0) {
-        params.minConversionRate = minConversionRate;
       }
 
       let res;
@@ -202,6 +206,9 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
       setCalculatedAt(res.calculatedAt || '');
       setTotalScanned(res.totalKolsScanned || 0);
       setKols(res.recommendedKols || []);
+      if (res.summaryCounts) {
+        setSummaryCounts(res.summaryCounts);
+      }
       setTargetProduct(res.targetProduct || null);
     } catch (err: any) {
       if (version !== scanVersion.current) return;
@@ -214,7 +221,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
         setLoading(false);
       }
     }
-  }, [selectedProductId, selectedCategory, selectedPriceRange, selectedMinTier, minConversionRate, limit]);
+  }, [selectedProductId, selectedPriceRange, selectedMinTier, minConversionRate, limit, activeMode]);
 
   const latestRecommendationScan = useRef(fetchRecommendations);
 
@@ -336,7 +343,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
     if (idx === 0) {
       return (
         <div className="flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1 text-xs font-bold text-[#8C6226] shadow-2xs">
-          <Crown size={14} className="text-[#B88E4F]" />
+          <Award size={14} className="text-[#B88E4F]" />
           <span>Top 1 Đề xuất</span>
         </div>
       );
@@ -387,7 +394,6 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   };
 
   const hasActiveFilters =
-    selectedCategory !== 'Tất cả danh mục' ||
     selectedPriceRange !== 'ALL' ||
     Boolean(selectedMinTier) ||
     minConversionRate > 0;
@@ -559,86 +565,160 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
               </Select>
             </div>
 
-            <div className="sm:col-span-3">
+            <div className="sm:col-span-3 relative">
               <button
                 type="button"
                 onClick={() => setFiltersOpen(!filtersOpen)}
-                className={`w-full h-9 inline-flex items-center justify-center gap-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                  hasActiveFilters || filtersOpen
-                    ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
-                    : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5]'
-                }`}
+                className={`w-full h-9 inline-flex items-center justify-center gap-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${hasActiveFilters || filtersOpen
+                  ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+                  : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5]'
+                  }`}
               >
                 <Filter size={13} />
                 <span>Bộ lọc nâng cao {hasActiveFilters ? '•' : ''}</span>
               </button>
+
+              {filtersOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setFiltersOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute right-0 top-full mt-2 z-30 w-72 sm:w-80 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xl space-y-3.5 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2">
+                      <span className="text-xs font-bold text-[#1A1612]">Bộ lọc nâng cao</span>
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPriceRange('ALL');
+                            setSelectedMinTier('');
+                            setMinConversionRate(0);
+                          }}
+                          className="text-[11px] font-semibold text-[#B88E4F] hover:text-[#8C6226] cursor-pointer"
+                        >
+                          Đặt lại
+                        </button>
+                      )}
+                    </div>
+
+                    <div className={activeMode === 'COLD_START' ? 'opacity-50 pointer-events-none' : ''}>
+                      <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
+                        Khoảng giá phù hợp {activeMode === 'COLD_START' && <span className="text-[10px] font-normal">(Không áp dụng KOL mới)</span>}
+                      </label>
+                      <Select
+                        value={selectedPriceRange}
+                        onChange={(e) => setSelectedPriceRange(e.target.value)}
+                        disabled={activeMode === 'COLD_START'}
+                        className="w-full text-xs"
+                      >
+                        {PRICE_RANGES.map((pr) => (
+                          <option key={pr.value} value={pr.value}>
+                            {pr.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">Số lượng gợi ý</label>
+                      <Select
+                        value={String(limit)}
+                        onChange={(e) => setLimit(Number(e.target.value))}
+                        className="w-full text-xs"
+                      >
+                        <option value="3">Top 3 KOC</option>
+                        <option value="6">Top 6 KOC</option>
+                        <option value="12">Top 12 KOC</option>
+                        <option value="24">Mở rộng 24 KOC</option>
+                      </Select>
+                    </div>
+
+                    <div className={activeMode === 'COLD_START' ? 'opacity-50 pointer-events-none' : ''}>
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-[#7D715E] mb-1">
+                        <span>CR tối thiểu {activeMode === 'COLD_START' && '(Không áp dụng)'}</span>
+                        <span className="font-bold text-[#B88E4F] tabular-nums">{minConversionRate}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="15"
+                        step="0.5"
+                        value={minConversionRate}
+                        disabled={activeMode === 'COLD_START'}
+                        onChange={(e) => setMinConversionRate(parseFloat(e.target.value))}
+                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#EAE4D7] accent-[#C59B58] mt-1.5"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Expandable Advanced Filter Drawer */}
-          {filtersOpen && (
-            <div className="pt-3 border-t border-[#EAE4D7] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-in fade-in duration-150">
-              <div>
-                <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">Ngành hàng KOC</label>
-                <Select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full text-xs"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">Khoảng giá phù hợp</label>
-                <Select
-                  value={selectedPriceRange}
-                  onChange={(e) => setSelectedPriceRange(e.target.value)}
-                  className="w-full text-xs"
-                >
-                  {PRICE_RANGES.map((pr) => (
-                    <option key={pr.value} value={pr.value}>
-                      {pr.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">Số lượng gợi ý</label>
-                <Select
-                  value={String(limit)}
-                  onChange={(e) => setLimit(Number(e.target.value))}
-                  className="w-full text-xs"
-                >
-                  <option value="3">Top 3 KOC</option>
-                  <option value="6">Top 6 KOC</option>
-                  <option value="12">Top 12 KOC</option>
-                  <option value="24">Mở rộng 24 KOC</option>
-                </Select>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-[11px] font-semibold text-[#7D715E] mb-1">
-                  <span>CR tối thiểu</span>
-                  <span className="font-bold text-[#B88E4F]">{minConversionRate}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="15"
-                  step="0.5"
-                  value={minConversionRate}
-                  onChange={(e) => setMinConversionRate(parseFloat(e.target.value))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#EAE4D7] accent-[#C59B58] mt-2"
-                />
+      {/* 2.5 Mode Tabs: Proven Performance vs Cold-Start Rising Stars */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-[#F3EFE6] p-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 flex-1">
+          <button
+            type="button"
+            onClick={() => setActiveMode('PERFORMANCE')}
+            className={`flex items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-left transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.99] cursor-pointer ${activeMode === 'PERFORMANCE'
+              ? 'bg-white text-[#1A1612] shadow-xs border border-[#EAE4D7]'
+              : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/50'
+              }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <TrendingUp
+                size={15}
+                strokeWidth={1.9}
+                className={activeMode === 'PERFORMANCE' ? 'text-[#B88E4F] shrink-0' : 'text-[#7D715E] shrink-0'}
+              />
+              <div className="min-w-0">
+                <div className="text-xs font-bold truncate">KOL Hiệu suất đã kiểm chứng</div>
+                <div className="text-[10px] text-[#7D715E] truncate">Đã có &ge; 5 đơn · Chấm 35% Ngành / 25% CR% / 20% Hạng / 20% Giá</div>
               </div>
             </div>
-          )}
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${activeMode === 'PERFORMANCE'
+                ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
+                : 'bg-[#EAE4D7]/80 text-[#7D715E]'
+                }`}
+            >
+              {summaryCounts.performanceCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMode('COLD_START')}
+            className={`flex items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-left transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.99] cursor-pointer ${activeMode === 'COLD_START'
+              ? 'bg-white text-[#1A1612] shadow-xs border border-[#C59B58]/60'
+              : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/50'
+              }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <UserPlus
+                size={15}
+                strokeWidth={1.9}
+                className={activeMode === 'COLD_START' ? 'text-[#C59B58] shrink-0' : 'text-[#7D715E] shrink-0'}
+              />
+              <div className="min-w-0">
+                <div className="text-xs font-bold truncate">KOL Mới tiềm năng (Cold Start)</div>
+                <div className="text-[10px] text-[#7D715E] truncate">&lt; 5 đơn · Chấm 70% Hồ sơ ngành + 30% Follower MXH</div>
+              </div>
+            </div>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${activeMode === 'COLD_START'
+                ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
+                : 'bg-[#EAE4D7]/80 text-[#7D715E]'
+                }`}
+            >
+              {summaryCounts.coldStartCount}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -691,14 +771,19 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
             <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[#1A1612]">Không tìm thấy KOC phù hợp tiêu chí</h3>
+            <h3 className="text-base font-bold text-[#1A1612]">
+              {activeMode === 'COLD_START'
+                ? 'Chưa có KOL mới tiềm năng phù hợp tiêu chí'
+                : 'Không tìm thấy KOC phù hợp tiêu chí'}
+            </h3>
             <p className="text-xs text-[#7D715E] max-w-md mx-auto leading-relaxed">
-              Thử nới lỏng điều kiện lọc cấp bậc, khoảng giá hoặc đặt lại tỷ lệ chuyển đổi tối thiểu về 0%.
+              {activeMode === 'COLD_START'
+                ? 'Thử xóa từ khóa tìm kiếm hoặc đặt lại bộ lọc để xem thêm các KOL mới đã duyệt eKYC.'
+                : 'Thử nới lỏng điều kiện lọc cấp bậc, khoảng giá hoặc đặt lại tỷ lệ chuyển đổi tối thiểu về 0%.'}
             </p>
             <button
               type="button"
               onClick={() => {
-                setSelectedCategory('Tất cả danh mục');
                 setSelectedPriceRange('ALL');
                 setSelectedMinTier('');
                 setMinConversionRate(0);
@@ -715,21 +800,50 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
             {displayedKols.map((kol, idx) => {
               const isComparing = compareKolIds.includes(kol.collaboratorId);
               const isExpanded = Boolean(expandedEvidence[kol.collaboratorId]);
+              const isColdStart =
+                kol.scoringMode === 'COLD_START' ||
+                Boolean(kol.isRisingStar) ||
+                Number(kol.lifetimeStats?.totalOrders || 0) < 5;
+              const priceComp = getKolPriceComparison(
+                kol.lifetimeStats?.avgSellingPrice,
+                targetProduct?.price,
+              );
+              const totalFollowers = (kol.socialChannels || []).reduce(
+                (sum, ch) => sum + Number(ch.followerCount || 0),
+                0,
+              );
+              const primaryPlatform =
+                kol.socialChannels?.find((ch) => ch.isPrimary)?.platform ||
+                kol.socialChannels?.[0]?.platform ||
+                'eKYC';
+              const wCat = Math.round(
+                ((kol.scoringWeights?.categoryScore ?? (isColdStart ? 0.7 : 0.35)) * 100),
+              );
+              const wCr = Math.round(
+                ((kol.scoringWeights?.conversionRateScore ?? (isColdStart ? 0 : 0.25)) * 100),
+              );
+              const wPrice = Math.round(
+                ((kol.scoringWeights?.priceFitScore ?? (isColdStart ? 0 : 0.2)) * 100),
+              );
+              const wTierSocial = Math.round(
+                ((kol.scoringWeights?.tierAndSocialScore ?? (isColdStart ? 0.3 : 0.2)) * 100),
+              );
 
               return (
                 <div
                   key={kol.collaboratorId || idx}
-                  className={`relative overflow-hidden rounded-3xl border transition-all duration-200 bg-white p-5 flex flex-col justify-between shadow-xs hover:shadow-md min-h-[530px] ${
-                    isComparing
-                      ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/10'
-                      : 'border-[#EAE4D7] hover:border-[#C59B58]/60'
-                  }`}
+                  className={`relative overflow-hidden rounded-3xl border transition-[border-color,box-shadow,background-color] duration-200 bg-white p-5 flex flex-col justify-between gap-3 shadow-[0_2px_10px_rgba(35,29,21,0.04)] hover:shadow-[0_10px_28px_rgba(35,29,21,0.08)] min-h-[540px] ${isComparing
+                    ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/15'
+                    : 'border-[#EAE4D7] hover:border-[#C59B58]/70'
+                    }`}
                 >
                   {/* Top Bar: Rank Medal + Compare Checkbox */}
                   <div className="flex items-center justify-between gap-2">
-                    {getRankBadge(idx)}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {getRankBadge(idx)}
+                    </div>
 
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] select-none">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] select-none shrink-0">
                       <input
                         type="checkbox"
                         checked={isComparing}
@@ -747,7 +861,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                         <img
                           src={kol.avatarUrl} onError={handleAvatarImageError}
                           alt={kol.fullName}
-                          className="w-12 h-12 rounded-2xl object-cover border border-[#EAE4D7] shadow-2xs"
+                          className="w-12 h-12 rounded-2xl object-cover ring-1 ring-black/10 shadow-2xs"
                         />
                       ) : (
                         <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold text-base flex items-center justify-center">
@@ -756,94 +870,212 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-sm text-[#1A1612] truncate" title={kol.fullName}>
+                      <h3 className="font-bold text-sm text-[#1A1612] truncate leading-snug" title={kol.fullName}>
                         {kol.fullName}
                       </h3>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1">
                         {getTierBadge(kol.tierName)}
                         <span
-                          className="rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-0.5 text-[10px] font-semibold text-[#7D715E] truncate max-w-[150px]"
-                          title={kol.matchedCategory || kol.lifetimeStats?.primaryCategory}
+                          className="rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-0.5 text-[10px] font-semibold text-[#7D715E] truncate max-w-[155px]"
+                          title={
+                            kol.lifetimeStats?.primaryCategory &&
+                              kol.lifetimeStats.primaryCategory !== 'Chưa có lịch sử bán hàng'
+                              ? kol.lifetimeStats.primaryCategory
+                              : kol.categoryMatchSource === 'PROFILE' && kol.matchedCategory
+                                ? `Hồ sơ: ${kol.matchedCategory}`
+                                : 'Chưa có đơn hàng'
+                          }
                         >
-                          {kol.matchedCategory || kol.lifetimeStats?.primaryCategory || 'Chung'}
+                          {kol.lifetimeStats?.primaryCategory &&
+                            kol.lifetimeStats.primaryCategory !== 'Chưa có lịch sử bán hàng'
+                            ? kol.lifetimeStats.primaryCategory
+                            : kol.categoryMatchSource === 'PROFILE' && kol.matchedCategory
+                              ? `Hồ sơ: ${kol.matchedCategory}`
+                              : 'Chưa có đơn hàng'}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* 4-Axis AI Radar & Score Block */}
-                  <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 flex items-center justify-between gap-2 my-2">
-                    {/* Left: Overall Match Score */}
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="text-[10px] uppercase tracking-wider font-bold text-[#7D715E]">
-                        Độ phù hợp AI
+                  {/* AI Score Block: 2-Bar Cold Start Breakdown vs 4-Axis Radar */}
+                  {isColdStart ? (
+                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-3xl font-black text-[#8C6226] tabular-nums tracking-tight leading-none">
+                            {kol.matchScore}
+                          </span>
+                          <span className="text-xs font-bold text-[#7D715E] tabular-nums">/100</span>
+                          <span className="ml-1 whitespace-nowrap">{getMatchScorePill(kol.matchScore)}</span>
+                        </div>
+                        <div className="text-[10px] font-semibold text-right shrink-0">
+                          {kol.categoryMatchSource === 'PROFILE' ? (
+                            <span className="text-[#B88E4F] font-bold">✓ Khớp hồ sơ</span>
+                          ) : (
+                            <span className="text-[#7D715E]">Tiềm năng mới</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-[#8C6226] tabular-nums tracking-tight">
-                          {kol.matchScore}
+
+                      <div className="space-y-2.5 pt-2 border-t border-[#EAE4D7]/80">
+                        <div>
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="font-semibold text-[#1A1612]">
+                              Độ khớp ngành &amp; Hồ sơ <span className="text-[#7D715E] font-normal">({wCat}%)</span>
+                            </span>
+                            <strong className="text-[#8C6226] tabular-nums">{kol.scoreBreakdown?.categoryScore || 0}/100</strong>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-white border border-[#EAE4D7] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[#C59B58] transition-[width] duration-300"
+                              style={{ width: `${kol.scoreBreakdown?.categoryScore || 0}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="font-semibold text-[#1A1612]">
+                              Quy mô Follower MXH <span className="text-[#7D715E] font-normal">({wTierSocial}%)</span>
+                            </span>
+                            <strong className="text-[#8C6226] tabular-nums">{kol.scoreBreakdown?.tierAndSocialScore || 0}/100</strong>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-white border border-[#EAE4D7] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[#B88E4F] transition-[width] duration-300"
+                              style={{ width: `${kol.scoreBreakdown?.tierAndSocialScore || 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 flex items-center justify-between gap-2">
+                      {/* Left: Overall Match Score */}
+                      <div className="space-y-1.5 min-w-0">
+                        <div className="text-[10px] uppercase tracking-wider font-bold text-[#7D715E]">
+                          Độ phù hợp AI
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-black text-[#8C6226] tabular-nums tracking-tight leading-none">
+                            {kol.matchScore}
+                          </span>
+                          <span className="text-xs font-bold text-[#7D715E] tabular-nums">/100</span>
+                        </div>
+                        <div className="whitespace-nowrap">{getMatchScorePill(kol.matchScore)}</div>
+                        <div className="text-[10px] text-[#7D715E] font-medium pt-0.5 leading-snug">
+                          {kol.categoryMatchSource === 'SALES' ? (
+                            <span className="text-[#059669] font-bold">✓ Đã bán cùng ngành</span>
+                          ) : kol.categoryMatchSource === 'PROFILE' ? (
+                            <span className="text-[#B88E4F] font-bold">✓ Khớp hồ sơ &amp; kênh</span>
+                          ) : (
+                            'Tiềm năng mở rộng'
+                          )}
+                        </div>
+                        <div className="text-[9px] text-[#7D715E]/90 font-medium leading-tight">
+                          {`Hiệu suất: ${wCat}/${wCr}/${wTierSocial}/${wPrice}`}
+                        </div>
+                      </div>
+
+                      {/* Right: Embedded SVG Radar Chart */}
+                      <div className="min-w-0 flex-1 flex items-center justify-end">
+                        <AiRadarChart scores={kol.scoreBreakdown} size={186} showLabels={true} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3 Golden Metrics Strip (Adaptive for Cold Start vs Performance) */}
+                  {isColdStart ? (
+                    <div className="grid grid-cols-3 gap-2.5 rounded-2xl bg-[#FBF5EB]/70 p-3 text-center border border-[#EEDFC6]">
+                      <div>
+                        <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
+                          <Users size={11} strokeWidth={1.75} className="text-[#B88E4F]" />
+                          <span>Follower</span>
+                        </div>
+                        <div className="mt-0.5 text-xs font-black text-[#1A1612] tabular-nums">
+                          {formatFollowersCompact(totalFollowers)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
+                          <Globe size={11} strokeWidth={1.75} className="text-[#B88E4F]" />
+                          <span>Kênh chính</span>
+                        </div>
+                        <div className="mt-0.5 text-xs font-bold text-[#8C6226] truncate">
+                          {primaryPlatform}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
+                          <ShoppingBasket size={11} strokeWidth={1.75} className="text-[#B88E4F]" />
+                          <span>Đơn đầu</span>
+                        </div>
+                        <div className="mt-0.5 text-xs font-bold text-[#1A1612] tabular-nums">
+                          {Number(kol.lifetimeStats?.totalOrders || 0).toLocaleString('vi-VN')}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-2.5 rounded-2xl bg-[#FAF8F5] p-3 text-center border border-[#EAE4D7]/60">
+                        <div>
+                          <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
+                            <ShoppingBasket size={11} strokeWidth={1.75} className="text-[#B88E4F]" />
+                            <span>Đơn hàng</span>
+                          </div>
+                          <div className="mt-0.5 text-xs font-bold text-[#1A1612] tabular-nums">
+                            {Number(kol.lifetimeStats?.totalOrders || 0).toLocaleString('vi-VN')}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
+                            <MousePointerClick size={11} strokeWidth={1.75} className="text-[#B88E4F]" />
+                            <span>Nhấp</span>
+                          </div>
+                          <div className="mt-0.5 text-xs font-bold text-[#1A1612] tabular-nums">
+                            {Number(kol.lifetimeStats?.totalClicks || 0).toLocaleString('vi-VN')}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
+                            <TrendingUp size={11} strokeWidth={1.75} className="text-[#059669]" />
+                            <span>CR%</span>
+                          </div>
+                          <div className="mt-0.5 text-xs font-black text-[#059669] tabular-nums">
+                            {kol.lifetimeStats?.conversionRate || 0}%
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-[#EAE4D7]/80 bg-[#FAF8F5] px-3 py-1.5 text-[11px]">
+                        <span className="text-[#7D715E] font-medium truncate">
+                          Giá bán TB: <strong className="text-[#1A1612] tabular-nums">{priceComp.formattedAvgPrice}</strong>
                         </span>
-                        <span className="text-xs font-bold text-[#7D715E]">/100</span>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${priceComp.direction === 'MATCH'
+                            ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
+                            : 'bg-white text-[#7D715E] border border-[#EAE4D7]'
+                            }`}
+                        >
+                          {priceComp.badgeText}
+                        </span>
                       </div>
-                      <div>{getMatchScorePill(kol.matchScore)}</div>
-                      <div className="text-[10px] text-[#7D715E] font-medium pt-1">
-                        {kol.categoryMatchSource === 'SALES' ? (
-                          <span className="text-[#059669] font-bold">✓ Đã bán cùng ngành</span>
-                        ) : kol.categoryMatchSource === 'PROFILE' ? (
-                          <span className="text-[#B88E4F] font-bold">✓ Khớp hồ sơ & kênh</span>
-                        ) : (
-                          'Tiềm năng mở rộng'
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right: Embedded SVG Radar Chart */}
-                    <div className="shrink-0 flex items-center justify-center">
-                      <AiRadarChart scores={kol.scoreBreakdown} size={155} showLabels={true} />
-                    </div>
-                  </div>
-
-                  {/* 3 Golden Metrics dl */}
-                  <div className="grid grid-cols-3 gap-2.5 rounded-2xl bg-[#FAF8F5] p-3 text-center my-1.5 border border-[#EAE4D7]/40">
-                    <div>
-                      <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
-                        <ShoppingBasket size={11} className="text-[#B88E4F]" />
-                        <span>Đơn hàng</span>
-                      </div>
-                      <div className="mt-0.5 text-xs font-bold text-[#1A1612] tabular-nums">
-                        {Number(kol.lifetimeStats?.totalOrders || 0).toLocaleString('vi-VN')}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
-                        <MousePointerClick size={11} className="text-[#B88E4F]" />
-                        <span>Nhấp</span>
-                      </div>
-                      <div className="mt-0.5 text-xs font-bold text-[#1A1612] tabular-nums">
-                        {Number(kol.lifetimeStats?.totalClicks || 0).toLocaleString('vi-VN')}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] font-semibold text-[#7D715E] flex items-center justify-center gap-1">
-                        <TrendingUp size={11} className="text-[#059669]" />
-                        <span>CR%</span>
-                      </div>
-                      <div className="mt-0.5 text-xs font-black text-[#059669] tabular-nums">
-                        {kol.lifetimeStats?.conversionRate || 0}%
-                      </div>
-                    </div>
-                  </div>
+                    </>
+                  )}
 
                   {/* Primary & Secondary Action CTAs */}
-                  <div className="space-y-2 pt-1">
+                  <div className="space-y-2 pt-0.5">
                     <button
                       type="button"
                       onClick={() => handleNegotiateDeal(kol)}
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-bold text-xs shadow-xs transition cursor-pointer"
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-bold text-xs shadow-xs active:scale-[0.96] transition-[transform,background-color] duration-150 cursor-pointer"
                       title="Mở khung chat thỏa thuận deal độc quyền"
                     >
-                      <MessageSquare size={14} />
+                      <MessageSquare size={14} strokeWidth={2} />
                       <span>Thương lượng Deal VIP</span>
                     </button>
 
@@ -854,9 +1086,9 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                           setInviteMessage('');
                           setInvitingKol(kol);
                         }}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer shadow-2xs"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58]/50 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] active:scale-[0.96] transition-[transform,background-color,border-color,color] duration-150 cursor-pointer shadow-2xs"
                       >
-                        <Send size={13} className="text-[#B88E4F]" />
+                        <Send size={13} strokeWidth={1.75} className="text-[#B88E4F]" />
                         <span>Mời hợp tác</span>
                       </button>
 
@@ -868,11 +1100,12 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                             [kol.collaboratorId]: !prev[kol.collaboratorId],
                           }))
                         }
-                        className="inline-flex items-center gap-1 py-2 px-3 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1 py-2 px-3 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58]/50 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] active:scale-[0.96] transition-[transform,background-color,border-color,color] duration-150 cursor-pointer shadow-2xs"
                       >
                         <span>Chi tiết</span>
                         <ChevronDown
                           size={13}
+                          strokeWidth={1.75}
                           className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                         />
                       </button>
@@ -885,11 +1118,11 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                       <div className="space-y-2.5">
                         {/* Overlay Header */}
                         <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
-                              <BarChart3 size={14} />
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                              <BarChart3 size={14} strokeWidth={1.75} />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h4 className="font-bold text-xs text-[#1A1612]">Căn cứ & Đánh giá chi tiết</h4>
                               <span className="text-[10px] text-[#7D715E] block -mt-0.5 truncate max-w-[170px]">{kol.fullName}</span>
                             </div>
@@ -897,81 +1130,127 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                           <button
                             type="button"
                             onClick={() => setExpandedEvidence((prev) => ({ ...prev, [kol.collaboratorId]: false }))}
-                            className="w-7 h-7 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] hover:bg-white flex items-center justify-center cursor-pointer transition"
+                            className="w-7 h-7 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] hover:bg-white active:scale-[0.96] flex items-center justify-center cursor-pointer transition-[transform,background-color,color] duration-150 shrink-0"
                             title="Thu gọn chi tiết"
                           >
                             <X size={14} />
                           </button>
                         </div>
 
+                        {/* Cold Start Explainability Callout */}
+                        {isColdStart && (
+                          <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-2 text-[10px] text-[#6F4E20] leading-relaxed">
+                            <strong className="font-bold">Chế độ Cold Start (KOL mới &lt; 5 đơn):</strong>{' '}
+                            Chấm điểm dựa trên <strong>{wCat}% độ khớp Hồ sơ & Ngành hàng</strong> +{' '}
+                            <strong>{wTierSocial}% quy mô Follower MXH</strong> ({formatFollowersCompact(totalFollowers)}), không phạt điểm 0 cho CR% và Giá.
+                          </div>
+                        )}
+
                         {/* AI Reasoning */}
                         <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-2.5 space-y-1">
                           <span className="font-bold text-[#1A1612] text-[10px] uppercase tracking-wider block">
                             Căn cứ thuật toán đề xuất:
                           </span>
-                          <p className="text-[11px] text-[#7D715E] leading-relaxed">
+                          <p className="text-[11px] text-[#7D715E] leading-relaxed [text-wrap:pretty]">
                             {kol.aiReasoning || 'Phù hợp dựa trên lịch sử chốt đơn và hồ sơ eKYC.'}
                           </p>
                         </div>
 
-                        {/* 4-Axis Scores Breakdown in 2x2 Grid */}
+                        {/* Scores Breakdown (2-Axis for Cold Start, 4-Axis for Performance) */}
                         <div className="space-y-1.5 rounded-xl border border-[#EAE4D7] bg-white p-2.5">
                           <span className="font-bold text-[#1A1612] text-[10px] uppercase tracking-wider block">
-                            Điểm 4 trục Radar:
+                            {isColdStart
+                              ? 'Điểm 2 tiêu chí Cold Start (Trọng số thực tế):'
+                              : 'Điểm 4 trục Radar (Trọng số thực tế):'}
                           </span>
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                            <div>
-                              <div className="flex justify-between text-[10px]">
-                                <span className="text-[#7D715E]">1. Ngành (35%)</span>
-                                <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.categoryScore || 0}</strong>
+                          {isColdStart ? (
+                            <div className="space-y-2 text-xs">
+                              <div>
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-[#7D715E]">1. Độ khớp ngành &amp; Hồ sơ ({wCat}%)</span>
+                                  <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.categoryScore || 0}</strong>
+                                </div>
+                                <div className="h-1.5 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
+                                  <div
+                                    className="h-full bg-[#C59B58] rounded-full"
+                                    style={{ width: `${kol.scoreBreakdown?.categoryScore || 0}%` }}
+                                  />
+                                </div>
                               </div>
-                              <div className="h-1 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
-                                <div
-                                  className="h-full bg-[#C59B58] rounded-full"
-                                  style={{ width: `${kol.scoreBreakdown?.categoryScore || 0}%` }}
-                                />
+                              <div>
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-[#7D715E]">2. Quy mô Follower MXH ({wTierSocial}%)</span>
+                                  <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.tierAndSocialScore || 0}</strong>
+                                </div>
+                                <div className="h-1.5 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
+                                  <div
+                                    className="h-full bg-[#B88E4F] rounded-full"
+                                    style={{ width: `${kol.scoreBreakdown?.tierAndSocialScore || 0}%` }}
+                                  />
+                                </div>
                               </div>
                             </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                              <div>
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-[#7D715E]">1. Ngành ({wCat}%)</span>
+                                  <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.categoryScore || 0}</strong>
+                                </div>
+                                <div className="h-1.5 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
+                                  <div
+                                    className="h-full bg-[#C59B58] rounded-full"
+                                    style={{ width: `${kol.scoreBreakdown?.categoryScore || 0}%` }}
+                                  />
+                                </div>
+                              </div>
 
-                            <div>
-                              <div className="flex justify-between text-[10px]">
-                                <span className="text-[#7D715E]">2. CR% (25%)</span>
-                                <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.conversionRateScore || 0}</strong>
+                              <div>
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-[#7D715E]">2. CR% ({wCr}%)</span>
+                                  <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.conversionRateScore || 0}</strong>
+                                </div>
+                                <div className="h-1.5 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
+                                  <div
+                                    className="h-full bg-[#C59B58] rounded-full"
+                                    style={{ width: `${kol.scoreBreakdown?.conversionRateScore || 0}%` }}
+                                  />
+                                </div>
                               </div>
-                              <div className="h-1 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
-                                <div
-                                  className="h-full bg-[#C59B58] rounded-full"
-                                  style={{ width: `${kol.scoreBreakdown?.conversionRateScore || 0}%` }}
-                                />
-                              </div>
-                            </div>
 
-                            <div>
-                              <div className="flex justify-between text-[10px]">
-                                <span className="text-[#7D715E]">3. Giá (20%)</span>
-                                <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.priceFitScore || 0}</strong>
+                              <div>
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-[#7D715E]">3. Giá ({wPrice}%)</span>
+                                  <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.priceFitScore || 0}</strong>
+                                </div>
+                                <div className="h-1.5 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
+                                  <div
+                                    className="h-full bg-[#C59B58] rounded-full"
+                                    style={{ width: `${kol.scoreBreakdown?.priceFitScore || 0}%` }}
+                                  />
+                                </div>
+                                {priceComp.hasData && (
+                                  <p className="mt-1 text-[10px] text-[#7D715E] tabular-nums leading-tight">
+                                    TB {priceComp.formattedAvgPrice}
+                                    {priceComp.formattedTargetPrice ? ` · ${priceComp.badgeText}` : ''}
+                                  </p>
+                                )}
                               </div>
-                              <div className="h-1 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
-                                <div
-                                  className="h-full bg-[#C59B58] rounded-full"
-                                  style={{ width: `${kol.scoreBreakdown?.priceFitScore || 0}%` }}
-                                />
-                              </div>
-                            </div>
 
-                            <div>
-                              <div className="flex justify-between text-[10px]">
-                                <span className="text-[#7D715E]">4. Cấp bậc (20%)</span>
-                                <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.tierAndSocialScore || 0}</strong>
-                              </div>
-                              <div className="h-1 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
-                                <div
-                                  className="h-full bg-[#C59B58] rounded-full"
-                                  style={{ width: `${kol.scoreBreakdown?.tierAndSocialScore || 0}%` }}
-                                />
+                              <div>
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-[#7D715E]">4. Hạng &amp; MXH ({wTierSocial}%)</span>
+                                  <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.tierAndSocialScore || 0}</strong>
+                                </div>
+                                <div className="h-1.5 w-full bg-[#FAF8F5] rounded-full overflow-hidden mt-0.5 border border-[#EAE4D7]/50">
+                                  <div
+                                    className="h-full bg-[#C59B58] rounded-full"
+                                    style={{ width: `${kol.scoreBreakdown?.tierAndSocialScore || 0}%` }}
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          )}
                         </div>
 
                         {/* Social Channels List */}
@@ -987,7 +1266,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                                   className="inline-flex items-center gap-1 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-0.5 text-[10px] text-[#7D715E]"
                                 >
                                   <span className="font-bold text-[#1A1612]">{channel.platform}:</span>
-                                  <strong>{Number(channel.followerCount || 0).toLocaleString('vi-VN')}</strong> followers
+                                  <strong className="tabular-nums">{Number(channel.followerCount || 0).toLocaleString('vi-VN')}</strong> followers
                                 </span>
                               ))}
                             </div>
@@ -1157,7 +1436,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                 </div>
               </div>
 
-                            {selectedProduct && (
+              {selectedProduct && (
                 <div className="flex items-center gap-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB]/60 p-2.5">
                   {selectedProduct.thumbnailUrl ? (
                     <img
@@ -1193,11 +1472,10 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                         key={rate}
                         type="button"
                         onClick={() => setInviteCommissionRate(rate)}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer border flex flex-col items-center justify-center ${
-                          isSelected
-                            ? 'bg-[#C59B58] text-[#1A1612] border-[#B88E4F] shadow-xs'
-                            : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58]'
-                        }`}
+                        className={`py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer border flex flex-col items-center justify-center ${isSelected
+                          ? 'bg-[#C59B58] text-[#1A1612] border-[#B88E4F] shadow-xs'
+                          : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58]'
+                          }`}
                       >
                         <span className="text-sm">{rate}%</span>
                         <span className="text-[9px] font-normal opacity-85">

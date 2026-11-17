@@ -2004,7 +2004,9 @@ export class OrdersService {
         dealBonus >= campaignBonus
       )
         commissionDealIds[lineIndex] = approvedExclusiveDeal.id;
-      const remunerationBase = unitPrice * quantity;
+      const remunerationBase = Number(
+        linePricing[lineIndex]?.netGoods ?? unitPrice * quantity,
+      );
       if (fundedCampaignBonus && campaign) {
         campaignBonusReservations.set(
           campaign.id,

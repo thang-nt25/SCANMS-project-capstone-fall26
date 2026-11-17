@@ -55,7 +55,7 @@ export async function reconcileProductPrice(
   const whole = active.find((promotion) => !promotion.variantId);
   if (!product.variants.length) {
     const price = whole?.proposedPrice ?? base;
-    assertFloor(price, product.floorPrice);
+    if (!whole) assertFloor(price, product.floorPrice);
     if (!price.equals(product.price))
       await tx.product.update({ where: { id: productId }, data: { price } });
   } else {
@@ -65,11 +65,12 @@ export async function reconcileProductPrice(
         active.find((promotion) => promotion.variantId === variant.id) ?? whole;
       const price =
         offer?.proposedPrice ?? variant.listPrice ?? variant.price ?? base;
-      assertFloor(
-        price,
-        variant.floorPrice ?? product.floorPrice,
-        `SKU ${variant.sku}`,
-      );
+      if (!offer)
+        assertFloor(
+          price,
+          variant.floorPrice ?? product.floorPrice,
+          `SKU ${variant.sku}`,
+        );
       prices.push(price);
       if (!variant.price?.equals(price))
         await tx.productVariant.update({

@@ -1,12 +1,13 @@
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Sparkles, MessageSquare, Crown } from 'lucide-react';
+import { X, Cpu, MessageSquare, Award, UserPlus } from 'lucide-react';
 import { aiRecommendationService, type KolMatchResult } from '../../services/ai-recommendation.service';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
 import type { Product } from '../../services/product.service';
 import { KolMatchRadar } from '../ai/KolMatchRadar';
 import { ExclusiveOfferModal } from '../chat/ExclusiveOfferModal';
+import { getKolPriceComparison } from '../../utils/ai-price.utils';
 
 interface Props { product: Product | null; isOpen: boolean; onClose: () => void }
 
@@ -15,6 +16,8 @@ export function ProductAiMatchDrawer({ product, isOpen, onClose }: Props) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<KolMatchResult[]>([]);
+  const [coldStartCount, setColdStartCount] = useState<number>(0);
+  const [targetPrice, setTargetPrice] = useState<number>(0);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [offering, setOffering] = useState<KolMatchResult | null>(null);
@@ -23,11 +26,13 @@ export function ProductAiMatchDrawer({ product, isOpen, onClose }: Props) {
     if (!isOpen || !product?.id) return;
     let active = true;
     setLoading(true); setError(''); setRecommendations([]); setOffering(null);
-    aiRecommendationService.getRecommendationsForProduct(product.id, { limit: 5 }, true)
+    aiRecommendationService.getRecommendationsForProduct(product.id, { limit: 5, mode: 'PERFORMANCE' }, true)
       .then(result => {
         if (!active) return;
         if (result.targetProduct?.productId !== product.id || !Array.isArray(result.recommendedKols)) throw new Error('Kết quả gợi ý không khớp sản phẩm.');
         setRecommendations(result.recommendedKols);
+        setColdStartCount(result.summaryCounts?.coldStartCount ?? 0);
+        setTargetPrice(Number(result.targetProduct?.price || 0));
       }).catch((caught: any) => { if (active) setError(caught?.response?.data?.message || caught?.message || 'Không tải được gợi ý KOC.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -56,7 +61,7 @@ export function ProductAiMatchDrawer({ product, isOpen, onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose}>
       <div ref={dialog} tabIndex={-1} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-drawer-title" className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col border-l border-[#EAE4D7] bg-[#FAF8F5] shadow-xl outline-none">
         <header className="flex items-center justify-between border-b border-[#EAE4D7] bg-white p-4">
-          <h2 id="ai-drawer-title" className="flex items-center gap-2 font-bold text-[#1A1612]"><Sparkles size={18} className="text-[#B88E4F]" />Gợi ý KOC cho sản phẩm</h2>
+          <h2 id="ai-drawer-title" className="flex items-center gap-2 font-bold text-[#1A1612]"><Cpu size={18} className="text-[#B88E4F]" />Gợi ý KOC cho sản phẩm</h2>
           <button type="button" onClick={onClose} aria-label="Đóng gợi ý KOC" className="rounded-lg p-2 text-[#7D715E] hover:bg-[#F3EFE6]"><X size={18} /></button>
         </header>
         <div className="flex items-center gap-3 border-b border-[#EAE4D7] bg-white p-4">
@@ -70,11 +75,41 @@ export function ProductAiMatchDrawer({ product, isOpen, onClose }: Props) {
             <KolMatchRadar scores={kol.scoreBreakdown} />
             {kol.scoringMode && <p className="text-xs text-[#7D715E]">{kol.scoringMode === 'COLD_START' ? 'Dưới 5 đơn: 70% ngành hàng + 30% quy mô kênh.' : 'Từ 5 đơn: 35% ngành hàng + 25% CR + 20% cấp bậc/kênh + 20% giá.'} Radar thể hiện các chỉ số thành phần.</p>}
             <dl className="grid grid-cols-3 gap-2 text-xs text-[#7D715E]"><div><dt>Đơn đã giao/hoàn tất</dt><dd className="mt-1 font-semibold text-[#1A1612]">{kol.lifetimeStats.totalOrders.toLocaleString('vi-VN')}</dd></div><div><dt>CR thực tế</dt><dd className="mt-1 font-semibold text-[#1A1612]">{kol.lifetimeStats.conversionRate}%</dd></div><div><dt>Dữ liệu</dt><dd className="mt-1 font-semibold text-[#1A1612]">{({ HIGH: 'Đầy đủ', MEDIUM: 'Trung bình', LOW: 'Còn ít' } as Record<string, string>)[kol.lifetimeStats.dataConfidence || 'LOW']}</dd></div></dl>
+            {kol.scoringMode !== 'COLD_START' && (() => {
+              const priceComp = getKolPriceComparison(kol.lifetimeStats?.avgSellingPrice, targetPrice);
+              return (
+                <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1.5 text-xs">
+                  <span className="text-[#7D715E]">
+                    Giá bán TB của KOC: <strong className="text-[#1A1612] tabular-nums">{priceComp.formattedAvgPrice}</strong>
+                    {priceComp.formattedTargetPrice ? <span className="text-[11px]"> (SP: {priceComp.formattedTargetPrice})</span> : null}
+                  </span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${priceComp.direction === 'MATCH' ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]' : 'bg-white text-[#7D715E] border border-[#EAE4D7]'}`}>
+                    {priceComp.badgeText}
+                  </span>
+                </div>
+              );
+            })()}
             <p className="mt-3 text-xs leading-relaxed text-[#7D715E]">{kol.aiReasoning}</p>
-            <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => navigate('/merchant/kol-hub?kol=' + encodeURIComponent(kol.collaboratorId) + '&tab=messages')} className="inline-flex items-center gap-1 rounded-xl border border-[#EAE4D7] px-3 py-2 text-xs text-[#1A1612]"><MessageSquare size={14} />Trao đổi hợp tác</button><button type="button" onClick={() => setOffering(kol)} className="inline-flex items-center gap-1 rounded-xl bg-[#C59B58] px-3 py-2 text-xs font-semibold text-[#1A1612] hover:bg-[#B88E4F]"><Crown size={14} />Đề nghị VIP</button></div>
+            <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => navigate('/merchant/kol-hub?kol=' + encodeURIComponent(kol.collaboratorId) + '&tab=messages')} className="inline-flex items-center gap-1 rounded-xl border border-[#EAE4D7] px-3 py-2 text-xs text-[#1A1612]"><MessageSquare size={14} />Trao đổi hợp tác</button><button type="button" onClick={() => setOffering(kol)} className="inline-flex items-center gap-1 rounded-xl bg-[#C59B58] px-3 py-2 text-xs font-semibold text-[#1A1612] hover:bg-[#B88E4F]"><Award size={14} />Đề nghị VIP</button></div>
           </article>)}
         </div>
-        <footer className="border-t border-[#EAE4D7] bg-white p-4"><button type="button" onClick={() => navigate('/merchant/kol-hub?mode=ai-matching&productId=' + encodeURIComponent(product.id))} className="w-full rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm font-semibold text-[#1A1612]">Mở trang so sánh KOC</button></footer>
+        <footer className="border-t border-[#EAE4D7] bg-white p-4 flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/merchant/kol-hub?mode=ai-matching&productId=' + encodeURIComponent(product.id))}
+            className="flex-1 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] px-3.5 py-2.5 text-xs font-semibold text-[#1A1612] transition cursor-pointer"
+          >
+            Mở trang so sánh KOC
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/merchant/kol-hub?mode=ai-matching&productId=' + encodeURIComponent(product.id) + '&kolTab=COLD_START')}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] px-3.5 py-2.5 text-xs font-bold text-[#8C6226] transition cursor-pointer"
+          >
+            <UserPlus size={14} className="text-[#C59B58]" />
+            <span>Các KOL tiềm năng{coldStartCount > 0 ? ` (${coldStartCount})` : ''}</span>
+          </button>
+        </footer>
       </div>
     </div>
     {offering && <ExclusiveOfferModal collaborator={{ id: offering.collaboratorId, fullName: offering.fullName }} productId={product.id} onClose={() => setOffering(null)} onSuccess={() => { setOffering(null); navigate('/merchant/kol-hub?kol=' + encodeURIComponent(offering.collaboratorId) + '&tab=messages'); }} />}

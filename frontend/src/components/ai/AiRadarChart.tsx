@@ -41,8 +41,10 @@ export function AiRadarChart({
 }: SingleRadarProps) {
   const cx = size / 2;
   const cy = size / 2;
-  // Margin for axis labels
+  // Keep diamond large while expanding horizontal viewBox just enough for side labels
   const r = size * 0.34;
+  const vbPadX = 30;
+  const vbPadY = 4;
 
   const clamp = (val?: number) => Math.max(5, Math.min(100, val || 0));
 
@@ -62,8 +64,13 @@ export function AiRadarChart({
   const gridLevels = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <div className={`relative flex items-center justify-center select-none ${className}`}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+    <div className={`relative flex items-center justify-center select-none max-w-full ${className}`}>
+      <svg
+        width={size + vbPadX * 1.8}
+        height={size + vbPadY * 2}
+        viewBox={`${-vbPadX} ${-vbPadY} ${size + vbPadX * 2} ${size + vbPadY * 2}`}
+        className="max-w-full h-auto"
+      >
         {/* Background Web Polygons */}
         {gridLevels.map((lvl) => {
           const gr = r * lvl;
@@ -145,14 +152,21 @@ export function MultiAiRadarChart({
 }: MultiRadarProps) {
   const cx = size / 2;
   const cy = size / 2;
-  const r = size * 0.36;
+  const r = size * 0.3;
+  const vbPadX = 64;
+  const vbPadY = 10;
 
   const clamp = (val?: number) => Math.max(5, Math.min(100, val || 0));
   const gridLevels = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <div className={`relative flex flex-col items-center justify-center select-none ${className}`}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+    <div className={`relative flex flex-col items-center justify-center select-none max-w-full ${className}`}>
+      <svg
+        width={size + vbPadX}
+        height={size + vbPadY}
+        viewBox={`${-vbPadX} ${-vbPadY} ${size + vbPadX * 2} ${size + vbPadY * 2}`}
+        className="max-w-full h-auto"
+      >
         {/* Background Concentric Diamonds */}
         {gridLevels.map((lvl) => {
           const gr = r * lvl;

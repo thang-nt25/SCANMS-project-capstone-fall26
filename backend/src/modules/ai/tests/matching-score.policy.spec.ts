@@ -34,6 +34,12 @@ describe('Published recommendation score policy', () => {
       matchingScore(0, 50000, 80, 0, 0, 60).score,
     );
     expect(matchingScore(0, 0, 0, 0, 0, 0).score).toBe(0);
+    expect(matchingScore(0, 200, 0, 0, 0, 0).socialScore).toBe(0);
+    expect(matchingScore(0, 5000, 0, 0, 0, 0).socialScore).toBe(41);
+    expect(matchingScore(0, 10000, 0, 0, 0, 0).socialScore).toBe(50);
+    expect(matchingScore(0, 50000, 0, 0, 0, 0).socialScore).toBe(71);
+    expect(matchingScore(0, 500000, 0, 0, 0, 0).socialScore).toBe(100);
+    expect(matchingScore(0, 2000000, 0, 0, 0, 0).socialScore).toBe(100);
   });
   it('passes public bio/channel/tags only to inference', () => {
     const text = creatorProfileText({
