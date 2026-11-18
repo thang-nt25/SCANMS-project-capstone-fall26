@@ -87,7 +87,7 @@ describe('Quoted message replies', () => {
   });
   it('falls back safely when schema introspection is temporarily unavailable', async () => {
     prisma.$queryRaw.mockRejectedValue(new Error('Temporarily unavailable'));
-    await expect(service.getCapabilities()).resolves.toEqual({ messageReplies: false });
+    await expect(service.getCapabilities()).resolves.toEqual({ messageReplies: false, messageReactions: false });
     await expect(service.getMessages(conversationId, 'owner')).resolves.toEqual([]);
   });
   it.each([12, {}, '', 'wrong-id', null])('rejects a malformed socket reply target %j', async target => {

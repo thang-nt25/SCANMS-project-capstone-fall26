@@ -35,7 +35,7 @@ function DeliveryCountdown({ at }: { at: number }) {
   </span>;
 }
 
-export function SandboxSampleReceipt({ code, role, productId, productTitle, sampleRequestId, expanded = false, hideStatusSummary = false }: {
+export function SandboxSampleReceipt({ code, role, productId, productTitle, sampleRequestId, expanded = false, hideStatusSummary = false, hideTestingControls = false }: {
   code: string;
   role: 'shop' | 'kol';
   productId?: string;
@@ -43,6 +43,7 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
   sampleRequestId?: string;
   expanded?: boolean;
   hideStatusSummary?: boolean;
+  hideTestingControls?: boolean;
 }) {
   const { state, setState, error: trackingError } = useSandboxSampleState(code);
   const [error, setError] = useState('');
@@ -130,7 +131,7 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
         )}
 
         {state?.videoUrl && <a href={state.videoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#795A2D] underline underline-offset-2"><Video size={14} aria-hidden="true" />Video Review</a>}
-        {role === 'shop' && delivered && !state?.videoUrl && !overdue && <details className="text-[11px] text-[#7D715E]">
+        {!hideTestingControls && role === 'shop' && delivered && !state?.videoUrl && !overdue && <details className="text-[11px] text-[#7D715E]">
           <summary className="w-fit cursor-pointer rounded-md py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]">Kiểm thử quá hạn video</summary>
           <button type="button" disabled={busy} onClick={() => void submit('expire')} className="mt-1 rounded-lg border border-[#EAE4D7] px-2.5 py-2 text-[11px] font-medium text-[#795A2D] hover:bg-[#FBF5EB] disabled:opacity-50">Chuyển quá hạn</button>
         </details>}

@@ -1,0 +1,12 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter} from 'react-router-dom';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import ShopKolHubPage from '../../src/pages/merchant/ShopKolHubPage';
+import KolRecommendationPage from '../../src/pages/merchant/KolRecommendationPage';
+import ShopActiveDealsTab from '../../src/components/affiliate/ShopActiveDealsTab';
+import {CreateExclusiveDealModal} from '../../src/components/chat/CreateExclusiveDealModal';
+import '../../src/index.css';
+const view=new URLSearchParams(location.search).get('view');
+const content=view==='deal'?<CreateExclusiveDealModal collaboratorId="kol-qa" collaboratorName="KOL kiểm thử" storeId="store-qa" onClose={()=>{}} onSuccess={()=>{}}/>:view==='radar'?<KolRecommendationPage/>:view==='deals'?<ShopActiveDealsTab/>:<ShopKolHubPage/>;
+createRoot(document.getElementById('root')!).render(<MemoryRouter initialEntries={['/merchant/kol-hub?kol=kol-qa&tab=profile']}><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}>{content}</QueryClientProvider></MemoryRouter>);

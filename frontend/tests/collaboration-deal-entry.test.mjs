@@ -19,8 +19,8 @@ function callback(opening, name) {
   }).outputText + '\nreturn callback;';
 }
 
-test('chat VIP action opens the current shop product picker without navigation', () => {
-  const button = elements.find((node) => ts.isJsxElement(node) && node.openingElement.tagName.getText(file) === 'button' && node.getText(file).includes('Đề xuất deal VIP'));
+test('chat Deal action opens the current shop product picker without navigation', () => {
+  const button = elements.find((node) => ts.isJsxElement(node) && node.openingElement.tagName.getText(file) === 'button' && node.getText(file).includes('setDealPickerStoreId(selectedStore.id)'));
   assert.ok(button);
   let selectedId;
   new Function('selectedStore', 'setDealPickerStoreId', callback(button.openingElement, 'onClick'))(

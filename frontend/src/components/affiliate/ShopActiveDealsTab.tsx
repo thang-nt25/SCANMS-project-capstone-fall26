@@ -1,3 +1,5 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
+import { handleAvatarImageError, handleProductImageError } from '@/utils/image-fallback.utils';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   UserCheck,
@@ -10,7 +12,6 @@ import {
   MessageSquare,
   Copy,
   Check,
-  RotateCcw,
   Search,
   Filter,
   Layers,
@@ -89,12 +90,12 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   const [activeData, setActiveData] = useState<{
     totalPartners: number;
     totalActiveDeals: number;
-    averageCommissionRate: number;
+    averageCommissionRate: number | null;
     deals: ActiveDealPartnerItem[];
   }>({
     totalPartners: 0,
     totalActiveDeals: 0,
-    averageCommissionRate: 10,
+    averageCommissionRate: null,
     deals: [],
   });
 
@@ -129,7 +130,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       setActiveData({
         totalPartners: activeRes.totalPartners || 0,
         totalActiveDeals: activeRes.totalActiveDeals || 0,
-        averageCommissionRate: activeRes.averageCommissionRate || 10,
+        averageCommissionRate: activeRes.totalActiveDeals > 0 && activeRes.averageCommissionRate != null ? Number(activeRes.averageCommissionRate) : null,
         deals: activeRes.deals || [],
       });
 
@@ -217,7 +218,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       toast.error('Chưa có mã liên kết tiếp thị');
       return;
     }
-    const url = `${window.location.origin}/r/${deal.referralLink.shortCode}`;
+    const url = publicWebsiteUrl(`/r/${deal.referralLink.shortCode}`);
     navigator.clipboard.writeText(url);
     setCopiedId(deal.id);
     toast.success('Đã sao chép link thỏa thuận độc quyền!');
@@ -238,9 +239,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
       const matchRate =
         rateFilter === 'ALL' ||
-        (rateFilter === '11' && deal.dealCommissionRate === 11) ||
-        (rateFilter === '12' && deal.dealCommissionRate === 12) ||
-        (rateFilter === '13' && deal.dealCommissionRate === 13);
+        Number(rateFilter) === Number(deal.dealCommissionRate);
 
       return matchSearch && matchRate;
     });
@@ -266,7 +265,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
 
   return (
-    <div className="space-y-4 animate-in fade-in-50 duration-200">
+    <div className="shop-active-deals space-y-4 animate-in fade-in-50 duration-200">
       {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm text-[#DC2626]">
         {loadError} Dữ liệu đang hiển thị có thể chưa được cập nhật.
         <button type="button" disabled={loading} onClick={() => void fetchAll()} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
@@ -291,7 +290,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       )}
 
       {/* 3. Top Metrics Row (Clean, Crisp, Professional Icons, No Verbose Subtexts) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="deal-overview-metrics grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border border-[#EEDFC6] bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
@@ -307,7 +306,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         <div className="rounded-xl border border-[#EEDFC6] bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-              Hợp Đồng Hiệu Lực
+              Deal hiệu lực
             </span>
             <FileCheck className="h-4 w-4 text-[#B88E4F]" />
           </div>
@@ -319,12 +318,12 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         <div className="rounded-xl border border-[#EEDFC6] bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-              Hoa Hồng Deal TB
+              Thù lao Deal TB
             </span>
             <Percent className="h-4 w-4 text-[#B88E4F]" />
           </div>
           <div className="text-2xl font-black text-[#B88E4F]">
-            {activeData.averageCommissionRate}%
+            {activeData.averageCommissionRate == null ? '—' : `${activeData.averageCommissionRate}%`}
           </div>
         </div>
 
@@ -342,7 +341,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       </div>
 
       {/* 3. Unified Sub-Tabs Navigation (Sharp Icons, Compact) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
+      <div className="deal-state-toolbar flex flex-wrap items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -389,15 +388,6 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={fetchAll}
-          className="flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] px-3 py-1.5 text-xs font-bold text-[#1A1612] transition cursor-pointer shadow-2xs shrink-0"
-          title="Làm mới dữ liệu thỏa thuận"
-        >
-          <RotateCcw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-          <span>Làm mới</span>
-        </button>
       </div>
 
       {/* ========================================================================= */}
@@ -406,7 +396,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       {activeSubTab === 'ACTIVE' && (
         <div className="space-y-3.5">
           {/* Controls Bar: Search, Filters & View Toggle */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
+          <div className="deal-active-toolbar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
             <div className="flex flex-wrap items-center gap-2 flex-1">
               <div className="relative flex-1 min-w-[200px] max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#7D715E]" />
@@ -427,9 +417,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                   className="rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1.5 text-xs font-medium text-[#1A1612] focus:outline-hidden focus:border-[#C59B58] transition cursor-pointer"
                 >
                   <option value="ALL">Tất cả mức Deal</option>
-                  <option value="11">Deal 11%</option>
-                  <option value="12">Deal 12%</option>
-                  <option value="13">Deal 13%</option>
+                  {Array.from({length:16},(_,index)=>index+10).map(rate=><option key={rate} value={String(rate)}>Deal {rate}%</option>)}
                 </select>
               </div>
             </div>
@@ -470,7 +458,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
             </div>
           ) : filteredActiveDeals.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              {loadError ? 'Chưa xác định được danh sách thỏa thuận.' : 'Không có thỏa thuận nào phù hợp với bộ lọc.'}
+              {loadError ? 'Chưa xác định được danh sách thỏa thuận.' : 'Chưa có thỏa thuận phù hợp.'}
             </div>
           ) : displayMode === 'CREATOR' ? (
             /* Sub-view 1A: Grouped By Creator */
@@ -486,7 +474,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                       <div className="w-9 h-9 rounded-full bg-[#F3EFE6] border border-[#EEDFC6] overflow-hidden shrink-0 flex items-center justify-center text-[#B88E4F] font-bold text-xs">
                         {creator.collaboratorAvatar ? (
                           <img
-                            src={creator.collaboratorAvatar}
+                            src={creator.collaboratorAvatar} onError={handleAvatarImageError}
                             alt={creator.collaboratorName}
                             className="w-full h-full object-cover"
                           />
@@ -553,7 +541,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {deal.productImage ? (
                                   <img
-                                    src={deal.productImage}
+                                    src={deal.productImage} onError={handleProductImageError}
                                     alt={deal.productTitle || ''}
                                     className="w-10 h-10 rounded-lg object-cover shrink-0 border border-[#EAE4D7] bg-white"
                                   />
@@ -669,7 +657,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                               <div className="w-8 h-8 rounded-full bg-[#F3EFE6] border border-[#EEDFC6] overflow-hidden shrink-0 flex items-center justify-center text-[#B88E4F] font-bold text-xs">
                                 {deal.collaboratorAvatar ? (
                                   <img
-                                    src={deal.collaboratorAvatar}
+                                    src={deal.collaboratorAvatar} onError={handleAvatarImageError}
                                     alt={deal.collaboratorName}
                                     className="w-full h-full object-cover"
                                   />
@@ -702,7 +690,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             <div className="flex items-center gap-2 min-w-0 max-w-[200px]">
                               {deal.productImage && (
                                 <img
-                                  src={deal.productImage}
+                                  src={deal.productImage} onError={handleProductImageError}
                                   alt=""
                                   className="w-8 h-8 rounded-lg object-cover shrink-0 border border-[#EAE4D7]"
                                 />
@@ -812,7 +800,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                       <div className="flex items-center gap-2.5">
                         <div className="w-10 h-10 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0 flex items-center justify-center">
                           {item.product?.imageUrl ? (
-                            <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
+                            <img src={item.product.imageUrl} onError={handleProductImageError} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
                           )}

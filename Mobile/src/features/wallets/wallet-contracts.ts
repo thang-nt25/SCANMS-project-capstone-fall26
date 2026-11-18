@@ -26,6 +26,9 @@ export const WalletSummarySchema = z.object({
     }),
   ),
   withdrawalTaxPolicy: z.object({
+    policy: z.string().optional(),
+    month: z.string().optional(),
+    monthlyGross: nonnegative.optional(),
     threshold: nonnegative,
     rate: nonnegative.refine((value) => Number(value) <= 1),
   }),

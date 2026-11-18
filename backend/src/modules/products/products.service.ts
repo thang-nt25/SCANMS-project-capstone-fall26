@@ -32,7 +32,7 @@ import {
 } from '@prisma/client';
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
-import { validateProductPackage } from './product-package';
+import { assertProductPackageComplete, PACKAGE_FIELDS, validateProductPackage } from './product-package';
 import { productVariantFields } from './product-variant-fields';
 import * as crypto from 'crypto';
 import { catalogRankingQuery, type CatalogRankingRow } from './utils/catalog-ranking.query';
@@ -1083,6 +1083,7 @@ export class ProductsService {
         );
       }
 
+      if (dto.status === 'APPROVED') assertProductPackageComplete(product);
       const reviewedAt = new Date();
       const result = await tx.product.update({
         where: { id: productId },
@@ -1351,6 +1352,7 @@ export class ProductsService {
           sku: dto.sku.trim().toUpperCase(),
           title: dto.title.trim(),
           categoryName: dto.categoryName?.trim() || null,
+          productGroup: dto.productGroup?.trim() || null,
           description: dto.description?.trim() || null,
           imageUrl: dto.imageUrl?.trim() || null,
           price: dto.price,
@@ -1553,6 +1555,7 @@ export class ProductsService {
         textChanged(dto.barcode, product.barcode) ||
         textChanged(dto.title, product.title) ||
         textChanged(dto.categoryName, product.categoryName) ||
+        textChanged(dto.productGroup, product.productGroup) ||
         textChanged(dto.description, product.description) ||
         textChanged(dto.ingredients, product.ingredients) ||
         textChanged(dto.origin, product.origin) ||
@@ -1580,6 +1583,12 @@ export class ProductsService {
     const approvedShopContentChanged = product.moderationStatus === ProductModerationStatus.APPROVED && materialContentChanged;
     // Pending edits explicitly write DRAFT, so a concurrent approval cannot publish later edits.
     const requiresModeration = isResubmission || materialContentChanged;
+    // Do not let a live product lose measurements, or activate an incomplete legacy product.
+    if (product.moderationStatus === ProductModerationStatus.APPROVED &&
+        !requiresModeration && dto.isActive !== false &&
+        (dto.isActive === true || (product.isActive && PACKAGE_FIELDS.some((field) => dto[field] !== undefined)))) {
+      assertProductPackageComplete({ ...product, ...dto });
+    }
     const evidenceKindsToReplace = [
       dto.originProofLinks !== undefined ? 'ORIGIN_LINK' : null,
       dto.originProofImages !== undefined ? 'ORIGIN_IMAGE' : null,
@@ -1640,6 +1649,9 @@ export class ProductsService {
         ...(dto.title && { title: dto.title.trim() }),
         ...(dto.categoryName !== undefined && {
           categoryName: dto.categoryName?.trim() || null,
+        }),
+        ...(dto.productGroup !== undefined && {
+          productGroup: dto.productGroup?.trim() || null,
         }),
         ...(dto.description !== undefined && {
           description: dto.description?.trim() || null,
@@ -2215,6 +2227,7 @@ export class ProductsService {
   async getLandingPageData(
     idOrSlug: string,
     attributionCookie?: string,
+    targetReviewId?: string,
   ): Promise<ProductLandingResponseDto> {
     if (!idOrSlug || !idOrSlug.trim()) {
       throw new NotFoundException('Vui lòng cung cấp mã hoặc slug sản phẩm');
@@ -2572,6 +2585,15 @@ export class ProductsService {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+
+    // A direct link can reference an older public review outside the latest 50.
+    if (targetReviewId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetReviewId) && !reviews.some(review => review.id === targetReviewId)) {
+      const target = await this.prisma.productReview.findFirst({
+        where: { id: targetReviewId, productId: product.id, isApproved: true },
+        include: { order: { select: { id: true, status: true } } },
+      });
+      if (target) reviews.push(target);
+    }
 
     const visibleWhere = { productId: product.id, isApproved: true };
     const [reviewStats, replyEvents, photoReviewCount] = await Promise.all([

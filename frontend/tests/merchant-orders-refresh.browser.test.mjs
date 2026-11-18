@@ -13,7 +13,7 @@ test('merchant order polling preserves the table and focus, prevents overlapping
 }, async () => {
   const origin = new URL(base).origin;
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
-  const browser = await puppeteer.launch({ executablePath, headless: true });
+  const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox'], timeout: 10000 });
   let customerName = 'Khách kiểm thử';
   let hold = false;
   let release;
@@ -72,6 +72,8 @@ test('merchant order polling preserves the table and focus, prevents overlapping
           return respond({});
         }
         if (url.pathname === '/api/stores/my-store') return respond(store);
+        if (url.pathname === '/api/store-collaborators/shop') return respond({store,members:[{collaboratorId:'qa-kol',collaborator:{id:'qa-kol',fullName:'Nhà sáng tạo kiểm thử',email:'qa@example.test',socialChannels:[]},stats:{totalRevenue:0,totalOrders:0,completedVideosCount:0}}]});
+        if (url.pathname === '/api/affiliate-deals/shop') return respond({items:[],total:0,page:1,pageSize:20});
         if (url.pathname === '/api/products') return respond({ items: [], pagination: { totalPages: 1 } });
         if (url.pathname === '/api/products/reviews/moderation') return respond(Array.from({ length: 8 }, (_, index) => ({ id: `qa-review-${index}`, customerName: 'Khách kiểm thử', createdAt: '2026-10-20T10:00:00Z', rating: 5, status: 'APPROVED', isApproved: true, comment: 'Sản phẩm kiểm thử', product: { title: 'Serum kiểm thử' }, reports: [] })));
         if (url.pathname === '/api/media') return respond({ items: [
@@ -103,9 +105,8 @@ test('merchant order polling preserves the table and focus, prevents overlapping
       if (url.origin !== origin && !['data:', 'blob:'].includes(url.protocol)) return request.abort();
       return request.continue();
     });
-    await page.goto(origin + '/merchant/orders');
+    await page.goto(origin + '/merchant/orders', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.merchant-orders-data tbody tr');
-    await page.waitForNetworkIdle({ idleTime: 300 });
     assert.equal(await page.$('[aria-label="Chọn tiêu chí tìm kiếm"]'), null);
     assert.ok(orderQueries.some(query => query.searchField === "ALL"));
     const filterLayout = await page.$eval("[data-order-filter-row]", el => {
@@ -201,8 +202,9 @@ test('merchant order polling preserves the table and focus, prevents overlapping
     // Background failures leave the last successful data and table mounted.
     hold = true; await page.evaluate(() => window.advanceRefreshClock());
     await waitForHeldRequest();
+    const failedRefresh = page.waitForResponse(response => response.url().includes('/api/orders/my-store') && response.status() === 503);
     hold = false; await release(503); release = undefined;
-    await page.waitForNetworkIdle({ idleTime: 200 });
+    await failedRefresh;
     assert.match(await page.$eval('.merchant-orders-data', el => el.textContent), /Khách đã cập nhật/);
     assert.equal(await page.evaluate(() => document.body.textContent.includes('Đang tải đơn hàng...')), false);
 
@@ -273,7 +275,6 @@ test('merchant order polling preserves the table and focus, prevents overlapping
     await page.waitForSelector(excelDialog, { hidden: true });
     await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Hàng mẫu KOL').click());
     await page.waitForSelector('a[href="/merchant/kol-hub"]');
-    await page.waitForNetworkIdle({ idleTime: 300 });
     assert.ok(sampleRequests > 0);
     await page.waitForSelector('[data-sample-row="sample-received"]');
     assert.equal(await page.$eval('[data-sample-row="sample-received"] a[aria-label^="Xem hồ sơ"]', el => el.getAttribute('href')), '/merchant/kol-hub?kol=qa-kol2&tab=profile');
@@ -318,20 +319,21 @@ test('merchant order polling preserves the table and focus, prevents overlapping
       assert.equal(await page.$eval('[data-video-deadline] svg', el => getComputedStyle(el).color), 'rgb(220, 38, 38)');
       assert.equal(await page.$('[data-sample-row="sample-approved"] [data-video-deadline]'), null);
     }
-    await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.includes('Deal & voucher')).click());
+    await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.includes('Hiệu quả KOL')).click());
     const invitationOrigin = page.url();
-    const originalDealCard = await page.$('[data-deal-card]');
-    await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.includes('Mời Thêm KOL & Tạo Deal')).click());
+    await page.waitForSelector('.partner-data-table-wrap');
+    const originalPartnerTable = await page.$('.partner-data-table-wrap');
+    await page.click('.shop-partner-data header button');
     await page.waitForSelector('[aria-labelledby="invite-kol-title"]', { visible: true });
     assert.equal(page.url(), invitationOrigin, 'invitation opens over the deals page without navigating');
-    assert.equal(await originalDealCard.evaluate(el => el.isConnected), true, 'original deal content stays mounted behind the invitation');
+    assert.equal(await originalPartnerTable.evaluate(el => el.isConnected), true, 'partner data stays mounted behind the invitation');
     assert.equal(await page.$eval('#kol-invite-email', el => el.value), '');
     await page.click('[aria-labelledby="invite-kol-title"] button[aria-label]');
     await page.waitForSelector('[aria-labelledby="invite-kol-title"]', { hidden: true });
     assert.equal(page.url(), invitationOrigin);
     await page.waitForSelector('[data-deal-card]');
-    assert.ok(await page.$$eval('h3', headings => headings.some(heading => heading.textContent.includes('Thỏa Thuận Hoa Hồng'))), 'closing the invitation returns to the original deals section');
-    await page.goto(origin + '/merchant/products');
+    assert.ok(await page.$$eval('h3', headings => headings.some(heading => heading.textContent.includes('Hiệu quả KOL'))), 'closing the invitation returns to partner performance');
+    await page.goto(origin + '/merchant/products', { waitUntil: 'domcontentloaded' });
     await page.setViewport({ width: 1440, height: 900 });
     await page.waitForSelector('[aria-label="Lọc trạng thái sản phẩm"]');
     await page.click('[aria-label="Lọc trạng thái sản phẩm"]');

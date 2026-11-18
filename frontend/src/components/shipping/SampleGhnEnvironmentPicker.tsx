@@ -97,20 +97,21 @@ export function sampleDisplayStatus(sample: Parameters<typeof isSandboxShipment>
   return isSandboxShipment(sample) ? 'SHIPPED' : sample.status;
 }
 
-export function SampleSandboxWaybills({ charges, role = 'kol', productId, productTitle, sampleRequestId }: {
+export function SampleSandboxWaybills({ charges, role = 'kol', productId, productTitle, sampleRequestId, compact = false }: {
   charges?: SampleWaybillCharge[];
   primary?: boolean;
   role?: 'shop' | 'kol';
   productId?: string;
   productTitle?: string;
   sampleRequestId?: string;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const tests = charges?.filter(charge => charge.environment === 'TEST') || [];
   if (!tests.length) return null;
   const code = tests[0].trackingNumber;
 
-  return <section className="sample-waybill mt-3 min-w-0 rounded-xl border border-[#EAE4D7] bg-white" aria-label="Vận đơn mẫu GHN sandbox">
+  return <section className={`sample-waybill mt-3 min-w-0 rounded-xl border border-[#EAE4D7] bg-white ${compact ? 'sample-waybill-compact' : ''}`} aria-label="Vận đơn mẫu GHN sandbox">
     <div className="sample-waybill-heading flex items-center justify-between gap-3 px-3.5 pb-1.5 pt-3">
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Truck size={18} aria-hidden="true" /></span>
@@ -119,13 +120,13 @@ export function SampleSandboxWaybills({ charges, role = 'kol', productId, produc
           <code className="mt-0.5 block text-[11px] font-semibold tracking-wide text-[#7D715E]">{code}</code>
         </div>
       </div>
-      <button type="button" aria-label={open ? 'Thu gọn' : role === 'kol' ? 'Theo dõi hành trình bưu kiện' : 'Xem hành trình'} title={open ? 'Thu gọn hành trình' : 'Xem hành trình giao hàng'} aria-expanded={open} onClick={() => setOpen(!open)} className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 border border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-semibold text-[#795A2D] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] ${role === 'kol' ? 'rounded-lg px-2.5 py-2' : 'h-9 w-9 rounded-full'}`}>
+      {!compact && <button type="button" aria-label={open ? 'Thu gọn' : role === 'kol' ? 'Theo dõi hành trình bưu kiện' : 'Xem hành trình'} title={open ? 'Thu gọn hành trình' : 'Xem hành trình giao hàng'} aria-expanded={open} onClick={() => setOpen(!open)} className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 border border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-semibold text-[#795A2D] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] ${role === 'kol' ? 'rounded-lg px-2.5 py-2' : 'h-9 w-9 rounded-full'}`}>
         {role === 'kol' && <span>{open ? 'Thu gọn' : 'Theo dõi hành trình bưu kiện'}</span>}
         <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
-      </button>
+      </button>}
     </div>
     <div className="sample-waybill-body px-3.5 pb-3">
-      <SandboxSampleReceipt key={code} code={code} role={role} productId={productId} productTitle={productTitle} sampleRequestId={sampleRequestId} expanded={open} />
+      <SandboxSampleReceipt key={code} code={code} role={role} productId={productId} productTitle={productTitle} sampleRequestId={sampleRequestId} expanded={compact || open} hideStatusSummary={compact} hideTestingControls={compact} />
       <SandboxShippingPayment key={code} code={code} amount={tests[0].amount} role={role} />
     </div>
   </section>;

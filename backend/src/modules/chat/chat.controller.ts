@@ -153,6 +153,31 @@ export class ChatController {
     return this.chatService.countUnread(user.id);
   }
 
+  @Patch('conversations/:conversationId/messages/:messageId/reaction')
+  @ApiOperation({ summary: 'Đặt hoặc đổi cảm xúc của mình trên tin nhắn' })
+  async setReaction(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @CurrentUser('id') userId: string,
+    @Body('emoji') emoji: unknown,
+  ) {
+    const reactions = await this.chatService.setMessageReaction(conversationId, userId, messageId, emoji);
+    this.chatGateway.broadcastToConversation(conversationId, 'message_reaction_changed', { conversationId, messageId });
+    return reactions;
+  }
+
+  @Delete('conversations/:conversationId/messages/:messageId/reaction')
+  @ApiOperation({ summary: 'Gỡ cảm xúc của mình trên tin nhắn' })
+  async removeReaction(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    const reactions = await this.chatService.removeMessageReaction(conversationId, userId, messageId);
+    this.chatGateway.broadcastToConversation(conversationId, 'message_reaction_changed', { conversationId, messageId });
+    return reactions;
+  }
+
   // Shop tìm kiếm KOL/CTV để bắt đầu chat
   @Get('capabilities')
   getCapabilities() {

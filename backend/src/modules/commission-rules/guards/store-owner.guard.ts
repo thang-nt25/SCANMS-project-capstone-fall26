@@ -106,6 +106,8 @@ export class StoreOwnerGuard implements CanActivate {
         'Chỉ chủ cửa hàng (SHOP_MANAGER) mới có quyền quản lý mốc thưởng doanh số',
       );
     }
+    if (['approveSettlement', 'payoutSettlement'].includes(context.getHandler().name))
+      throw new ForbiddenException('Thưởng chỉ được kiểm duyệt và cộng ví bởi System Manager/Admin');
 
     // SHOP_MANAGER chỉ được quản lý Shop mà mình sở hữu (hỗ trợ tài khoản demo DEV)
     if (store.ownerId !== user.id && user.storeId !== store.id) {

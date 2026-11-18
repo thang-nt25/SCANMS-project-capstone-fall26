@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { apiCache } from '@/utils/api-cache.utils';
+import { backendUrls } from '@/utils/backend-url';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: backendUrls.api,
   timeout: 10000,
   withCredentials: true,
   headers: {

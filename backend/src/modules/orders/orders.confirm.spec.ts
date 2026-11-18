@@ -14,7 +14,9 @@ describe('shop confirmation', () => {
     };
     const service = Object.create(OrdersService.prototype);
     service.prisma = { $transaction: (cb: any) => cb(tx) };
-    return { service: service as OrdersService, tx };
+    const cache = { delPrefix: jest.fn().mockResolvedValue(undefined) };
+    service.cacheService = cache;
+    return { service: service as OrdersService, tx, cache };
   };
   it('allows the assigned manager and persists confirmation without shipping', async () => {
     const { service, tx } = setup({ paymentMethod: 'COD' });
@@ -26,6 +28,19 @@ describe('shop confirmation', () => {
     const { service, tx } = setup({ shopConfirmedAt: 'saved' });
     await service.confirmOrder('order', 'owner', UserRole.SHOP_MANAGER);
     expect(tx.order.update).not.toHaveBeenCalled();
+  });
+  it('invalidates cached lists after commit and returns the persisted timestamp', async () => {
+    const { service, tx, cache } = setup({ paymentMethod: 'COD' });
+    let committed = false;
+    (service as any).prisma.$transaction = async (callback: any) => {
+      const result = await callback(tx);
+      committed = true;
+      return result;
+    };
+    cache.delPrefix.mockImplementation(async () => { expect(committed).toBe(true); });
+    const result = await service.confirmOrder('order', 'owner', UserRole.SHOP_MANAGER);
+    expect(cache.delPrefix).toHaveBeenCalledWith('orders:store:');
+    expect(result.shopConfirmedAt).toBe(tx.order.update.mock.calls[0][0].data.rawPayload.shopConfirmedAt);
   });
   it('rejects another store manager', async () => {
     const { service, tx } = setup();

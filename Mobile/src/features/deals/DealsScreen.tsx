@@ -1,6 +1,10 @@
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { FlatList, Modal, ScrollView, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
+import { BottomSheet } from "../../components/BottomSheet";
+import { Icon } from "../../components/commerce";
+import { useSuccessToast } from "../../components/SuccessToast";
+import { d, DealProduct, DealMetric, dealScope, dealDate } from "./deal-presentation";
 import { useQuery } from "@tanstack/react-query";
 import { useMobileNavigation } from "../../navigation/router";
 import { deals, dealState, exceptions } from "../../services/scanms";
@@ -11,15 +15,12 @@ import {
   Badge,
   Button,
   Caption,
-  Card,
   Empty,
   ErrorNotice,
   Field,
   Loading,
   Screen,
-  Title,
 } from "../../components/ui";
-import { colors } from "../../theme/tokens";
 import { money, statusText, type Deal } from "../../types/contracts";
 import { canRespondToDeal } from "./deal-policy";
 
@@ -31,6 +32,7 @@ export function DealsScreen({
   const { session } = useAuth(),
     operation = useOperation();
   const navigation = useMobileNavigation();
+  const toast = useSuccessToast();
   const [selected, setSelected] = useState<Deal | null>(null),
     [note, setNote] = useState(""),
     [discount, setDiscount] = useState("5"),
@@ -99,17 +101,10 @@ export function DealsScreen({
     );
   return (
     <Screen>
-      <View style={{ padding: 16, gap: 10 }}>
-        <Caption>
-          {exceptionQueue
-            ? "Đề nghị trên 16% cần Admin độc lập phê duyệt."
-            : "Theo dõi trạng thái thực tế của các đề nghị hai chiều."}
-        </Caption>
+      <View style={{ padding: 12, gap: 10 }}>
+        {exceptionQueue && <Caption>Đề nghị trên 16% cần Admin độc lập phê duyệt.</Caption>}
         {role === "COLLABORATOR" && !exceptionQueue && (
-          <Button
-            title="Đề xuất VIP"
-            onPress={() => navigation.navigate("DealEditor")}
-          />
+          <View style={[d.row, { justifyContent: "flex-end" }]}><Pressable accessibilityRole="button" style={d.action} onPress={() => navigation.navigate("DealEditor")}><Icon name="plus" size={17} /><Text style={d.actionText}>Đề xuất VIP</Text></Pressable></View>
         )}
       </View>
       <ErrorNotice error={result.error} retry={() => void result.refetch()} />
@@ -123,26 +118,15 @@ export function DealsScreen({
           onRefresh={() => void result.refetch()}
           ListEmptyComponent={!result.error ? <Empty /> : undefined}
           renderItem={({ item }) => (
-            <Card>
-              <Title>
-                {item.product?.title || item.store?.name || "Thỏa thuận VIP"}
-              </Title>
-              <Caption>
-                {item.collaborator?.fullName || item.store?.name}
-              </Caption>
+            <View style={d.card}>
+              <DealProduct title={item.product?.title || "Thỏa thuận VIP"} imageUrl={item.product?.imageUrl} store={item.store?.name} subtitle={role === "COLLABORATOR" ? undefined : item.collaborator?.fullName || undefined} />
+              <View style={[d.row, { justifyContent: "space-between" }]}>
               <Badge>{statusText(item.status)}</Badge>
-              <Text
-                style={{
-                  fontSize: 24,
-                  color: colors.strong,
-                  fontWeight: "700",
-                }}
-              >
-                {item.proposedCommissionRate}%
-              </Text>
-              <Caption>Mục tiêu doanh thu: {money(item.targetRevenue)}</Caption>
+              <Text style={d.tiny}>{dealScope(item)}</Text></View>
+              <View style={d.row}><DealMetric label={item.approvedCommissionRate != null ? "Tỷ lệ được duyệt" : "Tỷ lệ đề nghị"} value={`${item.approvedCommissionRate ?? item.proposedCommissionRate}%`} /><DealMetric label="Mục tiêu doanh thu" value={item.targetRevenue != null ? money(item.targetRevenue) : "Chưa có dữ liệu"} /></View>
+              {item.commitmentDays != null && <Text style={d.tiny}>{item.commitmentStartedAt ? "Kỳ cam kết:" : "Thời hạn đề nghị:"} {item.commitmentDays} ngày{item.commitmentEndsAt ? ` · Đến ${dealDate(item.commitmentEndsAt)}` : " · Chưa bắt đầu"}</Text>}
               <Button
-                title="Xem và phản hồi"
+                title="Chi tiết thỏa thuận"
                 secondary
                 onPress={() => {
                   operation.clearError();
@@ -150,43 +134,19 @@ export function DealsScreen({
                   setSelected(item);
                 }}
               />
-            </Card>
+            </View>
           )}
         />
       )}
-      <Modal
-        visible={Boolean(selected)}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          if (!operation.busy) setSelected(null);
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "flex-end",
-            backgroundColor: "#231D1570",
-          }}
-        >
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            style={{
-              maxHeight: "90%",
-              backgroundColor: colors.canvas,
-              borderTopLeftRadius: 26,
-              borderTopRightRadius: 26,
-            }}
-            contentContainerStyle={{ padding: 24, gap: 16, paddingBottom: 40 }}
-          >
-            <Title>{selected?.product?.title || "Chi tiết thỏa thuận"}</Title>
-            <Caption>{selected?.store?.name}</Caption>
+      {selected && <BottomSheet title="Chi tiết thỏa thuận VIP" close={() => { if (!operation.busy) setSelected(null); }}>
+            <DealProduct title={selected.product?.title || "Thỏa thuận VIP"} imageUrl={selected.product?.imageUrl} store={selected.store?.name} />
             <Badge>
               {statusText(state.data?.status || selected?.status || "")}
             </Badge>
-            <Text>Thù lao đề nghị: {selected?.proposedCommissionRate}%</Text>
-            <Text>Mục tiêu: {money(selected?.targetRevenue)}</Text>
-            <Caption>{selected?.salesCommitment}</Caption>
+            <View style={d.row}><DealMetric label="Tỷ lệ đề nghị" value={`${selected.proposedCommissionRate}%`} /><DealMetric label="Mục tiêu doanh thu" value={selected.targetRevenue != null ? money(selected.targetRevenue) : "Chưa có dữ liệu"} /></View>
+            <View style={d.section}><Text style={d.name}>Phạm vi & thời hạn</Text><Text style={d.note}>{dealScope(selected)}</Text>{selected.commitmentDays != null && <Text style={d.note}>{selected.commitmentStartedAt ? "Kỳ cam kết" : "Thời hạn đề nghị"}: {selected.commitmentDays} ngày</Text>}<Text style={d.tiny}>{selected.commitmentStartedAt ? `Bắt đầu: ${dealDate(selected.commitmentStartedAt)}` : "Chưa bắt đầu tính thời hạn · Chờ duyệt đầy đủ"}</Text><Text style={d.tiny}>Hạn cam kết: {selected.commitmentEndsAt ? dealDate(selected.commitmentEndsAt) : "Chưa có hạn được ghi nhận"}</Text>{selected.createdAt && <Text style={d.tiny}>Ngày đề nghị: {dealDate(selected.createdAt)}</Text>}{(state.data?.closedAt || selected.closedAt) && <Text style={d.tiny}>Đã đóng: {dealDate(state.data?.closedAt || selected.closedAt)}</Text>}</View>
+            {state.data?.exceptionNote && <View style={d.soft}><Text style={d.name}>Ghi chú xét duyệt</Text><Text style={d.note}>{state.data.exceptionNote}</Text></View>}
+            <View style={d.soft}><Text style={d.name}>Kế hoạch hợp tác</Text><Text style={d.note}>{selected.salesCommitment || "Chưa có nội dung kế hoạch được lưu."}</Text></View>
             {state.data?.status === "APPROVED" && (
               <>
                 <Caption>
@@ -203,16 +163,14 @@ export function DealsScreen({
                       secondary
                       disabled={operation.busy}
                       onPress={() =>
-                        void operation.run(() =>
-                          Clipboard.setStringAsync(state.data!.shortUrl!),
+                        void operation.run(async () => {
+                          await Clipboard.setStringAsync(state.data!.shortUrl!); toast("Đã sao chép link VIP"); },
                         )
                       }
                     />
                   </>
                 )}
-                {state.data.vipVoucherCode && (
-                  <Text>Mã coupon: {state.data.vipVoucherCode}</Text>
-                )}
+                {state.data.vipVoucherCode && <View style={d.section}><Text style={d.tiny}>Mã độc quyền</Text><Text selectable style={d.name}>{state.data.vipVoucherCode}</Text><Button title="Sao chép mã" secondary disabled={operation.busy} onPress={() => void operation.run(async () => { await Clipboard.setStringAsync(state.data!.vipVoucherCode!); toast("Đã sao chép mã VIP"); })} /></View>}
               </>
             )}
             <ErrorNotice
@@ -276,9 +234,7 @@ export function DealsScreen({
               disabled={operation.busy}
               onPress={() => setSelected(null)}
             />
-          </ScrollView>
-        </View>
-      </Modal>
+      </BottomSheet>}
     </Screen>
   );
 }

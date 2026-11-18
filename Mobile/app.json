@@ -40,7 +40,13 @@
       ],
       "./plugins/with-android-demo.cjs",
       "expo-sharing",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Cho phép SCANMS lấy vị trí khi bạn chọn địa chỉ nhận hàng."
+        }
+      ]
     ]
   }
 }

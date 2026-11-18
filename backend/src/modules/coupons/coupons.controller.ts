@@ -392,6 +392,11 @@ export class CollaboratorCouponsController {
 export class StoreCouponsController {
   constructor(private readonly service: CouponsService) {}
 
+  @Get(':id/oversight')
+  getOversight(@Param('storeId', ParseUUIDPipe) storeId: string, @Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole, @Query('page') page?: string) {
+    return this.service.couponOversight(id, userId, role, storeId, page === undefined ? 1 : Number(page));
+  }
+
   @Get('subsidies')
   @ApiOperation({ summary: 'Shop xem khoản voucher sàn tài trợ và chuyển hoàn theo từng đơn' })
   getPlatformSubsidiesForStore(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole) {
@@ -611,6 +616,11 @@ export class StoreCouponsController {
 @Controller('admin/coupons')
 export class AdminCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Get(':id/oversight')
+  getOversight(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole, @Query('page') page?: string) {
+    return this.service.couponOversight(id, userId, role, undefined, page === undefined ? 1 : Number(page));
+  }
 
   @Get('subsidies')
   @ApiOperation({ summary: 'Đối soát tổng giá trị voucher do sàn tài trợ theo từng Shop' })

@@ -99,8 +99,8 @@ export function CustomerNotificationsTab({
       aria-label={heading.title}
     >
       <h1 className="sr-only">Thông báo</h1>
-      <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 sm:px-4 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs">
-        <nav className="inline-flex items-center gap-1.5 p-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl" aria-label="Lọc thông báo">
+      <div className={`customer-notification-filters grid items-stretch gap-2 p-2 sm:gap-3 sm:p-3 border border-[#EAE4D7] rounded-2xl bg-white ${unreadCount > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <nav className="contents" aria-label="Lọc thông báo">
           {categories.map(({ key, label, icon: Icon }) => {
             const unread = key === 'ALL' ? unreadCount : categoryUnread[key];
             const isActive = category === key;
@@ -109,18 +109,18 @@ export function CustomerNotificationsTab({
                 type="button"
                 key={key}
                 aria-pressed={isActive}
-                className={`inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                className={`inline-flex min-w-0 items-center justify-center gap-1 sm:gap-2 min-h-[46px] px-1 sm:px-4 py-2 rounded-xl border text-[11px] sm:text-sm font-semibold cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2 ${
                   isActive
-                    ? 'bg-white text-[#1A1612] border border-[#EEDFC6] shadow-2xs font-bold'
-                    : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/50 border border-transparent'
+                    ? 'bg-[#FBF5EB] text-[#1A1612] border-[#C59B58]'
+                    : 'bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border-[#EAE4D7]'
                 }`}
                 onClick={() => onSelectCategory(key)}
               >
-                <Icon size={14} className={isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
-                <span>{label}</span>
+                <Icon size={16} aria-hidden="true" className={`hidden sm:block shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                <span className="whitespace-nowrap">{label}</span>
                 {unread > 0 && (
-                  <span className="min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#B88E4F] text-center text-[10px] font-mono tabular-nums font-bold">
-                    {unread}
+                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center px-1 rounded-full bg-[#F3EFE6] text-[#7D715E] text-[10px] tabular-nums font-semibold">
+                    {unread > 99 ? '99+' : unread}
                   </span>
                 )}
               </button>
@@ -130,7 +130,9 @@ export function CustomerNotificationsTab({
         {unreadCount > 0 && (
           <button
             type="button"
-            className="ml-auto inline-flex items-center justify-center shrink-0 gap-1.5 min-h-[38px] px-3.5 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FAF8F5] text-[#1A1612] text-xs font-semibold whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB] active:scale-[0.96] transition-all shadow-2xs"
+            className="inline-flex min-w-0 items-center justify-center gap-1 sm:gap-2 min-h-[46px] px-1 sm:px-4 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-[11px] sm:text-sm font-semibold whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors disabled:opacity-50 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
+            aria-label="Đánh dấu tất cả thông báo đã đọc"
+            title="Đọc tất cả"
             disabled={markingAll || loading}
             onClick={() => void markAll()}
           >

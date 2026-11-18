@@ -1,3 +1,4 @@
+import { handleStoreImageError } from '@/utils/image-fallback.utils';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import React, { useState, useEffect } from 'react';
 import {
@@ -727,7 +728,7 @@ export const AdminPersonnelPage: React.FC = () => {
                         <div className="flex items-center gap-2.5 min-w-0">
                           {st.logoUrl ? (
                             <img
-                              src={st.logoUrl}
+                              src={st.logoUrl} onError={handleStoreImageError}
                               alt={st.name}
                               className="w-10 h-10 rounded-xl object-cover border border-[#EEDFC6] shrink-0"
                             />
@@ -1404,7 +1405,7 @@ export const AdminPersonnelPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 {selectedStore.logoUrl ? (
                   <img
-                    src={selectedStore.logoUrl}
+                    src={selectedStore.logoUrl} onError={handleStoreImageError}
                     alt={selectedStore.name}
                     className="w-10 h-10 rounded-xl object-cover border border-[#EEDFC6]"
                   />

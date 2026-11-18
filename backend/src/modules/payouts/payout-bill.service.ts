@@ -1,23 +1,26 @@
 import {
   BadRequestException,
   Injectable,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import { createHash } from 'crypto';
 import { Readable } from 'stream';
 import { PayoutSettingsService } from './payout-settings.service';
+import { PrismaService } from '../../core/database/prisma.service';
 
 export interface StoredPayoutBill {
   publicId: string;
   format: string;
   sha256: string;
   secureUrl: string;
+  reused?: boolean;
 }
 
 @Injectable()
 export class PayoutBillService {
-  constructor(private readonly settings: PayoutSettingsService) {}
+  constructor(private readonly settings: PayoutSettingsService, @Optional() private readonly prisma?: PrismaService) {}
 
   get maxBillBytes() {
     return Math.min(this.settings.maxBillBytes, 5 * 1024 * 1024);
@@ -70,8 +73,28 @@ export class PayoutBillService {
     return createHash('sha256').update(data).digest('hex');
   }
 
-  async uploadBill(file: Express.Multer.File): Promise<StoredPayoutBill> {
+  async uploadBill(file: Express.Multer.File, reuseManualEvidence = false): Promise<StoredPayoutBill> {
     const sha256 = this.validateBill(file);
+    // Only the authorized Manager/Admin manual approval callers enable reuse.
+    // Match the exact validated bytes against committed approvals, never a client URL.
+    if (reuseManualEvidence && this.prisma) {
+      const existing = await this.prisma.$queryRaw<Array<{ publicId: string; format: string; secureUrl: string | null }>>`
+        SELECT proof_image_public_id AS "publicId", proof_image_format AS format, proof_image_url AS "secureUrl"
+        FROM payout_requests
+        WHERE status::text = 'APPROVED' AND transfer_provider = 'MANUAL' AND proof_image_sha256 = ${sha256}
+          AND proof_image_public_id IS NOT NULL AND proof_image_format IS NOT NULL
+        UNION ALL
+        SELECT proof_public_id AS "publicId", proof_format AS format, NULL AS "secureUrl"
+        FROM customer_withdrawals
+        WHERE status = 'APPROVED' AND proof_hash = ${sha256}
+          AND proof_public_id IS NOT NULL AND proof_format IS NOT NULL
+        LIMIT 1`;
+      const saved = existing[0];
+      if (saved && ['png', 'jpg', 'jpeg', 'webp', 'pdf'].includes(saved.format)) return {
+        publicId: saved.publicId, format: saved.format, sha256, reused: true,
+        secureUrl: saved.secureUrl || cloudinary.url(saved.publicId, { resource_type: 'image', type: 'authenticated', secure: true, format: saved.format }),
+      };
+    }
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {

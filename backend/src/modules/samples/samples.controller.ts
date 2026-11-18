@@ -69,6 +69,13 @@ export class SamplesController {
     return this.samplesService.getMyEligibility(req.user?.id || req.user?.sub);
   }
 
+  @Get('my/catalog')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Sản phẩm Shop mở cấp mẫu, còn hạn mức và chưa xin trùng' })
+  getMySampleCatalog(@Request() req: any) {
+    return this.samplesService.getMySampleCatalog(req.user?.id || req.user?.sub);
+  }
+
   @Patch(':id/cancel')
   @Roles('COLLABORATOR')
   @ApiOperation({ summary: '[KOL] Hủy yêu cầu khi Shop chưa duyệt' })

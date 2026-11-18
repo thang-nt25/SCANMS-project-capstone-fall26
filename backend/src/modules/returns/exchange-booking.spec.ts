@@ -171,6 +171,26 @@ function fixture() {
 }
 
 describe('Shop books replacement shipment on the original return case', () => {
+  it('quotes the exact outbound route without reserving stock or writing a booking', async () => {
+    const { service, current, stock, tx, gateway } = fixture();
+    gateway.quote = jest.fn().mockResolvedValue({ amount: 32500 });
+    expect(await service.quoteExchangeShipment('shop-1', UserRole.SHOP_MANAGER, current.id, recipient)).toEqual({ amount: 32500 });
+    expect(gateway.quote.mock.calls[0][0]).toMatchObject({ pickup: { ...warehouse, weight: 500 }, warehouse: recipient });
+    expect(tx.returnShipment.create).not.toHaveBeenCalled();
+    expect(stock).toEqual({ product: 8, variant: 8 });
+    expect(current.shipments).toEqual([]);
+    await expect(service.quoteExchangeShipment('customer-1', UserRole.CUSTOMER, current.id, recipient)).rejects.toThrow(ForbiddenException);
+    expect(gateway.quote).toHaveBeenCalledTimes(1);
+  });
+  it('uses booked addresses and parcel for an existing shipment rather than caller overrides', async () => {
+    const { service, current, gateway } = fixture();
+    current.status = ReturnRequestStatus.EXCHANGE_SHIPPED;
+    current.shipments.push({ direction: 'SHOP_TO_CUSTOMER' });
+    current.events.push({ type: 'EXCHANGE_BOOKING_REQUESTED', data: { recipient, warehouse } });
+    gateway.quote = jest.fn().mockResolvedValue({ amount: 32500 });
+    await service.quoteExchangeShipment('shop-1', UserRole.SHOP_MANAGER, current.id, { ...recipient, weight: 1000, address: 'Override' });
+    expect(gateway.quote.mock.calls[0][0]).toMatchObject({ pickup: { ...warehouse, weight: 500 }, warehouse: recipient });
+  });
   it('sends Shop to customer, reserves stock and records the carrier fee without a new sale', async () => {
     const { service, current, stock, gateway, cache } = fixture();
     await service.bookExchangeShipment(
@@ -430,7 +450,10 @@ describe('Shop books replacement shipment on the original return case', () => {
   });
 
   it('carrier delivery leaves the case open until the customer acknowledges receipt', async () => {
-    const { service, current } = fixture();
+    const { service, current, cache } = fixture();
+    const emitToUser = jest.fn(() => { expect(['AWAITING_CUSTOMER_CONFIRMATION', 'COMPLETED']).toContain(current.status); });
+    service.chatGateway = { emitToUser };
+    current.order.store.staffMembers = [{ id: 'staff-1' }];
     await service.bookExchangeShipment(
       'shop-1',
       UserRole.SHOP_MANAGER,
@@ -444,6 +467,7 @@ describe('Shop books replacement shipment on the original return case', () => {
         current.id,
       ),
     ).rejects.toThrow('chưa báo giao thành công');
+    expect(emitToUser).not.toHaveBeenCalled();
     const before = process.env.NODE_ENV;
     process.env.NODE_ENV = 'test';
     try {
@@ -464,11 +488,17 @@ describe('Shop books replacement shipment on the original return case', () => {
       current.id,
     );
     expect(current.status).toBe('AWAITING_CUSTOMER_CONFIRMATION');
+    expect(emitToUser.mock.calls.map(call => call[0])).toEqual(['customer-1', 'shop-1', 'staff-1']);
+    expect(emitToUser).toHaveBeenCalledWith('shop-1', 'return_updated', { returnRequestId: current.id });
+    expect(cache.delPrefix).toHaveBeenCalledWith('orders:store:store-1:');
+    emitToUser.mockClear();
     await service.confirmCompletion(
       'customer-1',
       UserRole.CUSTOMER,
       current.id,
     );
     expect(current.status).toBe('COMPLETED');
+    expect(emitToUser).toHaveBeenCalledWith('shop-1', 'return_updated', { returnRequestId: current.id });
+    expect(emitToUser).toHaveBeenCalledTimes(3);
   });
 });

@@ -1,3 +1,4 @@
+import { handleStoreImageError, handleProductImageError } from '@/utils/image-fallback.utils';
 import { LiveGovernancePanel, type LiveGovernance } from '../../components/live/LiveGovernancePanel';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -295,7 +296,7 @@ export default function CollaboratorLiveSessionsPage() {
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <span className="creator-live-logo grid place-items-center shrink-0 overflow-hidden rounded-lg border border-[#EAE4D7] bg-white text-[#B88E4F] text-xs font-semibold" aria-hidden="true">
                       {session.store.logoUrl ? (
-                        <img src={session.store.logoUrl} alt="" className="w-full h-full object-cover" />
+                        <img src={session.store.logoUrl} onError={handleStoreImageError} alt="" className="w-full h-full object-cover" />
                       ) : (
                         session.store.name.slice(0, 2).toUpperCase()
                       )}
@@ -440,7 +441,7 @@ export default function CollaboratorLiveSessionsPage() {
                           className="creator-live-product inline-flex items-center gap-1.5 min-w-0 max-w-full text-[#1A1612] text-xs font-medium"
                         >
                           <img
-                            src={getSafeProductImageUrl(item.product.imageUrl)}
+                            src={getSafeProductImageUrl(item.product.imageUrl)} onError={handleProductImageError}
                             alt=""
                             loading="lazy"
                             className="w-5 h-5 rounded object-cover border border-[#EAE4D7] bg-white shrink-0"

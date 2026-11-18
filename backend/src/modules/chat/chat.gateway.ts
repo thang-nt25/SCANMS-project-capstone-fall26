@@ -14,6 +14,7 @@ import { UseGuards, OnModuleDestroy, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { checkProfanity } from './profanity-filter';
+import { frontendCorsOrigin } from '../../common/cors-origin';
 import {
   ChatAttachmentType,
   isCloudinaryChatAttachmentUrl,
@@ -25,14 +26,7 @@ const userSocketMap = new Map<string, Set<string>>();
 
 @WebSocketGateway({
   cors: {
-    origin: (
-      process.env.CORS_ORIGINS ||
-      process.env.FRONTEND_URL ||
-      'http://localhost:5173'
-    )
-      .split(',')
-      .map((origin) => origin.trim().replace(/\/$/, ''))
-      .filter(Boolean),
+    origin: frontendCorsOrigin,
     credentials: true,
   },
   namespace: '/chat',

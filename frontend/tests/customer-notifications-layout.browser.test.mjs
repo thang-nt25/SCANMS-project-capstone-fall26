@@ -110,6 +110,8 @@ test('notification cards fit all screens and preserve filtering, read actions, c
     await page.waitForFunction(() => [...document.querySelectorAll('.customer-notification-card')].every(el => el.dataset.read === 'true'));
     assert.equal(await page.$('nav[aria-label="Lọc thông báo"] + button'), null, 'read-all disappears when unread count reaches zero');
     await page.click('[data-notification-id="welcome"] h3 button');
+    await page.waitForSelector('[role="dialog"]');
+    assert.ok(await page.$eval('[role="dialog"]', element => element.textContent.includes('Chào mừng bạn đến với Hệ thống SCANMS')));
     assert.equal(new URL(page.url()).pathname, '/customer/notifications');
     assert.ok(mutations.includes('/api/notifications/welcome/read'));
     assert.ok(mutations.includes('/api/notifications/order/read'));

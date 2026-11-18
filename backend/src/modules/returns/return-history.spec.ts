@@ -38,9 +38,9 @@ describe('Manager return history', () => {
     expect(prisma.returnRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         status: { in: [ReturnRequestStatus.COMPLETED, ReturnRequestStatus.REFUNDED, ReturnRequestStatus.CLOSED, ReturnRequestStatus.EXPIRED] },
-        order: expect.objectContaining({ OR: expect.arrayContaining([
+        OR: expect.arrayContaining([{ order: expect.objectContaining({ OR: expect.arrayContaining([
           { externalOrderSn: { contains: 'DH-001', mode: 'insensitive' } },
-        ]) }),
+        ]) }) }]),
       }),
       skip: 20,
       take: 20,

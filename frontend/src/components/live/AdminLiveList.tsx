@@ -1,0 +1,14 @@
+import { Radio, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { AdminLiveSession } from '@/pages/admin/AdminLiveSessionsPage';
+export const liveStatus:Record<string,string>={PENDING_CREATOR:'Chờ KOL',SCHEDULED:'Đã lên lịch',LIVE:'Đang live',PAUSED:'Tạm dừng',ENDED:'Đã kết thúc',CANCELLED:'Đã hủy'};
+export const liveMoney=(value:number)=>`${Number(value||0).toLocaleString('vi-VN')} ₫`;
+export function AdminLiveList({sessions,total,page,pages,onPage,onOpen}:{sessions:AdminLiveSession[];total:number;page:number;pages:number;onPage:(page:number)=>void;onOpen:(id:string)=>void}) {
+  if(!total)return null;
+  return <section className="admin-live-list"><header><h2>Danh sách phiên live <span>{total}</span></h2></header><table><thead><tr><th>Phiên live</th><th>KOL / Cửa hàng</th><th>Thời gian bắt đầu</th><th>Kết quả đã chốt</th><th>Thao tác</th></tr></thead><tbody>{sessions.map(session=><tr key={session.id}>
+    <td data-label="Phiên live"><div className="admin-live-title"><span className="admin-live-cover">{session.coverImageUrl?<img src={session.coverImageUrl} alt="" onError={event=>{event.currentTarget.style.display='none';}}/>:<Radio size={22}/>}</span><div><strong>{session.title}</strong><p><span className="admin-live-status">{liveStatus[session.status]||session.status}</span> · {session.platform}</p><small title={session.id}>#{session.id.slice(0,8).toUpperCase()}</small>{['OPEN','ESCALATED','APPEALED'].includes(session.governance?.dispute?.status||'')&&<p className="admin-live-warning">Tranh chấp · Cần xử lý</p>}</div></div></td>
+    <td data-label="KOL / Cửa hàng"><div className="admin-live-person"><span>{session.creator.fullName?.charAt(0)||'K'}{session.creator.avatarUrl&&<img src={session.creator.avatarUrl} alt="" onError={event=>{event.currentTarget.style.display='none';}}/>}</span><div><strong>{session.creator.fullName}</strong><p>{session.store.name}</p></div></div></td>
+    <td data-label="Thời gian"><time>{new Date(session.startsAt).toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}<small>{new Date(session.startsAt).toLocaleTimeString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit'})}</small></time></td>
+    <td data-label="Kết quả"><strong>{liveMoney(session.report?.grossSales)}</strong><p>{session.report?.orders||0} đơn · Thù lao {liveMoney(session.report?.commission)}</p></td>
+    <td data-label="Thao tác"><button type="button" onClick={()=>onOpen(session.id)}>Xem hồ sơ</button></td>
+  </tr>)}</tbody></table><footer><span>{(page-1)*10+1}–{Math.min(page*10,total)} / {total} phiên</span><div><button type="button" disabled={page<=1} onClick={()=>onPage(page-1)}><ChevronLeft size={14}/>Trước</button><span>{page} / {pages}</span><button type="button" disabled={page>=pages} onClick={()=>onPage(page+1)}>Sau<ChevronRight size={14}/></button></div></footer></section>;
+}

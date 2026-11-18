@@ -99,7 +99,7 @@ export default function MarketplacePage() {
   const marketplaceStores = featuredStores;
 
   // Cart & Gateways
-  const { openCart, addItem, cart, startCheckout } = useCart();
+  const { addItem, buyNow, cart, startCheckout } = useCart();
 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
@@ -121,6 +121,7 @@ export default function MarketplacePage() {
 
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
+  const [choosingProductId, setChoosingProductId] = useState<string | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
 
   // Load user profile & customer wishlist
@@ -204,11 +205,7 @@ export default function MarketplacePage() {
     return () => window.removeEventListener('keydown', close);
   }, [isGuideOpen]);
 
-  const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string) => {
-    if (intent === 'buy') {
-      navigate(`/products/${product.sku || product.id}`);
-      return;
-    }
+  const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string, quantity = 1) => {
     if (!product.storeId) {
       toast.error('Chưa xác định được gian hàng. Vui lòng mở chi tiết sản phẩm.');
       return;
@@ -216,14 +213,15 @@ export default function MarketplacePage() {
     const payload = {
       product: { ...product, variants: product.variants?.filter((variant) => variant.isActive !== false) },
       store: { id: product.storeId, name: product.brand },
-      variantId, quantity: 1, openCartAfterAdd: false,
+      variantId, quantity, openCartAfterAdd: false,
     };
     if (!authService.getCurrentUser() || !localStorage.getItem('token')) {
       addItem(payload);
       setPendingPurchase({ productId: product.id, variantId, intent });
+    } else if (intent === 'buy') {
+      buyNow(payload);
     } else {
       addItem(payload);
-      openCart();
     }
   };
 
@@ -234,7 +232,6 @@ export default function MarketplacePage() {
     const intent = pendingPurchase.intent;
     setPendingPurchase(null);
     if (intent === 'buy' && matching.length) startCheckout(matching);
-    else openCart();
   };
 
   return (
@@ -256,24 +253,15 @@ export default function MarketplacePage() {
       <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-36 bg-[#FAF8F5] py-7 text-left lg:py-9">
         <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
 
-        {/* SCANMS Refined Editorial Header */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-4 border-b border-[#EAE4D7]">
-          <div>
-            <span className="text-[11px] font-bold tracking-widest text-[#B88E4F] uppercase block mb-1">
-              HỆ SINH THÁI NHÃN HÀNG TRỰC THUỘC
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black text-[#1A1612] tracking-tight m-0">
-              Kho Sản Phẩm & Chiến Dịch Tiếp Thị
+        {/* SCANMS Standard "KHÁM PHÁ SẢN PHẨM" Header */}
+        <div className="mb-4 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white shadow-[0_2px_8px_rgba(75,57,34,0.04)]">
+          <div className="flex min-h-12 items-center justify-center px-4 py-3 sm:min-h-14">
+            <h2
+              className="m-0 text-base sm:text-[17px] uppercase tracking-[0.04em] select-none"
+              style={{ color: '#B88E4F', fontWeight: 500 }}
+            >
+              <span className="sm:hidden">Gợi ý hôm nay</span><span className="hidden sm:inline">ĐƠN HÀNG HÔM NAY</span>
             </h2>
-            <p className="text-xs text-[#7D715E] mt-1 m-0">
-              Sản phẩm chính hãng với thù lao bảo chứng và tài nguyên truyền thông cho Creator.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-[#EAE4D7] text-[#1A1612] shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-[#059669]" />
-              {items.length} Sản phẩm mở bán
-            </span>
           </div>
         </div>
 
@@ -309,12 +297,14 @@ export default function MarketplacePage() {
             {productsFailed && <button type="button" onClick={() => void retryProducts()} className="ml-3 min-h-11 rounded-xl border border-[#C59B58] px-4 text-xs font-bold text-[#1A1612]">Thử tải lại</button>}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 [&>article]:rounded-lg [&>article>div:last-child]:p-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 items-start [&>article]:rounded-lg [&>article>div:last-child]:p-3">
             {items.map((product) => (
               <MarketplaceProductCard
                 key={product.id} product={product} wished={wishlistIds.has(product.id)}
                 onWishlist={() => void handleToggleWishlist(product.id)}
-                onPurchase={(intent, variantId) => handlePurchase(product, intent, variantId)}
+                choosing={choosingProductId === product.id}
+                onChoosingChange={open => setChoosingProductId(open ? product.id : null)}
+                onPurchase={(intent, variantId, quantity) => handlePurchase(product, intent, variantId, quantity)}
                 deal={liveDeals[product.id]} now={liveDealsNow}
               />
             ))}
@@ -336,8 +326,8 @@ export default function MarketplacePage() {
       <OrderTrackingShortcut sectionRef={trackingRef} />
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-[#DFD6C5] bg-[#ECE5D8] px-4 py-9 text-left text-[#1A1612] sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.8fr_0.9fr_1fr] lg:gap-10">
+      <footer className="mt-auto border-t border-[#EAE4D7] bg-[#F3EFE6] px-4 py-9 text-left text-[#1A1612] sm:px-6 lg:px-8 max-sm:py-6 max-sm:[&_li]:leading-5 max-sm:[&_strong]:text-xs max-sm:[&_ul]:text-xs">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.8fr_0.9fr_1fr] lg:gap-10 max-sm:grid-cols-2 max-sm:gap-x-4 max-sm:gap-y-5 max-sm:[&>div:first-child]:col-span-2 max-sm:[&>div:last-child]:col-span-2">
           <div className="max-w-sm">
             <div className="mb-3">
               <ScanMSLogo size="sm" />

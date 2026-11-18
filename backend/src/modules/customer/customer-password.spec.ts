@@ -23,8 +23,9 @@ describe('Customer password algorithm compatibility', () => {
       user: {
         findUnique: jest
           .fn()
-          .mockResolvedValue({ id: 'customer', passwordHash: hash }),
+          .mockResolvedValue({ id: 'customer', passwordHash: hash, email: 'user@example.com', isActive: true, isDeleted: false }),
         update: jest.fn().mockResolvedValue({ id: 'customer' }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const authService = new AuthService(
@@ -82,14 +83,14 @@ describe('Customer password algorithm compatibility', () => {
     const { service, prisma, authService } = setup(hashes[0]);
     Object.assign(service, {
       securityOtpCache: new Map([
-        ['customer', { code: '123789', expiresAt: Date.now() + 60000 }],
+        ['customer', { code: '123789', expiresAt: Date.now() + 60000, attempts: 0, email: 'user@example.com', originalEmail: 'user@example.com' }],
       ]),
     });
     await service.setPasswordWithOtp('customer', {
       otp: '123789',
       newPassword,
     });
-    const stored = prisma.user.update.mock.calls[0][0].data
+    const stored = prisma.user.updateMany.mock.calls[0][0].data
       .passwordHash as string;
     expect(await authService.verifyPassword(newPassword, stored)).toBe(true);
     await expect(

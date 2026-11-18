@@ -1,3 +1,4 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
 import { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -137,7 +138,7 @@ export default function ShopSettingsPage() {
 
   const storefrontPath = storeSlug ? `/shop/${encodeURIComponent(storeSlug)}` : '';
   const storefrontUrl = storefrontPath && typeof window !== 'undefined'
-    ? new URL(storefrontPath, window.location.origin).toString()
+    ? publicWebsiteUrl(storefrontPath)
     : '';
 
   const copyStorefrontUrl = async () => {

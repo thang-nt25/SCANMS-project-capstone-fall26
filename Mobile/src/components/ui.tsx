@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { createContext, useContext, type PropsWithChildren } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,19 +13,24 @@ import {
 } from "react-native";
 import { colors } from "../theme/tokens";
 import { Icon } from "./commerce";
+const PaddedScreen = createContext(false);
 
 export function Screen({
   children,
   scroll = false,
+  onScrollOffset,
   compact = false,
-}: PropsWithChildren<{ scroll?: boolean; compact?: boolean }>) {
+}: PropsWithChildren<{ scroll?: boolean; compact?: boolean; onScrollOffset?: (offset: number) => void }>) {
   return scroll ? (
     <ScrollView
       style={s.screen}
+      onScroll={onScrollOffset ? (event) => onScrollOffset(event.nativeEvent.contentOffset.y) : undefined}
+      scrollEventThrottle={onScrollOffset ? 32 : undefined}
       contentContainerStyle={[s.content, compact && { padding: 12, gap: 10 }]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
-      {children}
+      <PaddedScreen.Provider value={true}>{children}</PaddedScreen.Provider>
     </ScrollView>
   ) : (
     <View style={s.screen}>{children}</View>
@@ -35,7 +40,8 @@ export function Card({
   children,
   style,
 }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
-  return <View style={[s.card, style]}>{children}</View>;
+  const padded = useContext(PaddedScreen);
+  return <View style={[s.card, padded && { marginHorizontal: 0 }, style]}>{children}</View>;
 }
 export function Title({ children }: PropsWithChildren) {
   return <Text style={s.title}>{children}</Text>;
@@ -52,6 +58,7 @@ export function Button({
   loading = false,
   disabled = false,
   secondary = false,
+  soft = false,
   danger = false,
 }: {
   title: string;
@@ -59,6 +66,7 @@ export function Button({
   loading?: boolean;
   disabled?: boolean;
   secondary?: boolean;
+  soft?: boolean;
   danger?: boolean;
 }) {
   return (
@@ -70,6 +78,7 @@ export function Button({
       style={({ pressed }) => [
         s.button,
         secondary && s.secondary,
+        soft && { backgroundColor: colors.soft, borderColor: colors.brandBorder },
         danger && s.danger,
         (disabled || loading) && { opacity: 0.5 },
         pressed && { opacity: 0.8 },
@@ -92,7 +101,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
         {...props}
         style={[
           s.input,
-          props.multiline && { height: 100, textAlignVertical: "top" },
+          props.multiline && { minHeight: 100, textAlignVertical: "top" },
           props.style,
         ]}
       />
@@ -194,8 +203,9 @@ export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
   card: {
-    marginHorizontal: 0,
-    marginVertical: 0,
+    minWidth: 0,
+    marginHorizontal: 16,
+    marginVertical: 7,
     padding: 14,
     borderWidth: 1,
     borderColor: colors.line,
@@ -217,6 +227,8 @@ export const s = StyleSheet.create({
     fontSize: 14,
   },
   badge: {
+    flexShrink: 1,
+    maxWidth: "100%",
     alignSelf: "flex-start",
     borderWidth: 1,
     borderColor: colors.brandBorder,
@@ -229,7 +241,8 @@ export const s = StyleSheet.create({
     overflow: "hidden",
   },
   button: {
-    minHeight: 44,
+    minWidth: 0,
+    minHeight: 48,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 10,
@@ -243,7 +256,7 @@ export const s = StyleSheet.create({
   },
   secondary: { backgroundColor: colors.white, borderColor: colors.line },
   danger: { backgroundColor: colors.white, borderColor: colors.danger },
-  buttonText: { color: colors.ink, fontWeight: "600", fontSize: 13 },
+  buttonText: { color: colors.ink, fontWeight: "600", fontSize: 13, flexShrink: 1, textAlign: "center" },
   error: {
     margin: 16,
     padding: 14,

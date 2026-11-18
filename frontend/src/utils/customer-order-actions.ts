@@ -4,7 +4,7 @@ export function getCustomerOrderActions(order: CustomerOrder, now = Date.now(), 
   const requests = order.returnRequests || (order.returnRequest ? [order.returnRequest] : []);
   const hasActiveReturn = requests.some(request => !['COMPLETED', 'CLOSED', 'EXPIRED', 'REFUNDED'].includes(request.status)) || ['RETURN_REQUESTED', 'DISPUTED'].includes(order.status);
   const delivered = ['DELIVERED', 'COMPLETED', 'RETURNED'].includes(order.status);
-  const deliveredAt = Date.parse(order.deliveredAt || order.completedAt || '');
+  const deliveredAt = Date.parse(order.deliveredAt || '');
   const returnedQuantity = new Map<string, number>();
   for (const request of requests) {
     if (!['COMPLETED', 'REFUNDED'].includes(request.status)) continue;
@@ -17,7 +17,7 @@ export function getCustomerOrderActions(order: CustomerOrder, now = Date.now(), 
   return {
     cancel: order.status === 'PENDING',
     confirmReceipt: order.status === 'DELIVERED' && !hasActiveReturn,
-    requestReturn: delivered && !hasActiveReturn && hasRemainingItems && Number.isFinite(deliveredAt) && deliveredAt <= now && now <= deliveredAt + 14 * 86400000,
+    requestReturn: delivered && !hasActiveReturn && hasRemainingItems && Number.isFinite(deliveredAt) && deliveredAt <= now && now < deliveredAt + 14 * 86400000,
     review: order.status === 'COMPLETED' && !hasActiveReturn && unreviewedProducts,
     reorder: ['DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'].includes(order.status) ||
       (order.status === 'SHIPPING' && trackingStatus === 'delivered'),

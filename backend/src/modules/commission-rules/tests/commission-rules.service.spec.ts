@@ -112,6 +112,7 @@ describe('CommissionRulesService', () => {
     sampleProductRequest: {
       findFirst: jest.fn(),
     },
+    storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
     monthlyBonusResult: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),

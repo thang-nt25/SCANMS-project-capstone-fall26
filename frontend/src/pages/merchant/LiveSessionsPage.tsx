@@ -1,3 +1,4 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
 import { LiveGovernancePanel, type LiveGovernance } from '../../components/live/LiveGovernancePanel';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import type { FormEvent } from 'react';
@@ -320,7 +321,7 @@ export default function LiveSessionsPage({
         setLinkLoading(false);
         setForm((prev) =>
           prev.creatorId === form.creatorId
-            ? { ...prev, scanmsLiveUrl: `${window.location.origin}/live/${result.code}` }
+            ? { ...prev, scanmsLiveUrl: publicWebsiteUrl(`/live/${result.code}`) }
             : prev
         );
       })

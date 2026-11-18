@@ -551,6 +551,17 @@ describe('AffiliateDealsService', () => {
     expect(state.couponTerms).toMatchObject({ discountPercent: 5, usageLimitTotal: 20 });
     expect(couponTerms({})).toMatchObject({ discountPercent: 5, usageLimitTotal: 20 });
   });
+  it('returns current product imagery and KPI terms for old chat cards', async () => {
+    const product = { id: productId, title: 'Product', imageUrl: '/uploads/product.png', price: 390000 };
+    prisma.exclusiveDealProposal.findUnique.mockResolvedValue({
+      id: proposalId, collaboratorId, storeId, status: 'APPROVED',
+      targetOrders: 30, targetRevenue: 20000000, commitmentDays: 14,
+      salesCommitment: 'Review plan', store: { isDeleted: false, name: 'Store' },
+      product, scopeProducts: [], referralLink: null,
+    });
+    const result = await service.getProposalState(proposalId, collaboratorId, 'COLLABORATOR' as any);
+    expect(result).toMatchObject({ product, products: [product], targetOrders: 30, targetRevenue: 20000000, commitmentDays: 14, publicCommissionRate: 10 });
+  });
 
   describe('store staff access', () => {
     beforeEach(() => {

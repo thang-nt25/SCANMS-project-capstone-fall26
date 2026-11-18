@@ -413,7 +413,10 @@ describe('GHN customer order notifications', () => {
     const service = new GhnService(prisma as any, {} as ConfigService);
     jest.spyOn(service as any, 'resolveGhnLocation').mockResolvedValue({ districtId: 1, wardCode: '001' });
     const send = jest.spyOn(service as any, 'ghnFetch').mockResolvedValue({ code: 200, data: { order_code: 'GHN123', total_fee: 25000 } });
+    const cacheService = { delPrefix: jest.fn().mockResolvedValue(undefined) };
+    Object.assign(service, { cacheService });
     await service.createShippingOrder(order.id);
+    expect(cacheService.delPrefix).toHaveBeenCalledWith('orders:store:');
     expect(send).toHaveBeenCalledWith('/v2/shipping-order/create', expect.objectContaining({ body: expect.objectContaining({ weight: 1000, insurance_value: 200000, cod_amount: 225000, payment_type_id: 1 }) }));
   });
 

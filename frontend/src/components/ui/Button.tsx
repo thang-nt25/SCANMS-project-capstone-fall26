@@ -36,9 +36,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'scanms-brand-action bg-[#C59B58] text-white hover:bg-[#B88E4F] border border-[#B88E4F] shadow-xs hover:shadow-sm active:scale-[0.98] focus:ring-[#C59B58]',
+        'scanms-brand-action focus:ring-[#C59B58]',
       gold:
-        'scanms-brand-action bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white hover:from-[#B88E4F] hover:to-[#A87D38] border border-[#B88E4F] shadow-xs active:scale-[0.98] focus:ring-[#B88E4F]',
+        'scanms-brand-action focus:ring-[#B88E4F]',
       secondary:
         'bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7] border border-[#EAE4D7] active:scale-[0.98] focus:ring-[#B88E4F]',
       outline:
@@ -48,9 +48,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       danger:
         'bg-rose-600 text-white hover:bg-rose-700 shadow-xs active:scale-[0.98] focus:ring-rose-500',
       amber:
-        'bg-[#FBF5EB] text-[#8C6226] hover:bg-[#F3EFE6] border border-[#EEDFC6] active:scale-[0.98] focus:ring-[#C59B58]',
+        'scanms-brand-action focus:ring-[#C59B58]',
       dark:
-        'bg-[#231D15] text-[#FAF8F5] hover:bg-[#342B20] border border-[#231D15] shadow-xs active:scale-[0.98] focus:ring-[#C59B58]',
+        'scanms-brand-action focus:ring-[#C59B58]',
     };
 
     return (

@@ -4,8 +4,11 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ServiceUnavailableException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CacheService } from '../../core/cache/cache.service';
 import { PrismaService } from '../../core/database/prisma.service';
 import { isGeneratedGhnTestTrackingCode } from './ghn-tracking-code';
 import { createCustomerGhnSimulation, customerGhnSimulationDetail } from './customer-ghn-simulation';
@@ -66,6 +69,7 @@ export class GhnService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   private simulationEnabled(): boolean {
@@ -73,7 +77,7 @@ export class GhnService {
       this.configService.get?.<string>('SHIPPING_SIMULATION_ENABLED') ??
       process.env.SHIPPING_SIMULATION_ENABLED;
     // A real GHN sandbox response must not silently turn into a fabricated journey.
-    return process.env.NODE_ENV !== 'production' && enabled === 'true';
+    return (process.env.NODE_ENV !== 'production' || process.env.ALLOW_HOSTED_SHIPPING_SIMULATION === 'true') && enabled === 'true';
   }
 
   private requireSimulationEnabled(): void {
@@ -173,14 +177,14 @@ export class GhnService {
         '/master-data/province',
         { includeShopId: false, environment },
       );
-      if (res?.code === 200 && Array.isArray(res.data)) {
+      if (res?.code === 200 && Array.isArray(res.data) && res.data.length > 0) {
         this.cachedProvinces.set(environment, res.data);
         return res.data;
       }
     } catch (e: any) {
       this.logger.warn(`Không lấy được danh sách Tỉnh từ GHN: ${e?.message}`);
     }
-    return [];
+    throw new ServiceUnavailableException('Chưa tải được tỉnh/thành từ GHN. Vui lòng thử lại.');
   }
 
   /**
@@ -192,7 +196,7 @@ export class GhnService {
       cache = new Map<number, GhnDistrict[]>();
       this.cachedDistricts.set(environment, cache);
     }
-    if (cache.has(provinceId)) return cache.get(provinceId)!;
+    if (cache.get(provinceId)?.length) return cache.get(provinceId)!;
 
     try {
       const res = await this.ghnFetch<{ code: number; data: GhnDistrict[] }>(
@@ -205,13 +209,13 @@ export class GhnService {
         },
       );
       if (res?.code === 200 && Array.isArray(res.data)) {
-        cache.set(provinceId, res.data);
+        if (res.data.length) cache.set(provinceId, res.data);
         return res.data;
       }
     } catch (e: any) {
       this.logger.warn(`Không lấy được danh sách Quận từ GHN: ${e?.message}`);
     }
-    return [];
+    throw new ServiceUnavailableException('Chưa tải được quận/huyện từ GHN. Vui lòng thử lại.');
   }
 
   /**
@@ -223,7 +227,7 @@ export class GhnService {
       cache = new Map<number, GhnWard[]>();
       this.cachedWards.set(environment, cache);
     }
-    if (cache.has(districtId)) return cache.get(districtId)!;
+    if (cache.get(districtId)?.length) return cache.get(districtId)!;
 
     try {
       const res = await this.ghnFetch<{ code: number; data: GhnWard[] }>(
@@ -231,13 +235,13 @@ export class GhnService {
         { includeShopId: false, environment },
       );
       if (res?.code === 200 && Array.isArray(res.data)) {
-        cache.set(districtId, res.data);
+        if (res.data.length) cache.set(districtId, res.data);
         return res.data;
       }
     } catch (e: any) {
       this.logger.warn(`Không lấy được danh sách Phường từ GHN: ${e?.message}`);
     }
-    return [];
+    throw new ServiceUnavailableException('Chưa tải được phường/xã từ GHN. Vui lòng thử lại.');
   }
 
   /**
@@ -363,7 +367,7 @@ export class GhnService {
       const variant = item.variantId ? product.variants.find((row) => row.id === item.variantId) : null;
       if (item.variantId && !variant) throw new BadRequestException('Phân loại tính cước không hợp lệ.');
       insuranceValue += Number(variant?.price ?? product.price) * item.quantity;
-      return { product, quantity: item.quantity };
+      return { product, variant, quantity: item.quantity };
     });
     const parcel = buildShippingPackage(lines);
     return { ...await this.quoteAddress(address, parcel.weight, insuranceValue, storeId, parcel), shippingPackage: parcel };
@@ -612,6 +616,12 @@ export class GhnService {
       }
       return current;
     });
+
+    try {
+      await this.cacheService?.delPrefix('orders:store:');
+    } catch {
+      this.logger.warn('Đã tạo vận đơn GHN; chưa xóa được cache danh sách đơn.');
+    }
 
     return {
       success: true,

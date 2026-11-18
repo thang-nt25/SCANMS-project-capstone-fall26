@@ -200,6 +200,16 @@ export class ReturnController {
     return this.returns.bookExchangeShipment(userId, role, id, body);
   }
 
+  @Post(':id/exchange-quote')
+  quoteExchangeShipment(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(bookPickupSchema)) body: BookPickupInput,
+  ) {
+    return this.returns.quoteExchangeShipment(userId, role, id, body);
+  }
+
   @Post(':id/exchange-booking/sync')
   syncExchangeShipment(
     @CurrentUser('id') userId: string,
@@ -286,6 +296,8 @@ export class ReturnDisputeAdminController {
     @CurrentUser('role') role: UserRole,
     @Query('kind') kind: string,
     @Query('page') rawPage?: string,
+    @Query('query') query = '',
+    @Query('storeId') storeId?: string,
   ) {
     const allowed = [
       'active',
@@ -303,6 +315,8 @@ export class ReturnDisputeAdminController {
       role,
       kind as (typeof allowed)[number],
       page,
+      query,
+      storeId,
     );
   }
 
@@ -312,7 +326,7 @@ export class ReturnDisputeAdminController {
     @Query(new ReturnZodPipe(returnHistoryQuerySchema))
     query: ReturnHistoryQuery,
   ) {
-    return this.returns.listHistory(role, query.page, query.query);
+    return this.returns.listHistory(role, query.page, query.query, query.storeId);
   }
 
   @Get('active-returns')

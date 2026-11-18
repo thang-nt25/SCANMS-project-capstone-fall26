@@ -61,4 +61,36 @@ describe('Atomic product editor', () => {
     expect(product.moderationStatus).toBe('APPROVED');
     expect(cache.delPrefix).not.toHaveBeenCalled();
   });
+
+  it('saves a product group independently of the locked store industry and requires review', async () => {
+    Object.assign(product, { categoryName: 'Mỹ phẩm & Chăm sóc da', productGroup: null });
+    const result = await service.updateEditor('owner', UserRole.SHOP_MANAGER, 'p1', { productGroup: '  Serum  ' });
+    expect(product.productGroup).toBe('Serum');
+    expect(product.categoryName).toBe('Mỹ phẩm & Chăm sóc da');
+    expect(result.requiresModeration).toBe(true);
+  });
+
+  it('preserves an existing group when an older client omits it, and allows explicitly clearing it', async () => {
+    product.productGroup = 'Serum';
+    await service.updateEditor('owner', UserRole.SHOP_MANAGER, 'p1', { origin: 'Việt Nam' });
+    expect(product.productGroup).toBe('Serum');
+    await service.updateEditor('owner', UserRole.SHOP_MANAGER, 'p1', { productGroup: '' });
+    expect(product.productGroup).toBeNull();
+  });
+
+  it('rejects activating an incomplete legacy parcel before any product write', async () => {
+    await expect(service.updateEditor('owner', UserRole.SHOP_MANAGER, 'p1', {
+      isActive: true,
+    })).rejects.toThrow('đóng gói');
+    expect(tx.product.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects clearing a shipping measurement on a live product', async () => {
+    Object.assign(product, { isActive: true, packageWeight: 150,
+      packageLength: 10, packageWidth: 8, packageHeight: 15 });
+    await expect(service.updateEditor('owner', UserRole.SHOP_MANAGER, 'p1', {
+      packageHeight: null,
+    } as any)).rejects.toThrow('đóng gói');
+    expect(tx.product.update).not.toHaveBeenCalled();
+  });
 });

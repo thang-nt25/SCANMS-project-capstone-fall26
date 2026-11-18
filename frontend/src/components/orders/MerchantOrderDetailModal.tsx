@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, MapPin, Package, ShoppingBag, Users, Wallet, X } from 'lucide-react';
+import { Clock, Copy, MapPin, Package, ShoppingBag, Users, Wallet, X } from 'lucide-react';
 import type { StoreOrderItem, StoreOrderRecord } from '../../services/order.service';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
 
@@ -47,14 +47,14 @@ export function MerchantOrderDetailModal({ order, onClose, getItemThumbnail, chi
       const rect = event.currentTarget.getBoundingClientRect();
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
     }}
-    className="merchant-order-detail m-auto max-h-[calc(100dvh-24px)] w-[calc(100%-24px)] max-w-[680px] flex-col overflow-hidden rounded-[20px] border border-[#EAE4D7] bg-white p-0 text-left font-sans text-[#1A1612] shadow-[0_24px_80px_rgb(35_29_21/18%)] backdrop:bg-[#231D15]/35 backdrop:backdrop-blur-[2px] open:flex sm:max-h-[calc(100dvh-48px)]"
+    className="merchant-order-detail m-auto max-h-[calc(100dvh-24px)] w-[calc(100%-24px)] max-w-[1000px] flex-col overflow-hidden rounded-[20px] border border-[#EAE4D7] bg-white p-0 text-left font-sans text-[#1A1612] shadow-[0_24px_80px_rgb(35_29_21/18%)] backdrop:bg-[#231D15]/35 backdrop:backdrop-blur-[2px] open:flex sm:max-h-[calc(100dvh-48px)]"
   >
     <header className="shrink-0 border-b border-[#EAE4D7] px-4 py-4 sm:px-6">
       <div className="order-detail-heading flex items-start gap-3">
         <span className="order-detail-heading-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><ShoppingBag size={17} aria-hidden="true" /></span>
         <div className="min-w-0 flex-1">
           <h2 id="order-detail-title" className="text-lg font-bold leading-tight tracking-tight sm:text-xl">Chi tiết đơn hàng</h2>
-          <div className="order-detail-meta"><span>#{order.externalOrderSn}</span><span><Clock size={12} aria-hidden="true" /><time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</time></span></div>
+          <div className="order-detail-meta"><span className="order-detail-code">#{order.externalOrderSn}<button type="button" aria-label="Sao chép mã đơn" onClick={() => { void navigator.clipboard.writeText(order.externalOrderSn).catch(() => {}); }}><Copy size={13} /></button></span><span><Clock size={12} aria-hidden="true" /><time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</time></span></div>
         </div>
         <span className="order-detail-state" data-status={order.status}>{statusLabels[order.status] || order.status}</span>
         <button type="button" aria-label="Đóng chi tiết đơn hàng" onClick={onClose} className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-full text-[#7D715E] transition-colors hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58]"><X size={18} /></button>
@@ -62,6 +62,25 @@ export function MerchantOrderDetailModal({ order, onClose, getItemThumbnail, chi
     </header>
 
     <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6" data-order-detail-content>
+      <div className="order-detail-columns">
+        <div className="order-detail-primary">
+      <section aria-labelledby="order-products-title">
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+          <h3 id="order-products-title" className="flex items-center gap-2 text-sm font-semibold"><Package size={16} className="text-[#B88E4F]" />Sản phẩm trong đơn</h3>
+          <span className="text-[11px] text-[#7D715E]">{order.items.length} sản phẩm · SL: {quantity}</span>
+        </div>
+        <div className="order-detail-products divide-y divide-[#EAE4D7] overflow-hidden rounded-xl border border-[#EAE4D7]">
+          {order.items.map((item, index) => <div key={`${item.productId}-${index}`} className="order-detail-product grid grid-cols-[48px_minmax(0,1fr)] items-center gap-x-3 gap-y-1 p-3 sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:p-3.5">
+            <img src={getSafeProductImageUrl(getItemThumbnail(item), item.title)} alt={item.title} loading="lazy" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/scanms-placeholder.svg'; }} className="row-span-2 h-12 w-12 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] object-contain sm:h-14 sm:w-14" />
+            <div className="min-w-0 self-end"><p className="break-words text-xs font-semibold leading-relaxed sm:text-[13px]">{item.title}</p><p className="mt-1 text-[11px] text-[#7D715E]">{item.quantity} × {amount(item.unitPrice)}</p>{item.sku && <p className="mt-1 break-all font-mono text-[10px] text-[#7D715E]">SKU: {item.sku}</p>}</div>
+            <strong className="col-start-2 self-start text-xs font-semibold tabular-nums sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:self-center sm:text-right">{amount(item.unitPrice * item.quantity)}</strong>
+          </div>)}
+        </div>
+      </section>
+
+      {children}
+        </div>
+        <aside className="order-detail-secondary">
       <section aria-labelledby="order-recipient-title">
         <h3 id="order-recipient-title" className="mb-2.5 flex items-center gap-2 text-sm font-semibold"><Users size={16} className="text-[#B88E4F]" />Người nhận hàng</h3>
         <dl className="order-detail-recipient grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-3.5 text-xs sm:p-4">
@@ -80,22 +99,6 @@ export function MerchantOrderDetailModal({ order, onClose, getItemThumbnail, chi
         </dl>
       </section>
 
-      <section aria-labelledby="order-products-title">
-        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-          <h3 id="order-products-title" className="flex items-center gap-2 text-sm font-semibold"><Package size={16} className="text-[#B88E4F]" />Sản phẩm trong đơn</h3>
-          <span className="text-[11px] text-[#7D715E]">{order.items.length} sản phẩm · SL: {quantity}</span>
-        </div>
-        <div className="order-detail-products divide-y divide-[#EAE4D7] overflow-hidden rounded-xl border border-[#EAE4D7]">
-          {order.items.map((item, index) => <div key={`${item.productId}-${index}`} className="order-detail-product grid grid-cols-[48px_minmax(0,1fr)] items-center gap-x-3 gap-y-1 p-3 sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:p-3.5">
-            <img src={getSafeProductImageUrl(getItemThumbnail(item), item.title)} alt={item.title} loading="lazy" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/scanms-placeholder.svg'; }} className="row-span-2 h-12 w-12 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] object-contain sm:h-14 sm:w-14" />
-            <div className="min-w-0 self-end"><p className="break-words text-xs font-semibold leading-relaxed sm:text-[13px]">{item.title}</p><p className="mt-1 text-[11px] text-[#7D715E]">{item.quantity} × {amount(item.unitPrice)}</p>{item.sku && <p className="mt-1 break-all font-mono text-[10px] text-[#7D715E]">SKU: {item.sku}</p>}</div>
-            <strong className="col-start-2 self-start text-xs font-semibold tabular-nums sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:self-center sm:text-right">{amount(item.unitPrice * item.quantity)}</strong>
-          </div>)}
-        </div>
-      </section>
-
-      {children}
-
       <section aria-labelledby="order-finance-title" className="order-detail-finance overflow-hidden rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]/70">
         <div className="p-3.5 sm:p-4">
           <div className="order-detail-finance-heading mb-4 flex flex-wrap items-center justify-between gap-2"><h3 id="order-finance-title" className="flex items-center gap-2 text-sm font-semibold"><Wallet size={16} className="text-[#B88E4F]" />Thanh toán</h3><div className="order-detail-payment-meta">{order.paymentMethod && <span>{paymentLabels[order.paymentMethod] || order.paymentMethod}</span>}<span className="order-detail-payment-state">{order.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}</span></div></div>
@@ -107,8 +110,10 @@ export function MerchantOrderDetailModal({ order, onClose, getItemThumbnail, chi
           </dl>
           {order.isManualOrder && order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && onRequestPayment && <button type="button" onClick={onRequestPayment} className="mt-3 rounded-lg border border-[#EEDFC6] bg-white px-3 py-2 text-xs font-medium hover:bg-[#F3EFE6]">Mở QR / link thanh toán PayOS</button>}
         </div>
-        <div className="order-detail-commission flex items-baseline justify-between gap-3 border-t border-[#EEDFC6] bg-white/70 px-3.5 py-3 text-[11px] sm:px-4"><span className="text-[#7D715E]">Thu nhập KOL ghi nhận</span><strong className="shrink-0 font-semibold tabular-nums text-[#8C6B32]">{order.totalCommission > 0 ? '+' : ''}{amount(order.totalCommission)}</strong></div>
+        <div className="order-detail-commission flex items-baseline justify-between gap-3 border-t border-[#EEDFC6] bg-white/70 px-3.5 py-3 text-[11px] sm:px-4"><span className="text-[#7D715E]">Thù lao KOL liên quan</span><strong className="shrink-0 font-semibold tabular-nums text-[#8C6B32]">{amount(order.totalCommission)}</strong></div>
       </section>
+        </aside>
+      </div>
     </div>
 
     <footer className="flex shrink-0 justify-end border-t border-[#EAE4D7] bg-white px-4 py-3 sm:px-6">

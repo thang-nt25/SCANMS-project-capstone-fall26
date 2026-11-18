@@ -566,6 +566,12 @@ export const POPULAR_BANKS = VIETNAM_BANKS.filter((b) => b.isPopular);
 export function findBankByQuery(bankIdentifier?: string | null): VietQrBank | undefined {
   if (!bankIdentifier) return undefined;
   const clean = bankIdentifier.trim().toLowerCase();
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd').replace(/\s+/g, ' ').trim();
+  // Customer withdrawals save the full bank name; match it before checking aliases.
+  const exactName = VIETNAM_BANKS.find(bank => bank.bin === clean || bank.code.toLowerCase() === clean || bank.shortName.toLowerCase() === clean || normalize(bank.name) === normalize(clean));
+  if (exactName) return exactName;
+  const selectedName = VIETNAM_BANKS.find(bank => clean.startsWith(`${bank.shortName.toLowerCase()} (`));
+  if (selectedName) return selectedName;
   return VIETNAM_BANKS.find(
     (b) =>
       b.bin === clean ||

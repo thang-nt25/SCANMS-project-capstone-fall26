@@ -10,6 +10,10 @@ async function load(file) {
 }
 const { accountMenuLinks } = await load('account-menu.ts');
 const { notificationTarget, localNotificationAction } = await load('notification-target.ts');
+test('payout supplement notice opens the requested profile section instead of wallet', () => {
+  assert.equal(notificationTarget({ type: 'PAYOUT_INFORMATION_REQUESTED', data: { payoutId: 'p', actionUrl: '/collaborator/profile?tab=kyc&section=bank' } }, 'COLLABORATOR'), '/collaborator/profile?tab=kyc&section=bank');
+  assert.equal(notificationTarget({ type: 'PAYOUT_INFORMATION_REQUESTED', data: { actionUrl: '//other.example' } }, 'COLLABORATOR'), '/collaborator/profile?tab=kyc');
+});
 const { headerNotificationSnapshot } = await load('header-notification-source.ts');
 const routes = await readFile(new URL('../src/routes/AppRoutes.tsx', import.meta.url), 'utf8');
 const registered = new Set([...routes.matchAll(/path="([^"]+)"/g)].map(match => '/' + match[1].replace(/^\//, '')));

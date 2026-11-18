@@ -29,6 +29,10 @@ describe('Product moderation workflow', () => {
     service = new ProductsService(prisma, { get: jest.fn() } as any, cache);
     prisma.product.findFirst.mockResolvedValue({
       id: 'product-1',
+      packageWeight: 150,
+      packageLength: 10,
+      packageWidth: 8,
+      packageHeight: 15,
       title: 'Serum kiểm duyệt',
       moderationStatus: ProductModerationStatus.DRAFT,
       store: { id: 'store-1', name: 'Shop test', ownerId: 'owner-1' },
@@ -77,6 +81,18 @@ describe('Product moderation workflow', () => {
 
     expect(prisma.product.update).not.toHaveBeenCalled();
   });
+
+  it.each(['packageWeight', 'packageLength', 'packageWidth', 'packageHeight'])(
+    'does not publish a product missing %s', async (field) => {
+      const product = await prisma.product.findFirst();
+      prisma.product.findFirst.mockResolvedValueOnce({ ...product, [field]: null });
+      await expect(service.moderateProduct('manager-1', 'product-1', {
+        status: 'APPROVED',
+      })).rejects.toThrow('đóng gói');
+      expect(prisma.product.update).not.toHaveBeenCalled();
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('does not allow a product that has already left the review queue to be reviewed again', async () => {
     prisma.product.findFirst.mockResolvedValueOnce({

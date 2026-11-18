@@ -19,6 +19,7 @@ import {
   Truck,
   CheckCircle2,
   Eye,
+  Play,
   RefreshCw,
   ShoppingBag,
   ChevronLeft,
@@ -64,7 +65,6 @@ import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeli
 import { CustomSelect } from "../../components/ui/CustomSelect";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
-import { ShopReturnDecisionForm } from '../../components/returns/ShopReturnDecisionForm';
 import { StatCard } from '../../components/ui/StatCard';
 import ShopSampleManagementTab from './ShopSampleManagementTab';
 
@@ -94,7 +94,7 @@ const messageOf = (error: unknown) =>
     : "Không thể xử lý yêu cầu. Vui lòng thử lại";
 
 const orderMenuPositionFor = (rect: DOMRect) => {
-  const menuWidth = Math.min(256, window.innerWidth - 16);
+  const menuWidth = Math.min(288, window.innerWidth - 16);
   const below = window.innerHeight - rect.bottom;
   const above = below < 320 && rect.top > below;
   return {
@@ -139,7 +139,7 @@ function ProductThumbnail({
 }
 
 // In-memory orders snapshot to enable Instant SWR rendering (Zero-Flicker Navigation)
-let lastOrdersSnapshot: { orders: StoreOrderRecord[]; total: number; totalPages: number } | null = null;
+let lastOrdersSnapshot: { orders: StoreOrderRecord[]; total: number; totalPages: number; metrics: { total: number; pending: number; shipping: number; delivered: number } } | null = null;
 registerPrivateCacheReset(() => { lastOrdersSnapshot = null; });
 
 export default function OrdersManagementPage({
@@ -228,12 +228,14 @@ export default function OrdersManagementPage({
   const lastFetchTimeRef = useRef<number>(Date.now());
   const [ordersTotal, setOrdersTotal] = useState(() => lastOrdersSnapshot?.total || 0);
   const [ordersTotalPages, setOrdersTotalPages] = useState(() => lastOrdersSnapshot?.totalPages || 1);
+  const [orderMetrics, setOrderMetrics] = useState(() => lastOrdersSnapshot?.metrics || { total: 0, pending: 0, shipping: 0, delivered: 0 });
   const [ordersPage, setOrdersPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>(() => { const value = searchParams.get("status"); return value && ["UNPAID", "PENDING", "SHIPPING", "DELIVERED", "RETURNS", "CANCELLED"].includes(value) ? value : "ALL"; });
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
   const searchField = "ALL";
   const [ordersRefreshCount, setOrdersRefreshCount] = useState(0);
   const ordersAutoRefreshPaused = useRef(false);
+  const fulfillmentRevision = useRef(0);
   ordersAutoRefreshPaused.current = action !== null || activeOrderView !== 'COMMERCIAL';
   const [activeDropdownOrderId, setActiveDropdownOrderId] = useState<string | null>(null);
   const [copiedTrackingId, setCopiedTrackingId] = useState<string | null>(null);
@@ -265,6 +267,12 @@ export default function OrdersManagementPage({
       return;
     }
     const results = await Promise.allSettled(pendingOrders.map((order) => orderService.confirmOrder(order.id)));
+    const confirmations = new Map(results.flatMap((result, index) => result.status === 'fulfilled'
+      ? [[pendingOrders[index].id, result.value.shopConfirmedAt] as const] : []));
+    setOrders(current => current.map(order => confirmations.has(order.id)
+      ? { ...order, shopConfirmedAt: confirmations.get(order.id)! } : order));
+    setSelectedOrderDetails(current => current && confirmations.has(current.id)
+      ? { ...current, shopConfirmedAt: confirmations.get(current.id)! } : current);
     const confirmed = results.filter((result) => result.status === 'fulfilled').length;
     if (confirmed) toast.success(`Đã xác nhận ${confirmed} đơn. Hãy tạo vận đơn cho từng đơn sau khi chuẩn bị hàng.`);
     if (confirmed < results.length) toast.error(`${results.length - confirmed} đơn không thể xác nhận. Vui lòng kiểm tra lại.`);
@@ -399,6 +407,7 @@ export default function OrdersManagementPage({
       if (!active || requestRunning) return;
       if (background && (document.hidden || ordersAutoRefreshPaused.current || Date.now() - lastStartedAt < 9000)) return;
       requestRunning = true;
+      const requestedRevision = fulfillmentRevision.current;
       lastStartedAt = Date.now();
       if (!background && orders.length === 0) setOrdersLoading(true);
       else setIsBackgroundRefreshing(true);
@@ -412,13 +421,15 @@ export default function OrdersManagementPage({
           limit: 12,
           storeId,
         }, isManualFresh);
-        if (active && res) {
+        if (active && res && requestedRevision === fulfillmentRevision.current) {
           lastOrdersSnapshot = {
             orders: res.items || [],
             total: res.pagination?.total || 0,
             totalPages: res.pagination?.totalPages || 1,
+            metrics: res.metrics || { total: 0, pending: 0, shipping: 0, delivered: 0 },
           };
           setOrders(res.items || []);
+          setOrderMetrics(lastOrdersSnapshot.metrics);
           setOrdersTotal(res.pagination?.total || 0);
           setOrdersTotalPages(res.pagination?.totalPages || 1);
           lastFetchTimeRef.current = Date.now();
@@ -490,6 +501,18 @@ export default function OrdersManagementPage({
   const [trackingGhnDetail, setTrackingGhnDetail] = useState<GhnTrackingDetail | null>(null);
   const [loadingTracking, setLoadingTracking] = useState(false);
 
+  // A confirmed mutation already contains the new state. Do not wait for a
+  // second list request, and do not let an older poll restore the old state.
+  const applyFulfillment = (orderId: string, patch: Partial<StoreOrderRecord>) => {
+    fulfillmentRevision.current++;
+    const merge = (item: StoreOrderRecord) => item.id === orderId ? { ...item, ...patch } : item;
+    setOrders(current => current.map(merge));
+    setSelectedOrderDetails(current => current ? merge(current) : current);
+    if (lastOrdersSnapshot) lastOrdersSnapshot = {
+      ...lastOrdersSnapshot, orders: lastOrdersSnapshot.orders.map(merge),
+    };
+  };
+
   const handleOpenShippingModal = (order: StoreOrderRecord) => {
     if (order.status === 'PENDING' && !order.shopConfirmedAt) {
       toast.info('Vui lòng xác nhận đơn trước khi tạo vận đơn.');
@@ -509,6 +532,10 @@ export default function OrdersManagementPage({
     if (!shippingModalOrder || creatingGhnEnvironment !== null) return;
     const targetOrder = shippingModalOrder;
     const completeCreation = (trackingNumber: string, targetEnvironment?: "LIVE" | "TEST" | null) => {
+      applyFulfillment(targetOrder.id, {
+        status: 'SHIPPING', trackingNumber, carrierName: 'GHN',
+        ...(targetEnvironment ? { ghnEnvironment: targetEnvironment } : {}),
+      });
       setGhnCreateError(null);
       setShippingCarrier("GHN");
       setShippingTrackingNumber(trackingNumber);
@@ -590,6 +617,10 @@ export default function OrdersManagementPage({
         trackingNumber: shippingTrackingNumber.trim(),
         note: shippingNote.trim() || undefined,
       });
+      applyFulfillment(shippingModalOrder.id, {
+        status: 'SHIPPING', carrierName: shippingCarrier,
+        trackingNumber: shippingTrackingNumber.trim(),
+      });
       toast.success(`Đã giao bưu cục đơn #${shippingModalOrder.externalOrderSn}`, {
         description: `Mã vận đơn ${shippingTrackingNumber.trim()} (${shippingCarrier}) đã được lưu và chuyển sang Đang giao.`,
       });
@@ -613,6 +644,7 @@ export default function OrdersManagementPage({
       await orderService.updateOrderFulfillment(confirmDeliveredOrder.id, {
         status: "DELIVERED",
       });
+      applyFulfillment(confirmDeliveredOrder.id, { status: 'DELIVERED' });
       toast.success("Xác nhận giao hàng thành công!", {
         description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã hoàn tất và bắt đầu chu kỳ đối soát thu nhập đối tác.`,
       });
@@ -1067,14 +1099,16 @@ export default function OrdersManagementPage({
                 <button
                   type="button"
                   onClick={() => open("manual")}
+                  title="Tạo đơn thủ công"
+                  aria-label="Tạo đơn thủ công"
                   className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                  <span>Tạo đơn thủ công</span>
+                  <span>Tạo đơn</span>
                 </button>
-                <Link to="/merchant/kol-hub" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]">
+                <Link to="/merchant/kol-hub" title="Quản lý hợp tác" aria-label="Quản lý hợp tác" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]">
                   <Users className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                  <span>Quản lý hợp tác</span>
+                  <span>Hợp tác</span>
                 </Link>
               </div>
             )}
@@ -1096,22 +1130,22 @@ export default function OrdersManagementPage({
           <div className="merchant-orders-metrics grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatCard
               title="Tổng đơn hàng"
-              value={ordersTotal}
+              value={orderMetrics.total}
               icon={<ShoppingBag className="w-4 h-4" />}
             />
             <StatCard
               title="Chờ xử lý"
-              value={orders.filter((o) => o.status === "PENDING").length}
+              value={orderMetrics.pending}
               icon={<PackagePlus className="w-4 h-4" />}
             />
             <StatCard
               title="Đang giao"
-              value={orders.filter((o) => o.status === "SHIPPING").length}
+              value={orderMetrics.shipping}
               icon={<Truck className="w-4 h-4" />}
             />
             <StatCard
               title="Đã giao thành công"
-              value={orders.filter((o) => o.status === "DELIVERED" || o.status === "COMPLETED").length}
+              value={orderMetrics.delivered}
               icon={<CheckCircle2 className="w-4 h-4" />}
             />
           </div>
@@ -1185,15 +1219,7 @@ export default function OrdersManagementPage({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setOrdersRefreshCount((c) => c + 1)}
-                title="Tải lại danh sách"
-                className="h-9 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0 text-xs font-semibold"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${(ordersLoading || isBackgroundRefreshing) ? "animate-spin text-[#B88E4F]" : ""}`} />
-                <span className="hidden sm:inline">Làm mới</span>
-              </button>
+
             </div>
           </div>
 
@@ -1278,10 +1304,10 @@ export default function OrdersManagementPage({
                 <table className="merchant-orders-data min-w-[960px] w-full table-fixed border-collapse text-left text-xs">
                   <colgroup>
                     <col style={{ width: '4%' }} />
-                    <col style={{ width: '36%' }} />
-                    <col style={{ width: '20%' }} />
-                    <col style={{ width: '20%' }} />
-                    <col style={{ width: '20%' }} />
+                    <col style={{ width: orders.some(order => order.status === 'RETURN_REQUESTED' || order.status === 'DISPUTED') ? '32%' : '36%' }} />
+                    <col style={{ width: orders.some(order => order.status === 'RETURN_REQUESTED' || order.status === 'DISPUTED') ? '16%' : '20%' }} />
+                    <col style={{ width: orders.some(order => order.status === 'RETURN_REQUESTED' || order.status === 'DISPUTED') ? '18%' : '20%' }} />
+                    <col style={{ width: orders.some(order => order.status === 'RETURN_REQUESTED' || order.status === 'DISPUTED') ? '30%' : '20%' }} />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-[#EAE4D7] bg-[#FFFCF7] text-xs font-bold uppercase tracking-wide text-[#7D715E] select-none">
@@ -1450,7 +1476,7 @@ export default function OrdersManagementPage({
 
                           {/* Trạng thái & Vận đơn kết hợp */}
                           <td data-label="Trạng thái" className="py-3 px-3 align-middle whitespace-nowrap">
-<div className="flex flex-col items-start gap-1.5">
+<div className="merchant-order-state">
                               <span
                                 data-order-status={order.status}
                                 className={`merchant-order-status inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.border} ${badge.bg} ${badge.text} whitespace-nowrap shrink-0`}
@@ -1458,13 +1484,13 @@ export default function OrdersManagementPage({
                                 <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                                 <span>{badge.label}</span>
                               </span>
-                              <MerchantOrderTrackingCodes order={order} copiedTrackingId={copiedTrackingId} onCopy={handleCopyTracking} />
+                              <MerchantOrderTrackingCodes compact order={order} copiedTrackingId={copiedTrackingId} onCopy={handleCopyTracking} onTrack={() => void handleOpenGhnTracking(order)} />
                             </div>
                           </td>
 
                           {/* Thao tác (1 CTA chính + Mắt chi tiết + Menu ... phụ) */}
                           <td data-label="Thao tác" className="py-3 px-3 align-middle text-center">
-                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_28px_28px] items-center gap-2">
+                            <div className={`merchant-row-actions grid min-w-0 grid-cols-[minmax(0,1fr)_40px_40px] items-center gap-2${order.status === 'RETURN_REQUESTED' || order.status === 'DISPUTED' ? ' merchant-return-actions' : ''}`}>
                               {/* 1. Nút Thao tác chính theo chu kỳ đơn hàng */}
                               <div className="flex min-w-0 justify-end [&>button]:max-w-full [&>button>svg]:shrink-0">
                               {order.status === "PENDING" && !order.shopConfirmedAt && (
@@ -1472,11 +1498,16 @@ export default function OrdersManagementPage({
                                   onClick={async () => {
                                     setOrdersLoading(true);
                                     try {
-                                      await orderService.confirmOrder(order.id);
+                                      const confirmation = await orderService.confirmOrder(order.id);
+                                      if (!confirmation?.success || !confirmation.shopConfirmedAt) {
+                                        throw new Error('Máy chủ chưa trả về thời điểm xác nhận đơn. Vui lòng tải lại để kiểm tra.');
+                                      }
+                                      setOrders(current => current.map(item => item.id === order.id ? { ...item, shopConfirmedAt: confirmation.shopConfirmedAt } : item));
+                                      setSelectedOrderDetails(current => current?.id === order.id ? { ...current, shopConfirmedAt: confirmation.shopConfirmedAt } : current);
                                       toast.success('Đã xác nhận đơn. Có thể chuẩn bị hàng và tạo vận đơn.');
                                       setOrdersRefreshCount((c) => c + 1);
                                     } catch (error: any) {
-                                      toast.error(error.response?.data?.message || 'Không thể xác nhận đơn');
+                                      toast.error(error.response?.data?.message || error.message || 'Không thể xác nhận đơn');
                                     } finally { setOrdersLoading(false); }
                                   }}
                                   className="px-2.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C] text-[11px] font-bold cursor-pointer disabled:opacity-50">
@@ -1532,28 +1563,20 @@ export default function OrdersManagementPage({
                                       setSelectedOrderDetails(order);
                                     }
                                   }}
-                                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-2 text-left text-[11px] font-bold text-[#8A642C] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] cursor-pointer"
+                                  className="merchant-return-primary inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-center text-[13px] font-semibold text-[#79592C] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] cursor-pointer"
                                   title="Mở hồ sơ và bước xử lý đổi trả tiếp theo"
                                 >
-                                  <RefreshCw className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                                  <span>{refundSucceeded ? 'Xem tiền đã hoàn' : order.returnRequest?.status === 'REQUESTED' ? 'Xử lý yêu cầu đổi trả' : 'Tiếp tục xử lý đổi trả'}</span>
+                                  <RefreshCw className="h-4 w-4 shrink-0 text-[#B88E4F]" />
+                                  <span>{refundSucceeded ? 'Xem tiền đã hoàn' : 'Xử lý đổi trả'}</span>
                                 </button>
                               )}
 
                               </div>
-                              {/* 2. Nút Xem chi tiết (Con mắt) */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedOrderDetails(order);
-
-                                }}
-                                className="w-7 h-7 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#B88E4F] hover:border-[#B88E4F] transition grid place-items-center shadow-2xs cursor-pointer active:scale-95 shrink-0"
-                                title="Xem chi tiết đơn hàng (Địa chỉ, SKU, biến thể, tài chính)"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
+                              <button type="button" onClick={() => setSelectedOrderDetails(order)}
+                                className="merchant-order-details-button grid shrink-0 place-items-center rounded-[10px] border border-[#EAE4D7] bg-white text-[#7D715E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#B88E4F] cursor-pointer"
+                                title="Xem chi tiết đơn hàng" aria-label={`Xem chi tiết đơn ${order.externalOrderSn}`}>
+                                <Eye size={16} />
                               </button>
-
                               {/* 3. Menu Thao tác phụ (...) */}
                               <div className="relative inline-block text-left" ref={activeDropdownOrderId === order.id ? dropdownRef : undefined}>
                                 <button
@@ -1580,13 +1603,13 @@ export default function OrdersManagementPage({
                                     role="region"
                                     aria-label={`Thông tin đơn ${order.externalOrderSn}`}
                                     style={orderMenuPosition}
-                                    className="order-actions-menu fixed z-[60] w-[256px] max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-xl border border-[#EAE4D7] bg-white py-1 text-left shadow-lg"
+                                    className="order-actions-menu fixed z-[60] w-[288px] max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-xl border border-[#EAE4D7] bg-white py-1 text-left shadow-lg"
                                   >
                                     <div className="order-menu-summary">
                                       <div className="order-menu-heading"><span className="order-menu-icon"><ShoppingBag size={15} aria-hidden="true" /></span><div><p>Mã đơn</p><strong>#{order.externalOrderSn}</strong></div></div>
                                       <div className="order-menu-date"><span>Ngày tạo</span><time dateTime={order.createdAt}><Clock size={12} aria-hidden="true" />{new Date(order.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</time></div>
                                       <div className="order-menu-shipping"><p>Vận đơn</p>
-                                        <MerchantOrderTrackingCodes order={order} copiedTrackingId={copiedTrackingId} onCopy={handleCopyTracking} />
+                                        <MerchantOrderTrackingCodes order={order} copiedTrackingId={copiedTrackingId} onCopy={handleCopyTracking} onTrack={() => { setActiveDropdownOrderId(null); void handleOpenGhnTracking(order); }} />
                                         {!order.trackingNumber && !order.returnRequest?.exchangeShipment && <p className="text-[11px] italic text-[#7D715E]">Chưa tạo vận đơn</p>}
                                       </div>
                                     </div>
@@ -1601,10 +1624,10 @@ export default function OrdersManagementPage({
                                         });
                                         setActiveDropdownOrderId(null);
                                       }}
-                                      className="w-full px-3 py-1.5 text-left text-[11px] font-medium text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] flex items-center gap-2 cursor-pointer transition"
+                                      className="order-menu-print"
                                     >
                                       <Printer className="w-3.5 h-3.5 text-[#B88E4F]" />
-                                      <span>In phiếu giao A6</span>
+                                      <span>In phiếu A6</span>
                                     </button>
 
                                     {/* Xác nhận đã giao */}
@@ -2138,7 +2161,7 @@ export default function OrdersManagementPage({
               <section className="order-detail-return space-y-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4 text-xs">
                 <h4 className="flex items-center gap-2 text-sm font-semibold"><RefreshCw size={16} /> Hồ sơ đổi trả / hoàn tiền</h4>
                 <span className="order-detail-return-status inline-flex rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[11px] font-medium text-[#8C6B32]">{returnStatusLabel(selectedOrderDetails.returnRequest.status)}</span>
-                <MerchantOrderTrackingCodes order={selectedOrderDetails} copiedTrackingId={copiedTrackingId} onCopy={handleCopyTracking} />
+                <MerchantOrderTrackingCodes order={selectedOrderDetails} copiedTrackingId={copiedTrackingId} onCopy={handleCopyTracking} onTrack={() => { void handleOpenGhnTracking(selectedOrderDetails); }} />
                 {selectedOrderDetails.returnRequest.dispute?.resolutionNotes && <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
                   <strong>Quyết định của System Manager</strong>
                   <p className="mt-1 whitespace-pre-wrap">{selectedOrderDetails.returnRequest.dispute.resolutionNotes}</p>
@@ -2155,26 +2178,18 @@ export default function OrdersManagementPage({
                 <p>Lý do: <strong>{({ DAMAGED: 'Sản phẩm hư hỏng', WRONG_ITEM: 'Giao sai sản phẩm', EXPIRED: 'Sản phẩm hết hạn', OTHER: 'Lý do khác' } as Record<string, string>)[selectedOrderDetails.returnRequest.reason] || selectedOrderDetails.returnRequest.reason}</strong></p>
                 {selectedOrderDetails.returnRequest.details && <p>{selectedOrderDetails.returnRequest.details}</p>}
                 <div className="order-detail-evidence flex flex-wrap gap-2">
-                  {selectedOrderDetails.returnRequest.imageUrls.map((url, index) => (
-                    <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Ảnh {index + 1}</a>
+                  {(selectedOrderDetails.returnRequest.imageUrls || []).map((url, index) => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt={`Bằng chứng ${index + 1}`} loading="lazy" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/scanms-placeholder.svg'; }} />Ảnh {index + 1}</a>
                   ))}
-                  {selectedOrderDetails.returnRequest.unboxingVideoUrl && <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>}
+                  {selectedOrderDetails.returnRequest.unboxingVideoUrl && <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer"><Play size={22} aria-hidden="true" />Video mở hộp</a>}
                 </div>
                 {selectedOrderDetails.returnRequest.shopResponse && <div className="order-detail-response rounded-lg border border-[#EAE4D7] bg-white p-3"><span className="text-[11px] font-medium text-[#7D715E]">Phản hồi của gian hàng</span><p className="mt-1 break-words leading-relaxed">{selectedOrderDetails.returnRequest.shopResponse}</p></div>}
                 {selectedOrderDetails.returnRequest && <Link
                   to={`/merchant/returns/${selectedOrderDetails.returnRequest.id}`}
+                  onClick={() => setSelectedOrderDetails(null)}
                   className="inline-block rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 font-semibold text-[#8A6736]">
-                  Xem toàn bộ hồ sơ, bằng chứng và đối soát GHN →
+                  Mở hồ sơ đổi trả ↗
                 </Link>}
-                {selectedOrderDetails.returnRequest.status === 'REQUESTED' && <ShopReturnDecisionForm
-                  key={selectedOrderDetails.returnRequest.id} orderId={selectedOrderDetails.id} request={selectedOrderDetails.returnRequest}
-                  onProcessed={(decision, result) => {
-                    setActionSuccessMsg(result.message);
-                    setSelectedOrderDetails(null);
-                    setOrdersRefreshCount(count => count + 1);
-                    if (decision === 'APPROVE') navigate(`/merchant/returns/${result.returnRequest.id}`);
-                  }}
-                />}
               </section>
             )}
 

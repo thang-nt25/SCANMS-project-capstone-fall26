@@ -74,4 +74,21 @@ describe('Order confirmation email', () => {
     await new MailService().sendOrderConfirmation(input);
     expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ from: { name: 'SCANMS', address: 'smtp@gmail.com' }, replyTo: 'smtp@gmail.com' }));
   });
+
+  it('requires SMTP acceptance for password OTP and sends the six-digit code to the intended mailbox', async () => {
+    sendMail.mockResolvedValue({ accepted: ['owner@gmail.com'], messageId: '<otp-fixture>' });
+    await new MailService().sendPasswordSecurityOtp('owner@gmail.com', 'Test owner', '123456', { time: 'test' });
+    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'owner@gmail.com', text: expect.stringContaining('123456') }));
+    sendMail.mockResolvedValue({ accepted: [], rejected: ['owner@gmail.com'] });
+    await expect(new MailService().sendPasswordSecurityOtp('owner@gmail.com', 'Test owner', '123456', { time: 'test' })).rejects.toThrow();
+  });
+
+  it('never substitutes console OTP output for email delivery', async () => {
+    delete process.env.GMAIL_USER; delete process.env.GMAIL_PASS; delete process.env.SMTP_USER; delete process.env.SMTP_PASS;
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await expect(new MailService().sendPasswordSecurityOtp('owner@gmail.com', 'Test owner', '123456', { time: 'test' })).rejects.toThrow('chưa được cấu hình');
+      expect(log).not.toHaveBeenCalled();
+    } finally { log.mockRestore(); }
+  });
 });

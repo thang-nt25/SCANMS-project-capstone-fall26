@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { Loader2, Pin, PinOff } from 'lucide-react';
 
 type Product = { id: string; title: string; imageUrl?: string | null; price: number; livePrice?: number };
@@ -20,7 +21,7 @@ export function HostStudioProducts({ products, pinnedId, pendingId, disabled, on
         return <div key={product.id} className={`flex flex-wrap items-center gap-3 rounded-2xl border p-3 transition-colors sm:flex-nowrap ${pinned ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'}`}>
           <span className="w-5 shrink-0 text-center text-xs tabular-nums text-[#7D715E]">{String(index + 1).padStart(2, '0')}</span>
           <div className="flex h-16 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#EAE4D7] bg-white p-1">
-            <img src={product.imageUrl || undefined} alt={product.title} className="h-full w-full object-contain" />
+            <img src={product.imageUrl || undefined} onError={handleProductImageError} alt={product.title} className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0 flex-1">
             {pinned && <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[#B88E4F]"><Pin size={11} /> Đang giới thiệu</span>}

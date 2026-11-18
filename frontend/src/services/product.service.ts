@@ -8,6 +8,7 @@ export interface Product {
   sku: string;
   title: string;
   categoryName?: string;
+  productGroup?: string | null;
   description?: string;
   ingredients?: string | null;
   origin?: string | null;

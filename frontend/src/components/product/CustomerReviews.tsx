@@ -1,4 +1,6 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Star, X } from 'lucide-react';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 
@@ -12,6 +14,14 @@ export function CustomerReviews({ reviews, product }: {
   product: { title: string; imageUrl?: string | null };
 }) {
   const [filter, setFilter] = useState('all');
+  const [params] = useSearchParams();
+  const targetReview = params.get('review');
+  useEffect(()=>{
+    if(!targetReview)return;
+    setFilter('all');
+    const timer=window.setTimeout(()=>{const element=document.getElementById(`review-${targetReview}`);element?.scrollIntoView({behavior:'smooth',block:'center'});element?.focus({preventScroll:true});},250);
+    return()=>window.clearTimeout(timer);
+  },[targetReview,reviews.items]);
   const [sort, setSort] = useState('newest');
   const [photo, setPhoto] = useState<string | null>(null);
   const close = useRef<HTMLButtonElement>(null);
@@ -36,7 +46,7 @@ export function CustomerReviews({ reviews, product }: {
   const stars = (rating: number, size = 14) => <span className="inline-flex gap-0.5" aria-label={`${rating} trên 5 sao`}>{[1, 2, 3, 4, 5].map(value => <Star key={value} size={size} aria-hidden="true" className={value <= rating ? 'fill-[#C59B58] text-[#B88E4F]' : 'text-[#EAE4D7]'} />)}</span>;
   return <section className="min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5" aria-labelledby="product-customer-reviews-title">
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#EAE4D7] pb-4">
-      <div className="flex min-w-0 items-center gap-3"><img src={getSafeProductImageUrl(product.imageUrl, product.title)} alt={product.title} className="h-14 w-14 shrink-0 rounded-xl border border-[#EAE4D7] object-contain" />
+      <div className="flex min-w-0 items-center gap-3"><img src={getSafeProductImageUrl(product.imageUrl, product.title)} onError={handleProductImageError} alt={product.title} className="h-14 w-14 shrink-0 rounded-xl border border-[#EAE4D7] object-contain" />
         <div className="min-w-0"><h2 id="product-customer-reviews-title" className="text-lg font-semibold text-[#1A1612]">Đánh giá khách hàng</h2><p className="mt-1 line-clamp-1 text-xs text-[#7D715E]">{product.title}</p></div></div>
       <div className="flex items-center gap-3" data-review-summary><strong className="text-3xl font-semibold tabular-nums text-[#1A1612]">{reviews.averageRating == null ? '—' : reviews.averageRating.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span className="ml-1 text-xs font-normal text-[#7D715E]">/5</span></strong>
         <div>{stars(Math.round(reviews.averageRating || 0))}<p className="text-xs text-[#7D715E]">{reviews.totalReviews} đánh giá</p></div></div>
@@ -49,7 +59,8 @@ export function CustomerReviews({ reviews, product }: {
         </select>
       </label>
     </div>
-    <div className="mt-1 divide-y divide-[#EAE4D7]">{shown.map(review => <article key={review.id} data-customer-review className="py-4">
+    {targetReview && !reviews.items.some(review=>review.id===targetReview) && <p role="status" className="mt-4 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">Đánh giá này hiện không còn công khai hoặc không tìm thấy trên sản phẩm.</p>}
+    <div className="mt-1 divide-y divide-[#EAE4D7]">{shown.map(review => <article key={review.id} id={`review-${review.id}`} tabIndex={-1} data-customer-review className={`py-4 scroll-mt-24 ${targetReview===review.id?'rounded-xl bg-[#FBF5EB] px-3 ring-1 ring-[#C59B58] outline-none':''}`}>
       <div className="flex items-start gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#FBF5EB] text-xs font-semibold text-[#8C6B32]">{review.customerName.trim().charAt(0) || 'K'}</span>
         <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm text-[#1A1612]">{review.customerName}</strong><time className="text-[11px] text-[#7D715E]">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</time></div>
           <div className="mt-1 flex flex-wrap items-center gap-2">{stars(review.rating)}{review.isVerifiedBuyer && <span className="inline-flex items-center gap-1 text-[10px] text-[#7D715E]"><CheckCircle2 size={12} className="text-[#B88E4F]" />Đã mua hàng</span>}</div>

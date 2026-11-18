@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from "react";
 import {
   Modal,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,7 +27,7 @@ export function BottomSheet({
       onRequestClose={close}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Đóng ${title}`}
@@ -39,14 +41,16 @@ export function BottomSheet({
             <IconButton name="x" label="Đóng" onPress={close} />
           </View>
           <ScrollView
-            style={{ flexGrow: 0 }}
+            style={{ flexGrow: 0, flexShrink: 1 }}
             contentContainerStyle={{ padding: 16, gap: 14 }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           >
             {children}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -61,6 +65,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     maxHeight: "88%",
+    flexShrink: 1,
     paddingTop: 9,
   },
   handle: {

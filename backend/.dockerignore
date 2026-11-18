@@ -6,3 +6,15 @@ dist
 .env
 Dockerfile
 docker-compose.yml
+.env.*
+*.env
+*.log
+*.pem
+*.key
+*.p12
+*.pfx
+.tmp
+.dev-runtime
+artifacts
+coverage
+data/customer-identities*.json

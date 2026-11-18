@@ -26,6 +26,7 @@ const ROUTE_LOADERS: Record<string, ComponentLoader> = {
 
   // Collaborator / KOL
   '/collaborator/dashboard': () => import('@/pages/collaborator/KolDashboardPage'),
+  '/collaborator/reports': () => import('@/pages/collaborator/KolMarketingReportsPage'),
   '/collaborator/marketing': () => import('@/pages/collaborator/MarketingToolkitPage'),
   '/collaborator/collaboration': () => import('@/pages/collaborator/ShopCollaborationPage'),
   '/collaborator/live-sessions': () => import('@/pages/collaborator/LiveSessionsPage'),

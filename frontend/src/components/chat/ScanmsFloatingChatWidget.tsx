@@ -668,6 +668,8 @@ export function ScanmsFloatingChatWidget() {
     return (
       <button
         ref={launcherRef}
+        data-shopping-chat-launcher
+        data-custom-position={isCustomPositioned}
         type="button"
         onPointerDown={handleLauncherPointerDown}
         onPointerMove={handleLauncherPointerMove}
@@ -683,7 +685,7 @@ export function ScanmsFloatingChatWidget() {
           isCustomPositioned
             ? {
                 left: `${launcherPos.x}px`,
-                top: `${launcherPos.y}px`,
+                top: `min(${launcherPos.y}px, calc(100dvh - 54px - var(--shopping-chat-bottom-space, 8px)))`,
                 right: 'auto',
                 bottom: 'auto',
               }
@@ -722,7 +724,7 @@ export function ScanmsFloatingChatWidget() {
   // Minimized Bar
   if (isMinimized) {
     return (
-      <div className="fixed bottom-0 right-4 sm:right-6 z-50 w-72 bg-white rounded-t-xl shadow-2xl border border-[#EAE4D7] flex items-center justify-between px-3.5 py-2.5 select-none">
+      <div data-shopping-chat-minimized className="fixed bottom-0 right-4 sm:right-6 z-50 w-72 bg-white rounded-t-xl shadow-2xl border border-[#EAE4D7] flex items-center justify-between px-3.5 py-2.5 select-none">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-6 h-6 rounded-md bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-black text-[11px] shrink-0 border border-[#EAE4D7] overflow-hidden select-none">
             {activeConversation?.store.logoUrl && !isUnsafeShopLogo(activeConversation.store.logoUrl) ? (

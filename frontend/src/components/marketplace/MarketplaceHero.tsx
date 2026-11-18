@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Store, ShieldCheck, Radio } from 'lucide-react';
 
 interface BannerStore {
   id: string;
@@ -13,13 +13,12 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
   const [interacting, setInteracting] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const partner = stores.find((store) => store.activeCampaign && Date.parse(store.activeCampaign.endsAt) > Date.now());
-
   const slides = [
     {
       image: '/assets/marketplace/scanms-marketplace-banner-v3.png',
       eyebrow: 'SCANMS · MẠNG LƯỚI TIẾP THỊ & CỘNG TÁC VIÊN',
       title: partner ? partner.activeCampaign!.name : 'Một điểm đến. Nhiều lựa chọn chính hãng.',
-      description: partner ? `Khám phá chương trình đang diễn ra tại ${partner.name} và lấy liên kết tiếp thị.` : 'Khám phá sản phẩm từ nhiều gian hàng đối tác, mua sắm chính hãng và nhận ưu đãi từ mạng lưới nhà sáng tạo SCANMS.',
+      description: partner ? `Khám phá chương trình đang diễn ra tại ${partner.name} và lấy liên kết tiếp thị.` : 'Nền tảng quản lý đội ngũ cộng tác viên bán hàng và tiếp thị liên kết, cung cấp công cụ Smart Link, mã QR và tài nguyên số chính hãng.',
       label: partner ? `Ghé thăm ${partner.name}` : 'Khám phá gian hàng',
       href: partner ? `/shops/${partner.id}` : '#featured-stores',
     },
@@ -28,7 +27,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
       eyebrow: 'KHÁM PHÁ CÙNG NHÀ SÁNG TẠO',
       title: 'Chọn sản phẩm hay, cùng KOC bạn thích.',
       description: 'Xem KOC giới thiệu sản phẩm trong các phiên Live và khám phá thêm nhiều gian hàng đối tác.',
-      label: 'Khám phá Live cùng KOC ->',
+      label: 'Khám phá Live cùng KOC',
       href: null,
     },
     {
@@ -36,11 +35,10 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
       eyebrow: 'SCANMS LIVE COMMERCE',
       title: 'Xem trực tiếp. Hỏi ngay. Chọn đúng.',
       description: 'Gặp gỡ KOC, khám phá sản phẩm đang được giới thiệu và ưu đãi còn hiệu lực trong phiên Live.',
-      label: 'Khám phá KOC Live ->',
+      label: 'Khám phá KOC Live',
       href: null,
     },
   ];
-
   const move = (offset: number) => setActive((previous) => (previous + offset + slides.length) % slides.length);
 
   useEffect(() => {
@@ -54,135 +52,58 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
   useEffect(() => {
     if (interacting || reducedMotion) return;
     const timer = window.setInterval(() => {
-      if (!document.hidden) setActive((previous) => (previous + 1) % slides.length);
-    }, 7000);
+      if (!document.hidden) setActive((previous) => (previous + 1) % 3);
+    }, 4000);
     return () => window.clearInterval(timer);
-  }, [interacting, reducedMotion, slides.length]);
+  }, [interacting, reducedMotion]);
 
   return (
-    <section className="w-full">
-      <div
-        className="relative overflow-hidden my-4 md:my-9 mx-auto w-[calc(100%-32px)] md:w-[calc(100%-80px)] max-w-[1600px] min-h-[380px] md:min-h-[440px] md:h-[440px] rounded-[26px] border border-[#ead2ae] bg-[linear-gradient(110deg,#fff7e9_0%,#f5dfbd_55%,#c99a55_100%)] shadow-[0_8px_24px_rgba(82,53,20,0.08)]"
-        onMouseEnter={() => setInteracting(true)}
-        onMouseLeave={() => setInteracting(false)}
-        onFocusCapture={() => setInteracting(true)}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-            event.preventDefault();
-            move(event.key === 'ArrowLeft' ? -1 : 1);
-          }
-        }}
-      >
-        {slides.map((slide, index) => (
-          <div
-            key={slide.image}
-            className={`absolute inset-0 w-full h-full flex items-center transition-all duration-700 ease-in-out ${
-              index === active
-                ? 'opacity-100 visible pointer-events-auto z-[2]'
-                : 'opacity-0 invisible pointer-events-none'
-            }`}
-            aria-hidden={index !== active}
-          >
-            <img
-              src={slide.image}
-              alt=""
-              fetchPriority={index === 0 ? 'high' : 'auto'}
-              className="absolute inset-0 w-full h-full object-cover object-[70%_center]"
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff7e9_0%,rgba(255,247,233,0.96)_35%,rgba(255,247,233,0.75)_55%,rgba(255,247,233,0.15)_100%)]" />
-
-            <div className="relative z-[2] max-w-[650px] p-6 sm:p-9 lg:p-[60px] text-left">
-              <span className="inline-block px-3.5 py-1.5 rounded-full bg-white/85 border border-[#ead2ae] text-[#8b682f] text-[11px] font-extrabold tracking-widest uppercase mb-4">
-                {slide.eyebrow}
-              </span>
-              <h1 className="text-[28px] md:text-[clamp(32px,3.5vw,52px)] leading-[1.15] font-extrabold text-[#352313] m-0 mb-4">
-                {slide.title}
-              </h1>
-              <p className="text-[#80694d] text-[15px] leading-[1.7] m-0 mb-6.5">
-                {slide.description}
-              </p>
-
-              <div className="flex flex-wrap gap-3.5">
-                {slide.href ? (
-                  slide.href.startsWith('#') ? (
-                    <a
-                      href={slide.href}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        document.getElementById('featured-stores')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }}
-                      className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(160,105,35,0.2)] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
-                    >
-                      {slide.label}
-                    </a>
-                  ) : (
-                    <Link
-                      to={slide.href}
-                      className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(160,105,35,0.2)] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
-                    >
-                      {slide.label}
-                    </Link>
-                  )
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onOpenLive}
-                    className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(160,105,35,0.2)] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
-                  >
-                    {slide.label}
-                  </button>
-                )}
-                <Link
-                  to="/search"
-                  className="bg-white/85 text-[#302317] border border-[#b8862f] rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center transition-all duration-200 hover:bg-white hover:border-[#8b682f]"
-                >
-                  Tất cả sản phẩm
-                </Link>
+    <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-3 text-left sm:py-7">
+      <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
+        <div
+          role="region" aria-roledescription="carousel" aria-label="Chương trình nổi bật SCANMS"
+          className="relative overflow-hidden rounded-3xl border border-[#EAE4D7] bg-[#FAF8F5] shadow-[0_16px_44px_rgba(93,70,35,0.10)]"
+          onMouseEnter={() => setInteracting(true)} onMouseLeave={() => setInteracting(false)}
+          onFocusCapture={() => setInteracting(true)}
+          onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false); }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+              event.preventDefault();
+              move(event.key === 'ArrowLeft' ? -1 : 1);
+            }
+          }}
+        >
+          {slides.map((slide, index) => (
+            <div key={slide.image} hidden={index !== active} role="group" aria-roledescription="slide" aria-label={`${index + 1} / ${slides.length}`} className={index === active ? 'flex flex-col sm:block' : 'hidden'}>
+              <img src={slide.image} alt="" width={2152} height={731} fetchPriority={index === 0 ? 'high' : 'auto'} className="order-2 aspect-[2152/731] w-full object-contain sm:absolute sm:inset-0 sm:h-full sm:object-cover sm:object-[70%_center]" />
+              <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,#FAF8F5_0%,rgba(250,248,245,.96)_32%,rgba(250,248,245,.78)_55%,rgba(250,248,245,.20)_100%)] sm:block" />
+              {slide.href ? (
+                <Link to={slide.href} aria-label={slide.label} className="absolute inset-0 focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-[#C59B58]" />
+              ) : (
+                <button type="button" onClick={onOpenLive} aria-label={slide.label} className="absolute inset-0 cursor-pointer focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-[#C59B58]" />
+              )}
+              <div className="pointer-events-none relative order-1 flex min-h-[240px] max-w-[660px] flex-col items-start justify-center bg-[#FAF8F5] px-4 py-5 sm:min-h-[440px] sm:bg-transparent sm:px-12 sm:pb-28 sm:pt-14">
+                <span className="inline-flex max-w-full items-center text-[10px] font-bold tracking-[0.06em] text-[#7D715E] sm:rounded-full sm:border sm:border-[#EEDFC6] sm:bg-white/90 sm:px-3 sm:py-1.5">{slide.eyebrow}</span>
+                {index === 0 ? <h1 className="mb-2 mt-3 text-[23px] font-bold leading-[1.2] tracking-tight sm:mb-4 sm:mt-5 sm:text-[44px] sm:font-black">{slide.title}</h1> : <h2 className="mb-2 mt-3 text-[23px] font-bold leading-[1.2] tracking-tight sm:mb-4 sm:mt-5 sm:text-[44px] sm:font-black">{slide.title}</h2>}
+                <p className="max-w-[470px] text-[13px] leading-[1.6] text-[#7D715E] sm:text-sm sm:leading-6">{slide.description}</p>
+                <div className="pointer-events-auto mt-4 grid w-full grid-cols-2 gap-2 sm:mt-6 sm:flex sm:w-auto sm:flex-wrap sm:gap-3 [&>a]:justify-center [&>button]:justify-center">
+                  {slide.href ? <Link to={slide.href} aria-label={slide.label} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl bg-[#C59B58] px-2 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F] sm:px-5 sm:text-xs sm:font-bold"><span className="sm:hidden">{partner ? 'Ghé thăm Shop' : 'Gian hàng'}</span><span className="hidden sm:inline">{slide.label}</span><ArrowRight size={14} /></Link> : <button type="button" onClick={onOpenLive} aria-label={slide.label} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl bg-[#C59B58] px-2 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F] sm:px-5 sm:text-xs sm:font-bold"><span className="sm:hidden">Khám phá Live</span><span className="hidden sm:inline">{slide.label}</span><Radio size={14} /></button>}
+                  <Link to="/search" className="inline-flex min-h-11 min-w-0 items-center rounded-xl border border-[#EAE4D7] bg-white/90 px-2 text-[11px] font-semibold hover:border-[#C59B58] sm:px-5 sm:text-xs sm:font-bold">Tất cả sản phẩm</Link>
+                </div>
               </div>
             </div>
+          ))}
+          <div className="relative flex items-center justify-center gap-2 border-t border-[#EAE4D7] bg-white/90 px-4 py-1.5 sm:absolute sm:inset-x-0 sm:bottom-0 sm:px-6 sm:py-3 md:justify-between">
+            <div className="hidden gap-4 text-[11px] font-semibold text-[#7D715E] md:flex"><span className="flex items-center gap-1.5"><Store size={15} /> Nhãn hàng trực thuộc</span><span className="flex items-center gap-1.5"><ShieldCheck size={15} /> Đối tác eKYC xác minh</span></div>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => move(-1)} aria-label="Banner trước" className="rounded-full p-3 hover:bg-[#F3EFE6]"><ArrowLeft size={16} /></button>
+              {slides.map((slide, index) => <button type="button" key={slide.image} onClick={() => setActive(index)} aria-label={`Xem banner ${index + 1}`} aria-current={index === active ? 'true' : undefined} className="flex h-10 w-8 items-center justify-center"><span className={`h-1.5 rounded-full ${index === active ? 'w-6 bg-[#C59B58]' : 'w-2 bg-[#EAE4D7]'}`} /></button>)}
+              <button type="button" onClick={() => move(1)} aria-label="Banner tiếp theo" className="rounded-full p-3 hover:bg-[#F3EFE6]"><ArrowRight size={16} /></button>
+            </div>
           </div>
-        ))}
-
-        {/* Compact floating controls in bottom right */}
-        <div className="absolute right-4 md:right-8 bottom-4 md:bottom-6 z-10 flex items-center gap-1 px-2.5 py-1 bg-white/70 backdrop-blur-md border border-[#ead2ae]/60 rounded-full shadow-[0_2px_8px_rgba(82,53,20,0.06)]">
-          <button
-            type="button"
-            onClick={() => move(-1)}
-            aria-label="Banner trước"
-            className="rounded-full p-2 hover:bg-black/5 text-[#7a6855] transition-colors cursor-pointer"
-          >
-            <ArrowLeft size={15} />
-          </button>
-          <div className="flex items-center gap-1 px-1">
-            {slides.map((slide, index) => (
-              <button
-                type="button"
-                key={slide.image}
-                onClick={() => setActive(index)}
-                aria-label={`Xem banner ${index + 1}`}
-                className="flex h-6 w-5 items-center justify-center cursor-pointer"
-              >
-                <span
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === active ? 'w-5 bg-[#b8862f]' : 'w-2 bg-[#ead2ae]'
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => move(1)}
-            aria-label="Banner sau"
-            className="rounded-full p-2 hover:bg-black/5 text-[#7a6855] transition-colors cursor-pointer"
-          >
-            <ArrowRight size={15} />
-          </button>
         </div>
       </div>
     </section>
   );
 }
+

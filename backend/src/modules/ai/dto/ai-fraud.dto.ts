@@ -85,6 +85,7 @@ export interface FraudIncidentDto {
   referralLinkId?: string;
   referralLinkCode?: string;
   productName?: string;
+  productImageUrl?: string | null;
   riskScore: number; // 0 - 100
   riskLevel: FraudRiskLevel;
   anomalyTypes: FraudAnomalyType[];

@@ -29,6 +29,7 @@ describe('Monthly bonus deduction carry-forward', () => {
         locks.push(key);
         return [{ locked: 1 }];
       }),
+      storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
       monthlyBonusResult: {
         findUnique: jest.fn(
           async ({ where }) =>

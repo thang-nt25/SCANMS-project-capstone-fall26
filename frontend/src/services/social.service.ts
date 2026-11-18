@@ -8,6 +8,10 @@ export interface SocialChannel {
   followerCount: number;
   isPrimary: boolean;
   createdAt: string;
+  updatedAt?: string | null;
+  verificationStatus?: 'SELF_DECLARED' | 'PENDING' | 'VERIFIED' | 'NEEDS_INFO';
+  verifiedAt?: string | null;
+  verificationReason?: string | null;
 }
 
 export const socialService = {
@@ -31,6 +35,17 @@ export const socialService = {
 
   async deleteChannel(id: string) {
     const res: any = await api.delete(`/social-channels/${id}`);
+    return res.data;
+  },
+
+  async updateChannel(id: string, data: {
+    platformName?: string;
+    channelName?: string;
+    channelUrl?: string;
+    followerCount?: number;
+    isPrimary?: boolean;
+  }) {
+    const res: any = await api.patch(`/social-channels/${id}`, data);
     return res.data;
   },
 
