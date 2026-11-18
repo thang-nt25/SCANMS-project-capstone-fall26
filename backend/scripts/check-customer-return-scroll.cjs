@@ -35,4 +35,3 @@ if(writes.length)throw Error('Unexpected writes: '+writes.length);
 console.log(role+': orders and return detail have identical content width and left position; mobile fits without writes');await page.close();
 }
 }finally{await browser?.close();await db.$disconnect();}})().catch(e=>{console.error(e.message);process.exitCode=1;});
-

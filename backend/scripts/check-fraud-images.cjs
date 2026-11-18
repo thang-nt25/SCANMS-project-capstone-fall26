@@ -22,4 +22,3 @@ if(writes.length)throw Error('Unexpected writes: '+writes.length);
 console.log(role+': fraud filters, ten rows per page, pagination, details and mobile passed without mitigation writes');await page.close();
 }
 }finally{await browser?.close();await db.$disconnect();}})().catch(e=>{console.error(e.message);process.exitCode=1;});
-

@@ -32,4 +32,3 @@ if(writes.length)throw Error('Unexpected writes: '+writes.length);
 console.log(role+': review rows, search, required moderation reason and responsive layout passed without writes');await page.close();
 }
 }finally{await browser?.close();await db.$disconnect();}})().catch(e=>{console.error(e.message);process.exitCode=1;});
-

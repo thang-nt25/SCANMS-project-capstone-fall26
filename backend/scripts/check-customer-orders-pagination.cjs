@@ -28,4 +28,3 @@ if(writes.length)throw Error('Unexpected writes: '+writes.length);
 console.log(role+': ten orders per page, second page, newest-first sorting, order timestamps and mobile verified without writes');await page.close();
 }
 }finally{await browser?.close();await db.$disconnect();}})().catch(e=>{console.error(e.message);process.exitCode=1;});
-
