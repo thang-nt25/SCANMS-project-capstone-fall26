@@ -28,3 +28,7 @@ test('valid raw snapshots remain compatible with older response names', () => {
   assert.equal(escrowTotal(rows,'deal'),37500);
   assert.equal(escrowTotal([...rows,{commissionAmount:'123'}],'deal'),null);
 });
+
+test('released standard is zero while remaining Deal is still held', () => {
+  assert.deepEqual(escrowAmounts({status:'APPROVED',baseCommissionAmount:'27500',dealBonusAmount:'12500',dealBonusStatus:'PENDING_KPI'}),{standard:0,deal:12500});
+});

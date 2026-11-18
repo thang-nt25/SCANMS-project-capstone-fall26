@@ -25,7 +25,6 @@ import type { ReferralLinkItem } from '../../services/referral-links.service';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import './referral-links-compact.css';
 
 export default function AdminReferralLinksPage() {
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);

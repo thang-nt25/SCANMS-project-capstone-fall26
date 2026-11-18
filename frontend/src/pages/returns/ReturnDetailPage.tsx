@@ -1,15 +1,14 @@
 import { ReturnActionDialog } from '../../components/returns/ReturnActionDialog';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, Truck, ClipboardCheck, Play, Copy, Check } from 'lucide-react';
 import { authService } from '../../services/auth.service';
-import { returnService, type ReturnAddress, type ReturnDetail } from '../../services/return.service';
+import { returnService, type ReturnDetail } from '../../services/return.service';
 import { useReturnAction, useReturnDetail } from '../../hooks/useReturnDetail';
 import { ReturnTimeline } from '../../components/returns/ReturnTimeline';
 import { PickupBookingForm } from '../../components/returns/PickupBookingForm';
 import { DisputeModal } from '../../components/returns/DisputeModal';
-import { uploadService } from '../../services/upload.service';
 import { MarketplaceHeader } from '../../components/marketplace/MarketplaceHeader';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { carrierStatusLabel, returnReasonLabel, returnStatusLabel } from '@/utils/return-status.utils';
@@ -19,10 +18,17 @@ import { getSafeProductImageUrl, handleProductImageError } from '../../utils/mar
 import { downloadReturnCaseReport } from '../../utils/return-case-report';
 import { analyzeReturnCase } from '../../utils/return-case-audit';
 import { ExchangeShipmentPanel } from '../../components/returns/ExchangeShipmentPanel';
+import { CustomerRefundResult } from '../../components/returns/CustomerRefundResult';
+import { GhnClaimEditor } from '../../components/returns/GhnClaimEditor';
+import { GhnClaimSummary } from '../../components/returns/GhnClaimSummary';
+import { ReturnOutcomeCard } from '../../components/returns/ReturnOutcomeCard';
+import { ShopEvidencePanel } from '../../components/returns/ShopEvidencePanel';
 import { ShopReturnDecisionForm } from '../../components/returns/ShopReturnDecisionForm';
+import { ReturnWarehouseCard } from '../../components/returns/ReturnWarehouseCard';
+import { ShopReturnShipmentPanel } from '../../components/returns/ShopReturnShipmentPanel';
+import { ShopReturnInspectionDialog } from '../../components/returns/ShopReturnInspectionDialog';
 import { ReturnOversightDetail, type ReturnDetailPanel } from '../../components/returns/ReturnOversightDetail';
 import { caseProducts, CaseProductImage } from '../../components/returns/ReturnCaseProducts';
-import '../admin/return-oversight.css';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const liabilityLabels: Record<string, string> = {
@@ -32,11 +38,7 @@ const liabilityLabels: Record<string, string> = {
 };
 const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50';
 const money = (amount: number | string) => `${Number(amount).toLocaleString('vi-VN')} ₫`;
-const ghnClaimLabels: Record<string, string> = {
-  DRAFT: 'Chờ gửi GHN', SUBMITTED: 'Đã gửi GHN, chờ phản hồi',
-  NEEDS_MORE_EVIDENCE: 'GHN yêu cầu bổ sung bằng chứng', ACCEPTED: 'GHN đã chấp thuận',
-  REJECTED: 'GHN từ chối bồi hoàn', PAID: 'Đã ghi nhận GHN thanh toán',
-};
+
 
 function TrackingCode({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -84,12 +86,12 @@ function ReturnProducts({ request, customer }: { request: ReturnDetail; customer
     return () => { active = false; };
   }, [customer, missingItems, request.order.id]);
   const products = missingItems ? originalItems.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.product }))
-    : request.items.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.orderItem.product }));
+    : request.items.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.orderItem.product, variantName: item.orderItem.variant?.name }));
   return <div className="grid gap-2.5 mt-4">
     {missingItems && <p className="text-xs text-[#7D715E]">{loading ? 'Đang tải sản phẩm…' : products.length ? 'Sản phẩm trong đơn gốc' : 'Hồ sơ chưa có thông tin sản phẩm liên kết.'}</p>}
     {products.map(item => <div key={item.id} className="flex flex-wrap items-center gap-3.5 p-3 border border-[#EAE4D7] rounded-md [&>img]:w-16 [&>img]:h-16 [&>img]:shrink-0 [&>img]:object-contain [&>div]:flex-1 [&>div]:min-w-0 [&>div]:basis-[calc(100%-80px)] sm:[&>div]:basis-auto [&>div]:text-sm [&>div_strong]:break-words [&>strong]:text-sm [&>strong]:whitespace-nowrap max-sm:[&>strong]:ml-auto [&_strong]:font-medium [&_span]:block [&_span]:mt-1.25 [&_span]:text-xs [&_span]:text-[#7D715E]">
       <img src={getSafeProductImageUrl(item.product?.imageUrl)} onError={handleProductImageError} alt={item.product?.title || 'Sản phẩm'} />
-      <div><strong>{item.product?.title || 'Sản phẩm trong đơn'}</strong><span>Số lượng: {item.quantity}</span></div>
+      <div><strong>{item.product?.title || 'Sản phẩm trong đơn'}</strong><span>{'variantName' in item && item.variantName ? `${item.variantName} · ` : ''}Số lượng: {item.quantity}</span><span>Đơn giá: {money(item.unitPrice)}</span></div>
       <strong>{money(Number(item.unitPrice) * item.quantity)}</strong>
     </div>)}
   </div>;
@@ -102,6 +104,46 @@ function ErrorText({ error }: { error: unknown }) {
   </p>;
 }
 
+function CustomerExchangeReceipt({ request }: { request: ReturnDetail }) {
+  const receipt = useReturnAction(request.id, returnService.confirmExchangeReceipt);
+  const completion = useReturnAction(request.id, returnService.confirmCompletion);
+  const actionLock = useRef(false);
+  const [working, setWorking] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const shipment = request.exchangeShipment;
+  const canReceive = request.status === 'EXCHANGE_SHIPPED' && Boolean(shipment);
+  const canComplete = request.resolution === 'EXCHANGE' && canConfirmReturnCompletion(request);
+  const received = Boolean(shipment?.receivedAt);
+  if (!canReceive && !canComplete && !(received && request.resolution === 'EXCHANGE')) return null;
+  const waitingCarrier = !received && Boolean(shipment?.provider && shipment.providerStatus !== 'delivered');
+  const busy = working || receipt.isPending || completion.isPending;
+  const products = caseProducts(request);
+  const status = received ? 'Đã xác nhận nhận hàng' : shipment?.providerStatus === 'delivered' ? 'Đã giao hàng' : shipment?.providerStatus ? carrierStatusLabel(shipment.providerStatus, 'customer') : 'Đã gửi hàng đổi';
+  async function confirm() {
+    if (actionLock.current || busy || (!canComplete && (!canReceive || waitingCarrier))) return;
+    actionLock.current = true; setWorking(true);
+    try { await (canComplete ? completion.mutateAsync(undefined) : receipt.mutateAsync(undefined)); }
+    catch { /* Preserve the action for retry; the API error is shown below. */ }
+    finally { actionLock.current = false; setWorking(false); }
+  }
+  return <section aria-label="Xác nhận hàng đổi" className="customer-exchange-receipt">
+    <header className="customer-exchange-header"><h2><Truck size={18} aria-hidden="true" />Hàng đổi của bạn</h2><span className="customer-exchange-status" role="status">{status}</span></header>
+    {shipment && <div className="customer-exchange-tracking"><p><span>{shipment.provider === 'MOCK' && /SCANMS Demo/i.test(shipment.carrierName) ? 'Vận chuyển SCANMS' : shipment.carrierName}</span><span aria-hidden="true"> · </span><strong>{shipment.trackingNumber}</strong></p><button type="button" onClick={() => { void navigator.clipboard.writeText(shipment.trackingNumber).then(() => { setCopied(true); setCopyFailed(false); }).catch(() => setCopyFailed(true)); }}>{copied ? <Check size={14} /> : <Copy size={14} />}{copied ? 'Đã sao chép' : 'Sao chép'}</button></div>}
+    {copyFailed && <p role="alert" className="customer-exchange-error">Chưa sao chép được mã vận đơn.</p>}
+    <div className="customer-exchange-products">{products.map(product => <div className="customer-exchange-product" key={product.id}><CaseProductImage product={product} size={48} /><div><strong>{product.title}</strong><p>{product.variantName ? `${product.variantName} · ` : ''}Số lượng: {product.quantity}</p></div></div>)}</div>
+    <footer className="customer-exchange-footer">
+      <div><p>Không thu thêm tiền hàng</p>{received && <p className="customer-exchange-confirmed"><Check size={14} aria-hidden="true" />Đã xác nhận nhận hàng<time dateTime={shipment!.receivedAt!}>{new Date(shipment!.receivedAt!).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</time></p>}</div>
+      {(canReceive || canComplete) && <button type="button" disabled={busy || (!canComplete && waitingCarrier)} onClick={() => void confirm()} className="customer-exchange-confirm">
+        {busy ? 'Đang xác nhận…' : canComplete ? 'Xác nhận hoàn tất' : 'Xác nhận đã nhận hàng'}
+      </button>}
+    </footer>
+    <div className="customer-exchange-errors">
+      <ErrorText error={receipt.error || completion.error} />
+    </div>
+  </section>;
+}
+
 function CustomerActions({ request }: { request: ReturnDetail }) {
   const [searchParams] = useSearchParams();
   const mayDispute = canRequestReturnReview(request);
@@ -110,12 +152,8 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
   const [carrierName, setCarrierName] = useState(request.customerShipment?.carrierName ?? '');
   const [trackingNumber, setTrackingNumber] = useState(request.customerShipment?.trackingNumber ?? '');
   const correction = useReturnAction(request.id, returnService.correctShipment);
-  const completion = useReturnAction(request.id, returnService.confirmCompletion);
-  const exchangeReceipt = useReturnAction(request.id, returnService.confirmExchangeReceipt);
   const inspectionOverdue = ['RETURN_RECEIVED', 'INSPECTING'].includes(request.status) &&
     Boolean(request.receivedAt) && new Date(request.receivedAt!).getTime() <= Date.now() - 48 * 60 * 60 * 1000;
-  const mayComplete = canConfirmReturnCompletion(request);
-  const awaitingRefund = mayComplete && request.resolution === 'REFUND' && request.refund?.status !== 'SUCCEEDED';
 
   async function correct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,28 +165,9 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
     {inspectionOverdue && <section role="alert" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
       Shop đã nhận hàng hơn 48 giờ nhưng chưa hoàn tất kiểm tra. Hệ thống đã đưa hồ sơ vào diện cần xử lý; bạn có thể gửi khiếu nại.
     </section>}
-    {request.status === 'SHOP_APPROVED' && (
-      <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
-        <h3 className="font-bold text-[#1A1612]">Lấy hàng trả tận nơi</h3>
-        <p className="mt-2 text-sm text-[#7D715E]">Sau khi đặt, đơn vị vận chuyển đến địa chỉ bạn xác nhận và mang kiện hàng về Shop.</p>
-        {!request.returnWarehouse && <p className="mt-2 text-sm text-[#7D715E]">Shop đang cấu hình kho nhận hàng trả. Bạn chưa cần gửi hàng.</p>}
-      </section>
-    )}
-    {request.status === 'SHOP_APPROVED' && request.returnWarehouse && request.shipByAt &&
-      <PickupBookingForm request={request} />}
+    {(request.status === 'SHOP_APPROVED' || request.customerShipment) && <PickupBookingForm key={request.id} request={request} />}
 
-
-
-    {(request.customerShipment || request.inspectionNotes || request.exchangeShipment) && <section className="col-span-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white"><h3 className="border-b border-[#EAE4D7] px-4 py-3 text-sm font-bold">Vận chuyển & kiểm tra</h3><div className="grid divide-y divide-[#EAE4D7] sm:grid-flow-col sm:auto-cols-fr sm:divide-x sm:divide-y-0">
-    {request.customerShipment && <section className="min-w-0 p-4">
-      <h3 className="flex items-center gap-2 text-sm font-bold"><Truck size={17} className="text-[#B88E4F]" />Hàng trả về Shop</h3>
-      <TrackingCode value={request.customerShipment.trackingNumber} />
-      <p className="mt-1 text-xs text-[#7D715E]">{request.customerShipment.carrierName}{request.customerShipment.provider === 'MOCK' ? ' · Mô phỏng' : ''}</p>
-      <p className="mt-3 text-xs font-medium text-[#8A6736]">{request.customerShipment.providerStatus ? carrierStatusLabel(request.customerShipment.providerStatus) : request.customerShipment.receivedAt ? 'Đã đến Shop' : request.status === 'PICKUP_BOOKED' ? 'Chờ lấy hàng' : 'Đang chuyển về Shop'}</p>
-      {request.customerShipment.receiptImageUrl && <a href={request.customerShipment.receiptImageUrl}
-        target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-[#B88E4F] underline">
-        Xem ảnh biên nhận</a>}
-    </section>}
+    {(request.inspectionNotes || request.exchangeShipment) && <section className="col-span-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white"><h3 className="border-b border-[#EAE4D7] px-4 py-3 text-sm font-bold">Vận chuyển & kiểm tra</h3><div className="grid divide-y divide-[#EAE4D7] sm:grid-flow-col sm:auto-cols-fr sm:divide-x sm:divide-y-0">
     {request.inspectionNotes && <section className="min-w-0 p-4">
       <h3 className="flex items-center gap-2 text-sm font-bold"><ClipboardCheck size={17} className="text-[#B88E4F]" />Shop kiểm tra</h3>
       {liabilityEvent?.data?.liability &&
@@ -158,7 +177,7 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
     {request.exchangeShipment && <section className="min-w-0 p-4">
       <h3 className="flex items-center gap-2 text-sm font-bold"><Truck size={17} className="text-[#B88E4F]" />Hàng đổi gửi đến bạn</h3>
       <TrackingCode value={request.exchangeShipment.trackingNumber} />
-      <p className="mt-1 text-xs text-[#7D715E]">{request.exchangeShipment.carrierName}{['MOCK', 'GHN_STAGING'].includes(request.exchangeShipment.provider || '') ? ' · Mô phỏng' : ''}</p>
+      <p className="mt-1 text-xs text-[#7D715E]">{request.exchangeShipment.provider === 'MOCK' && /SCANMS Demo/i.test(request.exchangeShipment.carrierName) ? 'Vận chuyển SCANMS' : request.exchangeShipment.carrierName}</p>
       {request.exchangeShipment.providerStatus && <p className="mt-3 text-xs font-medium text-[#8A6736]">{carrierStatusLabel(request.exchangeShipment.providerStatus, 'customer')}</p>}
     </section>}
     </div></section>}
@@ -182,214 +201,42 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
 
 
 
-    {request.refund && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
-      <h3 className="flex items-center gap-2 text-sm font-bold"><ClipboardCheck size={17} className="text-[#B88E4F]" />Hoàn tiền</h3>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-[#1A1612]">{money(request.refund.amount)}</p>
-      <p className="mt-1 text-xs text-[#7D715E]">{request.refund.method === 'WALLET' ? 'Ví SCANMS' : request.refund.method}</p>
-      <p className="mt-3 border-t border-[#EEDFC6] pt-3 text-xs font-semibold">{request.refund.status === 'SUCCEEDED'
-        ? 'Đã hoàn tiền vào Ví SCANMS'
-        : request.refund.status === 'FAILED' ? 'Hoàn tiền gặp lỗi; đang cần xử lý'
-          : request.refund.status === 'PROCESSING' ? 'Đang xử lý tại bên thanh toán'
-            : awaitingRefund ? 'Chưa chuyển tiền · chờ bạn xác nhận đồng ý hoàn tiền' : 'Chưa chuyển tiền · đang chờ đối soát'}</p>
-      {awaitingRefund && <p className="mt-2 text-sm leading-relaxed text-[#7D715E]">Kiểm tra kết quả xử lý bên dưới. Chỉ khi bạn bấm “Xác nhận đồng ý · Nhận tiền hoàn”, hệ thống mới cộng tiền vào Ví SCANMS và hoàn tất hồ sơ. Nếu xử lý gặp lỗi, bạn có thể thử xác nhận lại.</p>}
-      {request.refund.failureReason && <p className="mt-1 text-sm text-[#DC2626]">{request.refund.failureReason}</p>}
-      {request.refund.status === 'SUCCEEDED' && request.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
-        <p className="mt-1 text-xs text-[#7D715E]">Bạn có thể xác nhận hoàn tất. Sau 7 ngày, hồ sơ đã hoàn tiền sẽ tự đóng.</p>}
-    </section>}
+    {request.refund && <CustomerRefundResult request={request} />}
 
-
-
-    {request.dispute && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
+    {request.dispute && !request.refund && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-bold">Kết quả khiếu nại</h3><span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-medium text-[#8A6736]">{request.dispute.status === 'OPEN' ? 'Chờ phân xử' : 'Đã phân xử'}</span></div>
       <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-[#7D715E]">{request.dispute.details}</p>
       {request.dispute.resolutionNotes && <div className="mt-3 border-t border-[#EAE4D7] pt-3"><p className="text-[11px] text-[#7D715E]">Quyết định xử lý</p><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{request.dispute.resolutionNotes}</p></div>}
     </section>}
 
     <div className="flex flex-wrap gap-2">
-      {request.status === 'EXCHANGE_SHIPPED' && request.exchangeShipment &&
-        <button type="button" disabled={exchangeReceipt.isPending || Boolean(request.exchangeShipment.provider && request.exchangeShipment.providerStatus !== 'delivered')}
-          onClick={() => void exchangeReceipt.mutateAsync(undefined).catch(() => undefined)} className={`${primary} min-h-11`}>
-          {exchangeReceipt.isPending ? 'Đang xác nhận…' : 'Tôi đã nhận hàng đổi'}
-        </button>}
-      <ErrorText error={exchangeReceipt.error} />
-      {mayComplete && <ReturnActionDialog title={awaitingRefund ? "Đồng ý nhận tiền hoàn" : "Xác nhận hoàn tất"} busy={completion.isPending}><p className="text-sm text-[#7D715E]">{awaitingRefund ? `Số tiền hoàn: ${money(request.refund?.amount || 0)}. Xác nhận để nhận tiền vào Ví SCANMS.` : "Chỉ xác nhận khi bạn đã nhận được kết quả xử lý."}</p><button type="button" disabled={completion.isPending}
-        onClick={() => void completion.mutateAsync(undefined).catch(() => undefined)} className={`${primary} min-h-11 max-w-full`}>
-        {completion.isPending ? 'Đang xác nhận…' : awaitingRefund ? 'Xác nhận đồng ý · Nhận tiền hoàn' : 'Tôi đã nhận kết quả · Hoàn tất'}
-      </button><ErrorText error={completion.error} /></ReturnActionDialog>}
       {mayDispute && <button type="button" onClick={() => setShowDispute(true)}
         className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-sm font-semibold text-[#8A6736]">Yêu cầu SCANMS xem xét</button>}
     </div>
-    <ErrorText error={completion.error} />
     {showDispute && mayDispute && <DisputeModal returnId={request.id} onClose={() => setShowDispute(false)} />}
   </div>;
 }
 
 function ShopActions({ request }: { request: ReturnDetail }) {
-  const managerAssessment = [...request.events].reverse().find((event) =>
-    event.type === 'LIABILITY_ASSESSED' && event.data?.source === 'SYSTEM_MANAGER_REVIEW');
-  const [warehouse, setWarehouse] = useState<ReturnAddress>(request.returnWarehouse || {
-    name: request.order.storeName, phone: '', address: '', wardName: '', provinceName: '', districtName: '',
-  });
-  const [editingWarehouse, setEditingWarehouse] = useState(!request.returnWarehouse);
-  const mayEditWarehouse = request.status === 'SHOP_APPROVED' ||
-    (request.status === 'EXCHANGE_PENDING' && !request.exchangeBooking?.pending);
-  const [resolution, setResolution] = useState<'REFUND' | 'EXCHANGE' | 'REJECT'>(request.preferredResolution || 'REFUND');
-  const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>(
-    (managerAssessment?.data?.liability as 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON') ||
-      (request.reason === 'CHANGE_OF_MIND' ? 'CUSTOMER_REASON' : 'SHOP_FAULT'));
-  const [notes, setNotes] = useState('');
-  const warehouseAction = useReturnAction(request.id, returnService.saveWarehouse);
-  const simulateAction = useReturnAction(request.id, returnService.simulatePickup);
-  const syncAction = useReturnAction(request.id, returnService.syncPickup);
+  const mayEditWarehouse = request.status === 'SHOP_APPROVED';
   const receiptAction = useReturnAction(request.id, returnService.confirmReceipt);
   const startAction = useReturnAction(request.id, returnService.startInspection);
-  const inspectAction = useReturnAction(request.id, returnService.submitInspection);
-
-  async function submit<T>(event: FormEvent<HTMLFormElement>, action: { mutateAsync: (value: T) => Promise<unknown> }, value: T) {
-    event.preventDefault();
-    try { await action.mutateAsync(value); }
-    catch { /* Error remains visible on the form. */ }
-  }
 
   return <div className="space-y-4">
-    {request.ghnClaim && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
-      <h3 className="font-bold">Hồ sơ yêu cầu GHN bồi hoàn</h3>
-      <p className="mt-1">Trạng thái: <strong>{ghnClaimLabels[request.ghnClaim.status]}</strong></p>
-      <p className="mt-1 text-[#7D715E]">Vận đơn gốc: {request.ghnClaim.originalTrackingNumber}; mã yêu cầu GHN: {request.ghnClaim.ghnReference || 'chưa gửi'}.</p>
-      {request.ghnClaim.status === 'SUBMITTED' && Date.now() - Date.parse(request.ghnClaim.updatedAt) > 7 * 86400000 &&
-        <p role="alert" className="mt-2 font-semibold text-[#8A6736]">GHN chưa phản hồi sau 7 ngày. System Manager cần liên hệ lại và cập nhật chứng từ; việc xử lý cho khách không phải chờ GHN.</p>}
-      {request.ghnClaim.status === 'REJECTED' &&
-        <p role="alert" className="mt-2 font-semibold text-[#8A6736]">GHN đã từ chối. System Manager cần xem xét kháng nghị hoặc quyết định nguồn bù cho Shop; không trừ tiền Shop tự động.</p>}
-      {request.ghnClaim.claimedAmount && <p className="mt-1">Yêu cầu: {money(request.ghnClaim.claimedAmount)} · GHN chấp thuận: {request.ghnClaim.approvedAmount ? money(request.ghnClaim.approvedAmount) : 'chưa có'}</p>}
-      {request.ghnClaim.notes && <p className="mt-1 text-[#7D715E]">Đối soát: {request.ghnClaim.notes}</p>}
-    </section>}
+    {request.ghnClaim && <GhnClaimSummary claim={request.ghnClaim} />}
     {request.inspectionEscalatedAt && ['RETURN_RECEIVED', 'INSPECTING'].includes(request.status) &&
       <p role="alert" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm font-semibold text-[#8A6736]">
         Hồ sơ đã quá 48 giờ kiểm tra và được thông báo cho Admin. Vui lòng cập nhật kết quả sớm.
       </p>}
     {request.status === 'REQUESTED' && <ShopReturnDecisionForm key={request.id} orderId={request.orderId} request={request} />}
-    {mayEditWarehouse && !editingWarehouse && request.returnWarehouse && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
-      <p className="font-bold">Kho nhận hàng trả: {request.returnWarehouse.address}</p>
-      <p className="mt-1 text-[#7D715E]">{request.status === 'EXCHANGE_PENDING' ? 'Đây là kho gửi sản phẩm thay thế cho khách. Kiểm tra thông tin trước khi tạo vận đơn.' : 'Khách sẽ xác nhận địa chỉ lấy hàng để đặt shipper. Shop không phải cấp địa chỉ theo từng đơn.'}</p>
-      <button type="button" onClick={() => setEditingWarehouse(true)} className="mt-2 font-semibold text-[#8A6736] underline">Sửa kho nhận hàng</button>
-    </section>}
-    {mayEditWarehouse && editingWarehouse && <form
-      onSubmit={(event) => { event.preventDefault(); void warehouseAction.mutateAsync({
-        ...warehouse, name: warehouse.name.trim(), phone: warehouse.phone.trim(), address: warehouse.address.trim(),
-        wardName: warehouse.wardName.trim(), provinceName: warehouse.provinceName.trim(), districtName: warehouse.districtName?.trim() || undefined,
-      }).then(() => setEditingWarehouse(false)).catch(() => undefined); }}
-      className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
-      <h3 className="font-bold">Cấu hình kho nhận hàng trả của Shop</h3>
-      <p className="text-sm text-[#7D715E]">Lưu một lần cho gian hàng. Đây là địa chỉ GHN sẽ chuyển hàng khách trả về.</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {([
-          ['name', 'Tên người nhận tại kho'], ['phone', 'Số điện thoại kho'],
-          ['address', 'Địa chỉ kho'], ['provinceName', 'Tỉnh / thành phố'],
-          ['wardName', 'Phường / xã'], ['districtName', 'Quận / huyện (nếu địa chỉ cũ)'],
-        ] as const).map(([key, label]) => <label key={key} className="block text-sm">{label}
-          <input required={key !== 'districtName'} minLength={key === 'address' ? 10 : key === 'phone' ? 9 : 2}
-            maxLength={key === 'address' ? 500 : key === 'phone' ? 20 : 150} value={warehouse[key] || ''}
-            onChange={(event) => setWarehouse((current) => ({ ...current, [key]: event.target.value }))} className={field} />
-        </label>)}
-      </div>
-      <button disabled={warehouseAction.isPending} className={primary}>{warehouseAction.isPending ? 'Đang lưu…' : 'Lưu kho nhận hàng'}</button>
-      <ErrorText error={warehouseAction.error} />
-    </form>}
-    {request.customerShipment && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Vận đơn hàng trả</h3>
-      <p className="mt-2 text-sm">{request.customerShipment.carrierName} · {request.customerShipment.trackingNumber}</p>
-      {request.customerShipment.providerStatus && <p className="mt-1 text-xs text-[#7D715E]">Trạng thái hãng vận chuyển: {carrierStatusLabel(request.customerShipment.providerStatus)}</p>}
-      {request.customerShipment.provider === 'GHN_STAGING' && <button type="button" disabled={syncAction.isPending}
-        onClick={() => void syncAction.mutateAsync(undefined).catch(() => undefined)}
-        className="mt-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#8A6736] disabled:opacity-50">
-        {syncAction.isPending ? 'Đang đồng bộ…' : 'Đồng bộ trạng thái từ GHN'}
-      </button>}
-      <ErrorText error={syncAction.error} />
-      {request.customerShipment.receiptImageUrl && <a href={request.customerShipment.receiptImageUrl}
-        target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-[#B88E4F] underline">Xem ảnh biên nhận</a>}
-    </section>}
-    {request.pickupSimulationEnabled && request.customerShipment?.provider && ['PICKUP_BOOKED', 'RETURN_SHIPPED'].includes(request.status) && <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
-      <p className="font-bold">Mô phỏng tiến trình vận chuyển</p>
-      <p className="mt-1 text-[#7D715E]">Chỉ để test phần mềm; không tạo chuyến lấy hàng thật.</p>
-      <button type="button" disabled={simulateAction.isPending}
-        onClick={() => void simulateAction.mutateAsync({ status: request.status === 'PICKUP_BOOKED' ? 'picked' : 'delivered' }).catch(() => undefined)} className={`${primary} mt-3`}>
-        {request.status === 'PICKUP_BOOKED' ? 'Mô phỏng shipper đã lấy hàng' : 'Mô phỏng hàng đã đến Shop'}
-      </button><ErrorText error={simulateAction.error} />
-    </div>}
-    {request.status === 'RETURN_SHIPPED' && !request.customerShipment?.provider && <div>
-      <button type="button" disabled={receiptAction.isPending}
-        onClick={() => void receiptAction.mutateAsync(undefined).catch(() => undefined)} className={primary}>
-        Xác nhận Shop đã nhận hàng trả
-      </button><ErrorText error={receiptAction.error} />
-    </div>}
-    {request.status === 'RETURN_RECEIVED' && <div>
-      <button type="button" disabled={startAction.isPending}
-        onClick={() => void startAction.mutateAsync(undefined).catch(() => undefined)} className={primary}>
-        Bắt đầu kiểm tra
-      </button><ErrorText error={startAction.error} />
-    </div>}
-    {request.status === 'INSPECTING' && <ReturnActionDialog title="Kết quả kiểm tra" busy={inspectAction.isPending}
-      choices={[{ label: 'Đồng ý hoàn tiền', value: 'REFUND' }, { label: 'Đồng ý đổi sản phẩm', value: 'EXCHANGE' }, { label: 'Từ chối sau kiểm tra', value: 'REJECT', danger: true }]}
-      onSelect={value => setResolution(value as typeof resolution)}><form
-      onSubmit={(event) => void submit(event, inspectAction, { resolution, liability: (managerAssessment?.data?.liability as typeof liability) || liability, notes: notes.trim() })}
-      className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Kết quả kiểm tra</h3>
-      {request.preferredResolution && <p className="text-sm text-[#7D715E]">Khách mong muốn: {request.preferredResolution === 'REFUND' ? 'hoàn tiền vào Ví SCANMS' : 'đổi sản phẩm mới'}. Nếu xử lý khác, ghi rõ căn cứ trong phần ghi chú.</p>}
-      <p className="rounded-xl bg-[#FBF5EB] p-3 text-sm font-semibold">{resolution === 'REFUND' ? 'Chấp nhận hoàn tiền' : resolution === 'EXCHANGE' ? 'Chấp nhận đổi sản phẩm' : 'Từ chối sau kiểm tra'}</p>
-      <label className="block text-sm font-semibold">Bên chịu trách nhiệm</label>
-      <select value={managerAssessment?.data?.liability || liability} disabled={Boolean(managerAssessment)} onChange={(event) => setLiability(event.target.value as typeof liability)} className={field}>
-        <option value="LOGISTICS_FAULT" disabled={!managerAssessment}>GHN / vận chuyển (cần System Manager xác minh)</option>
-        <option value="SHOP_FAULT">Shop / hàng hóa</option>
-        <option value="CUSTOMER_REASON">Khách đổi ý</option>
-      </select>
-      {managerAssessment && <p className="text-xs text-[#7D715E]">System Manager đã xác định trách nhiệm; Shop xử lý theo kết luận này.</p>}
-      <textarea required minLength={10} maxLength={2000} rows={4} value={notes}
-        onChange={(event) => setNotes(event.target.value)} placeholder="Nêu tình trạng hàng và căn cứ quyết định" className={field} />
-      <p className="text-xs text-[#7D715E]">Hoàn tiền chỉ chuyển vào ví sau khi khách xác nhận đồng ý trong đơn. Nếu đổi sản phẩm, Shop tạo vận đơn giao hàng thay thế sau khi duyệt.</p>
-      <button disabled={inspectAction.isPending} className={primary}>Lưu kết quả kiểm tra</button>
-      <ErrorText error={inspectAction.error} />
-    </form></ReturnActionDialog>}
-    <ExchangeShipmentPanel key={request.id} request={request} />
+    {mayEditWarehouse && <ReturnWarehouseCard key={request.id} request={request} />}
+    {request.customerShipment && <ShopReturnShipmentPanel key={request.id} request={request} />}
+    {!request.customerShipment && request.status === 'RETURN_SHIPPED' && <div><button type="button" disabled={receiptAction.isPending} onClick={() => void receiptAction.mutateAsync(undefined).catch(() => undefined)} className={primary}>{receiptAction.isPending ? 'Đang cập nhật…' : 'Xác nhận Shop đã nhận hàng trả'}</button><ErrorText error={receiptAction.error} /></div>}
+    {!request.customerShipment && request.status === 'RETURN_RECEIVED' && <div><button type="button" disabled={startAction.isPending} onClick={() => void startAction.mutateAsync(undefined).catch(() => undefined)} className={primary}>{startAction.isPending ? 'Đang cập nhật…' : 'Bắt đầu kiểm tra'}</button><ErrorText error={startAction.error} /></div>}
+    {request.status === 'INSPECTING' && <ShopReturnInspectionDialog key={request.id} request={request} />}
   </div>;
 }
 
-function ShopEscalation({ request }: { request: ReturnDetail }) {
-  const [details, setDetails] = useState('');
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const action = useReturnAction(request.id, returnService.escalateShopRejection);
-  const canSend = (request.status === 'SHOP_REJECTED' && !request.dispute) ||
-    (request.status === 'DISPUTED' && request.dispute?.status === 'OPEN');
-  if (!canSend || request.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').length >= 10) return null;
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setUploading(true);
-    try {
-      const evidenceUrls = await Promise.all(files.map(async (file) =>
-        (await uploadService.uploadMedia(file, `scanms/returns/${request.id}/shop-evidence`)).url));
-      await action.mutateAsync({ details: details.trim(), evidenceUrls });
-    } catch (cause) { setError(cause); }
-    finally { setUploading(false); }
-  }
-  return <ReturnActionDialog title="Gửi bằng chứng cho Manager" busy={uploading || action.isPending}><form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
-    <h2 className="font-bold">Gửi bằng chứng cho System Manager</h2>
-    <p className="text-sm text-[#7D715E]">Nếu Shop cho rằng hàng vỡ trong lúc GHN vận chuyển, gửi ảnh đóng gói, bàn giao, biên bản hoặc video. Manager sẽ đối chiếu bằng chứng của cả hai bên; Shop chưa được tự quy lỗi cho GHN.</p>
-    <p className="text-xs text-[#7D715E]">Vận đơn GHN gốc: {request.order.outboundGhnTrackingNumber || 'Chưa có; Manager cần xác minh trước khi kết luận lỗi GHN'}.</p>
-    <textarea required minLength={20} maxLength={2000} rows={4} value={details} onChange={(event) => setDetails(event.target.value)}
-      placeholder="Mô tả lúc đóng gói, bàn giao và căn cứ cho rằng lỗi thuộc bên vận chuyển" className={field} />
-    <label className="block text-sm font-semibold">Ảnh hoặc video bằng chứng (1–5 tệp)
-      <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple
-        onChange={(event) => setFiles(Array.from(event.target.files || []).slice(0, 5))} className={`${field} font-normal`} />
-    </label>
-    {!!files.length && <p className="text-xs text-[#7D715E]">Đã chọn: {files.map((file) => file.name).join(', ')}</p>}
-    <button type="submit" disabled={uploading || action.isPending || details.trim().length < 20 || files.length === 0} className={primary}>
-      {uploading || action.isPending ? 'Đang gửi hồ sơ…' : request.status === 'DISPUTED' ? 'Bổ sung bằng chứng cho Manager' : 'Chuyển bằng chứng cho Manager'}
-    </button>
-    <ErrorText error={error || action.error} />
-  </form></ReturnActionDialog>;
-}
 
 function AdminActions({ request }: { request: ReturnDetail }) {
   const [liability, setLiability] = useState<'' | 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>('');
@@ -432,76 +279,6 @@ function AdminActions({ request }: { request: ReturnDetail }) {
   </form></ReturnActionDialog>;
 }
 
-type GhnClaimAction = 'SUBMIT' | 'REQUEST_MORE' | 'ACCEPT' | 'REJECT' | 'APPEAL' | 'PAID';
-function AdminGhnClaim({ request }: { request: ReturnDetail }) {
-  const claim = request.ghnClaim;
-  const [action, setAction] = useState<GhnClaimAction>('SUBMIT');
-  const [reference, setReference] = useState(claim?.ghnReference || '');
-  const [claimedAmount, setClaimedAmount] = useState(claim?.claimedAmount?.toString() || '');
-  const [approvedAmount, setApprovedAmount] = useState(claim?.approvedAmount?.toString() || '');
-  const [notes, setNotes] = useState('');
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [proofUrl, setProofUrl] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const update = useReturnAction(request.id, returnService.updateGhnClaim);
-  if (!claim) return null;
-  const options: GhnClaimAction[] = claim.status === 'DRAFT' || claim.status === 'NEEDS_MORE_EVIDENCE'
-    ? ['SUBMIT'] : claim.status === 'SUBMITTED' ? ['REQUEST_MORE', 'ACCEPT', 'REJECT']
-      : claim.status === 'ACCEPTED' ? ['PAID'] : claim.status === 'REJECTED' ? ['APPEAL'] : [];
-  const selected = options.includes(action) ? action : options[0];
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setUploading(true);
-    try {
-      const uploaded = proofFile ? (await uploadService.uploadMedia(proofFile, `scanms/returns/${request.id}/ghn-claim`)).url : undefined;
-      await update.mutateAsync({
-        action: selected, ghnReference: reference.trim() || undefined,
-        claimedAmount: claimedAmount ? Number(claimedAmount) : undefined,
-        approvedAmount: approvedAmount ? Number(approvedAmount) : undefined,
-        notes: notes.trim(), proofUrl: uploaded || proofUrl.trim() || undefined,
-      });
-      setNotes(''); setProofFile(null); setProofUrl('');
-    } catch (cause) { setError(cause); }
-    finally { setUploading(false); }
-  }
-  return <section className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
-    <h2 className="font-bold">Đối soát bồi hoàn với GHN</h2>
-    <p className="text-sm">Trạng thái: <strong>{ghnClaimLabels[claim.status]}</strong> · Vận đơn gốc: <strong>{claim.originalTrackingNumber}</strong></p>
-    <p className="text-sm text-[#7D715E]">Hồ sơ này độc lập với việc hoàn tiền/đổi hàng cho khách. Các bước phản hồi và thanh toán GHN được Manager ghi nhận thủ công theo chứng từ.</p>
-    {claim.replacementTrackingNumber && <p className="text-sm">Vận đơn hàng đổi: {claim.replacementTrackingNumber}</p>}
-    {claim.ghnReference && <p className="text-sm">Mã yêu cầu GHN: {claim.ghnReference}</p>}
-    {claim.claimedAmount && <p className="text-sm">Yêu cầu: {money(claim.claimedAmount)} · Chấp thuận: {claim.approvedAmount ? money(claim.approvedAmount) : 'chưa có'}</p>}
-    {claim.notes && <p className="whitespace-pre-wrap text-sm">Ghi chú gần nhất: {claim.notes}</p>}
-    <div className="flex flex-wrap gap-3">{claim.evidenceUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[#8A6736] underline">Bằng chứng {index + 1}</a>)}</div>
-    {options.length > 0 && <form onSubmit={(event) => void submit(event)} className="space-y-3 border-t border-[#EEDFC6] pt-3">
-      <label className="block text-sm">Bước đối soát
-        <select value={selected} onChange={(event) => setAction(event.target.value as GhnClaimAction)} className={field}>
-          {options.map((value) => <option key={value} value={value}>{({ SUBMIT: 'Ghi nhận đã gửi GHN', REQUEST_MORE: 'GHN yêu cầu bổ sung', ACCEPT: 'GHN chấp thuận', REJECT: 'GHN từ chối', APPEAL: 'Kháng nghị với GHN', PAID: 'Ghi nhận GHN đã thanh toán' } as Record<GhnClaimAction, string>)[value]}</option>)}
-        </select>
-      </label>
-      {selected === 'SUBMIT' && <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm">Mã yêu cầu GHN<input required minLength={3} maxLength={100} value={reference} onChange={(event) => setReference(event.target.value)} className={field} /></label>
-        <label className="text-sm">Số tiền đề nghị bồi hoàn (₫)<input required type="number" min="1" max="1000000000" value={claimedAmount} onChange={(event) => setClaimedAmount(event.target.value)} className={field} /></label>
-      </div>}
-      {selected === 'APPEAL' && <label className="block text-sm">Mã yêu cầu GHN mới<input required minLength={3} maxLength={100} value={reference} onChange={(event) => setReference(event.target.value)} className={field} /></label>}
-      {(selected === 'ACCEPT' || selected === 'PAID') && <label className="block text-sm">Số tiền GHN chấp thuận (₫)
-        <input required type="number" min="1" max={claim.claimedAmount || 1000000000} value={approvedAmount} onChange={(event) => setApprovedAmount(event.target.value)} className={field} />
-      </label>}
-      <textarea required minLength={10} maxLength={2000} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ghi rõ nội dung liên hệ, phản hồi hoặc đối soát GHN" className={field} />
-      <label className="block text-sm">Chứng từ GHN {selected === 'SUBMIT' && claim.status === 'DRAFT' ? '(nếu cần bổ sung)' : '(bắt buộc)'}
-        <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" onChange={(event) => setProofFile(event.target.files?.[0] || null)} className={field} />
-      </label>
-      <input type="url" value={proofUrl} onChange={(event) => setProofUrl(event.target.value)} placeholder="Hoặc dán URL HTTPS của chứng từ GHN" className={field} />
-      <button type="submit" disabled={uploading || update.isPending || notes.trim().length < 10 ||
-        ((selected !== 'SUBMIT' || claim.status === 'NEEDS_MORE_EVIDENCE') && !proofFile && !proofUrl.trim())} className={primary}>
-        {uploading || update.isPending ? 'Đang lưu đối soát…' : 'Lưu bước đối soát GHN'}
-      </button>
-      <ErrorText error={error || update.error} />
-    </form>}
-  </section>;
-}
 
 function AdminRefundRetry({ request }: { request: ReturnDetail }) {
   const retry = useReturnAction(request.id, returnService.retryPendingRefund);
@@ -529,13 +306,13 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
   if (!user) return <div className="min-h-screen bg-[#FAF8F5] p-6"><p>Bạn cần đăng nhập để xem hồ sơ.</p>
     <button onClick={() => navigate('/login')} className={`${primary} mt-3`}>Đăng nhập</button></div>;
 
-  return <div className={mode === 'customer' ? 'customer-portal-layout min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans' : ''}>
-    {mode === 'customer' && <div className="shrink-0 z-40"><MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} /></div>}
-    <main className={mode === 'customer' ? 'w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col' : 'min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6'}>
-      <div className={mode === 'customer' ? 'flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0 lg:h-full' : ''}>
-      {mode === 'customer' && <aside className="relative hidden w-full lg:w-[265px] lg:shrink-0 lg:h-full lg:flex lg:flex-col after:pointer-events-none after:absolute after:top-7 after:bottom-5 after:-right-3 after:w-px after:bg-[#EAE4D7]"><Sidebar currentUser={user} className="px-0 lg:h-full lg:overflow-y-auto no-scrollbar" onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
-      <div className={mode === 'customer' ? 'workspace-page-column w-full flex-1 min-w-0 min-h-0 lg:px-3 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]' : ''}>
-      <div className={`mx-auto space-y-4 ${mode === 'customer' ? 'shrink-0 min-w-0 w-full border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-[0_8px_30px_rgba(110,84,39,.06)] [&>div]:p-4 sm:[&>div]:p-4 [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0' : 'max-w-5xl'}`}>
+  return <div className={mode === 'customer' ? 'customer-return-layout customer-portal-layout min-h-dvh bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans' : ''}>
+    {mode === 'customer' && <div className="sticky top-0 isolate shrink-0 bg-[#FAF8F5] z-40"><MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} /></div>}
+    <main className={mode === 'customer' ? 'w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col' : mode === 'shop' ? 'shop-return-workspace min-h-screen bg-[#FAF8F5] text-[#1A1612]' : 'min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6'}>
+      <div className={mode === 'customer' ? 'flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0' : ''}>
+      {mode === 'customer' && <aside className="relative hidden w-full lg:w-[265px] lg:shrink-0 lg:sticky lg:top-[155px] lg:flex lg:flex-col after:pointer-events-none after:absolute after:top-7 after:bottom-5 after:-right-3 after:w-px after:bg-[#EAE4D7]"><Sidebar currentUser={user} className="px-0 lg:max-h-[calc(100dvh-165px)] lg:overflow-y-auto no-scrollbar" onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
+      <div className={mode === 'customer' ? 'workspace-page-column w-full flex-1 min-w-0 min-h-0 lg:px-3 pt-4 sm:pt-5 pb-5 [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]' : ''}>
+      <div className={`mx-auto space-y-4 ${mode === 'customer' ? 'shrink-0 min-w-0 w-full border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-[0_8px_30px_rgba(110,84,39,.06)] [&>div]:p-4 sm:[&>div]:p-4 [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0' : mode === 'shop' ? 'shop-return-detail' : 'max-w-5xl'}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
             <ArrowLeft className="h-4 w-4" /> Quay lại đơn hàng
@@ -556,14 +333,18 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
           {detail.error instanceof Error ? detail.error.message : 'Không thể tải hồ sơ.'}
         </div>}
         {detail.data && <>
-          {mode !== 'customer' && <header className="rounded-2xl border border-[#EAE4D7] bg-white p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#B88E4F]">SCANMS · Đổi trả / Hoàn tiền</p>
-            <h1 className="mt-1 text-xl font-black">Đơn #{detail.data.order.externalOrderSn}</h1>
-            <p className="mt-1 text-sm text-[#7D715E]">Gian hàng: {detail.data.order.storeName}</p>
+          {mode !== 'customer' && <header className="shop-return-heading rounded-2xl border border-[#EAE4D7] bg-white p-5">
+            <CaseProductImage product={caseProducts(detail.data)[0]} size={64} />
+            <div><p className="text-xs text-[#7D715E]">Hồ sơ đổi trả</p>
+            <h1 className="mt-1 text-lg font-semibold">{detail.data.order.externalOrderSn}</h1>
+            <p className="mt-1 text-xs text-[#7D715E]">{detail.data.order.storeName}</p></div>
+            <div className="shop-return-heading-status"><span>{returnStatusLabel(detail.data.status)}</span><time>Gửi lúc {new Date(detail.data.submittedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</time></div>
           </header>}
           {mode === 'admin' && <ReturnCaseAudit request={detail.data} />}
           <ReturnTimeline request={detail.data} />
-{mode !== 'customer' && detail.data.partnerIncome && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4" aria-label="Thu nhập đối tác của đơn hàng">
+          {mode === 'customer' && <CustomerExchangeReceipt request={detail.data} />}
+          {mode === 'shop' && <ExchangeShipmentPanel key={detail.data.id} request={detail.data} />}
+{mode === 'admin' && detail.data.partnerIncome && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4" aria-label="Thu nhập đối tác của đơn hàng">
             <h2 className="font-bold text-[#1A1612]">Thu nhập đối tác của đơn hàng</h2>
             <p className="mt-2 text-xl font-black text-[#8A6736]">{money(detail.data.partnerIncome.amount)}</p>
             <p className="mt-1 text-sm text-[#7D715E]">
@@ -594,20 +375,8 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
               Đây là phản hồi của Shop, chưa phải kết quả phân xử của SCANMS. Nếu không đồng ý, bạn có thể yêu cầu SCANMS xem xét hồ sơ và bằng chứng.
             </p>}
           </section>}
-          {mode !== 'customer' && detail.data.dispute?.resolutionNotes && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
-            <h2 className="font-bold">Quyết định của System Manager</h2>
-            <p className="mt-2 whitespace-pre-wrap">{detail.data.dispute.resolutionNotes}</p>
-          </section>}
-          {mode !== 'customer' && detail.data.refund && <section role="status" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
-            <h2 className="font-bold">Khoản hoàn cho khách: {money(detail.data.refund.amount)}</h2>
-            <p className="mt-2">{detail.data.refund.status === 'SUCCEEDED'
-              ? 'Đã hoàn vào ví khách thành công. Shop không hoàn thêm lần nữa.'
-              : ['AWAITING_CUSTOMER_CONFIRMATION', 'REFUND_PENDING', 'REFUND_FAILED'].includes(detail.data.status) && !detail.data.events.some(event => event.type === 'CUSTOMER_REFUND_CONFIRMED')
-                ? 'Đã duyệt phương án, chưa chuyển tiền. Khách cần mở hồ sơ trong đơn hàng và xác nhận đồng ý để nhận tiền vào ví. Shop không tạo khoản hoàn thứ hai.'
-                : 'Chưa hoàn thành. System Manager cần đối soát hoặc thử hoàn lại; Shop không tạo khoản hoàn thứ hai.'}</p>
-            {detail.data.refund.status === 'SUCCEEDED' && detail.data.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
-              <p className="mt-1 text-[#7D715E]">Khách cần mở hồ sơ đổi trả và xác nhận đã nhận kết quả để đóng đơn.</p>}
-          </section>}
+          {mode !== 'customer' && <ReturnOutcomeCard request={detail.data} />}
+          <div className={mode === 'shop' ? 'shop-return-information' : ''}>
           <section className="return-evidence-section rounded-2xl border border-[#EAE4D7] bg-white p-4">
             <h2 className="text-sm font-bold">Sản phẩm & bằng chứng</h2>
             <ReturnProducts request={detail.data} customer={mode === 'customer'} />
@@ -627,6 +396,16 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
             </div>
             </div>
           </section>
+          {mode === 'shop' && <aside className="shop-return-facts"><h2>Thông tin xử lý</h2><dl>
+            <dt>Người nhận</dt><dd>{detail.data.order.customerName || 'Chưa ghi nhận'}</dd>
+            <dt>Số điện thoại</dt><dd>{detail.data.order.customerPhone || 'Chưa ghi nhận'}</dd>
+            <dt>Địa chỉ</dt><dd>{detail.data.order.shippingAddress || 'Chưa ghi nhận'}</dd>
+            <dt>Phương án yêu cầu</dt><dd>{detail.data.preferredResolution === 'EXCHANGE' ? 'Đổi sản phẩm mới' : detail.data.preferredResolution === 'REFUND' ? 'Hoàn tiền vào ví' : 'Chưa ghi nhận'}</dd>
+            <dt>Thù lao KOL liên quan</dt><dd>{detail.data.partnerIncome ? money(detail.data.partnerIncome.amount) : 'Chưa ghi nhận'}</dd>
+            <dt>Trạng thái khoản tiền</dt><dd>{detail.data.partnerIncome ? ({ NOT_POSTED: 'Chưa ghi ví', PENDING: 'Chờ đối soát', AVAILABLE: 'Đã khả dụng', REVERSED: 'Đã thu hồi' }[detail.data.partnerIncome.status]) : 'Chưa ghi nhận'}</dd>
+            {detail.data.refund && <><dt>Khoản hoàn cho khách</dt><dd>{money(detail.data.refund.amount)}</dd></>}
+          </dl>{detail.data.resolution === 'EXCHANGE' && <p>Đổi hàng 1–1: bảo lưu thù lao trên đơn gốc.</p>}</aside>}
+          </div>
           {detail.data.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').map((event) => <section key={event.id}
             className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
             <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0"><h2 className="flex items-center gap-2 text-sm font-bold"><ClipboardCheck size={17} className="text-[#B88E4F]" />Bằng chứng từ Shop</h2>
@@ -636,8 +415,8 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#8A6736]"><Download size={14} />Bằng chứng {index + 1}</a>)}
             </div></div>
           </section>)}
-          {mode === 'shop' ? <><ShopEscalation request={detail.data} /><ShopActions request={detail.data} /></> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
-            <><AdminRefundRetry request={detail.data} /><AdminGhnClaim request={detail.data} /><AdminActions request={detail.data} /></>}
+          {mode === 'shop' ? <><ShopEvidencePanel request={detail.data} /><ShopActions request={detail.data} /></> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
+            <><AdminRefundRetry request={detail.data} /><GhnClaimEditor request={detail.data} /><AdminActions request={detail.data} /></>}
         </>}
       </div>
       </div>
@@ -685,7 +464,7 @@ function AdminReturnWorkspace() {
     <div id="return-admin-workspace-content"><ReturnOversightDetail key={request.id} snapshot={request} activePanel={panel} onPanelChange={setPanel}
       onChanged={async () => { await Promise.all([detail.refetch(),...['rejected-return-reviews','active-return-oversight','ghn-claims','stalled-return-inspections','return-disputes','return-history'].map(key=>client.invalidateQueries({queryKey:[key]}))]); }}
       handlingActions={current => <><AdminRefundRetry request={current}/>{!current.dispute && <AdminActions request={current}/>}{current.partnerIncome && <section className="return-detail-box"><h4>Thu nhập KOL của đơn</h4><strong>{money(current.partnerIncome.amount)}</strong><p>{({REVERSED:'Đã thu hồi',PENDING:'Đang tạm giữ',AVAILABLE:'Đã khả dụng',NOT_POSTED:'Dự kiến theo đơn'})[current.partnerIncome.status]}</p></section>}</>}
-      shippingActions={current => <div className="return-workspace-ghn-actions"><AdminGhnClaim request={current}/></div>}/></div>
+      shippingActions={current => <div className="return-workspace-ghn-actions"><GhnClaimEditor request={current}/></div>}/></div>
     </>}
     </section>
   </div>;

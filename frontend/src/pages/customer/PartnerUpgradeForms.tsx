@@ -35,7 +35,6 @@ import { toast } from '../../utils/toast';
 import type { ApplyKolData, SocialChannelFormItem } from '../../services/kyc.service';
 import { ApplicationBadge } from './PartnerUpgradeTab';
 import { socialChannelFields, socialChannelUrlError } from '../../utils/social-channel-form';
-import './partner-upgrade-form.css';
 
 const PRIMARY_CATEGORIES = [
   'Mỹ phẩm & Chăm sóc da chuyên sâu',

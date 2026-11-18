@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bookmark, Heart, Loader2, Search, Store, X } from 'lucide-react';
+import { ArrowRight, Heart, Loader2, Search, Store, X } from 'lucide-react';
 import { formatMoney, getSafeProductImageUrl, handleProductImageError, normalizeSearch } from '@/utils/marketplace.utils';
 import type { CustomerWishlistItem } from '../../services/customer.service';
 import { toast } from '../../utils/toast';
-import './customer-wishlist.css';
 
 interface CustomerWishlistTabProps {
   items: CustomerWishlistItem[];
@@ -38,7 +37,7 @@ export function CustomerWishlistTab({ items, loading, onRemove }: CustomerWishli
 
   return <section className="customer-wishlist" aria-label="Sản phẩm yêu thích">
     <header className="customer-wishlist-heading">
-      <div className="customer-wishlist-title"><span aria-hidden="true"><Bookmark size={18}/></span><h2>Đã lưu</h2><span className="customer-wishlist-count" aria-live="polite">{loading ? 'Đang tải…' : `${items.length} sản phẩm`}</span></div>
+      <span className="customer-wishlist-count" aria-live="polite">{loading ? 'Đang tải…' : `${items.length} sản phẩm`}</span>
       <div className="customer-wishlist-search"><Search size={17} aria-hidden="true"/><input aria-label="Tìm trong sản phẩm yêu thích" placeholder="Tìm sản phẩm, cửa hàng…" value={query} onChange={event => changeQuery(event.target.value)}/>{query && <button type="button" aria-label="Xóa từ khóa" onClick={() => changeQuery('')}><X size={15}/></button>}</div>
     </header>
     <div className="customer-wishlist-list" aria-labelledby="wishlist-list-heading">

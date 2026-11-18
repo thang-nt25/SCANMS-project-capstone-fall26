@@ -5,7 +5,6 @@ import { Modal } from '../ui/Modal';
 import { analyticsService, type ReferralOrderItem } from '@/services/analytics.service';
 import { KolReferralOrderDialog } from '../affiliate/KolReferralOrderDialog';
 import type { LedgerEntry, LedgerHistory } from '@/types/wallet.types';
-import './ledger-history.css';
 
 export type LedgerFilters = { search?: string; transactionType?: string; balanceBucket?: string; days?: number };
 const labels: Record<string,string> = { COMMISSION_PENDING: 'Thù lao chờ đối soát', COMMISSION_APPROVED: 'Mở khóa thù lao', PAYOUT_WITHDRAW: 'Yêu cầu rút tiền', REVERSAL: 'Thu hồi thù lao', PAYOUT_REJECT_REFUND: 'Hoàn tiền yêu cầu rút' };

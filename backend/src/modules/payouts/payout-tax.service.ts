@@ -1,12 +1,13 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-// SCANMS project policy: monthly gross withdrawal brackets, without personal deductions.
+// SCANMS project policy: fixed withholding on each new withdrawal.
 // This is a product rule, not a declaration of an individual's statutory tax regime.
 export const PAYOUT_TAX_THRESHOLD = '0.00';
-export const PAYOUT_TAX_RATE = '0.05';
-export const PAYOUT_TAX_POLICY = 'MONTHLY_PROGRESSIVE_V1';
-export const PAYOUT_TAX_BRACKETS = [
+export const PAYOUT_TAX_RATE = '0.10';
+export const PAYOUT_TAX_POLICY = 'FLAT_10_PERCENT_V1';
+export const PAYOUT_TAX_BRACKETS = [{ ceiling: null, rate: PAYOUT_TAX_RATE }] as const;
+const LEGACY_MONTHLY_BRACKETS = [
   { ceiling: '10000000', rate: '0.05' },
   { ceiling: '30000000', rate: '0.10' },
   { ceiling: '60000000', rate: '0.20' },
@@ -27,6 +28,12 @@ export function payoutTaxMonth(now = new Date()) {
 @Injectable()
 export class PayoutTaxService {
   calculateTax(grossAmount: Prisma.Decimal, monthlyGross = new Prisma.Decimal(0)) {
+    if (!grossAmount.isFinite() || grossAmount.lte(0) || grossAmount.decimalPlaces() > 2 || !monthlyGross.isFinite() || monthlyGross.lt(0) || monthlyGross.decimalPlaces() > 2)
+      throw new BadRequestException('Số tiền tính thuế không hợp lệ');
+    const taxAmount = grossAmount.mul(PAYOUT_TAX_RATE).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+    return { grossAmount, taxAmount, netAmount: grossAmount.minus(taxAmount), segments: [{ amount: grossAmount.toFixed(2), rate: PAYOUT_TAX_RATE }] };
+  }
+  private calculateLegacyMonthlyTax(grossAmount: Prisma.Decimal, monthlyGross = new Prisma.Decimal(0)) {
     if (
       !grossAmount.isFinite() ||
       grossAmount.lessThanOrEqualTo(0) ||
@@ -36,7 +43,7 @@ export class PayoutTaxService {
     }
     let position = monthlyGross, remaining = grossAmount, rawTax = new Prisma.Decimal(0);
     const segments: { amount: string; rate: string }[] = [];
-    for (const bracket of PAYOUT_TAX_BRACKETS) {
+    for (const bracket of LEGACY_MONTHLY_BRACKETS) {
       const room = bracket.ceiling === null ? remaining : Prisma.Decimal.max(new Prisma.Decimal(bracket.ceiling).minus(position), 0);
       const portion = Prisma.Decimal.min(remaining, room);
       if (portion.gt(0)) {
@@ -55,8 +62,9 @@ export class PayoutTaxService {
       const taxAmount = gross.mul('0.10').toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
       return { taxAmount, netAmount: gross.minus(taxAmount) };
     }
-    if (typeof context !== 'object' || Array.isArray(context) || context.policy !== PAYOUT_TAX_POLICY || typeof context.monthlyGrossBefore !== 'string')
+    if (typeof context === 'object' && !Array.isArray(context) && context.policy === PAYOUT_TAX_POLICY) return this.calculateTax(gross);
+    if (typeof context !== 'object' || Array.isArray(context) || context.policy !== 'MONTHLY_PROGRESSIVE_V1' || typeof context.monthlyGrossBefore !== 'string')
       throw new BadRequestException('Snapshot chính sách thuế không hợp lệ');
-    return this.calculateTax(gross, new Prisma.Decimal(context.monthlyGrossBefore));
+    return this.calculateLegacyMonthlyTax(gross, new Prisma.Decimal(context.monthlyGrossBefore));
   }
 }

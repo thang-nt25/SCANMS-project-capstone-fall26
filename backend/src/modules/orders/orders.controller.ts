@@ -375,8 +375,9 @@ export class OrdersController {
   async getMyStoreOrders(
     @CurrentUser() manager: OrderManagerIdentity,
     @Query() query: QueryStoreOrdersDto,
+    @Headers('x-skip-cache') fresh?: string,
   ) {
-    return this.ordersService.getMyStoreOrders(manager.id, manager.role, query);
+    return this.ordersService.getMyStoreOrders(manager.id, manager.role, query, fresh === 'true');
   }
 
   @Patch(':id/return-request/respond')

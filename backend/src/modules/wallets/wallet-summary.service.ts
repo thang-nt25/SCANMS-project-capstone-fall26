@@ -259,6 +259,7 @@ export class WalletSummaryService {
     const orderIds = referenceIds('ORDER_PAYMENT', 'ORDER_REFUND', 'RECONCILIATION_ORDER');
     const refundIds = referenceIds('ORDER_REFUND');
     const topUpIds = referenceIds('TOPUP_PAYOS');
+    const withdrawalIds = referenceIds('CUSTOMER_WITHDRAWAL', 'CUSTOMER_WITHDRAWAL_REFUND');
     const storeIds = [...new Set(entries.map(entry => entry.storeId).filter((id): id is string => Boolean(id)))];
     const orderSelect = { id: true, externalOrderSn: true, store: { select: { name: true } } } as const;
     const ownOrder: Prisma.OrderWhereInput = { OR: [
@@ -267,7 +268,7 @@ export class WalletSummaryService {
     ] };
     const queryWhen = <T>(ids: string[], query: () => PromiseLike<T[]>): Promise<T[]> =>
       ids.length ? Promise.resolve(query()) : Promise.resolve([]);
-    const [commissions, payouts, bonuses, orders, refunds, stores, topUps] = await Promise.all([
+    const [commissions, payouts, bonuses, orders, refunds, stores, topUps, withdrawals] = await Promise.all([
       queryWhen(commissionIds, () => this.prisma.commission.findMany({
         where: { id: { in: commissionIds }, collaboratorId },
         select: { id: true, order: { select: orderSelect } },
@@ -294,9 +295,18 @@ export class WalletSummaryService {
         where: { id: { in: topUpIds }, userId: collaboratorId },
         select: { id: true, orderCode: true },
       })),
+      queryWhen(withdrawalIds, () => this.prisma.customerWithdrawal.findMany({
+        where: { id: { in: withdrawalIds }, userId: collaboratorId },
+        select: { id: true, status: true, processedAt: true },
+      })),
     ]);
-    type ReferenceDetails = { storeName: string | null; orderId: string | null; orderCode: string | null; period: string | null; topUpCode?: string };
+    type ReferenceDetails = { storeName: string | null; orderId: string | null; orderCode: string | null; period: string | null; topUpCode?: string; withdrawalStatus?: string; processedAt?: Date | null };
     const details = new Map<string, ReferenceDetails>();
+    withdrawals.forEach(withdrawal => {
+      const value: ReferenceDetails = { storeName: null, orderId: null, orderCode: null, period: null, withdrawalStatus: withdrawal.status, processedAt: withdrawal.processedAt };
+      details.set(`CUSTOMER_WITHDRAWAL:${withdrawal.id}`, value);
+      details.set(`CUSTOMER_WITHDRAWAL_REFUND:${withdrawal.id}`, value);
+    });
     topUps.forEach(topUp => details.set(`TOPUP_PAYOS:${topUp.id}`, {
       storeName: null, orderId: null, orderCode: null, period: null, topUpCode: topUp.orderCode.toString(),
     }));

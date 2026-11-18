@@ -12,7 +12,6 @@ import {
   pricingApi,
   requestError,
 } from '../../services/enterprise-pricing.service';
-import './propose-promotion-light.css';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import {

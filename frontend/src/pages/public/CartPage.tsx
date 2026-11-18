@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { ShoppingBag, BadgeCheck, Trash2, Minus, Plus, ChevronRight, ArrowRight, MessageCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingBag, BadgeCheck, Trash2, Minus, Plus, ChevronRight, ArrowRight, ArrowLeft, MessageCircle } from 'lucide-react';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -10,6 +10,12 @@ import { handleStoreImageError } from '@/utils/image-fallback.utils';
 const isAvailable = (item: CartItem) => item.isActive && item.stockQuantity > 0;
 
 export default function CartPage() {
+  const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/marketplace');
+  };
+  const backButton = <button type="button" onClick={goBack} className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-medium text-[#7D715E] transition-colors hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#8C6226] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58]"><ArrowLeft size={14} aria-hidden="true" />Quay lại</button>;
   const {
     cart,
     selectedItemIds,
@@ -58,6 +64,7 @@ export default function CartPage() {
       <PublicHeader />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="mb-3 lg:hidden">{backButton}</div>
         {/* Cart Contents */}
         {cart.length === 0 ? (
           /* Empty Cart State */
@@ -98,6 +105,7 @@ export default function CartPage() {
                     onChange={() => toggleSelectAll()}
                   />
                   <span>Sản phẩm ({cart.length})</span>
+                  <span className="ml-1 border-l border-[#EAE4D7] pl-3">{backButton}</span>
                 </div>
                 <div className="text-center">Đơn giá</div>
                 <div className="text-center">Số lượng</div>

@@ -5,7 +5,6 @@ import { socialService, type SocialChannel } from '../../services/social.service
 import { Select } from '../../components/ui/Select';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { toast } from '../../utils/toast';
-import './social-channels.css';
 
 interface SocialChannelsPageProps { loadedData?: SocialChannel[]; isRefreshing?: boolean; onCreateLink?: () => void }
 const platforms: Record<string, string> = { TIKTOK: 'TikTok', YOUTUBE: 'YouTube', FACEBOOK: 'Facebook', INSTAGRAM: 'Instagram', THREADS: 'Threads', ZALO: 'Zalo', TELEGRAM: 'Telegram', SHOPEE_VIDEO: 'Shopee Video', LEMON8: 'Lemon8', OTHER: 'Khác' };

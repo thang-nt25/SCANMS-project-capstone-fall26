@@ -26,7 +26,6 @@ import { getSafeProductImageUrl, handleProductImageError } from '@/utils/marketp
 import { Select } from '../../components/ui/Select';
 import DateTimePicker from '../../components/common/DateTimePicker';
 import { getPendingSampleReport, hasSampleDeadlineViolation } from '../../utils/sampleModeration';
-import './sample-oversight.css';
 import { Modal } from '../../components/ui/Modal';
 import { SampleHistoryDialog, sampleHistoryEvents } from '../../components/returns/SampleHistoryDialog';
 

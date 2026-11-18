@@ -121,6 +121,7 @@ export default function MarketplacePage() {
 
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
+  const [choosingProductId, setChoosingProductId] = useState<string | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
 
   // Load user profile & customer wishlist
@@ -296,11 +297,13 @@ export default function MarketplacePage() {
             {productsFailed && <button type="button" onClick={() => void retryProducts()} className="ml-3 min-h-11 rounded-xl border border-[#C59B58] px-4 text-xs font-bold text-[#1A1612]">Thử tải lại</button>}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 [&>article]:rounded-lg [&>article>div:last-child]:p-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 items-start [&>article]:rounded-lg [&>article>div:last-child]:p-3">
             {items.map((product) => (
               <MarketplaceProductCard
                 key={product.id} product={product} wished={wishlistIds.has(product.id)}
                 onWishlist={() => void handleToggleWishlist(product.id)}
+                choosing={choosingProductId === product.id}
+                onChoosingChange={open => setChoosingProductId(open ? product.id : null)}
                 onPurchase={(intent, variantId, quantity) => handlePurchase(product, intent, variantId, quantity)}
                 deal={liveDeals[product.id]} now={liveDealsNow}
               />

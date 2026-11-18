@@ -26,10 +26,19 @@ const render = item => renderToStaticMarkup(React.createElement(MerchantOrderTra
 
 test('new replacement code is primary and the original remains visibly identified', () => {
   const html = render(order);
-  assert.match(html, /Hàng đổi mới/);
-  assert.match(html, /Demo/);
+  assert.match(html, /Hàng đổi/);
+  assert.ok(!html.includes('Demo'));
   assert.match(html, /Giao ban đầu/);
   assert.ok(html.indexOf('SIMX12345') < html.indexOf('LYG6D7'));
+});
+
+test('compact table shows only the replacement; original waybill remains available in details', () => {
+  const html = renderToStaticMarkup(React.createElement(MerchantOrderTrackingCodes, { order, compact: true, copiedTrackingId: null, onCopy() {} }));
+  assert.match(html, /Hàng đổi · SCANMS/);
+  assert.match(html, /SIMX12345/);
+  assert.ok(!html.includes('LYG6D7'));
+  assert.ok(!html.includes('Demo'));
+  assert.equal((html.match(/<button/g) || []).length, 1);
 });
 
 test('copy actions use the selected shipment code, not the original code for both', () => {

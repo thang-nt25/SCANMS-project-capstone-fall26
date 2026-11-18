@@ -7,7 +7,6 @@ import { uploadService } from '../../services/upload.service';
 import { Select } from '../../components/ui/Select';
 import { handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { toast } from '../../utils/toast';
-import './creator-account-details.css';
 
 type Details = { name: string; phone: string; gender: string; day: string; month: string; year: string };
 const daysInMonth = (year: string, month: string) => new Date(Number(year), Number(month), 0).getDate();

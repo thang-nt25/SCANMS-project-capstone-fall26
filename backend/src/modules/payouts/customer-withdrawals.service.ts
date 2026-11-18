@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CustomerWithdrawal, Prisma, UserRole } from '@prisma/client';
@@ -19,6 +20,7 @@ import {
 
 @Injectable()
 export class CustomerWithdrawalsService {
+  private readonly logger = new Logger(CustomerWithdrawalsService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly wallets: WalletsService,
@@ -184,17 +186,12 @@ export class CustomerWithdrawalsService {
     file?: Express.Multer.File,
   ) {
     this.assertOperator(user);
-    const hash = this.bills.validateBill(file);
-    const duplicate = await this.prisma.customerWithdrawal.findFirst({
-      where: { OR: [{ bankRefCode: dto.bankRefCode }, { proofHash: hash }] },
-    });
-    if (duplicate)
-      throw new ConflictException(
-        'Chứng từ hoặc mã tham chiếu đã dùng cho yêu cầu khác',
-      );
-    const bill = await this.bills.uploadBill(file!);
+    const startedAt = performance.now();
+    this.bills.validateBill(file);
+    const bill = await this.bills.uploadBill(file!, true);
+    const receiptMs = Math.round(performance.now() - startedAt);
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         const row = await this.locked(tx, id);
         await postFinance(
           tx,
@@ -241,14 +238,16 @@ export class CustomerWithdrawalsService {
         });
         return this.serialize(updated);
       });
+      this.logger.log(`Manual customer payout saved: receipt=${receiptMs}ms, total=${Math.round(performance.now() - startedAt)}ms, reused=${bill.reused === true}`);
+      return result;
     } catch (error) {
-      await this.bills.removeUnusedBill(bill.publicId).catch(() => undefined);
+      if (!bill.reused) await this.bills.removeUnusedBill(bill.publicId).catch(() => undefined);
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       )
         throw new ConflictException(
-          'Chứng từ hoặc mã tham chiếu đã được sử dụng',
+          'Yêu cầu đã được xử lý hoặc bút toán đã tồn tại. Vui lòng tải lại lịch sử.',
         );
       throw error;
     }

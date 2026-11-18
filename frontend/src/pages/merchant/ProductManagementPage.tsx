@@ -1,4 +1,6 @@
+import { ProductRowActions } from '../../components/product/ProductRowActions';
 import { ProductAiMatchDrawer } from '../../components/product/ProductAiMatchDrawer';
+import { productGroupsForCategory } from '../../utils/product-groups';
 import { ProductIdentityWarning, type SimilarProduct } from '../../components/product/ProductIdentityWarning';
 import { ReviewManagementDialog } from '../../components/product/ReviewManagementPanel';
 import { ProposePromotionModal } from '../../components/promotions/ProposePromotionModal';
@@ -12,7 +14,6 @@ import {
   Search,
   Link2,
   Package,
-  Pencil,
   Trash2,
   CheckCircle2,
   ImagePlus,
@@ -31,7 +32,6 @@ import {
   Clock3,
   ShieldCheck,
   Ban,
-  Sparkles,
   RefreshCw,
   Truck,
   ChevronLeft,
@@ -594,8 +594,14 @@ export default function ProductManagementPage() {
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
   const [productVideos, setProductVideos] = useState<any[]>([]);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-  useEffect(() => { setActiveVideoId(null); }, [selectedVideoProduct?.id]);
-  const activeReviewVideo = productVideos.find(video => video.id === activeVideoId) || productVideos[0];
+  const [videoFilter,setVideoFilter] = useState('ALL');
+  const [videoSearch,setVideoSearch] = useState('');
+  const [videoProductFilter,setVideoProductFilter] = useState('ALL');
+  const [videoLoadError,setVideoLoadError] = useState('');
+  useEffect(() => { setActiveVideoId(null);setVideoFilter('ALL');setVideoSearch('');setVideoProductFilter('ALL'); }, [selectedVideoProduct?.id]);
+  const shownVideos = productVideos.filter(video => (videoFilter === 'ALL' || video.status === videoFilter) && (videoProductFilter === 'ALL' || (video.productId || video.product?.id) === videoProductFilter) && `${video.title || ''} ${video.collaborator?.fullName || ''} ${video.product?.title || ''}`.toLocaleLowerCase('vi-VN').includes(videoSearch.toLocaleLowerCase('vi-VN')));
+  const videoProducts = Array.from(new Map(productVideos.filter(video => video.productId || video.product?.id).map(video => [video.productId || video.product.id,{id:video.productId || video.product.id,title:video.product?.title || 'Sản phẩm'}])).values());
+  const activeReviewVideo = shownVideos.find(video => video.id === activeVideoId) || shownVideos[0];
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [reviewingMediaId, setReviewingMediaId] = useState<string | null>(null);
   const [rejectionModalMedia, setRejectionModalMedia] = useState<any | null>(null);
@@ -632,6 +638,9 @@ export default function ProductManagementPage() {
   const [formSku, setFormSku] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('');
+  const [formProductGroup, setFormProductGroup] = useState('');
+  const [customProductGroup, setCustomProductGroup] = useState(false);
+  const productGroupOptions = productGroupsForCategory(storeCategory || formCategory);
   const [formCustomCategory, setFormCustomCategory] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formIngredients, setFormIngredients] = useState('');
@@ -678,12 +687,6 @@ export default function ProductManagementPage() {
   const [batchFloorPrice, setBatchFloorPrice] = useState<string>('');
   const [batchPrice, setBatchPrice] = useState<string>('');
   const [batchStock, setBatchStock] = useState<string>('');
-
-  const STEP_TITLES: Record<number, string> = {
-    1: 'Thông tin chung',
-    2: 'Phân loại & Thông số',
-    3: 'Tiếp thị & Gửi duyệt',
-  };
 
   const isStep1Complete = Boolean(
     formTitle.trim() &&
@@ -957,12 +960,16 @@ export default function ProductManagementPage() {
       title: 'Tất cả sản phẩm trong gian hàng',
     } as Product);
     setLoadingVideos(true);
+    setVideoLoadError('');
 
     try {
       const res = await api.get('/media', {
         params: { assetType: 'VIDEO', limit: 100 },
+        headers: { 'x-skip-cache': 'true' },
       });
-      const merged = [...(res.data?.items || [])];
+      const body = res.data?.data ?? res.data ?? res;
+      if (!Array.isArray(body.items)) throw new Error('Không đọc được danh sách video.');
+      const merged = [...body.items];
       merged.sort((a: any, b: any) => {
         if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
         if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
@@ -970,8 +977,7 @@ export default function ProductManagementPage() {
       });
       setProductVideos(merged);
     } catch (err) {
-      console.error('Lỗi khi tải toàn bộ video KOL:', err);
-      setProductVideos([]);
+      setVideoLoadError(err instanceof Error ? err.message : 'Không tải được video KOL.');
     } finally {
       setLoadingVideos(false);
     }
@@ -1426,6 +1432,8 @@ export default function ProductManagementPage() {
     setEditingProduct(null);
     const initialCategory = storeCategory || STANDARD_CATEGORIES[0].name;
     setFormCategory(initialCategory);
+    setFormProductGroup('');
+    setCustomProductGroup(false);
     setFormCustomCategory('');
     let defaultSku = '';
     if (initialCategory) {
@@ -1521,6 +1529,8 @@ export default function ProductManagementPage() {
     setSaveError(null);
     setModalStep(1);
     setEditingProduct(p);
+    setFormProductGroup(p.productGroup || '');
+    setCustomProductGroup(Boolean(p.productGroup && !productGroupsForCategory(storeCategory || p.categoryName || '').includes(p.productGroup)));
     setFormSku(p.sku || '');
     setFormTitle(p.title || p.name);
     const pAttrs = p.attributes && typeof p.attributes === 'object' && !Array.isArray(p.attributes) ? p.attributes : {};
@@ -2061,6 +2071,7 @@ export default function ProductManagementPage() {
           ...packageData,
           title: formTitle.trim(),
           categoryName: effectiveCategory,
+          productGroup: formProductGroup.trim(),
           description: combinedDescription || undefined,
           ingredients: formIngredients.trim() || undefined,
           origin: formOrigin.trim() || undefined,
@@ -2092,6 +2103,7 @@ export default function ProductManagementPage() {
           sku: formSku.trim().toUpperCase(),
           title: formTitle.trim(),
           categoryName: effectiveCategory,
+          productGroup: formProductGroup.trim(),
           description: combinedDescription || undefined,
           ingredients: formIngredients.trim() || undefined,
           origin: formOrigin.trim() || undefined,
@@ -2164,7 +2176,7 @@ export default function ProductManagementPage() {
       )}
 
       {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
+      {(isKol || isAdminOrManager) ? <PageHeader
         title={isKol ? "Sản phẩm Tiếp thị Liên kết" : "Sản phẩm"}
         icon={<Boxes className="w-5 h-5" />}
         actions={
@@ -2189,7 +2201,7 @@ export default function ProductManagementPage() {
             )}
           </div>
         }
-      />
+      /> : <h1 className="sr-only">Sản phẩm</h1>}
 
       {/* ────── BANNER CẢNH BÁO TỒN KHO THẤP ────── */}
       {(() => {
@@ -2280,6 +2292,7 @@ export default function ProductManagementPage() {
           <div className="product-toolbar-actions grid grid-flow-col auto-cols-[minmax(0,1fr)] @max-[900px]/product-management:w-full items-stretch min-w-0 gap-2" role="group" aria-label="Thao tác quản lý sản phẩm">
             {!isKol ? (
               <>
+                {!isAdminOrManager && <button type="button" onClick={openCreateModal} className="flex items-center justify-center w-full min-w-0 min-h-10 p-2 border border-[#B88E4F] rounded-lg bg-[#C59B58] text-[#231D15] text-xs font-semibold gap-1.5 hover:bg-[#B88E4F]"><Plus className="w-3.5 h-3.5 shrink-0"/><span>Thêm sản phẩm</span></button>}
                 {isAdminOrManager && (
                   <button
                     type="button"
@@ -2304,7 +2317,7 @@ export default function ProductManagementPage() {
                   title="Duyệt video nghiệm thu từ KOL"
                 >
                   <Video className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                  <span>Duyệt video</span>
+                  <span>Video KOL</span>
                   {pendingKolVideoCount > 0 && (
                     <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#B88E4F] text-[10px] font-extrabold inline-flex items-center justify-center shrink-0">
                       {pendingKolVideoCount}
@@ -2319,7 +2332,7 @@ export default function ProductManagementPage() {
                   title="Duyệt đánh giá từ khách hàng"
                 >
                   <MessageSquareText className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                  <span>Đánh giá khách hàng</span>
+                  <span>Đánh giá</span>
                 </button>
               </>
             ) : (
@@ -2442,6 +2455,7 @@ export default function ProductManagementPage() {
                         <span className="text-[11px] text-slate-500 font-mono block mt-0.5">
                           {sku}
                         </span>
+                        {Array.isArray(p.variants) && p.variants.length > 0 && <span className="block mt-1 text-[11px] text-[#7D715E]">{p.variants.length} phân loại</span>}
                       </div>
                     </div>
                   </TableCell>
@@ -2451,12 +2465,12 @@ export default function ProductManagementPage() {
                     </div>
                     {p.floorPrice && Number(p.floorPrice) > 0 ? (
                       <div className="text-[10px] text-[#7D715E] flex items-center gap-1 mt-0.5">
-                        <span className="text-[#8C6226] font-medium">Sàn MAP:</span>
+                        <span className="text-[#8C6226] font-medium">Giá sàn:</span>
                         <span className="font-mono">{Number(p.floorPrice).toLocaleString('vi-VN')} ₫</span>
                       </div>
                     ) : (
                       <div className="text-[10px] text-[#A79B89] mt-0.5">
-                        Chưa đặt sàn MAP
+                        Chưa có giá sàn
                       </div>
                     )}
                   </TableCell>
@@ -2592,55 +2606,7 @@ export default function ProductManagementPage() {
                           </>
                         )}
 
-                        {moderationStatus === 'APPROVED' && (
-                          <button
-                            type="button"
-                            onClick={() => setAiDrawerProduct(p)}
-                            className="h-8 px-2.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
-                            title="Tìm KOC phù hợp cho sản phẩm này qua AI Radar Matchmaker"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                            <span className="hidden sm:inline">Gợi ý KOC</span>
-                          </button>
-                        )}
-
-                        {moderationStatus === 'APPROVED' && (
-                          <button
-                            type="button"
-                            onClick={() => setDiscountModalProduct(p)}
-                            className="h-8 px-2.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
-                            title="Đề xuất chiến dịch giảm giá sản phẩm (tuân thủ giá sàn MAP)"
-                          >
-                            <Percent className="w-3.5 h-3.5 text-[#B88E4F]" />
-                            <span className="hidden xl:inline">Giảm giá</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => openProductLanding(p)}
-                          className="w-8 h-8 rounded-lg border border-[#EAE4D7] text-[#B88E4F] hover:bg-[#FBF5EB] flex items-center justify-center transition cursor-pointer"
-                          title="Xem Landing Page công khai của sản phẩm"
-                          aria-label={`Xem trang mua hàng của ${p.title}`}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(p)}
-                          className="w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer"
-                          title="Chỉnh sửa sản phẩm"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirmProduct(p)}
-                          className="w-8 h-8 rounded-lg border border-slate-200 text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
-                          title="Tạm dừng / Xóa"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <ProductRowActions name={title} approved={moderationStatus === 'APPROVED'} onEdit={() => openEditModal(p)} onSuggest={() => setAiDrawerProduct(p)} onDiscount={() => setDiscountModalProduct(p)} onView={() => openProductLanding(p)} onDelete={() => setDeleteConfirmProduct(p)} />
                       </div>
                     )}
                   </TableCell>
@@ -2658,7 +2624,7 @@ export default function ProductManagementPage() {
         icon={<Package className="h-4 w-4" />}
         title={(
           <span className="inline-flex items-center gap-3 flex-wrap align-middle">
-            <span>{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</span>
+            <span>{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm'}</span>
             {saveError && (
               <span
                 id="product-save-error"
@@ -2685,21 +2651,22 @@ export default function ProductManagementPage() {
         )}
         maxWidth="full"
         stickyHeader
-        className="!w-[min(94vw,1160px)] !max-w-[min(94vw,1160px)] !min-w-[min(94vw,1160px)] !h-[min(90dvh,780px)] !min-h-[min(90dvh,780px)] !max-h-[min(90dvh,780px)] transition-none rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        className="!w-[min(94vw,1240px)] !max-w-[min(94vw,1240px)] !min-w-[min(94vw,1240px)] !h-[min(88dvh,780px)] !min-h-[min(88dvh,780px)] !max-h-[min(88dvh,780px)] transition-none rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
         bodyClassName="!p-4 sm:!p-5 [scrollbar-gutter:stable] flex-1 flex flex-col"
         belowHeader={(
           <div className="product-editor-stepper bg-[#FAF8F5] border-b border-[#EAE4D7] px-4 py-2 sm:px-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {[
-                { step: 1, title: '1. Thông tin chung & Ảnh', sub: 'Tên, danh mục, mô tả & hình ảnh', isDone: isStep1Complete },
-                { step: 2, title: '2. Phân loại & Thông số', sub: 'Biến thể SKU, thông số & đóng gói GHN', isDone: isStep2Complete },
-                { step: 3, title: '3. Tiếp thị & Gửi duyệt', sub: 'Thù lao, mẫu thử & hồ sơ pháp lý', isDone: isStep3Complete },
+                { step: 1, title: 'Thông tin & Ảnh', isDone: isStep1Complete },
+                { step: 2, title: 'Phân loại & Giao hàng', isDone: isStep2Complete },
+                { step: 3, title: 'Tiếp thị & Gửi duyệt', isDone: isStep3Complete },
               ].map((s) => {
                 const isActive = modalStep === s.step;
                 return (
                   <button
                     key={s.step}
                     type="button"
+                    aria-current={isActive ? 'step' : undefined}
                     onClick={() => handleStepClick(s.step as 1 | 2 | 3)}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition cursor-pointer border ${
                       isActive
@@ -2724,9 +2691,6 @@ export default function ProductManagementPage() {
                       <span className={`block text-xs truncate ${isActive ? 'font-bold text-[#1A1612]' : 'font-semibold text-[#574C3D]'}`}>
                         {s.title}
                       </span>
-                      <span className="block text-[10.5px] text-[#7D715E] truncate">
-                        {s.sub}
-                      </span>
                     </div>
                   </button>
                 );
@@ -2743,7 +2707,7 @@ export default function ProductManagementPage() {
                   onClick={goToPreviousStep}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-[#574C3D] bg-white border border-[#EAE4D7] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
                 >
-                  <ChevronLeft size={14} /> Quay lại: {STEP_TITLES[modalStep - 1]}
+                  <ChevronLeft size={14} /> Quay lại
                 </button>
               )}
             </div>
@@ -2761,7 +2725,7 @@ export default function ProductManagementPage() {
                   onClick={goToNextStep}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#C59B58] hover:bg-[#B88E4F] transition cursor-pointer shadow-xs"
                 >
-                  <span>Tiếp tục: {STEP_TITLES[modalStep + 1]}</span>
+                  <span>Tiếp tục</span>
                   <ChevronRight size={14} />
                 </button>
               ) : (
@@ -2840,26 +2804,15 @@ export default function ProductManagementPage() {
                       <FolderTree className="h-4 w-4 text-[#B88E4F]" />
                     </span>
                     <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center shrink-0">
-                      1. Thông tin cơ bản
-                      <InfoTooltip text="Tên gọi, mã SKU và mô tả chi tiết công dụng sản phẩm." />
+                      Thông tin sản phẩm
                     </h4>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] text-xs font-bold text-[#8C6226] shrink-0">
-                      <ShieldCheck size={13} className="text-[#B88E4F]" />
-                      <span>{storeCategory || formCategory || (activeCategory || 'Thời trang & Phụ kiện')}</span>
-                      <span className="text-[9.5px] font-semibold text-[#8C6226] bg-[#FBF5EB] px-1 py-0.2 rounded border border-[#EEDFC6]">
-                        Cố định
-                      </span>
-                    </span>
                   </div>
-                  <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-0.5 rounded-full border border-[#EEDFC6] shrink-0">
-                    Bước 1/3
-                  </span>
                 </div>
 
                 <div className="flex flex-col space-y-3 pt-3.5">
                   {/* Hàng 1: Tên sản phẩm (col-span-8) + Mã SKU chính (col-span-4) */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 shrink-0">
-                    <div className="sm:col-span-8">
+                    <div className="sm:col-span-12">
                       <label className="text-xs font-bold text-[#1A1612] block mb-1">
                         Tên sản phẩm <span className="text-[#DC2626]">*</span>
                       </label>
@@ -2874,13 +2827,13 @@ export default function ProductManagementPage() {
                             if (suggestedCategory) handleCategoryChange(suggestedCategory);
                           }
                         }}
-                        placeholder={contextPlaceholders.titlePlaceholder}
+                        placeholder="Nhập tên sản phẩm"
                         required
                         className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-semibold focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition"
                       />
                     </div>
 
-                    <div className="sm:col-span-4">
+                    <div className="sm:col-span-6">
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-bold text-[#1A1612]">
                           Mã SKU chính <span className="text-[#DC2626]">*</span>
@@ -2901,7 +2854,7 @@ export default function ProductManagementPage() {
                             className="text-[10.5px] font-bold text-[#B88E4F] hover:underline cursor-pointer"
                             title="Tạo mã SKU ngẫu nhiên"
                           >
-                            + Ngẫu nhiên
+                            Tạo mã
                           </button>
                         )}
                       </div>
@@ -2920,14 +2873,32 @@ export default function ProductManagementPage() {
                         className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-mono font-bold focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition uppercase"
                       />
                     </div>
+                    <div className="sm:col-span-6">
+                      <label htmlFor="product-fixed-category" className="text-xs font-bold text-[#1A1612] block mb-1">Ngành hàng của cửa hàng · Cố định</label>
+                      <input id="product-fixed-category" readOnly value={storeCategory || formCategory || activeCategory || 'Thời trang & Phụ kiện'} className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#7D715E]" />
+                    </div>
+                    <div className="sm:col-span-12">
+                      <label htmlFor="product-group" className="text-xs font-bold text-[#1A1612] block mb-1">Nhóm sản phẩm</label>
+                      <div className="product-group-picker">
+                      <Select id="product-group" searchable={false} placement="bottom" value={customProductGroup ? '__custom__' : formProductGroup} onChange={(event) => {
+                        const custom = event.target.value === '__custom__';
+                        setCustomProductGroup(custom);
+                        setFormProductGroup(custom ? '' : event.target.value);
+                      }} className="w-full h-11 rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58]">
+                        <option value="">Chọn nhóm sản phẩm</option>
+                        {productGroupOptions.map(group => <option key={group} value={group}>{group}</option>)}
+                        <option value="__custom__">Nhóm khác — tự nhập</option>
+                      </Select>
+                      </div>
+                      {customProductGroup && <input aria-label="Tên nhóm sản phẩm khác" value={formProductGroup} onChange={event => setFormProductGroup(event.target.value)} maxLength={100} placeholder="Nhập tên nhóm sản phẩm" className="mt-2 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm outline-none focus:border-[#C59B58]" />}
+                    </div>
                   </div>
 
                   {/* Hàng 2: Mô tả chi tiết sản phẩm (chiều cao gọn gàng, không bị tràn hay cuộn) */}
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between mb-1.5 shrink-0">
                       <label className="text-xs font-bold text-[#1A1612] flex items-center">
-                        Mô tả chi tiết sản phẩm <span className="text-[#DC2626]">*</span>
-                        <InfoTooltip text="Mô tả công dụng nổi bật, giải pháp mang lại cho khách hàng, hướng dẫn sử dụng và cách bảo quản..." />
+                        Mô tả sản phẩm <span className="text-[#DC2626]">*</span>
                       </label>
                       <span className="text-[10.5px] text-[#7D715E] font-mono">
                         {formDescription.length} ký tự
@@ -2936,7 +2907,7 @@ export default function ProductManagementPage() {
                     <textarea
                       value={formDescription}
                       onChange={(e) => setFormDescription(e.target.value)}
-                      placeholder={contextPlaceholders.descriptionPlaceholder}
+                      placeholder="Thành phần, công dụng và cách sử dụng…"
                       className="w-full h-[220px] resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs leading-relaxed text-[#1A1612] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
                     />
                   </div>
@@ -2952,8 +2923,7 @@ export default function ProductManagementPage() {
                       <Camera className="h-4 w-4 text-[#B88E4F]" />
                     </span>
                     <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center">
-                      2. Hình ảnh sản phẩm
-                      <InfoTooltip text="Gồm 1 ảnh bìa chính (tối đa 5MB) và tối đa 4 ảnh phụ góc chụp, tem nhãn..." />
+                      Hình ảnh
                     </h4>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -2983,8 +2953,7 @@ export default function ProductManagementPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5 shrink-0">
                       <label className="text-xs font-bold text-[#1A1612] flex items-center">
-                        Ảnh bìa chính đại diện <span className="text-[#DC2626]">*</span>
-                        <InfoTooltip text="Ảnh bìa chính hiển thị nổi bật trên gian hàng và công cụ của KOL. Định dạng JPG, PNG, WEBP, tối đa 5MB." />
+                        Ảnh bìa <span className="text-[#DC2626]">*</span>
                       </label>
                     </div>
 
@@ -3035,20 +3004,20 @@ export default function ProductManagementPage() {
                           </div>
                           <div className="text-center">
                             <span className="text-xs font-bold text-[#1A1612] block">
-                              {uploadingSlot === 'main' ? 'Đang tải lên…' : 'Bấm để tải Ảnh bìa chính'}
+                              {uploadingSlot === 'main' ? 'Đang tải lên…' : 'Chọn ảnh bìa'}
                             </span>
                           </div>
                         </button>
                       )}
                     </div>
+                    <p className="mt-2 text-xs text-[#7D715E] text-center">JPG, PNG, WEBP · Tối đa 5 MB/ảnh</p>
                   </div>
 
                   {/* Thư viện 4 ảnh phụ dạng 4 Slot Grid - Tách biệt rõ ràng phía dưới */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5 shrink-0">
                       <label className="text-xs font-bold text-[#1A1612] flex items-center">
-                        Thư viện ảnh góc chụp ({formSubImages.length}/4)
-                        <InfoTooltip text="Ảnh góc nghiêng, nhãn phụ tiếng Việt, tem chống hàng giả, bảng thành phần (tối đa 4 ảnh)." />
+                        Ảnh bổ sung · {formSubImages.length}/4
                       </label>
                     </div>
 
@@ -4532,7 +4501,7 @@ export default function ProductManagementPage() {
           onClick={() => setSelectedVideoProduct(null)}
         >
           <div
-            className="kol-video-review-modal bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[900px] max-h-[calc(100dvh-32px)] text-left animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col"
+            data-empty={!loadingVideos && productVideos.length === 0} className="kol-video-review-modal kol-video-review-refined bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[900px] max-h-[calc(100dvh-32px)] text-left animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col"
             role="dialog"
             aria-modal="true"
             aria-labelledby="kol-video-review-title"
@@ -4545,14 +4514,10 @@ export default function ProductManagementPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 id="kol-video-review-title" className="text-base font-semibold text-[#1A1612] m-0 flex flex-wrap items-center gap-2">
-                    Duyệt video KOL
+                    Video KOL
                     <span className="kol-video-scope border border-[#EAE4D7] rounded-md px-1.5 py-0.5 text-[#7D715E] bg-white text-[10px] font-medium tracking-normal">{selectedVideoProduct.id === '__ALL__' ? 'Tất cả sản phẩm' : selectedVideoProduct.sku}</span>
                   </h3>
-                  <p className="text-xs text-[#7D715E] m-0 mt-0.5">
-                    {selectedVideoProduct.id === '__ALL__'
-                      ? 'Xem video và phản hồi cho nhà sáng tạo.'
-                      : `Sản phẩm: ${selectedVideoProduct.title || (selectedVideoProduct as any).name}`}
-                  </p>
+
                 </div>
               </div>
               <button
@@ -4565,26 +4530,19 @@ export default function ProductManagementPage() {
               </button>
             </div>
 
+            {productVideos.length > 0 && <div className="kol-video-review-tools"><nav className="kol-video-status-filters" aria-label="Lọc video KOL">{[['ALL','Tất cả'],['PENDING','Chờ duyệt'],['APPROVED','Đã duyệt'],['REJECTED','Đã từ chối'],['HIDDEN','Đã ẩn']].map(([value,label])=><button type="button" key={value} aria-pressed={videoFilter===value} onClick={()=>setVideoFilter(value)}>{label} <span>{value==='ALL'?productVideos.length:productVideos.filter(video=>video.status===value).length}</span></button>)}</nav><div className="kol-video-search-row"><input value={videoSearch} onChange={event=>setVideoSearch(event.target.value)} placeholder="Tìm KOL, sản phẩm…" aria-label="Tìm video KOL"/><select value={videoProductFilter} onChange={event=>setVideoProductFilter(event.target.value)} aria-label="Lọc video theo sản phẩm"><option value="ALL">Tất cả sản phẩm</option>{videoProducts.map(product=><option key={product.id} value={product.id}>{product.title}</option>)}</select></div></div>}
             <div className="kol-video-review-list flex-1 overflow-y-auto p-3 sm:p-[14px_16px] space-y-3 overscroll-contain [scrollbar-color:#EEDFC6_#FFFFFF]">
               {loadingVideos ? (
                 <div className="text-center py-10 text-xs text-[#7D715E]">
                   Đang tải danh sách video review từ máy chủ...
                 </div>
-              ) : productVideos.length === 0 ? (
-                <div className="text-center py-10 bg-[#FAF8F5] rounded-xl border border-dashed border-[#EAE4D7] p-6">
-                  <Video className="w-8 h-8 text-[#7D715E]/40 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-[#1A1612] m-0">Chưa có video review nào</p>
-                  <p className="text-[11px] text-[#7D715E] mt-1 m-0">
-                    {selectedVideoProduct.id === '__ALL__'
-                      ? 'Hiện chưa có video KOL nào được gửi đến gian hàng.'
-                      : 'Khi KOL/CTV nộp video review cho sản phẩm này qua Media Hub, video sẽ xuất hiện tại đây để bạn kiểm duyệt.'}
-                  </p>
-                </div>
+              ) : videoLoadError ? <div role="alert" className="kol-video-empty"><strong>Không tải được video KOL.</strong><button type="button" onClick={()=>void openAllVideoModeration()}>Thử lại</button></div> : shownVideos.length === 0 ? (
+                <div className="kol-video-empty"><Video size={28} aria-hidden="true"/><strong>Chưa có video trong mục này</strong></div>
               ) : (
                 <div className="kol-video-workspace">
                   <nav className="kol-video-picker" aria-label="Danh sách video cần xem">
-                    <p className="kol-video-picker-count"><span>Danh sách video</span><strong>{productVideos.length}</strong></p>
-                    {productVideos.map((video: any, index: number) => (
+                    <p className="kol-video-picker-count"><span>Danh sách video</span><strong>{shownVideos.length}</strong></p>
+                    {shownVideos.map((video: any, index: number) => (
                       <button key={video.id} type="button" className="kol-video-picker-item" data-status={video.status} aria-pressed={activeReviewVideo?.id === video.id} onClick={() => setActiveVideoId(video.id)}>
                         <span className="kol-video-picker-thumb">{video.posterUrl ? <img src={video.posterUrl} alt="" /> : <Video size={18} />}<span>{index + 1}</span></span>
                         <span className="kol-video-picker-text"><strong>{video.title || 'Video review sản phẩm'}</strong><span>{video.collaborator?.fullName || 'Nhà sáng tạo'}</span><small>{({ PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối', HIDDEN: 'Đã ẩn' } as Record<string, string>)[video.status] || video.status}{video.isFeatured ? ' · Đã ghim' : ''}</small></span>
@@ -4635,7 +4593,7 @@ export default function ProductManagementPage() {
                           )}
                         </div>
 
-                        <details className="kol-video-details"><summary>Thông tin video & sản phẩm</summary>
+                        <details open className="kol-video-details"><summary>Thông tin video & sản phẩm</summary>
                         <div className="kol-video-metadata text-[11px] text-[#7D715E]">
                           <p>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></p>
                           <p>
@@ -4744,15 +4702,7 @@ export default function ProductManagementPage() {
               )}
             </div>
 
-            <div className="kol-video-review-footer bg-white border-t border-[#EAE4D7] flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedVideoProduct(null)}
-              >
-                Đóng
-              </Button>
-            </div>
+
           </div>
         </div>
       )}

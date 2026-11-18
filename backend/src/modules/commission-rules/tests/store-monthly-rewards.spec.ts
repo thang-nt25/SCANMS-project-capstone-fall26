@@ -15,6 +15,7 @@ describe('Store monthly rewards review workflow', () => {
     name: 'Monthly KPI',
     targetRevenue: new Prisma.Decimal(50000000),
     rewardAmount: new Prisma.Decimal(2000000),
+    createdBy: 'shop-user', store: { name: 'Sora' },
   };
   let tx: any,
     db: any,
@@ -31,14 +32,14 @@ describe('Store monthly rewards review workflow', () => {
       storeMonthlyRewardGrant: {
         findUnique: jest
           .fn()
-          .mockResolvedValue({
+          .mockImplementation(({ where }: any) => where.policyId_collaboratorId ? Promise.resolve(null) : Promise.resolve({
             id: 'grant',
             collaboratorId: 'kol',
             requestedBy: shop.id,
             amount: policy.rewardAmount,
             status: 'PENDING',
             policy,
-          }),
+          })),
         upsert: jest.fn().mockResolvedValue({ id: 'grant', status: 'PENDING' }),
         update: jest.fn(),
       },
@@ -52,7 +53,9 @@ describe('Store monthly rewards review workflow', () => {
       },
       auditLog: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       commissionRule: { findMany: jest.fn().mockResolvedValue([]) },
-      notification: { create: jest.fn() },
+      notification: { create: jest.fn(), createMany: jest.fn() },
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'reviewer' }]) },
+      store: { findUnique: jest.fn().mockResolvedValue({ name: 'Sora' }) },
       financePosting: {
         create: jest.fn().mockResolvedValue({ id: 'finance' }),
       },
@@ -156,6 +159,57 @@ describe('Store monthly rewards review workflow', () => {
       tx.storeMonthlyRewardPolicy.create.mock.calls[0][0].data,
     ).not.toHaveProperty('status', 'APPROVED');
     expect(wallets.creditAvailableBalance).not.toHaveBeenCalled();
+  });
+  it('blocks reward above KPI before writing a policy or sending notifications', async () => {
+    await expect(service.create(shop, 'store', { yearMonth: rewardMonth(), name: 'Oversized', targetRevenue: '55000000', rewardAmount: '100000000' })).rejects.toThrow('không được vượt');
+    expect(tx.storeMonthlyRewardPolicy.create).not.toHaveBeenCalled();
+    expect(tx.notification.createMany).not.toHaveBeenCalled();
+  });
+  it('allows the KPI boundary and notifies reviewers, not KOL, while policy is pending', async () => {
+    await service.create(shop, 'store', { yearMonth: rewardMonth(), name: 'Boundary', targetRevenue: '55000000', rewardAmount: '55000000' });
+    const recipients = tx.notification.createMany.mock.calls.flatMap((call: any) => call[0].data);
+    expect(recipients.map((n: any) => n.userId)).toEqual(['reviewer']);
+    expect(recipients[0].data.actionUrl).toContain('tab=monthly&yearMonth=');
+    expect(wallets.creditAvailableBalance).not.toHaveBeenCalled();
+  });
+  it('announces approved policy only to approved partnerships, once per KOL', async () => {
+    tx.storeCollaborator.findMany.mockResolvedValue([{ collaboratorId: 'kol' }, { collaboratorId: 'kol' }, { collaboratorId: 'kol-b' }]);
+    await service.reviewPolicy(manager, 'policy', { decision: 'APPROVED' });
+    expect(tx.storeCollaborator.findMany).toHaveBeenCalledWith({ where: { storeId: 'store', status: 'APPROVED' }, select: { collaboratorId: true } });
+    const notices = tx.notification.createMany.mock.calls[0][0].data;
+    expect(notices.map((n: any) => n.userId)).toEqual(['kol', 'kol-b']);
+    expect(notices[0].message).toContain('50.000.000');
+    expect(notices[0].data.actionUrl).toContain(policy.yearMonth);
+    expect(wallets.creditAvailableBalance).not.toHaveBeenCalled();
+  });
+  it('does not announce rejected or already processed policy to KOL', async () => {
+    await service.reviewPolicy(manager, 'policy', { decision: 'REJECTED', note: 'Need revision' });
+    expect(tx.notification.createMany).not.toHaveBeenCalled();
+    tx.storeMonthlyRewardPolicy.updateMany.mockResolvedValue({ count: 0 });
+    tx.notification.create.mockClear();
+    await expect(service.reviewPolicy(manager, 'policy', { decision: 'APPROVED' })).rejects.toThrow();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+  });
+  it('blocks approval of an oversized legacy policy', async () => {
+    tx.storeMonthlyRewardPolicy.findUnique.mockResolvedValueOnce({ ...policy, rewardAmount: new Prisma.Decimal(100000000) });
+    await expect(service.reviewPolicy(manager, 'policy', { decision: 'APPROVED' })).rejects.toThrow('không được vượt');
+    expect(tx.storeMonthlyRewardPolicy.updateMany).not.toHaveBeenCalled();
+  });
+  it('notifies eligible KOL and reviewers on request without crediting money or duplicate notices', async () => {
+    await service.request(shop, 'policy', 'kol');
+    expect(tx.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'kol', title: 'Đề nghị thưởng tháng đang chờ duyệt' }) });
+    expect(tx.notification.createMany).toHaveBeenCalledWith({ data: [expect.objectContaining({ userId: 'reviewer' })] });
+    expect(wallets.creditAvailableBalance).not.toHaveBeenCalled();
+    tx.notification.create.mockClear(); tx.notification.createMany.mockClear();
+    tx.storeMonthlyRewardGrant.findUnique.mockResolvedValue({ id: 'existing', status: 'PENDING' });
+    await expect(service.request(shop, 'policy', 'kol')).rejects.toThrow('đã được gửi');
+    expect(tx.notification.create).not.toHaveBeenCalled();
+    expect(tx.notification.createMany).not.toHaveBeenCalled();
+  });
+  it('reports credited money to the rewarded KOL only after approval', async () => {
+    await service.reviewGrant(manager, 'grant', { decision: 'APPROVED' });
+    expect(wallets.creditAvailableBalance).toHaveBeenCalledTimes(1);
+    expect(tx.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'kol', title: 'Đã nhận thưởng doanh số tháng', data: expect.objectContaining({ yearMonth: policy.yearMonth }) }) });
   });
   it('rejects another store and a past month', async () => {
     db.store.findFirst.mockResolvedValueOnce(null);

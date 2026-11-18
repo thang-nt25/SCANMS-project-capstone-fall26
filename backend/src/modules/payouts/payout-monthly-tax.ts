@@ -19,34 +19,14 @@ export async function lockPayoutTaxForRequest(tx: Prisma.TransactionClient, id: 
 
 export async function monthlyPayoutTax(tx: Prisma.TransactionClient, collaboratorId: string, amount: Prisma.Decimal, now = new Date()) {
   const period = payoutTaxMonth(now);
-  const total = await tx.payoutRequest.aggregate({
-    where: { collaboratorId, status: { in: ['PENDING', 'PROCESSING', 'APPROVED'] }, createdAt: { gte: period.start, lt: period.end } },
-    _sum: { amount: true },
-  });
-  const before = total._sum.amount ?? new Prisma.Decimal(0);
-  const calculation = new PayoutTaxService().calculateTax(amount, before);
-  return { ...calculation, taxContext: { policy: PAYOUT_TAX_POLICY, month: period.month, monthlyGrossBefore: before.toFixed(2), segments: calculation.segments } };
+  const calculation = new PayoutTaxService().calculateTax(amount);
+  return { ...calculation, taxContext: { policy: PAYOUT_TAX_POLICY, month: period.month, rate: '0.10', segments: calculation.segments } };
 }
 
-// Rejected requests release their place in the brackets. Only unsent requests can change.
-// Processing/exported and completed snapshots remain immutable.
+// Compatibility entry point for approval/rejection callers. Saved tax snapshots
+// remain immutable; a rejection no longer changes other requests' withholding.
 export async function refreshPendingMonthlyTax(tx: Prisma.TransactionClient, collaboratorId: string, createdAt: Date) {
-  const period = payoutTaxMonth(createdAt);
-  const rows = await tx.payoutRequest.findMany({
-    where: { collaboratorId, status: { in: ['PENDING', 'PROCESSING', 'APPROVED'] }, createdAt: { gte: period.start, lt: period.end } },
-    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-  });
-  let before = new Prisma.Decimal(0);
-  for (const row of rows) {
-    if (row.status === 'PENDING' && !row.batchId) {
-      const result = new PayoutTaxService().calculateTax(row.amount, before);
-      await tx.payoutRequest.update({ where: { id: row.id }, data: {
-        taxAmount: result.taxAmount, netAmount: result.netAmount,
-        taxContext: { policy: PAYOUT_TAX_POLICY, month: period.month, monthlyGrossBefore: before.toFixed(2), segments: result.segments },
-      } });
-    }
-    before = before.plus(row.amount);
-  }
+  void tx; void collaboratorId; void createdAt;
 }
 
 export async function payoutMonthlySummaries(db: Pick<Prisma.TransactionClient, '$queryRaw'>, requests: { collaboratorId: string; createdAt: Date }[]) {

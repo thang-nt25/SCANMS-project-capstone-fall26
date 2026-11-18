@@ -16,6 +16,7 @@ describe('wallet account and ledger access', () => {
       orderRefund: { findMany: jest.fn().mockResolvedValue([]) },
       store: { findMany: jest.fn().mockResolvedValue([]) },
       walletTopUp: { findMany: jest.fn().mockResolvedValue([]) },
+      customerWithdrawal: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn((queries: Promise<unknown>[]) => Promise.all(queries)),
     };
     const service = new WalletSummaryService(prisma as unknown as PrismaService, {} as WithdrawalPolicyService);
@@ -30,6 +31,28 @@ describe('wallet account and ledger access', () => {
       create: { userId: 'owner-a', idCardNumber: '', bankName: 'MBBank', bankAccountNumber: '123456789', bankAccountName: 'NGUYEN VAN A' },
       update: { bankName: 'MBBank', bankAccountNumber: '123456789', bankAccountName: 'NGUYEN VAN A', kycStatus: 'UNVERIFIED' },
     });
+  });
+
+  it('returns the current withdrawal status without creating another debit and scopes the lookup to its owner', async () => {
+    const { service, prisma } = setup();
+    const amount = new Prisma.Decimal('-200000');
+    prisma.financialLedger.findMany.mockResolvedValue([{
+      id: 'hold', referenceType: 'CUSTOMER_WITHDRAWAL', referenceId: 'withdrawal',
+      amount, balanceBefore: new Prisma.Decimal('624991'), balanceAfter: new Prisma.Decimal('424991'),
+    }]);
+    prisma.financialLedger.count.mockResolvedValue(1);
+    const processedAt = new Date('2026-11-16T06:00:00Z');
+    prisma.customerWithdrawal.findMany.mockResolvedValue([{ id: 'withdrawal', status: 'APPROVED', processedAt }]);
+    const result = await service.getMyLedger('owner-a', { page: 1, limit: 10 });
+    expect(prisma.customerWithdrawal.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ['withdrawal'] }, userId: 'owner-a' },
+      select: { id: true, status: true, processedAt: true },
+    });
+    expect(result.entries).toMatchObject([{
+      amount: '-200000.00', balanceBefore: '624991.00', balanceAfter: '424991.00',
+      referenceDetails: { withdrawalStatus: 'APPROVED', processedAt },
+    }]);
+    expect(result.entries).toHaveLength(1);
   });
 
   it.each(['bankName', 'bankAccountNumber', 'bankAccountName'] as const)('rejects a blank %s without writing', async field => {

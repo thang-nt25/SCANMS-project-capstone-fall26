@@ -6,7 +6,8 @@ import { normalizePartnerTier } from '../../utils/partner-tier';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
-import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
+import { SampleGhnEnvironmentPicker, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
+import { PartnerSampleDetails } from '../../components/shipping/PartnerSampleDetails';
 import { useSearchParams } from 'react-router-dom';
 import {
   Users,
@@ -39,7 +40,6 @@ import {
   RefreshCw,
   FileText,
   Handshake,
-  ShieldCheck,
   UserMinus,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -99,13 +99,6 @@ function getChatMessagePreview(messageText?: string, mediaName?: string): string
   } catch {
     return messageText;
   }
-}
-
-function sampleVideoStatusLabel(status: string) {
-  if (status === 'APPROVED') return 'Đã duyệt';
-  if (status === 'REJECTED') return 'Cần chỉnh sửa';
-  if (status === 'PENDING') return 'Chờ duyệt';
-  return 'Đã nộp';
 }
 
 export interface PartnerKol {
@@ -330,8 +323,9 @@ export default function ShopKolHubPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState<'ALL' | 'PENDING_SAMPLE'>('ALL');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isDetailHeaderCompact, setIsDetailHeaderCompact] = useState(false);
-  useEffect(() => { setIsDetailHeaderCompact(false); }, [selectedKolId, activeTab]);
+  const [leaderSearch, setLeaderSearch] = useState('');
+  const [leaderTier, setLeaderTier] = useState('ALL');
+  const [leaderSort, setLeaderSort] = useState('REVENUE');
 
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -351,7 +345,6 @@ export default function ShopKolHubPage() {
   const sampleLoadSequence = useRef(0);
   const [loadingBackendData, setLoadingBackendData] = useState(() => !lastShopKolHubSnapshot);
   const [sampleFilter, setSampleFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'REVISION_REQUIRED' | 'OVERDUE' | 'DELIVERY_ISSUE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'>('ALL');
-  const [sampleProgramStats, setSampleProgramStats] = useState<any>(null);
   const [trackingModalItem, setTrackingModalItem] = useState<SampleRequestItem | null>(null);
   const [sampleShippingError, setSampleShippingError] = useState('');
   const [sampleGhnEnvironment, setSampleGhnEnvironment] = useState<'LIVE' | 'TEST'>('LIVE');
@@ -461,7 +454,6 @@ export default function ShopKolHubPage() {
         api.get('/store-collaborators/shop').catch(() => ({})),
       ]);
 
-      setSampleProgramStats(statsRes?.data || statsRes || null);
       const parsedConvs = Array.isArray(convsRes) ? convsRes : convsRes?.data || [];
       setRawConversations(parsedConvs);
       const sampleData = sampleRes?.data || sampleRes;
@@ -887,8 +879,8 @@ return true;
 
   const sortedLeaderboardKols = useMemo(() => {
     const source = allPlatformKols.length > 0 ? allPlatformKols : kols;
-    return [...source].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
-  }, [allPlatformKols, kols]);
+    return source.filter(kol => (leaderTier === 'ALL' || normalizePartnerTier(kol.tier) === leaderTier) && `${kol.fullName} ${kol.email} ${kol.handle || ''}`.toLocaleLowerCase('vi').includes(leaderSearch.trim().toLocaleLowerCase('vi'))).sort((a,b) => leaderSort === 'NAME' ? a.fullName.localeCompare(b.fullName,'vi') : Number(!!b.statsAvailable)-Number(!!a.statsAvailable) || (leaderSort === 'ORDERS' ? b.stats.totalOrders-a.stats.totalOrders : b.stats.totalRevenue-a.stats.totalRevenue));
+  }, [allPlatformKols, kols, leaderSearch, leaderTier, leaderSort]);
 
   // Selected KOL Samples
   const currentKolSamples = useMemo(() => {
@@ -896,6 +888,21 @@ return true;
     if (sampleFilter === 'ALL') return list;
     return list.filter((s) => sampleDisplayStatus(s) === sampleFilter);
   }, [samplesMap, selectedKol, sampleFilter]);
+
+  const pendingSampleCount = kols.reduce((total, kol) => total + Math.max(
+    (samplesMap[kol.id] || []).filter(sample => sample.status === 'PENDING').length,
+    kol.stats.pendingSamplesCount || 0,
+  ), 0);
+  const selectedSampleCounts = useMemo(() => {
+    const list = samplesMap[selectedKol?.id] || [];
+    return {
+      total: list.length,
+      approved: list.filter(sample => !['PENDING', 'REJECTED', 'CANCELLED'].includes(sample.status)).length,
+      video: list.filter(sample => sampleDisplayStatus(sample) === 'VIDEO_SUBMITTED').length,
+      completed: list.filter(sample => sample.status === 'COMPLETED').length,
+      overdue: list.filter(sample => sampleDisplayStatus(sample) === 'OVERDUE').length,
+    };
+  }, [samplesMap, selectedKol?.id]);
 
   // Handler: Select KOL
   const setAiMatchingMode = (enabled: boolean) => {
@@ -1447,8 +1454,8 @@ return true;
   return (
     <div className="w-full h-[calc(100dvh-74px)] min-h-[520px] flex flex-col overflow-hidden pb-1" id="shop-kol-hub-workspace">
       {/* Top Sub-Navigation Tabs */}
-      <div className="flex items-center justify-between gap-2.5 mb-2.5 shrink-0">
-        <div className="inline-flex p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] gap-1">
+      <div className="w-full min-w-0 overflow-x-auto mb-2.5 shrink-0">
+        <div className="kol-primary-tabs grid w-full min-w-[680px] grid-cols-4 p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] gap-1 [&>button]:h-[42px] [&>button]:min-w-0 [&>button]:justify-center [&>button]:whitespace-nowrap">
           <button
             type="button"
             onClick={() => {
@@ -1517,8 +1524,6 @@ return true;
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-        </div>
       </div>
 
       {/* Mode 1: AI Recommendation Mode */}
@@ -1528,30 +1533,27 @@ return true;
 
       {/* Mode 2: BẢNG XẾP HẠNG KOL */}
       <div className={`flex-1 min-h-0 w-full overflow-y-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-xs ${viewMode === 'LEADERBOARD' && !isAiMatchingMode ? 'block' : 'hidden'}`}>
-          <div className="p-4 border-b border-[#EAE4D7] bg-[#FAF8F5] flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
-                <Award size={15} />
-              </div>
-              <h2 className="text-sm font-bold text-[#1A1612]">Bảng xếp hạng nhà sáng tạo đối tác</h2>
-            </div>
-            <span className="text-xs text-[#7D715E]">{sortedLeaderboardKols.length} hồ sơ · “—” khi chưa có thống kê tại Shop</span>
+          <div className="kol-leader-toolbar">
+            <label><Search size={15}/><input aria-label="Tìm KOL trong bảng xếp hạng" placeholder="Tìm tên, email, kênh…" value={leaderSearch} onChange={event=>setLeaderSearch(event.target.value)}/></label>
+            <select aria-label="Lọc bậc KOL" value={leaderTier} onChange={event=>setLeaderTier(event.target.value)}><option value="ALL">Tất cả bậc</option><option value="BRONZE">Đồng</option><option value="SILVER">Bạc</option><option value="GOLD">Vàng</option><option value="DIAMOND">Kim Cương</option></select>
+            <select aria-label="Sắp xếp KOL" value={leaderSort} onChange={event=>setLeaderSort(event.target.value)}><option value="REVENUE">Doanh số tại Shop</option><option value="ORDERS">Đơn hàng tại Shop</option><option value="NAME">Tên A–Z</option></select>
+            <span>{sortedLeaderboardKols.length} KOL</span>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-semibold text-[#7D715E]">
-                  <th className="py-3 px-4 w-12 text-center">Hạng</th>
+                  <th className="py-3 px-4 w-12 text-center">{leaderSort === 'NAME' ? 'STT' : 'Hạng'}</th>
                   <th className="py-3 px-4">Nhà sáng tạo</th>
                   <th className="py-3 px-4 text-center">Cấp bậc</th>
-                  <th className="py-3 px-4 text-right">Doanh số tạo ra</th>
+                  <th className="py-3 px-4 text-right" title="Toàn thời gian · Số liệu tại cửa hàng">Doanh số tại Shop</th>
                   <th className="py-3 px-4 text-center">Đơn hàng</th>
                   <th className="py-3 px-4 text-center">Video hoàn tất</th>
                   <th className="py-3 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]">
+                {!sortedLeaderboardKols.length && <tr><td colSpan={7} className="p-8 text-center text-[#7D715E]">Không có KOL phù hợp bộ lọc.</td></tr>}
                 {sortedLeaderboardKols.map((rawKol, idx) => {
                   const rank = idx + 1;
                   const effectiveTier = normalizePartnerTier(rawKol.tier);
@@ -1559,7 +1561,7 @@ return true;
                   return (
                     <tr key={kol.id} className="hover:bg-[#FBF5EB]/40 transition">
                       <td className="py-3 px-4 text-center font-bold">
-                        {rank === 1 ? (
+                        {!kol.statsAvailable && leaderSort !== 'NAME' ? '—' : rank === 1 ? (
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#FAF0DD] text-[#9E7332] border border-[#E8D4B0] text-xs">
                             1
                           </span>
@@ -1654,7 +1656,7 @@ return true;
           </div>
         </div>
       {/* Mode 3: THỎA THUẬN ĐỘC QUYỀN TOÀN SHOP */}
-      <div className={`flex-1 min-h-0 w-full overflow-y-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-xs p-4 sm:p-6 ${viewMode === 'ALL_DEALS' && !isAiMatchingMode ? 'block' : 'hidden'}`}>
+      <div className={`kol-deals-workspace flex-1 min-h-0 w-full overflow-y-auto rounded-2xl p-3 ${viewMode === 'ALL_DEALS' && !isAiMatchingMode ? 'block' : 'hidden'}`}>
           <ShopActiveDealsTab
             onSelectKolForChat={(kolId) => {
               handleSelectKol(kolId);
@@ -1844,11 +1846,12 @@ return true;
                   </div>
 
                   {/* Filter Tabs Under Search */}
-                  <div className="kol-list-filters flex items-center justify-between gap-1.5 mt-2.5 pt-1 text-xs">
+                  <div className="kol-list-filters">
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
                         onClick={() => { setViewMode('CRM'); setFilterTag('ALL'); }}
+                        aria-pressed={filterTag === 'ALL'}
                         className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
                           filterTag === 'ALL'
                             ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
@@ -1860,41 +1863,20 @@ return true;
                       <button
                         type="button"
                         onClick={() => { setViewMode('CRM'); setFilterTag('PENDING_SAMPLE'); }}
+                        aria-pressed={filterTag === 'PENDING_SAMPLE'}
                         className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
                           filterTag === 'PENDING_SAMPLE'
                             ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
                             : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
                         }`}
                       >
-                        <span>Mẫu mới</span>
-                        <span className="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-amber-200 animate-pulse" />
+                        <span>Có mẫu mới</span>
+                        {pendingSampleCount > 0 && <span className="kol-pending-count">{pendingSampleCount}</span>}
                       </button>
                     </div>
                   </div>
 
-                  {/* Global Discovery Tools */}
-                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#EAE4D7]/70">
-                    <button
-                      type="button"
-                      id="btn-toggle-ai-mode"
-                      onClick={() => setAiMatchingMode(true)}
-                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8A642C] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
-                      title="Tìm kiếm KOL phù hợp bằng AI Matching"
-                    >
-                      <Search className="w-3.5 h-3.5 text-[#C59B58]" />
-                      <span>Tìm với AI</span>
-                    </button>
-                    <button
-                      type="button"
-                      id="btn-open-creator-directory"
-                      onClick={() => setShowDiscoveryModal(true)}
-                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-white border border-[#EAE4D7] text-[11px] font-bold text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
-                      title="Khám phá danh bạ nhà sáng tạo toàn sàn"
-                    >
-                      <Users className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      <span>Khám phá KOL</span>
-                    </button>
-                  </div>
+
                 </div>
 
                 {/* KOL items list - Exact ChatBoxPage Card Style */}
@@ -2092,7 +2074,7 @@ return true;
           </div>
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
-          <div className={`shop-kol-detail flex-1 flex flex-col min-w-0 bg-white${isDetailHeaderCompact ? ' is-header-compact' : ''}`}>
+          <div className="shop-kol-detail flex-1 flex flex-col min-w-0 min-h-0 bg-white">
             <StoreCooperationPanel mode="shop" />
             {!selectedKol ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
@@ -2114,105 +2096,49 @@ return true;
               </div>
             ) : (
               <>
-                {/* 1. Header of Selected KOL (Ultra-Compact Single-Row SCANMS Creator Style) */}
-                <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0 transition-[padding] duration-[180ms] ease-[ease] motion-reduce:transition-none [.is-header-compact_&]:py-[8px]">
-              {/* Left: Avatar + (Name & Badges on top) + (TikTok & Followers below) */}
-              <div className="kol-profile-identity flex items-center gap-3 min-w-0 flex-1 [.is-header-compact_&>div:first-child]:hidden">
-                <div className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => openKolProfile(selectedKol.id)}
-                    title={`Xem hồ sơ ${selectedKol.fullName}`}
-                    aria-label={`Xem hồ sơ ${selectedKol.fullName}`}
-                    className="kol-profile-avatar rounded-xl border border-[#EEDFC6] bg-white p-1 cursor-pointer transition hover:border-[#C59B58]"
-                  >
-                    <KolAvatar
-                      src={selectedKol.avatarUrl}
-                      name={selectedKol.fullName}
-                      id={selectedKol.id}
-                      className="w-10 h-10 rounded-lg object-cover text-xs font-bold text-[#B88E4F]"
-                    />
+                <div className="shop-kol-detail-heading kol-chat-heading">
+                  <button type="button" onClick={() => openKolProfile(selectedKol.id)}
+                    title={`Xem hồ sơ ${selectedKol.fullName}`} aria-label={`Xem hồ sơ ${selectedKol.fullName}`}
+                    className="kol-chat-avatar">
+                    <KolAvatar src={selectedKol.avatarUrl} name={selectedKol.fullName} id={selectedKol.id}
+                      className="h-10 w-10 rounded-lg object-cover text-xs font-bold text-[#B88E4F]" />
                   </button>
-                  <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-2xs border border-white">
-                    {selectedKol.tier === 'DIAMOND' ? 'Kim cương' : selectedKol.tier === 'GOLD' ? 'Vàng' : selectedKol.tier === 'SILVER' ? 'Bạc' : selectedKol.tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}
-                  </span>
-                </div>
-
-                <div className="kol-profile-copy min-w-0 flex flex-1 flex-col justify-center gap-1.5 [.is-header-compact_&]:gap-0">
-                  {/* Row 1: Full Name + Badges + Quick Smart Actions */}
-                  <div className="kol-profile-name-row flex flex-wrap items-center justify-between gap-2 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 min-w-0">
-                      <h2
-                        className="kol-profile-name min-w-0 [.is-header-compact_&]:text-[14px] [.is-header-compact_&]:leading-[22px]"
-                        title={selectedKol.fullName}
-                      >
-                        <button type="button" onClick={() => openKolProfile(selectedKol.id)} className="text-left hover:text-[#B88E4F] transition-colors">
+                  <div className="kol-chat-identity">
+                    <div className="kol-chat-name-row">
+                      <h2 title={selectedKol.fullName}>
+                        <button type="button" onClick={() => openKolProfile(selectedKol.id)}>
                           {selectedKol.fullName.replace(/\s*\([^)]*\)/g, '').trim() || selectedKol.fullName}
                         </button>
                       </h2>
-
                       {selectedKol.kycStatus === 'VERIFIED' && (
-                        <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-white text-[#7D715E] border border-[#EAE4D7] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
-                          <CheckCircle2 className="w-3 h-3 text-[#059669]" />
-                          <span>Đã xác thực</span>
-                        </span>
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#059669]" aria-label="Đã xác thực" />
                       )}
-
-                      <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
-                        <ShieldCheck className="w-3 h-3 text-[#B88E4F]" />
-                        <span>Thù lao: {selectedKol.commissionRate ? `${selectedKol.commissionRate}% (Thỏa thuận riêng)` : selectedKol.tier === 'DIAMOND' ? '13% (Kim Cương)' : selectedKol.tier === 'GOLD' ? '12% (Vàng)' : selectedKol.tier === 'SILVER' ? '11% (Bạc)' : '10% (Đồng)'}</span>
-
+                      <span className="kol-chat-rate" title="Mức thù lao áp dụng cho đối tác">
+                        {selectedKol.commissionRate ? `Deal · ${selectedKol.commissionRate}%` : selectedKol.tier === 'DIAMOND' ? 'Kim cương · 13%' : selectedKol.tier === 'GOLD' ? 'Vàng · 12%' : selectedKol.tier === 'SILVER' ? 'Bạc · 11%' : 'Đồng · 10%'}
                       </span>
                     </div>
-
-                    {/* Quick Smart Actions on Header */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        id="btn-header-exclusive-deal"
-                        onClick={() => setShowExclusiveDealModal(true)}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-xs active:scale-[0.98]"
-                        title="Đề xuất thỏa thuận thù lao độc quyền 1-1 cho nhà sáng tạo này"
-                      >
-                        <Handshake className="w-3.5 h-3.5 stroke-[2]" />
-                        <span>Đề xuất Thỏa thuận Độc quyền</span>
-
-                      </button>
+                    <div className="kol-chat-channels">
+                      {allChannels.length ? allChannels.map((channel, index) => (
+                        <a key={index} href={channel.url} target="_blank" rel="noreferrer"
+                          title={`${channel.platform}: ${channel.handle} · ${channel.followers.toLocaleString('vi-VN')} người theo dõi`}>
+                          <SocialBrandIcon platform={channel.platform} className="h-3.5 w-3.5 shrink-0" />
+                          <span className="kol-chat-handle">{channel.handle}</span>
+                          <ArrowUpRight className="h-3 w-3 shrink-0" />
+                          <span className="kol-chat-followers">· {channel.followers >= 1000 ? `${(channel.followers / 1000).toLocaleString('vi-VN')}K` : channel.followers} người theo dõi</span>
+                        </a>
+                      )) : <span>Chưa liên kết kênh</span>}
                     </div>
                   </div>
-
-                  {/* Row 2: Multi-channel Social Stack (TikTok, YouTube, Facebook, Instagram with official brand logos) */}
-                  <div className="kol-profile-channel grid w-full items-stretch gap-2 pt-1 max-h-[110px] opacity-100 overflow-hidden transition-[max-height,opacity,padding] [transition-duration:180ms,140ms,180ms] ease-[ease] motion-reduce:transition-none [.is-header-compact_&]:max-h-0 [.is-header-compact_&]:pt-0 [.is-header-compact_&]:opacity-0 [.is-header-compact_&]:invisible" style={{ gridTemplateColumns: `repeat(${Math.max(allChannels.length, 1)}, minmax(0, 1fr))` }}>
-                    {allChannels.length > 0 ? (
-                      allChannels.map((channel, cIdx) => (
-                        <a
-                          key={cIdx}
-                          href={channel.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="group flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 text-[11px] font-semibold text-[#1A1612] shadow-2xs transition hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]"
-                          title={`Xem kênh ${channel.platform} (${channel.handle})`}
-                        >
-                          <SocialBrandIcon platform={channel.platform} className="w-3.5 h-3.5 shrink-0" />
-                          <span className="min-w-0 flex-1 truncate">{channel.handle}</span>
-                          <span className="shrink-0 whitespace-nowrap text-[#7D715E] font-normal text-[10px]">
-                            · {channel.followers >= 1000 ? `${(channel.followers / 1000).toLocaleString('vi-VN')}K` : channel.followers} người theo dõi
-                          </span>
-                          <ArrowUpRight className="h-3 w-3 shrink-0 text-[#7D715E] transition-colors group-hover:text-[#B88E4F]" />
-                        </a>
-                      ))
-                    ) : (
-                      <span className="text-[11px] text-[#7D715E]">Chưa liên kết kênh mạng xã hội</span>
-                    )}
-                  </div>
+                  <button type="button" id="btn-header-exclusive-deal" onClick={() => setShowExclusiveDealModal(true)}
+                    className="kol-chat-deal" title="Đề xuất thỏa thuận thù lao độc quyền cho đối tác">
+                    <Handshake className="h-4 w-4" />
+                    <span className="hidden sm:inline">Đề xuất Deal</span><span className="sm:hidden">Đề xuất</span>
+                  </button>
                 </div>
-              </div>
-
-            </div>
 
             {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
             <div className="shop-kol-tabs shrink-0 overflow-x-auto border-b border-[#EAE4D7] bg-white px-3 py-1.5 no-scrollbar [.is-header-compact_&]:py-[3px] [.is-header-compact_&_button]:min-h-[34px]">
-              <div className="grid w-full min-w-[500px] grid-cols-4 items-stretch gap-1.5">
+              <div className="grid w-full min-w-0 grid-cols-4 items-stretch gap-0">
                 <button
                   type="button"
                   id="tab-btn-messages"
@@ -2228,7 +2154,7 @@ return true;
                   }`}
                 >
                   <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' && viewMode === 'CRM' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Tin nhắn & đàm phán</span>
+                  <span>Tin nhắn</span>
                 </button>
 
                 <button
@@ -2287,7 +2213,7 @@ return true;
                   }`}
                 >
                   <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' && viewMode === 'CRM' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Hồ sơ & kênh</span>
+                  <span>Hồ sơ</span>
                 </button>
               </div>
 
@@ -2314,59 +2240,43 @@ return true;
                   </div>
 
                   {/* Các Tab còn lại: Có vùng cuộn độc lập bên trong */}
-                  <div onScroll={event => {
-                    const top = event.currentTarget.scrollTop;
-                    setIsDetailHeaderCompact(current => top > 100 ? true : top < 12 ? false : current);
-                  }} className={`h-full w-full overflow-y-auto ${activeTab === 'samples' ? 'px-3 pb-4 pt-3 sm:px-4 sm:pt-3.5' : 'p-4 sm:p-6'} space-y-3 ${activeTab !== 'messages' ? 'block' : 'hidden'}`}>
+                  <div className={`h-full w-full overflow-y-auto ${activeTab === 'samples' ? 'px-3 pb-4 pt-3 sm:px-4 sm:pt-3.5' : 'p-4 sm:p-6'} space-y-3 ${activeTab !== 'messages' ? 'block' : 'hidden'}`}>
 
                   {/* TAB 2: SAMPLE REQUESTS MANAGEMENT */}
                   {activeTab === 'samples' && (
                     <div className="animate-in fade-in-50 duration-200 space-y-3">
-                  {sampleProgramStats && (
-                    <div className="space-y-2"><div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
-                        <span className="text-[10px] text-[#7D715E] block">Giá trị mẫu đã cấp</span>
-                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{Number(sampleProgramStats.issuedValue || 0).toLocaleString('vi-VN')} ₫</strong>
-                      </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
-                        <span className="text-[10px] text-[#7D715E] block">Đã duyệt cấp mẫu</span>
-                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.grantedCount || 0}</strong>
-                      </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
-                        <span className="text-[10px] text-[#7D715E] block">Tỷ lệ nộp video</span>
-                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.videoSubmissionRate || 0}%</strong>
-                      </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
-                        <span className="text-[10px] text-[#7D715E] block">Tỷ lệ hoàn tất</span>
-                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.completedRate || 0}%</strong>
-                      </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
-                        <span className="text-[10px] text-[#7D715E] block">Quá hạn / mẫu còn lại</span>
-                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.overdue || 0} / {sampleProgramStats.remainingSampleQuota || 0}</strong>
-                      </div>
-                    </div></div>
-                  )}
-                  <div className="grid grid-cols-2 items-center gap-1.5 rounded-xl sm:grid-cols-3 xl:grid-cols-[1fr_1.35fr_1.35fr_1.6fr_1fr_1fr] border border-[#EAE4D7] bg-white p-2">
+                  {/* Selected partner sample summary */}
+                  <div className="kol-sample-metrics" aria-label="Số liệu mẫu của KOL đang chọn">
+                    <div className="grid grid-cols-2 sm:grid-cols-5">
+                      {[
+                        ['Yêu cầu mẫu', selectedSampleCounts.total],
+                        ['Đã cấp mẫu', selectedSampleCounts.approved],
+                        ['Chờ duyệt video', selectedSampleCounts.video],
+                        ['Hoàn tất', selectedSampleCounts.completed],
+                        ['Quá hạn', selectedSampleCounts.overdue],
+                      ].map(([label, count]) => <div key={label}><span className="block text-[11px] text-[#7D715E]">{label}</span><strong className="mt-1 block text-sm tabular-nums">{count}</strong></div>)}
+                    </div>
+                  </div>
+                  <div className="kol-sample-filterbar">
                     <div className="contents">
                       {([{value:'ALL',label:'Tất cả'}, {value:'PENDING',label:'Chờ duyệt mẫu'}, {value:'VIDEO_SUBMITTED',label:'Chờ duyệt video'}] as const).map((filter) => (
                         <button key={filter.value} type="button" onClick={() => setSampleFilter(filter.value)} aria-pressed={sampleFilter === filter.value} className={
                           'flex h-9 min-w-0 items-center justify-center whitespace-nowrap rounded-lg px-2 text-[11px] font-semibold transition ' + (sampleFilter === filter.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')
-                        }>{filter.label}<span className="ml-1.5 text-[11px]">{(samplesMap[selectedKol.id] || []).filter((sample) => filter.value === 'ALL' || sample.status === filter.value).length}</span></button>
+                        }>{filter.label}<span className="ml-1.5 text-[11px]">{(samplesMap[selectedKol.id] || []).filter((sample) => filter.value === 'ALL' || sampleDisplayStatus(sample) === filter.value).length}</span></button>
                       ))}
                     </div>
-                    <div className="contents">
+                    <div className="kol-sample-other-filter">
                       <Select
-                        value={sampleFilter}
+                        value={['ALL', 'PENDING', 'VIDEO_SUBMITTED'].includes(sampleFilter) ? '' : sampleFilter}
+                        searchable={false}
+                        placeholder="Trạng thái khác"
                         onChange={(event) => setSampleFilter(event.target.value as typeof sampleFilter)}
-                        aria-label="Lọc lịch sử yêu cầu mẫu"
+                        aria-label="Trạng thái mẫu khác"
                         className="h-9 w-full min-w-0 text-xs font-medium [&_button]:h-9 [&_button]:min-h-9 [&_button]:px-2 [&_button]:text-xs"
                       >
-                        <option value="ALL">Tất cả trạng thái</option>
-                        <option value="PENDING">Chờ Shop duyệt</option>
-                        <option value="APPROVED">Đã duyệt</option>
+                        <option value="APPROVED">Chờ gửi</option>
                         <option value="SHIPPED">Đang giao</option>
                         <option value="RECEIVED">Đã nhận mẫu</option>
-                        <option value="VIDEO_SUBMITTED">Chờ nghiệm thu</option>
                         <option value="REVISION_REQUIRED">Cần sửa video</option>
                         <option value="OVERDUE">Quá hạn</option>
                         <option value="DELIVERY_ISSUE">Sự cố giao hàng</option>
@@ -2374,101 +2284,16 @@ return true;
                         <option value="REJECTED">Bị từ chối</option>
                         <option value="CANCELLED">Đã hủy</option>
                       </Select>
-                      <button type="button" title="Làm mới thông tin nhận hàng" disabled={loadingBackendData} onClick={() => void loadBackendData()} className="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-3 text-xs font-semibold text-[#795A2D] transition-colors hover:bg-[#FBF5EB] disabled:opacity-50">
-                        <RefreshCw size={14} className={loadingBackendData ? 'animate-spin' : ''} aria-hidden="true" />
-                        Làm mới
-                      </button>
-                      {/* Partner actions */}
-                      <div className="relative min-w-0" ref={kolActionsDropdownRef}>
-                        <button
-                          type="button"
-                          id="btn-kol-actions-menu"
-                          aria-label="Thao tác với nhà sáng tạo"
-                          aria-expanded={showKolActionsMenu}
-                          onClick={() => setShowKolActionsMenu(prev => !prev)}
-                          className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] ${
-                            showKolActionsMenu
-                              ? 'bg-[#FBF5EB] border-[#B88E4F] text-[#B88E4F] shadow-xs'
-                              : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612]'
-                          }`}
-                        >
-        <span>Thao tác</span>
-                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showKolActionsMenu ? 'rotate-180 text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                        </button>
 
-                        {showKolActionsMenu && (
-                          <div
-                            className="absolute right-0 top-[calc(100%+6px)] z-40 w-52 p-1.5 rounded-xl bg-white border border-[#EAE4D7] shadow-[0_12px_28px_rgba(26,22,18,0.12)] animate-in fade-in slide-in-from-top-1 duration-150"
-                            onClick={() => setShowKolActionsMenu(false)}
-                          >
-                            <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase text-[#7D715E]">
-                              Tác vụ với đối tác
-                            </div>
-                            <button
-                              type="button"
-                              id="btn-quick-samples-tab"
-                              onClick={() => {
-                                setActiveTab('samples');
-                                setSearchParams({ kol: selectedKol.id, tab: 'samples' }, { replace: true });
-                              }}
-                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
-                            >
-                              <PackageCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                              <span>Cấp hàng mẫu trải nghiệm</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              id="btn-quick-perf-tab"
-                              onClick={() => {
-                                setActiveTab('performance');
-                                setSearchParams({ kol: selectedKol.id, tab: 'performance' }, { replace: true });
-                              }}
-                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
-                            >
-                              <BarChart3 className="w-3.5 h-3.5 text-[#B88E4F]" />
-                              <span>Xem hiệu suất tiếp thị</span>
-                            </button>
-
-                            <div className="my-1 border-t border-[#EAE4D7]" />
-
-                            <button
-                              type="button"
-                              id="btn-quick-view-profile"
-                              onClick={() => openKolProfile(selectedKol.id)}
-                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-[#7D715E]" />
-                              <span>Xem hồ sơ & liên hệ</span>
-                            </button>
-
-                            <div className="my-1 border-t border-[#EAE4D7]" />
-
-                            <button
-                              type="button"
-                              id="btn-terminate-collab"
-                              disabled={terminatingKolId === selectedKol.id}
-                              onClick={() => handleTerminateCollaboration(selectedKol.id)}
-                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2] transition text-left cursor-pointer border-0 disabled:opacity-50"
-                              title="Chấm dứt thỏa thuận hợp tác và rút đối tác khỏi đội ngũ nhãn hàng"
-                            >
-                              <UserMinus className="w-3.5 h-3.5 text-[#DC2626]" />
-                              <span>{terminatingKolId === selectedKol.id ? 'Đang xử lý...' : 'Chấm dứt hợp tác'}</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
 
                   {/* Samples list */}
                   {currentKolSamples.length === 0 ? (
-                    <div className="bg-white border border-[#EAE4D7] rounded-2xl p-12 text-center">
-                      <Package className="w-12 h-12 text-[#EAE4D7] mx-auto mb-3" />
-                      <h4 className="text-sm font-semibold text-[#1A1612]">{sampleFilter === 'ALL' ? 'Chưa có yêu cầu mẫu' : 'Không có mẫu ở trạng thái này'}</h4>
-                      <p className="text-xs text-[#7D715E] mt-1 max-w-md mx-auto">
-                        {sampleFilter === 'ALL' ? 'KOL chưa gửi yêu cầu. Bạn có thể nhắn tin trao đổi về sản phẩm mẫu.' : 'Chọn trạng thái khác hoặc xem tất cả yêu cầu.'}
-                      </p>
+                    <div className="kol-samples-empty bg-white border border-[#EAE4D7] rounded-xl py-8 px-4 text-center">
+                      <Package className="w-7 h-7 text-[#C59B58] mx-auto mb-3" />
+                      <h4 className="text-sm font-semibold text-[#1A1612]">{sampleFilter === 'ALL' ? 'Chưa có yêu cầu hàng mẫu' : 'Không có mẫu ở trạng thái này'}</h4>
+
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3">
@@ -2547,87 +2372,12 @@ return true;
                                   {item.rejectedReason && (
                                     <div className="text-rose-700">Ghi chú xử lý: {item.rejectedReason}</div>
                                   )}
-                                  {Boolean(item.videoAssets?.length) && (
-                                    <details className="group mt-2 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-[11px] text-[#7D715E]">
-                                      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 transition hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] [&::-webkit-details-marker]:hidden">
-                                        <span className="flex min-w-0 items-center gap-2 font-semibold text-[#4B4031]">
-                                          <Video size={14} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                                          Video Review đã nộp
-                                          <span className="rounded-full bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-semibold text-[#8A6B3D]">{item.videoAssets?.length}</span>
-                                        </span>
-                                        <ChevronDown size={15} className="shrink-0 text-[#8A7C68] transition-transform group-open:rotate-180" aria-hidden="true" />
-                                      </summary>
-                                      <ul className="mx-3 mb-3 space-y-2">
-                                        {(item.videoAssets || []).map((asset) => <li key={asset.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                          <a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="font-semibold text-[#795A2D] underline underline-offset-2">{asset.title || 'Mở video đã nộp'}</a>
-                                          <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-semibold text-[#795A2D]">{sampleVideoStatusLabel(asset.status)}</span>
-                                          {asset.rejectionReason && <span className="text-rose-700">{asset.rejectionReason}</span>}
-                                        </li>)}
-                                      </ul>
-                                    </details>
-                                  )}
-                                  <SampleSandboxWaybills charges={item.shippingCharges} primary={isSandboxShipment(item)} role="shop" />
-                                  {item.trackingCode && (
-                                    <div className="font-medium text-[#7D715E]">
-                                      Vận chuyển: {item.carrier} — Mã vận đơn: {item.trackingCode}
-                                    </div>
-                                  )}
-                                  {item.trackingCode && (
-                                    <div className="mt-1 text-xs text-[#7D715E]">
-                                      Shop chịu 100% phí ship · KOL COD 0 đ · {item.shippingCharges?.length
-                                        ? `${item.shippingCharges.reduce((sum, c) => sum + (c.environment === 'TEST' || c.amount === null ? 0 : Number(c.amount)), 0).toLocaleString('vi-VN')} đ cước đã ghi nhận${item.shippingCharges.some(c => c.environment !== 'TEST' && c.amount === null) ? ' (còn cước chưa xác nhận)' : ''}`
-                                        : 'Chưa có dữ liệu cước'}
-                                    </div>
-                                  )}
-                                  <details className="group mt-2.5 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-[11px] text-[#7D715E]">
-                                    <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 transition hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] [&::-webkit-details-marker]:hidden">
-                                      <span className="flex min-w-0 items-center gap-2 font-semibold text-[#4B4031]">
-                                        <Package size={14} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                                        Thông tin nhận mẫu và cam kết nội dung
-                                      </span>
-                                      <ChevronDown size={15} className="shrink-0 text-[#8A7C68] transition-transform group-open:rotate-180" aria-hidden="true" />
-                                    </summary>
-                                    <div className="grid grid-cols-1 gap-2 border-t border-[#EAE4D7] bg-[#FFFCF7] p-3 sm:grid-cols-2">
-                                      <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5 sm:col-span-2">
-                                        <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Địa chỉ nhận mẫu</p>
-                                        <p className="mt-1 break-words text-xs leading-relaxed text-[#4B4031]">{item.shippingAddress}</p>
-                                      </div>
-                                      {item.recipientName && (
-                                        <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5">
-                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Người nhận</p>
-                                          <p className="mt-1 text-xs font-semibold text-[#4B4031]">{item.recipientName}</p>
-                                          <p className="mt-0.5 text-[11px] text-[#7D715E]">{item.recipientPhone || 'Chưa có số điện thoại'}</p>
-                                        </div>
-                                      )}
-                                      {(item.socialPlatformSnapshot || item.socialChannel) && (
-                                        <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5">
-                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Kênh đã cam kết</p>
-                                          <p className="mt-1 text-xs font-semibold text-[#4B4031]">{item.socialPlatformSnapshot || item.socialChannel?.platformName}</p>
-                                          <p className="mt-0.5 break-words text-[11px] text-[#7D715E]">{item.socialChannelNameSnapshot || item.socialChannel?.channelName || 'Kênh nội dung'} · {Number(item.socialFollowerSnapshot ?? item.socialChannel?.followerCount ?? 0).toLocaleString('vi-VN')} người theo dõi</p>
-                                        </div>
-                                      )}
-                                      {item.note && (
-                                        <div className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-2.5 sm:col-span-2">
-                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Nội dung KOL cam kết</p>
-                                          <p className="mt-1 text-xs italic leading-relaxed text-[#795A2D]">“{item.note}”</p>
-                                        </div>
-                                      )}
-                                      {item.collaboratorMetrics && (
-                                        <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5 sm:col-span-2">
-                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Hồ sơ nhà sáng tạo</p>
-                                          <p className="mt-1 text-[11px] leading-relaxed text-[#4B4031]">
-                                            {item.collaboratorMetrics.tierName || 'Chưa xếp hạng'}
-                                            {' · '}{Number(item.collaboratorMetrics.totalFollowers || 0).toLocaleString('vi-VN')} người theo dõi toàn kênh
-                                            {' · '}{Number(item.collaboratorMetrics.totalOrdersReferred || 0).toLocaleString('vi-VN')} đơn giới thiệu
-                                            {' · KYC '}{item.collaboratorMetrics.kycStatus === 'VERIFIED' ? 'đã xác minh' : 'chưa xác minh'}
-                                          </p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </details>
+
                                 </div>
                               </div>
                             </div>
+
+                            <PartnerSampleDetails item={item} />
 
                             {/* Actions by status */}
                             <div className="flex w-full flex-wrap items-center justify-end gap-2 border-t border-[#EAE4D7] pt-2.5">
@@ -2654,7 +2404,7 @@ return true;
                                 </>
                               )}
 
-                              {(item.status === 'APPROVED' || item.status === 'DELIVERY_ISSUE' || item.status === 'SHIPPED') && (
+                              {(!isSandboxShipment(item) && (item.status === 'APPROVED' || item.status === 'DELIVERY_ISSUE')) && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2664,7 +2414,7 @@ return true;
                                   className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-[11px] font-semibold text-[#795A2D] transition hover:bg-[#F3EFE6]"
                                 >
                                   <Truck className="w-3.5 h-3.5" />
-                                  {isSandboxShipment(item) ? 'Đổi môi trường GHN' : item.status === 'SHIPPED' ? 'Tạo mã GHN sandbox' : item.status === 'DELIVERY_ISSUE' ? 'Tạo lại vận đơn GHN' : 'Tạo vận đơn GHN'}
+                                  {item.status === 'DELIVERY_ISSUE' ? 'Tạo lại vận đơn GHN' : 'Tạo vận đơn GHN'}
                                 </button>
                               )}
 
@@ -2734,51 +2484,6 @@ return true;
 
                 return (
                   <div className="kol-performance animate-in fade-in-50 duration-200 space-y-4">
-                    {/* 1. Header Policy & Strategic Overview Bar */}
-                    <div className="kol-performance-heading rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FAF8F5] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-xs">
-                          <BarChart3 className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#B88E4F]">
-                              Hiệu suất tiếp thị liên kết
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-0.5 text-[10px] font-bold text-[#8C6226]">
-                              <ShieldCheck className="h-3 w-3 text-[#B88E4F]" /> {selectedKol.tier === 'DIAMOND' ? 'Hạng Kim Cương' : selectedKol.tier === 'GOLD' ? 'Hạng Vàng' : selectedKol.tier === 'SILVER' ? 'Hạng Bạc' : selectedKol.tier === 'BRONZE' ? 'Hạng Đồng' : 'Đối tác'}
-                            </span>
-                          </div>
-                          <h3 className="m-0 text-sm sm:text-base font-extrabold text-[#1A1612]">
-                            Báo cáo doanh số: {selectedKol.fullName}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-onClick={() => {
-                            setActiveTab('messages');
-                            setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
-                          }}
-                          className="flex items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2 text-xs font-bold text-[#8F682E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer shadow-xs"
-                          title="Thương lượng tỷ lệ hoa hồng độc quyền hoặc tạo Deal riêng cho nhà sáng tạo này"
-                        >
-<Handshake className="h-3.5 w-3.5 text-[#B88E4F]" />
-                          <span>Thỏa thuận Deal độc quyền</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCopyInviteLink}
-                          className="flex items-center gap-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer shadow-xs"
-                        >
-                          {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                          <span>{copiedLink ? 'Đã chép link' : 'Sao chép link tiếp thị'}</span>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* 2. Range Filter & Realtime Indicator */}
                     <div className="kol-performance-toolbar flex flex-wrap items-center justify-between gap-2.5">
                       <div className="flex items-center gap-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
@@ -2804,17 +2509,12 @@ onClick={() => {
                         ))}
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                          Theo kỳ báo cáo đã chọn
-                        </span>
-                      </div>
+                      <button type="button" onClick={handleCopyInviteLink} className="kol-copy-link"><Copy size={14}/>{copiedLink ? 'Đã sao chép' : 'Sao chép link'}</button>
                     </div>
 
                     {performanceError && <p role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#DC2626]">{performanceError}</p>}
                     {loadingKolOrders && <p role="status" className="text-sm text-[#7D715E]">Đang tải số liệu kỳ báo cáo…</p>}
-                    <div className="flex items-center justify-end gap-2 text-xs text-[#7D715E]"><button type="button" disabled={loadingKolOrders || performancePage <= 1} onClick={() => setPerformancePage(page => page - 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang trước</button><span>Trang {performancePage}/{Math.max(1, performancePages)}</span><button type="button" disabled={loadingKolOrders || performancePage >= performancePages} onClick={() => setPerformancePage(page => page + 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang sau</button></div>
+                    <div className="kol-performance-pagination flex items-center justify-end gap-2 text-xs text-[#7D715E]"><button type="button" disabled={loadingKolOrders || performancePage <= 1} onClick={() => setPerformancePage(page => page - 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang trước</button><span>Trang {performancePage}/{Math.max(1, performancePages)}</span><button type="button" disabled={loadingKolOrders || performancePage >= performancePages} onClick={() => setPerformancePage(page => page + 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang sau</button></div>
                     {/* Aggregates come from the API across every page in the period. */}
                     <div style={{ display: !kolPerformance || loadingKolOrders ? 'none' : undefined }} className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                       {/* Card 1: Doanh thu thuần */}
@@ -2954,15 +2654,13 @@ onClick={() => {
                       <div className="border-b border-[#EAE4D7] bg-[#FAF8F5]/60 px-4 py-3.5 sm:px-5 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#1A1612] m-0">
-                            Đơn Hàng Gần Đây Qua Link Tiếp Thị
+                            Đơn hàng qua liên kết
                           </h4>
                           <span className="rounded-full border border-[#EAE4D7] bg-white px-2 py-0.5 text-[10px] font-bold text-[#7D715E]">
                             {ordersList.length} đơn
                           </span>
                         </div>
-                        <span className="text-[11px] text-[#7D715E]">
-                          Đối soát hoa hồng tự động theo từng đơn hàng
-                        </span>
+
                       </div>
 
                       {loadingKolOrders ? (
@@ -2971,39 +2669,7 @@ onClick={() => {
                           <span>Đang tải đơn hàng tiếp thị...</span>
                         </div>
                       ) : ordersList.length === 0 ? (
-                        <div className="py-12 px-6 text-center bg-white flex flex-col items-center justify-center">
-                          <div className="w-14 h-14 rounded-2xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-[#FAF8F5] text-[#B88E4F] flex items-center justify-center mb-3 shadow-xs">
-                            <ShoppingBag className="w-7 h-7" />
-                          </div>
-                          <h5 className="text-base font-extrabold text-[#1A1612] m-0">
-                            Chưa phát sinh đơn hàng qua link của {selectedKol.fullName}
-                          </h5>
-                          <p className="text-xs text-[#7D715E] max-w-lg mt-1.5 mb-5 leading-relaxed">
-                            Khi khách hàng hoàn tất mua sắm qua Affiliate Link hoặc giỏ hàng Livestream của nhà sáng tạo này, toàn bộ đơn hàng và hoa hồng đối soát sẽ tự động cập nhật thời gian thực tại đây.
-                          </p>
-                          <div className="flex flex-wrap items-center justify-center gap-2.5">
-                            <button
-                              type="button"
-                              onClick={handleCopyInviteLink}
-                              className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] px-4 py-2 text-xs font-bold text-[#8F682E] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-[#B88E4F]" />
-                              <span>Sao chép link tiếp thị</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-setActiveTab('messages');
-                                setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
-                              }}
-                              className="rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] px-4 py-2 text-xs font-bold text-[#1A1612] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                            >
-<MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
-                              <span>Gửi tin nhắn thương lượng deal</span>
-                            </button>
-
-                          </div>
-                        </div>
+                        <div className="kol-orders-empty"><ShoppingBag size={28}/><strong>Chưa có đơn hàng trong kỳ này</strong></div>
                       ) : (
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-xs">
@@ -3072,40 +2738,104 @@ setActiveTab('messages');
                       </span>
                     </div>
 
-                    <div className="kol-channel-info grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-                        <span className="text-[11px] font-medium text-[#7D715E]">Họ và tên</span>
-                        <div className="text-sm font-bold text-[#1A1612]">{selectedKol.fullName}</div>
-                      </div>
+                    <div className="kol-profile-actions flex justify-end">
+                      {/* Partner actions */}
+                      <div className="relative min-w-0" ref={kolActionsDropdownRef}>
+                        <button
+                          type="button"
+                          id="btn-kol-actions-menu"
+                          aria-label="Thao tác với nhà sáng tạo"
+                          aria-expanded={showKolActionsMenu}
+                          onClick={() => setShowKolActionsMenu(prev => !prev)}
+                          className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] ${
+                            showKolActionsMenu
+                              ? 'bg-[#FBF5EB] border-[#B88E4F] text-[#B88E4F] shadow-xs'
+                              : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612]'
+                          }`}
+                        >
+        <span>Thao tác</span>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showKolActionsMenu ? 'rotate-180 text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                        </button>
 
-                      <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-                        <span className="text-[11px] font-medium text-[#7D715E]">Cấp bậc & Định danh</span>
-                        <div className="text-sm font-bold text-[#1A1612] flex items-center gap-1.5 flex-wrap">
-                          <span>{selectedKol.tier === 'DIAMOND' ? 'Hạng Kim Cương' : selectedKol.tier === 'GOLD' ? 'Hạng Vàng' : selectedKol.tier === 'SILVER' ? 'Hạng Bạc' : selectedKol.tier === 'BRONZE' ? 'Hạng Đồng' : 'Chưa xếp hạng'}</span>
-                          <span className="text-[#7D715E]">·</span>
-                          <span className={`text-xs font-semibold ${selectedKol.kycStatus === 'VERIFIED' ? 'text-[#059669]' : 'text-amber-600'}`}>
-                            {selectedKol.kycStatus === 'VERIFIED' ? '✓ Đã xác minh eKYC' : 'Chưa hoàn tất eKYC'}
-                          </span>
-                        </div>
-                      </div>
+                        {showKolActionsMenu && (
+                          <div
+                            className="absolute right-0 top-[calc(100%+6px)] z-40 w-52 p-1.5 rounded-xl bg-white border border-[#EAE4D7] shadow-[0_12px_28px_rgba(26,22,18,0.12)] animate-in fade-in slide-in-from-top-1 duration-150"
+                            onClick={() => setShowKolActionsMenu(false)}
+                          >
+                            <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase text-[#7D715E]">
+                              Tác vụ với đối tác
+                            </div>
+                            <button
+                              type="button"
+                              id="btn-quick-samples-tab"
+                              onClick={() => {
+                                setActiveTab('samples');
+                                setSearchParams({ kol: selectedKol.id, tab: 'samples' }, { replace: true });
+                              }}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                            >
+                              <PackageCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                              <span>Cấp hàng mẫu trải nghiệm</span>
+                            </button>
 
-                      <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-                        <span className="text-[11px] font-medium text-[#7D715E]">Email liên hệ</span>
-                        <div className="text-sm font-semibold text-[#1A1612] truncate">{selectedKol.email}</div>
-                      </div>
+                            <button
+                              type="button"
+                              id="btn-quick-perf-tab"
+                              onClick={() => {
+                                setActiveTab('performance');
+                                setSearchParams({ kol: selectedKol.id, tab: 'performance' }, { replace: true });
+                              }}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5 text-[#B88E4F]" />
+                              <span>Xem hiệu suất tiếp thị</span>
+                            </button>
 
-                      <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
-                        <span className="text-[11px] font-medium text-[#7D715E]">Số điện thoại</span>
-                        <div className="text-sm font-semibold text-[#1A1612]">
-                          {selectedKol.phone || 'Chưa cập nhật'}
-                        </div>
+                            <div className="my-1 border-t border-[#EAE4D7]" />
+
+                            <button
+                              type="button"
+                              id="btn-quick-view-profile"
+                              onClick={() => openKolProfile(selectedKol.id)}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[#7D715E]" />
+                              <span>Xem hồ sơ & liên hệ</span>
+                            </button>
+
+                            <div className="my-1 border-t border-[#EAE4D7]" />
+
+                            <button
+                              type="button"
+                              id="btn-terminate-collab"
+                              disabled={terminatingKolId === selectedKol.id}
+                              onClick={() => handleTerminateCollaboration(selectedKol.id)}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2] transition text-left cursor-pointer border-0 disabled:opacity-50"
+                              title="Chấm dứt thỏa thuận hợp tác và rút đối tác khỏi đội ngũ nhãn hàng"
+                            >
+                              <UserMinus className="w-3.5 h-3.5 text-[#DC2626]" />
+                              <span>{terminatingKolId === selectedKol.id ? 'Đang xử lý...' : 'Chấm dứt hợp tác'}</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-
+                    <div className="kol-profile-columns">
+                      <section><h4>Thông tin liên hệ</h4><dl>
+                        <div><dt>Họ tên</dt><dd>{selectedKol.fullName}</dd></div>
+                        <div><dt>Email</dt><dd>{selectedKol.email || 'Chưa cập nhật'}</dd></div>
+                        <div><dt>Điện thoại</dt><dd>{selectedKol.phone || 'Chưa cập nhật'}</dd></div>
+                      </dl></section>
+                      <section><h4>Cấp bậc & định danh</h4><dl>
+                        <div><dt>Bậc KOL</dt><dd>{({DIAMOND:'Kim Cương',GOLD:'Vàng',SILVER:'Bạc',BRONZE:'Đồng'} as Record<string,string>)[selectedKol.tier || ''] || 'Chưa xếp hạng'}</dd></div>
+                        <div><dt>Thù lao tiêu chuẩn</dt><dd>{selectedKol.tier === 'DIAMOND' ? 13 : selectedKol.tier === 'GOLD' ? 12 : selectedKol.tier === 'SILVER' ? 11 : 10}%</dd></div>
+                        <div><dt>eKYC</dt><dd>{selectedKol.kycStatus === 'VERIFIED' ? 'Đã xác minh' : selectedKol.kycStatus === 'PENDING' ? 'Đang xác minh' : 'Chưa hoàn tất'}</dd></div>
+                      </dl></section>
+                    </div>
                     {/* Social Channels Details */}
                     <div>
                       <h4 className="text-xs font-extrabold text-[#1A1612] mb-3">
-                        Kênh mạng xã hội liên kết
+                        Kênh liên kết
                       </h4>
                       <div className="kol-channel-list space-y-3">
                         {selectedKol.socialChannels && selectedKol.socialChannels.length > 0 ? (
@@ -3139,12 +2869,12 @@ setActiveTab('messages');
                                   rel="noreferrer"
                                   className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center gap-1 shadow-2xs transition"
                                 >
-                                  Truy cập kênh <ExternalLink className="w-3 h-3 text-[#7D715E]" />
+                                  Mở kênh <ExternalLink className="w-3 h-3 text-[#7D715E]" />
                                 </a>
                               )}
                             </div>
                           ))
-                        ) : (
+                        ) : selectedKol.primaryChannel ? (
                           <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-[#FBF5EB]/50 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl bg-white border border-[#EAE4D7] flex items-center justify-center shadow-2xs shrink-0">
@@ -3168,11 +2898,11 @@ setActiveTab('messages');
                                 rel="noreferrer"
                                 className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center gap-1 shadow-xs transition"
                               >
-                                Truy cập kênh <ExternalLink className="w-3 h-3 text-[#7D715E]" />
+                                Mở kênh <ExternalLink className="w-3 h-3 text-[#7D715E]" />
                               </a>
                             )}
                           </div>
-                        )}
+                        ) : <p className="text-xs text-[#7D715E]">Chưa liên kết kênh mạng xã hội.</p>}
                       </div>
                     </div>
                   </div>

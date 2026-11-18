@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { validatePayoutBill } from '../../validations/payout-bill.validation';
 import { PayoutCompactSummary, PayoutProofField } from './PayoutCompactFields';
@@ -22,12 +23,13 @@ interface Props {
     risk?: { status: string; checks: { code: string; label: string; passed: boolean; blocking: boolean }[] };
   };
   busy: boolean;
+  uploadProgress?: number;
   onClose: () => void;
   onViewIssue: (code?: string) => void;
   onManualApprove: (proof: ManualPayoutProof) => Promise<void>;
 }
 
-export function PayoutApprovalDialog({ item, busy, onClose, onViewIssue, onManualApprove }: Props) {
+export function PayoutApprovalDialog({ item, busy, uploadProgress = 0, onClose, onViewIssue, onManualApprove }: Props) {
   const formId = useId();
   const [bill, setBill] = useState<File | null>(null);
   const [bankRefCode, setBankRefCode] = useState('');
@@ -41,10 +43,11 @@ export function PayoutApprovalDialog({ item, busy, onClose, onViewIssue, onManua
     <Modal isOpen onClose={() => { if (!busy) onClose(); }} title="Xác nhận chuyển khoản" className="payout-review-dialog finance-approval-modal" maxWidth="2xl" stickyHeader footer={
       <div className="payout-review-actions">
         <button type="button" className="payout-secondary" disabled={busy} onClick={onClose}>Hủy</button>
-        <button type="submit" form={formId} className="payout-primary" disabled={busy || blocked || !bill || !bankRefCode.trim()}>{busy ? 'Đang lưu…' : 'Xác nhận chi trả'}</button>
+        <button type="submit" form={formId} className="payout-primary" disabled={busy || blocked || !bill || !bankRefCode.trim()}>{busy && <Loader2 size={15} className="animate-spin"/>}{busy ? 'Đang xác nhận…' : 'Xác nhận chi trả'}</button>
       </div>
     }>
       <div className="payout-review-content">
+      {busy && <p role="status" aria-live="polite" className="compact-payout-notice">{uploadProgress < 100 ? `Đang tải chứng từ · ${uploadProgress}%` : 'Đang lưu chứng từ và ghi nhận chi trả…'}</p>}
       <PayoutCompactSummary name={item.collaboratorName} code="Thực nhận" amount={item.netAmount} bankName={item.bankName} accountNumber={item.bankAccountNumber} accountName={item.bankAccountName} detail={item.amount && item.taxAmount ? `Yêu cầu ${Number(item.amount).toLocaleString('vi-VN')} đ · Thuế ${Number(item.taxAmount).toLocaleString('vi-VN')} đ` : undefined}/>
 
       {reconciling && <p className="compact-payout-notice">Đối soát lệnh đã gửi trước khi chuyển mới.</p>}

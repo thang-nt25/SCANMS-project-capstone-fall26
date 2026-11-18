@@ -25,17 +25,14 @@ describe('monthly payout data and allocation', () => {
     expect(period.end.toISOString()).toBe('2027-01-31T17:00:00.000Z');
     expect(payoutTaxMonth(new Date('2026-12-31T16:59:59Z')).month).toBe('2026-12');
   });
-  it('queries all stores for this KOL, counts all three active statuses, and excludes other months and rejections', async () => {
+  it('withholds fixed 10% without querying monthly withdrawal totals', async () => {
     const aggregate = jest.fn().mockResolvedValue({ _sum: { amount: new Prisma.Decimal(110000000) } });
     const result = await monthlyPayoutTax({ payoutRequest: { aggregate } } as unknown as Prisma.TransactionClient, 'kol-a', new Prisma.Decimal(400000), new Date('2026-11-13T00:00:00Z'));
-    expect(aggregate).toHaveBeenCalledWith({ where: {
-      collaboratorId: 'kol-a', status: { in: ['PENDING', 'PROCESSING', 'APPROVED'] },
-      createdAt: { gte: new Date('2026-10-31T17:00:00Z'), lt: new Date('2026-11-30T17:00:00Z') },
-    }, _sum: { amount: true } });
-    expect(result.taxAmount.toFixed(2)).toBe('140000.00');
-    expect(result.taxContext.monthlyGrossBefore).toBe('110000000.00');
+    expect(aggregate).not.toHaveBeenCalled();
+    expect(result.taxAmount.toFixed(2)).toBe('40000.00');
+    expect(result.taxContext).toMatchObject({ policy: 'FLAT_10_PERCENT_V1', rate: '0.10' });
   });
-  it('reallocates unsent requests after rejection without rewriting sent or completed amounts', async () => {
+  it('does not rewrite any saved pending, processing or completed tax after rejection', async () => {
     const d = (value: number) => new Prisma.Decimal(value);
     const update = jest.fn().mockResolvedValue({});
     const tx = { payoutRequest: {
@@ -47,10 +44,8 @@ describe('monthly payout data and allocation', () => {
       ]), update,
     } };
     await refreshPendingMonthlyTax(tx as unknown as Prisma.TransactionClient, 'kol', new Date('2026-11-13'));
-    expect(update).toHaveBeenCalledTimes(2);
-    expect(update.mock.calls[0][0].data.taxAmount.toFixed(2)).toBe('30000.00');
-    expect(update.mock.calls[1][0].data.taxAmount.toFixed(2)).toBe('40000.00');
-    expect(update.mock.calls.map(call => call[0].where.id)).toEqual(['pending', 'later']);
+    expect(update).not.toHaveBeenCalled();
+    expect(tx.payoutRequest.findMany).not.toHaveBeenCalled();
   });
   it('prevents confirming an outdated amount after another request was rejected', () => {
     const row = { taxContext: { policy: 'MONTHLY_PROGRESSIVE_V1' }, netAmount: new Prisma.Decimal(380000) };

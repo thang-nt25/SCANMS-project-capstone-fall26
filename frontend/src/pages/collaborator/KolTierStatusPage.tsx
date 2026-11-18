@@ -5,7 +5,6 @@ import { tierService, type TierStatus, type TierPolicy } from '../../services/ti
 import LeaderboardPage from '../dashboard/LeaderboardPage';
 import { MonthlyRewardsPanel } from '../../components/promotions/MonthlyRewardsPanel';
 import { Modal } from '../../components/ui/Modal';
-import './kol-tier-workspace.css';
 
 const money = (value: number) => `${Number(value).toLocaleString('vi-VN')} ₫`;
 const date = (value: string) => new Date(value).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });

@@ -200,6 +200,16 @@ export class ReturnController {
     return this.returns.bookExchangeShipment(userId, role, id, body);
   }
 
+  @Post(':id/exchange-quote')
+  quoteExchangeShipment(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(bookPickupSchema)) body: BookPickupInput,
+  ) {
+    return this.returns.quoteExchangeShipment(userId, role, id, body);
+  }
+
   @Post(':id/exchange-booking/sync')
   syncExchangeShipment(
     @CurrentUser('id') userId: string,

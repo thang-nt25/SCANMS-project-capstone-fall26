@@ -2,7 +2,6 @@ import type { FormEvent } from 'react';
 import { Loader2, Ticket, Store } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
-import './coupon-proposal-dialog.css';
 
 type Partner = { id?: string; storeId?: string; name?: string; storeName?: string; logoUrl?: string | null };
 export function CouponProposalDialog({ open, onClose, stores, storeId, setStoreId, code, setCode, note, setNote, valid, validationError, error, success, busy, onSubmit }: {

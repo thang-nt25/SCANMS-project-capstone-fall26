@@ -5,7 +5,6 @@ import { customerWithdrawals, type CustomerWithdrawal, type WithdrawalPage } fro
 import { BankSelectTrigger } from '../bank/BankSelectTrigger';
 import { toast } from '../../utils/toast';
 import { findBankByQuery, VIETNAM_BANKS } from '../../config/banks.config';
-import './customer-withdrawal-history.css';
 
 export const withdrawalMoney = (value: string | number) => `${Number(value).toLocaleString('vi-VN')} đ`;
 export const withdrawalCode = (row: CustomerWithdrawal) => `RKH-${row.id.slice(0, 8).toUpperCase()}`;
@@ -51,7 +50,7 @@ export function WithdrawalDetails({ row }: { row: CustomerWithdrawal }) {
   </div>;
 }
 
-export default function CustomerWithdrawals({ balance, onChanged, onSubmitted }: { balance: number; onChanged: () => Promise<void>; onSubmitted?: () => void }) {
+export default function CustomerWithdrawals({ balance, onChanged, onSubmitted }: { balance: number; onChanged: () => Promise<void>; onSubmitted?: (withdrawal: CustomerWithdrawal) => void }) {
   const [bankName, setBankName] = useState('');
   const [account, setAccount] = useState('');
   const [holder, setHolder] = useState('');
@@ -68,11 +67,11 @@ export default function CustomerWithdrawals({ balance, onChanged, onSubmitted }:
     const payload = JSON.stringify(input);
     if (retry.current?.payload !== payload) retry.current = { payload, key: crypto.randomUUID() };
     try {
-      await customerWithdrawals.create({ ...input, requestKey: retry.current.key });
+      const withdrawal = await customerWithdrawals.create({ ...input, requestKey: retry.current.key });
       retry.current = null; setAmount(''); setConfirmed(false);
       toast.success('Đã gửi yêu cầu. Tiền được giữ để chờ duyệt.');
-      onSubmitted?.();
       await Promise.allSettled([onChanged()]);
+      onSubmitted?.(withdrawal);
     } catch (err) { toast.error(err instanceof Error ? err.message : 'Không gửi được yêu cầu'); }
     finally { inFlight.current = false; setBusy(false); }
   };
@@ -115,6 +114,7 @@ export default function CustomerWithdrawals({ balance, onChanged, onSubmitted }:
 }
 
 export function CustomerWithdrawalHistory({ refreshKey, targetId }: { refreshKey: number; targetId?: string }) {
+  const focusedTarget = useRef<string | undefined>(undefined);
   const [history, setHistory] = useState<WithdrawalPage | null>(null);
   const [page, setPage] = useState(1);
   const [error, setError] = useState('');
@@ -122,7 +122,7 @@ export function CustomerWithdrawalHistory({ refreshKey, targetId }: { refreshKey
   const [retryKey, setRetryKey] = useState(0);
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    // Keep existing rows visible during background status refreshes.
     void customerWithdrawals.list(false, targetId ? 1 : page, '', targetId || '').then(result => {
       if (active) { setHistory(result); setError(''); }
     }).catch(() => {
@@ -131,10 +131,12 @@ export function CustomerWithdrawalHistory({ refreshKey, targetId }: { refreshKey
     return () => { active = false; };
   }, [page, refreshKey, retryKey, targetId]);
   useEffect(() => {
-    if (!targetId || loading || !history) return;
+    if (!targetId) { focusedTarget.current = undefined; return; }
+    if (focusedTarget.current === targetId || loading || !history) return;
     const card = document.getElementById(`customer-withdrawal-${targetId}`);
     if (card && !card.closest('[hidden]')) {
-      card.scrollIntoView({ block: 'center' });
+      focusedTarget.current = targetId;
+      card.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       card.focus({ preventScroll: true });
     }
   }, [targetId, loading, history]);
@@ -145,7 +147,7 @@ export function CustomerWithdrawalHistory({ refreshKey, targetId }: { refreshKey
     catch { tab?.close(); toast.error('Không tải được chứng từ'); }
   };
   return <div className="p-4 sm:p-5">
-    {targetId && <div className="mb-3 flex items-center justify-between gap-3 text-xs text-[#7D715E]"><span>Yêu cầu từ thông báo</span><Link to="/customer/wallet?history=withdrawals" className="text-[#8F682E] underline">Xem tất cả yêu cầu</Link></div>}
+    {targetId && <div className="mb-3 flex items-center justify-between gap-3 text-xs text-[#7D715E]"><span>Yêu cầu đang xem</span><Link to="/customer/wallet?history=withdrawals" className="text-[#8F682E] underline">Xem tất cả yêu cầu</Link></div>}
     {error ? <div role="alert" className="rounded-xl border border-red-200 p-4 text-sm">{error}<button type="button" onClick={() => setRetryKey(key => key + 1)} className="ml-3 underline">Thử lại</button></div>
       : loading ? <div role="status" className="flex justify-center gap-2 py-6 text-sm text-[#7D715E]"><Loader2 size={18} className="animate-spin"/>Đang tải yêu cầu…</div>
       : !history?.items.length ? <div className="grid justify-items-center gap-2 py-7 text-center"><Building2 size={26} className="text-[#B88E4F]"/><strong className="text-sm">{targetId ? 'Không tìm thấy yêu cầu rút tiền này' : 'Chưa có yêu cầu rút tiền'}</strong><p className="m-0 text-xs text-[#7D715E]">{targetId ? 'Yêu cầu không tồn tại hoặc không thuộc tài khoản của bạn.' : 'Các yêu cầu và kết quả xử lý sẽ xuất hiện tại đây.'}</p></div>

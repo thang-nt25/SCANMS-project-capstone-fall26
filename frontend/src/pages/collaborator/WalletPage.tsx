@@ -1,8 +1,6 @@
-import './wallet-refresh.css';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { WithdrawalHistoryPanel } from '../../components/wallet/WithdrawalHistoryPanel';
 import { LedgerHistoryPanel, type LedgerFilters } from '../../components/wallet/LedgerHistoryPanel';
-import { monthlyTaxPreview } from '../../utils/payout-tax';
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import type { FormEvent } from "react";
 import { createSearchParams, useSearchParams, useNavigate } from "react-router-dom";
@@ -310,14 +308,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
     !walletSyncError && wallet?.canWithdraw &&
       toMinorUnits(wallet.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)
   );
-  const progressiveTax = wallet?.withdrawalTaxPolicy.policy === 'MONTHLY_PROGRESSIVE_V1'
-    ? monthlyTaxPreview(grossMinor, wallet.withdrawalTaxPolicy.monthlyGross ?? '0', wallet.withdrawalTaxPolicy.brackets)
-    : null;
-  const taxMinor = progressiveTax?.tax ?? (
-    wallet && grossMinor > 0n
-      ? (grossMinor * toMinorUnits(wallet.withdrawalTaxPolicy.rate) + 50n) /
-        100n
-      : 0n);
+  const taxMinor = grossMinor > 0n ? (grossMinor * 10n + 50n) / 100n : 0n;
   const previewMoney = (minorUnits: bigint) =>
     formatMoney(
       `${minorUnits / 100n}.${(minorUnits % 100n).toString().padStart(2, "0")}`,
@@ -496,7 +487,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 {key === 'available' && <><CheckCircle2 size={13} aria-hidden="true" />{loading ? 'Đang tải' : wallet?.canWithdraw && !walletSyncError ? 'Sẵn sàng rút' : 'Chờ đủ điều kiện'}</>}
                 {key === 'pending' && '10% gốc + Bậc'}
                 {key === 'deal' && 'Deal% − (10% + Bậc)'}
-                {key === 'locked' && 'Thuế TNCN theo tháng'}
+                {key === 'locked' && 'Khấu trừ thuế TNCN 10%'}
               </span>
             </div>
             <div className="wallet-balance-label"><span>{label}</span>
@@ -803,13 +794,12 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 </div>
                   <div className="flex justify-between gap-3 text-xs text-[#7D715E]">
                     <span className="flex items-center gap-1">
-                      <span>Thuế dự kiến ({progressiveTax?.rateLabel ?? `${Number(wallet.withdrawalTaxPolicy.rate) * 100}%`})</span>
+                      <span>Thuế TNCN (10%)</span>
                     </span>
                     <span className="font-semibold font-mono text-[#DC2626]" data-testid="withdrawal-tax-preview">
                       {taxMinor > 0n ? '−' : ''}{previewMoney(taxMinor)}
                     </span>
                   </div>
-                {progressiveTax && <div className="wallet-month-context"><span>Tổng yêu cầu trước lệnh này · {wallet.withdrawalTaxPolicy.month?.split('-').reverse().join('/')}</span><span>{formatMoney(wallet.withdrawalTaxPolicy.monthlyGross ?? '0')}</span></div>}
                 <div className="flex justify-between items-center gap-3 text-xs sm:text-sm font-bold border-t border-[#EEDFC6] pt-1.5">
                   <span className="text-[#1A1612]">Thực nhận dự kiến</span>
                   <span className="font-mono text-sm sm:text-base font-extrabold text-[#B88E4F]" data-testid="withdrawal-net-preview">

@@ -7,7 +7,6 @@ import { productService, type Product } from '../../services/product.service';
 import { toast } from '../../utils/toast';
 import { authService } from '../../services/auth.service';
 import { isOwnProductSubmission } from '../../utils/product-moderation.policy';
-import './product-moderation-cards.css';
 
 type ModerationProduct = Product & {
   createdAt?: string;

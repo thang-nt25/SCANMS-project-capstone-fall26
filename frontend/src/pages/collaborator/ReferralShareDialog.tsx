@@ -4,7 +4,6 @@ import { Modal } from '../../components/ui/Modal';
 import type { ReferralLinkItem } from '../../services/referral-links.service';
 import { getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
 import { toast } from '../../utils/toast';
-import './referral-share-dialog.css';
 
 interface Props {
   link: ReferralLinkItem;

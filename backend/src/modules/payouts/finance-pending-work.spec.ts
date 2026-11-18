@@ -9,7 +9,7 @@ describe('Finance pending-work badges', () => {
     db = {
       payoutRequest: { count: jest.fn().mockResolvedValue(3) },
       customerWithdrawal: { count: jest.fn().mockResolvedValue(1) },
-      commission: { count: jest.fn().mockResolvedValue(2) },
+      commission: { count: jest.fn().mockResolvedValue(2), findMany: jest.fn().mockResolvedValue([]) },
       storeMonthlyRewardPolicy: { findMany: jest.fn().mockResolvedValue([{ yearMonth: '2026-12' }, { yearMonth: '2027-01' }]) },
       storeMonthlyRewardGrant: { findMany: jest.fn().mockResolvedValue([{ policy: { yearMonth: '2026-11' } }, { policy: { yearMonth: '2026-11' } }]) },
     };
@@ -43,5 +43,14 @@ describe('Finance pending-work badges', () => {
   });
   it('limits the endpoint to system manager and admin', () => {
     expect(Reflect.getMetadata(ROLES_KEY, FinanceReportController.prototype.pendingWork)).toEqual(['SYSTEM_MANAGER', 'SYSTEM_ADMIN']);
+  });
+  it('separates exchanges waiting for delivery from disputes or unresolved reviews', async () => {
+    const row = (review: boolean, status: string, dispute: any = null) => ({ order: { rawPayload: { selfReferralReviewRequired: review }, returnRequests: [{ status, dispute }] } });
+    db.commission.findMany.mockResolvedValue([
+      row(false, 'EXCHANGE_SHIPPED'), row(false, 'AWAITING_CUSTOMER_CONFIRMATION'),
+      row(true, 'EXCHANGE_SHIPPED'), row(false, 'EXCHANGE_SHIPPED', { status: 'OPEN' }),
+      { order: { rawPayload: {}, returnRequests: [{ status: 'EXCHANGE_SHIPPED' }, { status: 'DISPUTED' }] } },
+    ]);
+    expect(await service.pendingWork('reviewer')).toMatchObject({ escrowWaitingExchange: 2 });
   });
 });

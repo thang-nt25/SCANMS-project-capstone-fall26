@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Check, Copy, Plus, Search, Store, Tag } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { couponService, type CouponItem, type CouponStatus } from '../../services/coupon.service';
-import './kol-coupon-workspace.css';
 
 type Coupon = CouponItem & { totalSales?: number; totalCommission?: number };
 type Summary = { totalSales: number; totalCommission: number; totalOrders: number };

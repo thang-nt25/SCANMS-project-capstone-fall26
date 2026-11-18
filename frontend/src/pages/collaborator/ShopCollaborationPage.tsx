@@ -1,6 +1,5 @@
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { publicWebsiteUrl } from '@/utils/public-url';
-import './shop-collaboration-workspace.css';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';

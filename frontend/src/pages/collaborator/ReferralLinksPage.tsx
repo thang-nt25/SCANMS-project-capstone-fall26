@@ -46,7 +46,6 @@ import { Select } from '../../components/ui/Select';
 import { toast } from '../../utils/toast';
 import { ReferralLinkActions } from './ReferralLinkActions';
 import { Modal } from '../../components/ui/Modal';
-import './kol-referral-links.css';
 import { ReferralShareDialog } from './ReferralShareDialog';
 import { ReferralAnalyticsDialog } from './ReferralAnalyticsDialog';
 import { ReferralLinkSetup } from './ReferralLinkSetup';

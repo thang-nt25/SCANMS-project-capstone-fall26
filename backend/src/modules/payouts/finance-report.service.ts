@@ -15,7 +15,7 @@ export class FinanceReportService {
   constructor(private readonly prisma: PrismaService) {}
 
   async pendingWork(userId: string) {
-    const [kol, customer, escrow, policies, grants] = await Promise.all([
+    const [kol, customer, escrow, policies, grants, exchangeCandidates] = await Promise.all([
       this.prisma.payoutRequest.count({ where: { status: 'PENDING' } }),
       this.prisma.customerWithdrawal.count({ where: { status: 'PENDING' } }),
       this.prisma.commission.count({ where: { status: 'PENDING', order: { OR: [
@@ -27,8 +27,18 @@ export class FinanceReportService {
       ] } } }),
       this.prisma.storeMonthlyRewardPolicy.findMany({ where: { status: 'PENDING', createdBy: { not: userId } }, select: { yearMonth: true } }),
       this.prisma.storeMonthlyRewardGrant.findMany({ where: { status: 'PENDING', requestedBy: { not: userId }, policy: { status: 'APPROVED' } }, select: { policy: { select: { yearMonth: true } } } }),
+      this.prisma.commission.findMany({
+        where: { status: 'PENDING', order: { returnRequests: { some: { status: { in: ['EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'] } } } } },
+        select: { order: { select: { rawPayload: true, returnRequests: { select: { status: true, dispute: { select: { status: true } } } } } } },
+      }),
     ]);
-    return { kol, customer, escrow, monthly: { policies: policies.length, grants: grants.length, total: policies.length + grants.length,
+    const escrowWaitingExchange = exchangeCandidates.filter(item => {
+      const risk = item.order.rawPayload as Prisma.JsonObject | null;
+      const active = item.order.returnRequests.filter(claim => !['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED'].includes(claim.status));
+      return risk?.selfReferralReviewRequired !== true && !item.order.returnRequests.some(claim => claim.dispute?.status === 'OPEN')
+        && active.length > 0 && active.every(claim => ['EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'].includes(claim.status));
+    }).length;
+    return { kol, customer, escrow, escrowWaitingExchange, monthly: { policies: policies.length, grants: grants.length, total: policies.length + grants.length,
       months: [...new Set([...policies.map(p => p.yearMonth), ...grants.map(g => g.policy.yearMonth)])].sort(),
     }, checkedAt: new Date().toISOString() };
   }
@@ -533,10 +543,36 @@ export class FinanceReportService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
 
+  async escrowMovements(id: string, page = 1) {
+    if (!Number.isInteger(page) || page < 1)
+      throw new BadRequestException('Trang không hợp lệ');
+    const commission = await this.prisma.commission.findUnique({
+      where: { id }, select: { id: true, collaboratorId: true, order: { select: { externalOrderSn: true } } },
+    });
+    if (!commission) throw new NotFoundException('Không tìm thấy khoản thù lao');
+    // Exact commission reference and wallet owner: never mix other orders or customer refunds.
+    const where: Prisma.FinancialLedgerWhereInput = {
+      referenceType: 'COMMISSION', referenceId: commission.id,
+      wallet: { collaboratorId: commission.collaboratorId },
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.financialLedger.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * 10, take: 10,
+        select: { id: true, createdAt: true, transactionType: true, balanceBucket: true,
+          amount: true, balanceBefore: true, balanceAfter: true },
+      }),
+      this.prisma.financialLedger.count({ where }),
+    ]);
+    return { items, total, page, limit: 10, orderCode: commission.order.externalOrderSn };
+  }
+
   async escrow(page = 1) {
     if (!Number.isInteger(page) || page < 1)
       throw new BadRequestException('Trang không hợp lệ');
-    const where: Prisma.CommissionWhereInput = { status: 'PENDING' };
+    const where: Prisma.CommissionWhereInput = { OR: [
+      { status: 'PENDING' },
+      { status: { in: ['APPROVED', 'PAID'] }, dealBonusStatus: 'PENDING_KPI', dealBonusAmount: { gt: 0 } },
+    ] };
     const [items, total, aggregate] = await this.prisma.$transaction([
       this.prisma.commission.findMany({
         where,
@@ -547,6 +583,10 @@ export class FinanceReportService {
           id: true,
           commissionAmount: true,
           baseCommissionAmount: true,
+          status: true,
+          baseCommissionRate: true,
+          dealBonusRate: true,
+          dealProposalId: true,
           dealBonusAmount: true,
           dealBonusStatus: true,
           availableAt: true,
@@ -584,15 +624,15 @@ export class FinanceReportService {
         const openDispute = returnRequests.find(claim => claim.dispute?.status === 'OPEN');
         return {
           ...item,
-          pendingStandardAmount: (item.baseCommissionAmount ?? item.commissionAmount).toFixed(2),
-          pendingDealAmount: ['PENDING_KPI', 'QUALIFIED'].includes(item.dealBonusStatus ?? '')
+          pendingStandardAmount: item.status && item.status !== 'PENDING' ? '0.00' : (item.baseCommissionAmount ?? item.commissionAmount).toFixed(2),
+          pendingDealAmount: (item.dealBonusStatus === 'PENDING_KPI' || (item.status === 'PENDING' && item.dealBonusStatus === 'QUALIFIED'))
             ? (item.dealBonusAmount ?? new Prisma.Decimal(0)).toFixed(2) : '0.00',
           order: {
             ...order,
             returnRequest: returnRequests[0] ?? null,
             reviewReturnId: (openDispute ?? activeReturn)?.id ?? null,
             holdReasons: [
-              ...(activeReturn ? ['Đang xử lý đổi trả'] : []),
+              ...(activeReturn ? [activeReturn.status === 'EXCHANGE_SHIPPED' ? 'Chờ giao hàng đổi' : activeReturn.status === 'AWAITING_CUSTOMER_CONFIRMATION' ? 'Chờ khách xác nhận hàng đổi' : 'Đang xử lý đổi trả'] : []),
               ...(openDispute ? ['Tranh chấp chưa giải quyết'] : []),
               ...(risk?.selfReferralReviewRequired === true ? ['Cần kiểm tra ghi nhận tiếp thị'] : []),
               ...(!activeReturn && !openDispute && !['DELIVERED', 'COMPLETED'].includes(order.status) ? ['Đơn chưa đủ trạng thái giải tỏa'] : []),

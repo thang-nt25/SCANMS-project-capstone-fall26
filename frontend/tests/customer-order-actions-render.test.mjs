@@ -23,7 +23,7 @@ let actions;
 function find(node) {
   if (ts.isJsxElement(node) && node.openingElement.attributes.properties.some(attribute =>
     ts.isJsxAttribute(attribute) && attribute.name.getText(file) === 'className' &&
-    attribute.initializer && ts.isStringLiteral(attribute.initializer) && attribute.initializer.text.startsWith('customer-order-actions '))) actions = node;
+    attribute.initializer && ts.isStringLiteral(attribute.initializer) && attribute.initializer.text.split(/\s+/).includes('customer-order-actions'))) actions = node;
   ts.forEachChild(node, find);
 }
 find(file);
@@ -63,7 +63,7 @@ function render(item) {
   const row = module.exports.render(item, { navigate: url => calls.push(url), setReturnOrder: value => calls.push(value) });
   return { calls, row, html: renderToStaticMarkup(row), buttons: elements(row).filter(node => node.type === 'button') };
 }
-const text = node => renderToStaticMarkup(node).replace(/<[^>]+>/g, '').trim();
+const text = node => renderToStaticMarkup(node).replace(/<span class="order-action-label-short">.*?<\/span>/g, '').replace(/<[^>]+>/g, '').trim();
 
 test('returns expire exactly 14 days after delivery, independently of completion and order dates', () => {
   const delivery = Date.parse('2026-11-01T10:00:00Z');

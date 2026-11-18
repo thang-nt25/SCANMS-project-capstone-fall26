@@ -59,6 +59,7 @@ export interface ReturnDetail {
   exchangeRecipient?: ReturnAddress;
   exchangePackage?: { weight: number; length: number; width: number; height: number } | null;
   exchangeBooking?: { pending: boolean; recipient?: PickupBookingInput | null; warehouse?: ReturnAddress | null } | null;
+  exchangeDelivery?: { recipient: PickupBookingInput; warehouse: ReturnAddress } | null;
   receivedAt?: string | null;
   inspectionEscalatedAt?: string | null;
   inspectionCompletedAt?: string | null;
@@ -122,6 +123,16 @@ const unwrap = <T,>(response: unknown): T => {
   return ((value?.data as { data?: T } | undefined)?.data ?? value?.data ?? response) as T;
 };
 
+export interface ExchangeFeeQuote {
+  amount: number;
+  currency: 'VND';
+  source: 'GHN_TEST';
+  estimated: true;
+  charged: false;
+  quotedAt: string;
+  validUntil: string;
+}
+
 export const returnService = {
   getOversightQueue: async <T extends ReturnDetail | ReturnDisputeRecord>(
     kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes', page = 1, filters?: { query?: string; storeId?: string },
@@ -165,6 +176,8 @@ export const returnService = {
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-shipment`, data)),
   bookExchangeShipment: async (id: string, data: PickupBookingInput) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-booking`, data, { timeout: 45000 })),
+  quoteExchangeShipment: async (id: string, data: PickupBookingInput, signal?: AbortSignal) =>
+    unwrap<ExchangeFeeQuote>(await api.post(`/returns/${id}/exchange-quote`, data, { timeout: 15000, signal })),
   syncExchangeShipment: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-booking/sync`)),
   simulateExchangeShipment: async (id: string, data: { status: 'picked' | 'delivered' }) =>
     unwrap<ReturnDetail>(await api.patch(`/returns/${id}/exchange-booking/simulate`, data)),

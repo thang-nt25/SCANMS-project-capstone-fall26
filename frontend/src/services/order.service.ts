@@ -149,6 +149,7 @@ export interface StoreOrderRecord {
 }
 
 export interface StoreOrdersResponse {
+  metrics: { total: number; pending: number; shipping: number; delivered: number };
   items: StoreOrderRecord[];
   pagination: {
     total: number;

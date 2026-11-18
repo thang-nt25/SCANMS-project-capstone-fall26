@@ -2,7 +2,6 @@ import { BarChart3, Loader2, Globe, QrCode } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import type { ReferralLinkItem } from '../../services/referral-links.service';
 import { getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
-import './referral-share-dialog.css';
 
 interface Props { link: ReferralLinkItem; data: any; loading: boolean; error: string | null; channelLabel: string; onClose: () => void }
 export function ReferralAnalyticsDialog({ link, data, loading, error, channelLabel, onClose }: Props) {

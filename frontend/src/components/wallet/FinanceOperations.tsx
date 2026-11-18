@@ -209,7 +209,7 @@ export function FinanceOperations() {
           </dl>
           {missingTaxRows.length > 0 && <div className="finance-tax-issues">
             <button type="button" className="finance-tax-issue-trigger" aria-expanded={missingTaxRows.length > 1 ? showTaxIssues : undefined} onClick={() => missingTaxRows.length === 1 ? setIssuePayoutId(missingTaxRows[0].id) : setShowTaxIssues(value => !value)}>
-              <AlertCircle size={17}/><span>{missingTaxRows.length} khoản chi thiếu mã số thuế</span><span className="finance-tax-issue-action">Xem hồ sơ <ArrowRight size={15}/></span>
+              <AlertCircle size={17}/><span>{missingTaxRows.length} khoản chi có hồ sơ thuế cần bổ sung</span><span className="finance-tax-issue-action">Xem hồ sơ <ArrowRight size={15}/></span>
             </button>
             {showTaxIssues && missingTaxRows.length > 1 && <div className="finance-tax-issue-list">{missingTaxRows.map(row => <button type="button" key={row.id} onClick={() => setIssuePayoutId(row.id)}><span>{row.collaborator.fullName}<small>Lệnh {row.id.slice(0, 8).toUpperCase()} · {Number(row.amount).toLocaleString('vi-VN')} ₫</small></span><ArrowRight size={16}/></button>)}</div>}
           </div>}

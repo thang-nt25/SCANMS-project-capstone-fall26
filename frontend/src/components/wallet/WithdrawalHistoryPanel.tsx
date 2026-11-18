@@ -3,7 +3,6 @@ import { PartnerTaxStatements } from './FinanceReports';
 import { PayoutRejectionDetails } from './PayoutRejectionDetails';
 import { payoutDisplayCode } from '@/utils/payout-display-code';
 import type { PayoutStatus, WithdrawalHistory } from '@/types/wallet.types';
-import './withdrawal-history.css';
 
 export function WithdrawalHistoryPanel({ history, loading, page, status, onStatus, onPage, onCopy, onCreateNew, canCreateNew }: {
   history: WithdrawalHistory | null; loading: boolean; page: number; status: PayoutStatus | ''; onStatus: (status: PayoutStatus | '') => void; onPage: (page: number) => void;

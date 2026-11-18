@@ -620,6 +620,7 @@ model Product {
   sku                  String    @db.VarChar(100)
   title                String    @db.VarChar(255)
   categoryName         String?   @map("category_name") @db.VarChar(100)
+  productGroup         String?   @map("product_group") @db.VarChar(100)
   description          String?
   imageUrl             String?   @map("image_url")
   originalPrice        Decimal?  @map("original_price") @db.Decimal(15, 2)
@@ -1847,7 +1848,7 @@ model PayoutRequest {
   proofImageUrl      String?      @map("proof_image_url")
   proofImagePublicId String?      @map("proof_image_public_id")
   proofImageFormat   String?      @map("proof_image_format") @db.VarChar(10)
-  proofImageSha256   String?      @unique(map: "idx_payouts_unique_bill_hash") @map("proof_image_sha256") @db.VarChar(64)
+  proofImageSha256   String?      @map("proof_image_sha256") @db.VarChar(64)
   approvedById       String?      @map("approved_by_id") @db.Uuid
   batchId            String?      @map("batch_id") @db.Uuid
   rejectedReason     String?      @map("rejected_reason")
@@ -1863,7 +1864,7 @@ model PayoutRequest {
   approvedBy   User?        @relation("PayoutApprover", fields: [approvedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
   batch        PayoutBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
-  @@unique([storeId, bankRefCode], map: "idx_payouts_store_bank_ref")
+  // Non-MANUAL payouts retain partial unique receipt/reference indexes in SQL.
   @@index([storeId, status], map: "idx_payouts_store_status")
   @@index([collaboratorId, createdAt], map: "idx_payouts_pending")
   @@index([approvedById], map: "idx_payouts_approver")
@@ -2216,10 +2217,10 @@ model CustomerWithdrawal {
   bankName String @map("bank_name") @db.VarChar(100)
   bankAccountNumber String @map("bank_account_number") @db.VarChar(50)
   bankAccountName String @map("bank_account_name") @db.VarChar(150)
-  bankRefCode String? @unique @map("bank_ref_code") @db.VarChar(100)
+  bankRefCode String? @map("bank_ref_code") @db.VarChar(100)
   proofPublicId String? @map("proof_public_id")
   proofFormat String? @map("proof_format")
-  proofHash String? @unique @map("proof_hash")
+  proofHash String? @map("proof_hash")
   note String?
   processedBy String? @map("processed_by") @db.Uuid
   processedAt DateTime? @map("processed_at") @db.Timestamptz(6)

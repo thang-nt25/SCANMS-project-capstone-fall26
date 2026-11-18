@@ -4,7 +4,6 @@ import { Radio, Search, TrendingUp, Award, PlayCircle, Loader2 } from 'lucide-re
 import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
 import { AdminLiveSessionDialog } from '../../components/live/AdminLiveSessionDialog';
-import './admin-live-list.css';
 import { AdminLiveList } from '../../components/live/AdminLiveList';
 
 export type AdminLiveSession = {

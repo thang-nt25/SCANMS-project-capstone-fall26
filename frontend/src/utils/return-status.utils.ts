@@ -2,7 +2,7 @@ import type { ReturnStatus } from '../services/return.service';
 
 const labels: Record<ReturnStatus, string> = {
   REQUESTED: 'Chờ Shop phản hồi',
-  SHOP_APPROVED: 'Shop đã duyệt · chờ đặt lấy hàng',
+  SHOP_APPROVED: 'Chờ khách gửi hàng trả',
   PICKUP_BOOKED: 'Đã đặt shipper lấy hàng',
   SHOP_REJECTED: 'Shop từ chối',
   EXPIRED: 'Quá hạn gửi hàng',

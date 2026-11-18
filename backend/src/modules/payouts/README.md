@@ -1,5 +1,7 @@
 # FR-22 / FR-23 / FR-24: shop-scoped payouts, immutable ledger and VietQR batches
 
+Manual evidence policy (2026-11-16): Manager/Admin manual confirmations for KOL and Customer requests may reuse both receipt image and bank reference. Each request still requires a valid private receipt and nonempty reference, locks its own status, and posts its financial transaction only once. The non-MANUAL historical/shop flow retains partial unique proof/reference indexes. Apply `20261116133000_reusable_manual_payout_evidence` with this change. Receipt reuse does not alter tax snapshots, report inclusion, or accounting amounts.
+
 > Current approval flow: SYSTEM_MANAGER/SYSTEM_ADMIN confirm external bank transfers manually, with a bank transaction reference, receipt and expected net amount. Gateway approval/inquiry routes, BIDV test routes and automatic API reconciliation are no longer registered. Historical gateway implementation files remain for reading old data/tests; they are not active services.
 
 The payout dashboard and monthly tax report exclude historical test payments from actual disbursement/tax totals. Existing test rows and ledgers are retained, not renamed or converted into real transfers. New manual confirmations store `transferProvider=MANUAL`; gross remains reserved only once at withdrawal creation.

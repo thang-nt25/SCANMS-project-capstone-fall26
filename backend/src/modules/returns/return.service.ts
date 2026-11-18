@@ -24,6 +24,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
+import { ChatGateway } from '../chat/chat.gateway';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
@@ -154,6 +155,7 @@ export class ReturnService {
     @Optional() private readonly cacheService?: CacheService,
     @Optional()
     private readonly commissionRulesService?: CommissionRulesService,
+    @Optional() private readonly chatGateway?: ChatGateway,
   ) {}
 
   /** Allocate the paid order total (including discounts and delivery) across original item value. */
@@ -440,7 +442,7 @@ export class ReturnService {
       ...(showPartnerIncome ? { ghnClaim: latestGhnClaim(item.events) } : {}),
       pickupProviderMode: this.pickupGateway.mode(),
       pickupSimulationEnabled:
-        process.env.NODE_ENV !== 'production' &&
+        (process.env.NODE_ENV !== 'production' || process.env.ALLOW_HOSTED_SHIPPING_SIMULATION === 'true') &&
         (this.pickupGateway.mode() === 'mock' ||
           process.env.RETURN_PICKUP_SIMULATION_ENABLED === 'true'),
       ...(showPartnerIncome
@@ -451,6 +453,9 @@ export class ReturnService {
                   recipient: savedBooking?.recipient ?? null,
                   warehouse: savedBooking?.warehouse ?? null,
                 }
+              : null,
+            exchangeDelivery: exchange && !bookingPending && savedBooking?.recipient && savedBooking?.warehouse
+              ? { recipient: savedBooking.recipient, warehouse: savedBooking.warehouse }
               : null,
             exchangeRecipient: {
               name: order.customerName || '',
@@ -1093,7 +1098,7 @@ export class ReturnService {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
       this.requireShop(userId, role, detail);
     if (
-      process.env.NODE_ENV === 'production' ||
+      (process.env.NODE_ENV === 'production' && process.env.ALLOW_HOSTED_SHIPPING_SIMULATION !== 'true') ||
       (this.pickupGateway.mode() !== 'mock' &&
         process.env.RETURN_PICKUP_SIMULATION_ENABLED !== 'true')
     ) {
@@ -1778,6 +1783,21 @@ export class ReturnService {
     }
   }
 
+  /** Publish only after the transaction commits; clients fetch through their normal scoped API. */
+  private async publishCustomerConfirmation(detail: Detail) {
+    await this.invalidateStoreOrders(detail.order.store.id);
+    const recipients = new Set([detail.customerId, detail.order.store.ownerId,
+      ...(detail.order.store.staffMembers || []).map(member => member.id)]);
+    for (const userId of recipients) {
+      if (!userId) continue;
+      try {
+        this.chatGateway?.emitToUser(userId, 'return_updated', { returnRequestId: detail.id });
+      } catch (error) {
+        this.logger.warn('Hồ sơ đã lưu; chưa gửi được cập nhật trực tiếp', error);
+      }
+    }
+  }
+
   private async recordExchangeSent(
     tx: Prisma.TransactionClient,
     detail: Detail,
@@ -1838,6 +1858,24 @@ export class ReturnService {
         : 'Shop đã gửi sản phẩm thay thế',
       `Đơn ${detail.order.externalOrderSn}: ${carrierName} · ${trackingNumber}`,
     );
+  }
+
+  async quoteExchangeShipment(userId: string, role: UserRole, id: string, input: BookPickupInput) {
+    const detail = await this.scopedDetail(userId, role, id);
+    this.requireShop(userId, role, detail);
+    const existing = detail.shipments.find(shipment => shipment.direction === ReturnShipmentDirection.SHOP_TO_CUSTOMER);
+    if (detail.status !== ReturnRequestStatus.EXCHANGE_PENDING && !existing) throw new ConflictException('Hồ sơ chưa được duyệt gửi hàng đổi.');
+    const saved = [...detail.events].reverse().find(event => event.type === 'EXCHANGE_BOOKING_REQUESTED')?.data as { recipient?: BookPickupInput; warehouse?: WarehouseInput } | undefined;
+    const recipient = existing && saved?.recipient ? saved.recipient : input;
+    const warehouse = configuredReturnWarehouse(existing && saved?.warehouse ? saved.warehouse : detail.order.store.returnWarehouse);
+    if (!warehouse) throw new ConflictException('Shop chưa cấu hình kho gửi hàng.');
+    assertShippingPackage(recipient);
+    return this.pickupGateway.quote({
+      clientOrderCode: `SC-X-${id.replace(/-/g, '')}`,
+      pickup: { ...warehouse, weight: recipient.weight, length: recipient.length, width: recipient.width, height: recipient.height },
+      warehouse: recipient,
+      content: `Hàng đổi ${detail.order.externalOrderSn}: ${this.exchangeLines(detail).map(line => `${line.orderItem.product.title} x${line.quantity}`).join(', ')}`,
+    });
   }
 
   async bookExchangeShipment(
@@ -2147,7 +2185,7 @@ export class ReturnService {
       (s) => s.direction === ReturnShipmentDirection.SHOP_TO_CUSTOMER,
     );
     if (
-      process.env.NODE_ENV === 'production' ||
+      (process.env.NODE_ENV === 'production' && process.env.ALLOW_HOSTED_SHIPPING_SIMULATION !== 'true') ||
       detail.status !== ReturnRequestStatus.EXCHANGE_SHIPPED ||
       !shipment ||
       !['MOCK', 'GHN_STAGING'].includes(shipment.provider || '') ||
@@ -2258,6 +2296,7 @@ export class ReturnService {
         `Đơn ${detail.order.externalOrderSn}: khách xác nhận đã nhận hàng thay thế.`,
       );
     });
+    await this.publishCustomerConfirmation(detail);
     return this.getOne(userId, role, id);
   }
 
@@ -2378,6 +2417,7 @@ export class ReturnService {
         `Đơn ${current.order.externalOrderSn} đã hoàn tất.`,
       );
     });
+    await this.publishCustomerConfirmation(detail);
     return this.getOne(userId, role, id);
   }
 

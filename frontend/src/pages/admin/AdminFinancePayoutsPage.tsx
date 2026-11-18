@@ -1,14 +1,14 @@
 import { MonthlyRewardsPanel } from '../../components/promotions/MonthlyRewardsPanel';
 import AdminCustomerWithdrawals from '../../components/wallet/AdminCustomerWithdrawals';
 import { PayoutEvidenceDialog } from '../../components/wallet/PayoutEvidenceDialog';
-import { payoutTaxLabel, type MonthlyTaxContext } from '../../utils/payout-tax';
+import { payoutTaxLabel, payoutTableTaxLabel, type MonthlyTaxContext } from '../../utils/payout-tax';
 import { Modal } from '../../components/ui/Modal';
 import { PayoutBankAccount } from '../../components/wallet/PayoutBankAccount';
-import '../../components/wallet/finance-payouts.css';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { EscrowFinanceReport } from '../../components/wallet/FinanceReports';
 import { FinanceOperations } from '../../components/wallet/FinanceOperations';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PayoutApprovalDialog, type ManualPayoutProof } from '../../components/wallet/PayoutApprovalDialog';
 import {
   Search,
@@ -71,6 +71,7 @@ interface PendingFinanceWork {
   kol: number;
   customer: number;
   escrow: number;
+  escrowWaitingExchange?: number;
   monthly: { policies: number; grants: number; total: number; months: string[] };
   checkedAt: string;
 }
@@ -93,7 +94,9 @@ let lastAdminPayoutsSnapshot: { payouts: PayoutItem[]; stats: PayoutStats | null
 registerPrivateCacheReset(() => { lastAdminPayoutsSnapshot = null; });
 
 export default function AdminFinancePayoutsPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'kol' | 'escrow' | 'operations' | 'customer' | 'monthly'>('kol');
+  useEffect(() => { if (searchParams.get('tab') === 'monthly') setActiveTab('monthly'); }, [searchParams]);
   const [loading, setLoading] = useState(() => !lastAdminPayoutsSnapshot);
   const [payouts, setPayouts] = useState<PayoutItem[]>(() => lastAdminPayoutsSnapshot?.payouts || []);
   const [stats, setStats] = useState<PayoutStats | null>(() => lastAdminPayoutsSnapshot?.stats || null);
@@ -137,6 +140,7 @@ export default function AdminFinancePayoutsPage() {
 
   // Approval modal state
   const [approvingItem, setApprovingItem] = useState<PayoutItem | null>(null);
+  const [approvalProgress, setApprovalProgress] = useState(0);
   const [riskItem, setRiskItem] = useState<PayoutItem | null>(null);
   const [riskFocusCode, setRiskFocusCode] = useState<string>();
   const [monthlyItem, setMonthlyItem] = useState<PayoutItem | null>(null);
@@ -190,6 +194,7 @@ export default function AdminFinancePayoutsPage() {
     if (!approvingItem || approvalInFlight.current || (approvingItem.status === 'PENDING' && approvingItem.risk?.status === 'BLOCKED')) return;
     approvalInFlight.current = true;
     setSubmittingApproval(true);
+    setApprovalProgress(0);
     try {
       const formData = new FormData();
       formData.append('bill', bill);
@@ -199,6 +204,8 @@ export default function AdminFinancePayoutsPage() {
 
       await api.patch(`/admin/payouts/${approvingItem.id}/approve`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
+        onUploadProgress: progress => setApprovalProgress(progress.total ? Math.min(100, Math.round(progress.loaded / progress.total * 100)) : 0),
       });
       toast.success(`Đã xác nhận giải ngân cho ${approvingItem.collaboratorName}`);
       void fetchPendingWork();
@@ -206,7 +213,7 @@ export default function AdminFinancePayoutsPage() {
       fetchStats();
       fetchPayouts();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Không thể duyệt yêu cầu');
+      toast.error(err.code === 'ECONNABORTED' || !err.response ? 'Chưa nhận được kết quả. Kiểm tra trạng thái lệnh trước khi xác nhận lại.' : err.response?.data?.message || 'Không thể duyệt yêu cầu');
     } finally {
       approvalInFlight.current = false;
       setSubmittingApproval(false);
@@ -289,7 +296,10 @@ export default function AdminFinancePayoutsPage() {
         </button><button type="button" aria-pressed={activeTab === 'monthly'} onClick={() => { setRewardMonth(pendingWork?.monthly.months[0]); setActiveTab('monthly'); }} className="flex items-center gap-2"><span className="finance-tab-number">5</span><span>Thưởng tháng</span><FinanceWorkBadge count={pendingWork?.monthly.total} label="chính sách hoặc đề nghị thưởng chờ duyệt" /></button>
       </div>
       {workError && <div className="finance-work-notice" role="status"><span>Chưa cập nhật được số việc cần xử lý{pendingWork ? '; số đang hiện là lần kiểm tra gần nhất.' : '.'}</span><button type="button" onClick={() => void fetchPendingWork()}>Thử lại</button></div>}
-      {!workError && pendingWork && activeTab === 'escrow' && pendingWork.escrow > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.escrow} khoản cần xử lý</strong> · Có hồ sơ đổi trả, tranh chấp hoặc thẩm định chưa hoàn tất.</span></div>}
+      {!workError && pendingWork && activeTab === 'escrow' && pendingWork.escrow > 0 && <div className="finance-work-notice" role="status"><span>
+        {(pendingWork.escrowWaitingExchange ?? 0) > 0 && <><strong>{pendingWork.escrowWaitingExchange} khoản đang chờ hoàn tất đổi hàng</strong>{pendingWork.escrow > (pendingWork.escrowWaitingExchange ?? 0) ? ' · ' : '. '}</>}
+        {pendingWork.escrow > (pendingWork.escrowWaitingExchange ?? 0) && <><strong>{pendingWork.escrow - (pendingWork.escrowWaitingExchange ?? 0)} khoản cần xem xét</strong> · Đổi trả, tranh chấp hoặc thẩm định chưa hoàn tất.</>}
+      </span></div>}
       {!workError && pendingWork && activeTab === 'customer' && pendingWork.customer > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.customer} yêu cầu rút tiền Customer chờ duyệt.</strong></span></div>}
       {!workError && pendingWork && activeTab === 'monthly' && pendingWork.monthly.total > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.monthly.total} việc chờ duyệt</strong> · {pendingWork.monthly.policies} chính sách · {pendingWork.monthly.grants} đề nghị thưởng</span><div>{pendingWork.monthly.months.map(month => <button type="button" key={month} aria-pressed={rewardMonth === month} onClick={() => setRewardMonth(month)}>Tháng {month.split('-').reverse().join('/')}</button>)}</div></div>}
       {activeTab === 'customer' && <AdminCustomerWithdrawals onChanged={fetchPendingWork}/>}
@@ -426,10 +436,9 @@ export default function AdminFinancePayoutsPage() {
                           </td>
 
                           <td className="p-3.5">
-                            <div className="payout-person-heading"><span className="payout-avatar">{item.collaboratorName.trim().split(/\s+/).slice(-2).map(part => part[0]).join('')}{item.collaboratorAvatar && <img src={item.collaboratorAvatar} alt="" onError={event => { event.currentTarget.hidden = true; }}/>}</span><strong>{item.collaboratorName}</strong></div>
-                            <div className="payout-person-meta">{item.collaboratorPhone || item.collaboratorEmail}{item.collaboratorTaxCode && <span>MST {item.collaboratorTaxCode}</span>}</div>
+                            <div className="payout-person-heading"><span className="payout-avatar">{item.collaboratorName.trim().split(/\s+/).slice(-2).map(part => part[0]).join('')}{item.collaboratorAvatar && <img src={item.collaboratorAvatar} alt="" onError={event => { event.currentTarget.hidden = true; }}/>}</span><button type="button" className="payout-person-name" onClick={() => setRiskItem(item)} title="Xem hồ sơ KOL"><strong>{item.collaboratorName}</strong></button></div>
                             <div className="payout-person-tools">
-                            {item.monthlyWithdrawalSummary && <button type="button" className="payout-month-total" onClick={() => setMonthlyItem(item)} title={`Tháng ${item.monthlyWithdrawalSummary.month.split('-').reverse().join('/')}`} aria-label={`Xem tổng yêu cầu rút tháng ${item.monthlyWithdrawalSummary.month} của ${item.collaboratorName}`}><span>Tổng yêu cầu tháng:</span><strong>{formatMoney(item.monthlyWithdrawalSummary.totalGross)}</strong><span aria-hidden="true">↗</span></button>}
+                            {item.monthlyWithdrawalSummary && <button type="button" className="payout-month-total" onClick={() => setMonthlyItem(item)} title={`Tháng ${item.monthlyWithdrawalSummary.month.split('-').reverse().join('/')}`} aria-label={`Xem tổng yêu cầu rút tháng ${item.monthlyWithdrawalSummary.month} của ${item.collaboratorName}`}><span>Tháng {item.monthlyWithdrawalSummary.month.split('-').reverse().join('/')}:</span><strong>{formatMoney(item.monthlyWithdrawalSummary.totalGross)}</strong><span aria-hidden="true">↗</span></button>}
                             {item.risk ? <button type="button" onClick={() => setRiskItem(item)} className="payout-risk-trigger" aria-label={`Xem kiểm tra rủi ro của ${item.collaboratorName}`}>
                               <span className={item.risk.status === 'BLOCKED' ? 'font-semibold text-[#DC2626]' : 'font-semibold text-[#8F682E]'}>
                                 {item.risk.passedChecks === item.risk.totalChecks ? '✓ Đủ điều kiện' : '⚠ Cần bổ sung'} · {item.risk.passedChecks}/{item.risk.totalChecks}
@@ -442,7 +451,7 @@ export default function AdminFinancePayoutsPage() {
                           </td>
 
                           <td className="p-3.5">
-                            <div className="payout-money-cell"><strong title={item.status === 'REJECTED' ? 'Số tiền yêu cầu' : item.status === 'APPROVED' ? 'Thực nhận đã ghi nhận' : 'Thực nhận dự kiến'}>{formatMoney(item.status === 'REJECTED' ? item.amount : item.netAmount)}</strong>{item.status === 'REJECTED' ? <span className="payout-refund-note">{Number(item.refundedAmount) > 0 ? `Đã hoàn về ví ${formatMoney(item.refundedAmount!)}` : 'Chưa xác nhận bút toán hoàn'}</span> : <button type="button" className="payout-money-breakdown" onClick={() => setDetailItem(item)} title={payoutTaxLabel(item.amount, item.taxContext)}><span>Yêu cầu</span><span>{formatMoney(item.amount)}</span><span>Thuế</span><span>{formatMoney(item.taxAmount)}</span></button>}</div>
+                            <div className="payout-money-cell"><strong title={item.status === 'REJECTED' ? 'Số tiền yêu cầu' : item.status === 'APPROVED' ? 'Thực nhận đã ghi nhận' : 'Thực nhận dự kiến'}>{formatMoney(item.status === 'REJECTED' ? item.amount : item.netAmount)}</strong>{item.status === 'REJECTED' ? <span className="payout-refund-note">{Number(item.refundedAmount) > 0 ? `Đã hoàn về ví ${formatMoney(item.refundedAmount!)}` : 'Chưa xác nhận bút toán hoàn'}</span> : <button type="button" className="payout-money-breakdown" onClick={() => setDetailItem(item)} title={payoutTaxLabel(item.amount, item.taxContext)}><span>Yêu cầu</span><span>{formatMoney(item.amount)}</span><span>{payoutTableTaxLabel(item.amount, item.taxAmount, item.taxContext)}</span><span>{formatMoney(item.taxAmount)}</span></button>}</div>
                           </td>
 
                           <td className="p-3.5 text-center">
@@ -515,6 +524,7 @@ export default function AdminFinancePayoutsPage() {
         key={approvingItem.id}
         item={approvingItem}
         busy={submittingApproval}
+        uploadProgress={approvalProgress}
         onClose={() => setApprovingItem(null)}
         onViewIssue={code => { setRiskFocusCode(code); setRiskItem(approvingItem); }}
         onManualApprove={handleApproveSubmit}

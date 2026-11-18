@@ -8,7 +8,6 @@ import api from '../../services/api';
 import { getChatSocket } from '../../services/chat-socket.service';
 import { Modal } from '../ui/Modal';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
-import './exclusive-deal-bubble.css';
 
 export function ExclusiveDealCardBubble({ card, isShop, compact = false, onStateChange }: { card: any; isMine: boolean; isShop: boolean; compact?: boolean; onStateChange?: (id: string, state: any) => void }) {
   const [loading, setLoading] = useState(false);

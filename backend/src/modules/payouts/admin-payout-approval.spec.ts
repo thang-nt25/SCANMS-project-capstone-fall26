@@ -31,29 +31,38 @@ describe('Admin manual approval receipt failures', () => {
     expect(postPayoutCompletion).toHaveBeenCalledTimes(1);
     expect(bills.removeUnusedBill).not.toHaveBeenCalled();
   });
-  it('rejects an already used receipt before uploading, even with a new bank reference', async () => {
+  it('allows a receipt already attached to another request', async () => {
     const { prisma, approve, bills, tx } = setup();
     prisma.payoutRequest.findFirst.mockResolvedValue({ id: 'other' } as never);
-    await expect(approve()).rejects.toThrow('Chứng từ này đã được dùng');
-    expect(bills.uploadBill).not.toHaveBeenCalled();
-    expect(tx.payoutRequest.update).not.toHaveBeenCalled();
+    await expect(approve()).resolves.toMatchObject({ status: 'APPROVED' });
+    expect(bills.uploadBill).toHaveBeenCalledTimes(1);
+    expect(prisma.payoutRequest.findFirst).not.toHaveBeenCalled();
+    expect(tx.payoutRequest.update).toHaveBeenCalledTimes(1);
   });
-  it('checks again inside the transaction if another approval just used the receipt', async () => {
+  it('does not reject a shared receipt inside the transaction', async () => {
     const { approve, tx, bills } = setup();
     tx.payoutRequest.findFirst.mockResolvedValue({ id: 'other', proofImageSha256: 'a'.repeat(64) } as never);
-    await expect(approve()).rejects.toBeInstanceOf(ConflictException);
-    expect(tx.payoutRequest.update).not.toHaveBeenCalled();
-    expect(bills.removeUnusedBill).toHaveBeenCalledWith('new-proof');
+    await expect(approve()).resolves.toMatchObject({ status: 'APPROVED' });
+    expect(tx.payoutRequest.update).toHaveBeenCalledTimes(1);
+    expect(bills.removeUnusedBill).not.toHaveBeenCalled();
   });
-  it('keeps bank reference uniqueness', async () => {
+  it('allows a bank reference shared by other requests', async () => {
     const { approve, tx } = setup();
     tx.payoutRequest.findFirst.mockResolvedValue({ id: 'other', bankRefCode: 'GD-20261114-0002' } as never);
-    await expect(approve()).rejects.toBeInstanceOf(BadRequestException);
-    expect(tx.payoutRequest.update).not.toHaveBeenCalled();
+    await expect(approve()).resolves.toMatchObject({ status: 'APPROVED' });
+    expect(tx.payoutRequest.findFirst).not.toHaveBeenCalled();
+    expect(tx.payoutRequest.update).toHaveBeenCalledTimes(1);
+  });
+  it('uploads evidence even when another request used the bank reference', async () => {
+    const { approve, prisma, bills, tx } = setup();
+    prisma.payoutRequest.findFirst.mockResolvedValue({ id: 'other', bankRefCode: 'GD-20261114-0002', proofImageSha256: 'b'.repeat(64) } as never);
+    await expect(approve()).resolves.toMatchObject({ status: 'APPROVED' });
+    expect(bills.uploadBill).toHaveBeenCalledTimes(1);
+    expect(tx.payoutRequest.update).toHaveBeenCalledTimes(1);
   });
   it('returns 409 for a database uniqueness race even when receipt cleanup fails', async () => {
     const { approve, tx, bills } = setup();
-    tx.payoutRequest.update.mockRejectedValue(new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: 'test', meta: { target: 'idx_payouts_unique_bill_hash' } }));
+    tx.payoutRequest.update.mockRejectedValue(new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: 'test', meta: { target: 'financial_posting_identity' } }));
     bills.removeUnusedBill.mockRejectedValue(new Error('storage unavailable'));
     await expect(approve()).rejects.toBeInstanceOf(ConflictException);
     expect(tx.auditLog.create).not.toHaveBeenCalled();
@@ -65,5 +74,13 @@ describe('Admin manual approval receipt failures', () => {
     bills.removeUnusedBill.mockRejectedValue(new Error('storage unavailable'));
     await expect(approve()).rejects.toThrow('Tài khoản chưa khớp KYC');
     expect(tx.payoutRequest.update).not.toHaveBeenCalled();
+  });
+  it('never removes shared evidence when a new approval fails', async () => {
+    const { approve, tx, bills } = setup();
+    bills.uploadBill.mockResolvedValue({ publicId: 'shared-proof', secureUrl: 'https://example.invalid/shared.png', format: 'png', sha256: 'a'.repeat(64), reused: true } as never);
+    tx.payoutRequest.update.mockRejectedValue(new Error('database unavailable'));
+    await expect(approve()).rejects.toThrow('database unavailable');
+    expect(bills.removeUnusedBill).not.toHaveBeenCalled();
+    expect(postPayoutCompletion).not.toHaveBeenCalled();
   });
 });

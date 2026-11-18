@@ -12,7 +12,6 @@ import {
 } from "@/services/coupon.service";
 import { formatMoney } from "@/utils/marketplace.utils";
 import { CouponOversightDetails, couponDate, couponExpiry, couponLimit } from "./CouponOversightDetails";
-import "./kol-coupon-cards.css";
 
 const labels: Record<string, string> = {
   PENDING_APPROVAL: "Chờ Shop duyệt",

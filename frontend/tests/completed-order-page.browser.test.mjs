@@ -10,7 +10,7 @@ test('completed product row opens a dedicated order page with saved totals, revi
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
   const browser = await puppeteer.launch({ executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', headless: true, timeout: 10000, args: ['--no-sandbox'] });
   const user = { id: 'qa-customer', fullName: 'Tuấn Đình', role: 'CUSTOMER' };
-  const order = { id: '00000000-0000-4000-8000-000000000001', externalOrderSn: 'DH-2026-QA', status: 'COMPLETED', createdAt: '2026-10-19T03:51:00Z', deliveredAt: '2026-10-20T03:00:00Z', completedAt: '2026-10-20T04:00:00Z', customerName: user.fullName, customerPhone: '0901234567', shippingAddress: 'Khu Công Nghệ Cao, Phường Phước Long B, Thành phố Thủ Đức, Thành phố Hồ Chí Minh', finalAmount: 271001, subtotalAmount: 250000, shippingFee: 21001, discountAmount: 0, rawPayload: { paymentMethod: 'PAYOS', paymentStatus: 'PAID', ghnOrderCode: 'L8RAYL', ghnShippedAt: '2026-10-19T04:00:00Z', ghnEnvironment: 'TEST' }, storeId: 'qa-shop', store: { id: 'qa-shop', name: 'Sora Skin', slug: 'sora-skin' }, orderItems: [{ id: 'qa-item', productId: 'qa-product', quantity: 1, unitPrice: 250000, product: { id: 'qa-product', sku: 'QA-SERUM', title: 'Serum Vitamin C', imageUrl: '/assets/categories/skin-v1.png' }, variant: { name: '30 ml / Tiêu chuẩn' } }], productReviews: [{ id: 'qa-review', productId: 'qa-product', customerName: user.fullName, createdAt: '2026-10-20T04:00:00Z', rating: 5, comment: 'Sản phẩm dùng tốt.', status: 'APPROVED', images: [] }] };
+  const order = { id: '00000000-0000-4000-8000-000000000001', externalOrderSn: 'DH-2026-QA', status: 'COMPLETED', createdAt: '2026-10-19T03:51:00Z', deliveredAt: new Date(Date.now() - 86400000).toISOString(), completedAt: '2026-10-20T04:00:00Z', customerName: user.fullName, customerPhone: '0901234567', shippingAddress: 'Khu Công Nghệ Cao, Phường Phước Long B, Thành phố Thủ Đức, Thành phố Hồ Chí Minh', finalAmount: 271001, subtotalAmount: 250000, shippingFee: 21001, discountAmount: 0, rawPayload: { paymentMethod: 'PAYOS', paymentStatus: 'PAID', ghnOrderCode: 'L8RAYL', ghnShippedAt: '2026-10-19T04:00:00Z', ghnEnvironment: 'TEST' }, storeId: 'qa-shop', store: { id: 'qa-shop', name: 'Sora Skin', slug: 'sora-skin' }, orderItems: [{ id: 'qa-item', productId: 'qa-product', quantity: 1, unitPrice: 250000, product: { id: 'qa-product', sku: 'QA-SERUM', title: 'Serum Vitamin C', imageUrl: '/assets/categories/skin-v1.png' }, variant: { name: '30 ml / Tiêu chuẩn' } }], productReviews: [{ id: 'qa-review', productId: 'qa-product', customerName: user.fullName, createdAt: '2026-10-20T04:00:00Z', rating: 5, comment: 'Sản phẩm dùng tốt.', status: 'APPROVED', images: [] }] };
   const writes = [], errors = [];
   try {
     const page = await browser.newPage();
@@ -32,7 +32,7 @@ test('completed product row opens a dedicated order page with saved totals, revi
         if (url.pathname.endsWith('/customer/orders')) data = { orders: [order], total: 1 };
         if (url.pathname.endsWith('/customer/orders/' + order.id)) data = order;
         if (url.pathname.endsWith('/customer/orders/not-owned')) { status = 403; data = { message: 'Forbidden' }; }
-        if (url.pathname.includes('/shipping/ghn/track/')) data = { status: 'delivered', statusText: 'Giao hàng thành công', timeline: [{ status: 'picked', title: 'Đã lấy hàng', time: '2026-10-19T05:00:00Z' }, { status: 'delivered', title: 'Đã giao', time: order.deliveredAt }] };
+        if (url.pathname.includes('/shipping/ghn/track/')) data = { status: 'delivered', statusText: 'Giao hàng thành công', isSimulation: true, shipperName: 'Shipper QA', shipperPhoneDisplay: '09xx xxx xxx', lastCheckedAt: order.deliveredAt, timeline: [{ status: 'ready_to_pick', title: 'Waiting for pickup', time: order.createdAt }, { status: 'storing', title: 'At sorting warehouse', warehouse: 'Warehouse QA', time: order.createdAt }, { status: 'delivering', title: 'Out for delivery', shipperName: 'Shipper QA', time: order.createdAt }, { status: 'picked', title: 'Đã lấy hàng', time: '2026-10-19T05:00:00Z' }, { status: 'delivered', title: 'Đã giao', time: order.deliveredAt }] };
         if (url.pathname.endsWith('/customer/cart')) data = { items: [] };
         if (url.pathname.includes('/notifications/unread')) data = { unreadCount: 0, categoryUnreadCounts: {} };
         if (url.pathname.endsWith('/notifications')) data = { notifications: [], total: 0 };
@@ -58,6 +58,15 @@ test('completed product row opens a dedicated order page with saved totals, revi
     assert.equal(await page.$eval('.purchase-detail-progress li:nth-child(3) time', el => el.getAttribute('datetime')), '2026-10-19T05:00:00Z');
     assert.equal(await page.$eval('.purchase-detail-products header a', el => el.getAttribute('href')), '/shop/sora-skin');
     assert.equal(await page.$eval('.purchase-product-image', el => el.getAttribute('href')), '/products/qa-product');
+    await page.waitForSelector('.ghn-journey__history li');
+    assert.equal(await page.$$eval('.ghn-journey__history li', els => els.length), 5);
+    assert.equal(await page.$('.ghn-journey details'), null, 'shipping history stays expanded without a collapse control');
+    assert.equal(await page.$('.ghn-journey__steps'), null, 'compact order view does not repeat the same shipping milestones');
+    const actionSizes = await page.$$eval('.purchase-detail-actions > div > *', els => els.map(el => { const r = el.getBoundingClientRect(); return { width: r.width, height: r.height }; }));
+    assert.equal(actionSizes.length, 4);
+    assert.ok(actionSizes.every(size => Math.abs(size.width - actionSizes[0].width) < 1 && size.height === 42), JSON.stringify(actionSizes));
+    const panels = await page.$$eval('.purchase-detail-body > :is(.purchase-detail-products, .purchase-detail-payment)', els => els.map(el => el.getBoundingClientRect().top));
+    assert.equal(panels[0], panels[1], 'products and payment share one desktop row');
     await page.screenshot({ path: join(tmpdir(), 'scanms-completed-order-desktop.png') });
     await page.click('.purchase-product-review');
     await page.waitForSelector('[aria-labelledby="order-reviews-title"][open]');

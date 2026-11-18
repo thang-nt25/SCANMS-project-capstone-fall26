@@ -135,9 +135,9 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
         <button type="button" onClick={() => onChat(order)}><MessageCircle size={15} /> Liên hệ người bán</button>
         {actions.cancel && <button type="button" className="purchase-cancel-action" onClick={() => onCancel(order)}>Hủy đơn</button>}
         {actions.review ? <button type="button" onClick={() => onReview(order)}><Star size={15} /> Đánh giá sản phẩm</button> : savedReviews && <button type="button" onClick={() => onViewReviews(order)}><Star size={15} /> Xem đánh giá</button>}
-      </div>
       {actions.requestReturn && <button type="button" className="purchase-return-action inline-flex min-h-11 items-center justify-center rounded-xl border border-[#EAE4D7] px-3 py-2 text-sm" onClick={() => onReturn(order)}>Trả hàng / Hoàn tiền</button>}
       {(order.returnRequests?.length ? order.returnRequests : order.returnRequest ? [order.returnRequest] : []).map((request, index) => <Link key={request.id} className="purchase-return-action inline-flex min-h-11 items-center justify-center rounded-xl border border-[#EAE4D7] px-3 py-2 text-sm" to={`/customer/returns/${request.id}`}>Hồ sơ đổi trả {index + 1}</Link>)}
+      </div>
     </section>
 
     {cancelled && <section className="purchase-cancellation space-y-2 border-b border-[#EAE4D7] p-5 text-sm" aria-label="Thông tin hủy đơn">
@@ -145,11 +145,12 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
       <p><strong>Lý do hủy:</strong> {order.overrideReason || 'Chưa có lý do hủy được ghi nhận.'}</p>
     </section>}
 
+    <div className="purchase-detail-body">
     <section className="purchase-detail-delivery border-b border-[#EAE4D7] p-4 sm:p-5" aria-label="Địa chỉ và vận chuyển">
       <div className="purchase-delivery-heading mb-4 flex flex-wrap items-center justify-between gap-2 [&>h2]:text-base [&>h2]:font-semibold [&>span]:text-xs [&>span]:text-[#7D715E]"><h2>Địa chỉ nhận hàng</h2>{trackingCode && <span>Giao Hàng Nhanh · <strong>{trackingCode}</strong></span>}</div>
       <div className="purchase-delivery-columns grid min-w-0 gap-5 lg:grid-cols-2 [&>address]:flex [&>address]:flex-col [&>address]:gap-2 [&>address]:not-italic [&>address]:text-sm [&_address>p]:leading-relaxed [&_address>p]:text-[#7D715E] [&>div]:min-w-0 lg:[&>div]:border-l lg:[&>div]:border-[#EAE4D7] lg:[&>div]:pl-5">
         <address>{order.customerName || order.customerPhone || order.shippingAddress ? <><strong>{order.customerName || 'Chưa lưu tên người nhận'}</strong><span>{order.customerPhone || 'Chưa lưu số điện thoại'}</span><p>{order.shippingAddress || 'Chưa lưu địa chỉ nhận hàng'}</p></> : <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-4"><strong className="text-sm">Chưa lưu thông tin người nhận</strong><p className="mt-1 text-xs leading-relaxed text-[#7D715E]">{order.rawPayload?.demoHistoryReconstruction ? 'Đơn demo cũ chưa có địa chỉ giao hàng.' : 'Đơn hàng này chưa có thông tin giao hàng được lưu.'}</p></div>}</address>
-        <div>{!cancelled && realTracking ? <GhnTrackingTimeline orderCode={trackingCode} onTimelineChange={setTrackingEvents} environment={['TEST', 'LIVE'].includes(order.rawPayload?.ghnEnvironment) ? order.rawPayload.ghnEnvironment : undefined} /> : <p className="purchase-no-tracking rounded-xl bg-[#FAF8F5] p-4 text-sm leading-relaxed text-[#7D715E]">{cancelled ? 'Đơn hàng đã hủy, không tiếp tục giao hàng.' : pending ? 'Shop chưa bàn giao đơn cho đơn vị vận chuyển.' : trackingCode ? 'Mã vận đơn thử nội bộ, chưa có hành trình giao hàng thực tế.' : 'Chưa có thông tin vận chuyển.'}</p>}</div>
+        <div>{!cancelled && realTracking ? <GhnTrackingTimeline compact orderCode={trackingCode} onTimelineChange={setTrackingEvents} environment={['TEST', 'LIVE'].includes(order.rawPayload?.ghnEnvironment) ? order.rawPayload.ghnEnvironment : undefined} /> : <p className="purchase-no-tracking rounded-xl bg-[#FAF8F5] p-4 text-sm leading-relaxed text-[#7D715E]">{cancelled ? 'Đơn hàng đã hủy, không tiếp tục giao hàng.' : pending ? 'Shop chưa bàn giao đơn cho đơn vị vận chuyển.' : trackingCode ? 'Mã vận đơn thử nội bộ, chưa có hành trình giao hàng thực tế.' : 'Chưa có thông tin vận chuyển.'}</p>}</div>
       </div>
     </section>
 
@@ -167,6 +168,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
     </section>
 
     <section className="purchase-detail-payment p-4 sm:p-5 [&>dl]:ml-auto [&>dl]:w-full [&>dl]:max-w-xl [&_dl>div]:flex [&_dl>div]:justify-between [&_dl>div]:gap-4 [&_dl>div]:py-2 [&_dt]:text-sm [&_dt]:text-[#7D715E] [&_dd]:text-right [&_dd]:text-sm [&_dd]:font-medium [&_dd]:tabular-nums" aria-label="Thanh toán đơn hàng">
+      <h2 className="purchase-payment-heading">Thanh toán đơn hàng</h2>
       <dl>
         <div><dt>Tổng tiền hàng</dt><dd>{formatMoney(order.subtotalAmount)}</dd></div>
         <div><dt>Phí vận chuyển</dt><dd>{formatMoney(order.shippingFee)}</dd></div>
@@ -176,5 +178,6 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
         <div><dt>Trạng thái thanh toán</dt><dd>{paid ? 'Đã thanh toán' : 'Chưa ghi nhận thanh toán'}</dd></div>
       </dl>
     </section>
+    </div>
   </article>;
 }

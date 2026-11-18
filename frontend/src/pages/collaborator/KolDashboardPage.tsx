@@ -27,7 +27,6 @@ import { Select } from '@/components/ui/Select';
 import { kolDashboardRange } from '@/utils/kol-dashboard';
 import { ledgerAmountPresentation } from '@/utils/ledger-amount';
 import { KolRecentReferralOrders } from '../../components/affiliate/KolRecentReferralOrders';
-import './kol-dashboard.css';
 
 function DashboardMetric({ label, value, note, growth, icon: Icon }: {
   label: string;

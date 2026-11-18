@@ -13,7 +13,6 @@ import api from '../../services/api';
 import { authService } from '../../services/auth.service';
 import { referralLinksService } from '../../services/referral-links.service';
 import { formatMoney, getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
-import './exclusive-offer-modal.css';
 
 type Choice = { id: string; fullName: string };
 

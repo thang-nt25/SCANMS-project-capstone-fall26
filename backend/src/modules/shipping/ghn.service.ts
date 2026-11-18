@@ -5,8 +5,10 @@ import {
   BadRequestException,
   ConflictException,
   ServiceUnavailableException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CacheService } from '../../core/cache/cache.service';
 import { PrismaService } from '../../core/database/prisma.service';
 import { isGeneratedGhnTestTrackingCode } from './ghn-tracking-code';
 import { createCustomerGhnSimulation, customerGhnSimulationDetail } from './customer-ghn-simulation';
@@ -67,6 +69,7 @@ export class GhnService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   private simulationEnabled(): boolean {
@@ -74,7 +77,7 @@ export class GhnService {
       this.configService.get?.<string>('SHIPPING_SIMULATION_ENABLED') ??
       process.env.SHIPPING_SIMULATION_ENABLED;
     // A real GHN sandbox response must not silently turn into a fabricated journey.
-    return process.env.NODE_ENV !== 'production' && enabled === 'true';
+    return (process.env.NODE_ENV !== 'production' || process.env.ALLOW_HOSTED_SHIPPING_SIMULATION === 'true') && enabled === 'true';
   }
 
   private requireSimulationEnabled(): void {
@@ -613,6 +616,12 @@ export class GhnService {
       }
       return current;
     });
+
+    try {
+      await this.cacheService?.delPrefix('orders:store:');
+    } catch {
+      this.logger.warn('Đã tạo vận đơn GHN; chưa xóa được cache danh sách đơn.');
+    }
 
     return {
       success: true,

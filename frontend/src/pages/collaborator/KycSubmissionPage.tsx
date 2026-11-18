@@ -1,4 +1,5 @@
-import React, { useState, useLayoutEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useLayoutEffect, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Link as LinkIcon,
   UserCheck,
@@ -32,6 +33,11 @@ interface KycSubmissionPageProps {
 const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmissionPageProps>(function KycSubmissionPage({ loadedData, isRefreshing = false, onProfileSaved }, ref) {
   const formRef = useRef<HTMLFormElement>(null);
   const [activeSection, setActiveSection] = useState<'channel' | 'identity' | 'bank'>('channel');
+  const [searchParams] = useSearchParams();
+  const targetSection = searchParams.get('section');
+  useEffect(() => {
+    if (targetSection === 'identity' || targetSection === 'bank') setActiveSection(targetSection);
+  }, [targetSection]);
   const loadSequence = useRef(0);
   const revealSection = (section: string) => {
     setActiveSection(section as typeof activeSection);
@@ -306,6 +312,14 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
 
   return (
     <div className="kyc-page flex flex-col gap-3.5 w-full text-left" aria-busy={loading || isRefreshing}>
+      {searchParams.get('required') && <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#715126]">
+        <strong className="font-medium">Hồ sơ cần kiểm tra để xử lý rút tiền</strong>
+        <div className="mt-2 flex flex-wrap gap-2">{[
+          { code: 'VERIFIED_KYC', section: 'identity', label: 'Định danh' },
+          { code: 'BENEFICIARY_MATCH', section: 'bank', label: 'Tài khoản ngân hàng' },
+          { code: 'TAX_ID', section: 'identity', label: 'Mã số thuế' },
+        ].filter(item => searchParams.get('required')?.split(',').includes(item.code)).map(item => <button type="button" key={item.code} onClick={() => revealSection(item.section)} className="rounded-lg border border-[#EEDFC6] bg-white px-3 py-2">{item.label} ↗</button>)}</div>
+      </div>}
       {loading && (
         <section className="flex items-center gap-2 p-3 sm:px-3.5 border border-[#EAE4D7] rounded-xl bg-white text-[#7D715E] text-xs" role="status">
           <Loader2 size={16} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" />

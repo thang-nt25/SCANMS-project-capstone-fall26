@@ -182,6 +182,12 @@ export class FinanceReportController {
   escrow(@Query('page') page?: string) {
     return this.reports.escrow(page === undefined ? 1 : Number(page));
   }
+  @Get('admin/payouts/escrow/:id/movements')
+  @Header('Cache-Control', 'private, no-store')
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  escrowMovements(@Param('id', ParseUUIDPipe) id: string, @Query('page') page?: string) {
+    return this.reports.escrowMovements(id, page === undefined ? 1 : Number(page));
+  }
   @Get('wallets/tax-invoices')
   @Roles(UserRole.COLLABORATOR)
   taxStatements(@CurrentUser() user: AuthenticatedUser) {

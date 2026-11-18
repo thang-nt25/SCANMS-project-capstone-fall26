@@ -116,6 +116,8 @@ export interface LedgerEntry {
   referenceId: string | null;
   referenceType: string | null;
   referenceDetails?: {
+    withdrawalStatus?: 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
+    processedAt?: string | null;
       topUpCode?: string;
     storeName: string | null;
     orderId: string | null;

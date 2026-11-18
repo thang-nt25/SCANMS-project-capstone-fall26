@@ -12,7 +12,6 @@ import type {
   NotificationCategory,
 } from '../../services/notifications.service';
 import { CustomerNotificationCard } from './CustomerNotificationCard';
-import './customer-notifications.css';
 
 type SpecificCategory = Exclude<NotificationCategory, 'ALL'>;
 interface CustomerNotificationsTabProps {

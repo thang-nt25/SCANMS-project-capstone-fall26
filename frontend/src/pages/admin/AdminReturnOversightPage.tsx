@@ -7,7 +7,6 @@ import { authService } from '@/services/auth.service';
 import { returnService, type ReturnDetail, type ReturnDisputeRecord } from '@/services/return.service';
 import { returnStatusLabel } from '@/utils/return-status.utils';
 import { caseProducts, CaseProductImage, claimLabels, returnDate, returnMoney } from '@/components/returns/ReturnCaseProducts';
-import './return-oversight.css';
 
 const groups = [
   { id:'rejected', label:'Shop từ chối', key:'rejected-return-reviews', help:'Xem hồ sơ và bằng chứng trước khi mở phân xử. Mở phân xử chưa phải kết luận Shop hay GHN có lỗi.' },

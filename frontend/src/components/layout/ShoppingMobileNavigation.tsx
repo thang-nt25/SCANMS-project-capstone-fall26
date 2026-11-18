@@ -7,7 +7,6 @@ import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { authService } from '@/services/auth.service';
 import { notificationsService } from '@/services/notifications.service';
 import { productLoginUrl } from '@/utils/login-return';
-import './ShoppingMobileNavigation.css';
 
 // Shopping destinations only: workspaces and full-screen task flows keep their own navigation.
 export function ShoppingMobileNavigation() {

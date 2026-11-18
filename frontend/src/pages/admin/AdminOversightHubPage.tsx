@@ -6,7 +6,6 @@ import { useControlledTab } from '../../hooks/useControlledTab';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import { KolCouponManagement } from '../../components/coupons/KolCouponManagement';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
-import './affiliate-oversight.css';
 
 const ADMIN_OVERSIGHT_TABS = ['links', 'coupons', 'live-sessions'] as const;
 type AdminOversightTab = (typeof ADMIN_OVERSIGHT_TABS)[number];

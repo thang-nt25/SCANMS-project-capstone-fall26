@@ -1352,6 +1352,7 @@ export class ProductsService {
           sku: dto.sku.trim().toUpperCase(),
           title: dto.title.trim(),
           categoryName: dto.categoryName?.trim() || null,
+          productGroup: dto.productGroup?.trim() || null,
           description: dto.description?.trim() || null,
           imageUrl: dto.imageUrl?.trim() || null,
           price: dto.price,
@@ -1554,6 +1555,7 @@ export class ProductsService {
         textChanged(dto.barcode, product.barcode) ||
         textChanged(dto.title, product.title) ||
         textChanged(dto.categoryName, product.categoryName) ||
+        textChanged(dto.productGroup, product.productGroup) ||
         textChanged(dto.description, product.description) ||
         textChanged(dto.ingredients, product.ingredients) ||
         textChanged(dto.origin, product.origin) ||
@@ -1647,6 +1649,9 @@ export class ProductsService {
         ...(dto.title && { title: dto.title.trim() }),
         ...(dto.categoryName !== undefined && {
           categoryName: dto.categoryName?.trim() || null,
+        }),
+        ...(dto.productGroup !== undefined && {
+          productGroup: dto.productGroup?.trim() || null,
         }),
         ...(dto.description !== undefined && {
           description: dto.description?.trim() || null,

@@ -9,6 +9,7 @@ import { useSearchParams, useNavigate, Link, useLocation, useParams } from 'reac
 import { CustomerCompletedOrderDetail } from './CustomerCompletedOrderDetail';
 import {
   ShoppingBag,
+  Eye,
   MapPin,
   Search,
   Truck,
@@ -935,6 +936,8 @@ export default function CustomerPortalPage() {
     }
   };
 
+  const profileDirty = nameInput !== (profileData?.user.fullName || '') || phoneInput !== (profileData?.user.phoneNumber || '');
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdatingProfile(true);
@@ -1423,12 +1426,12 @@ export default function CustomerPortalPage() {
                               {isCancelled && <span className="customer-order-cancel-note text-xs text-[#7D715E] font-medium">Đơn hàng đã hủy</span>}
 
                               {/* Action Buttons Row */}
-                              <div className="customer-order-actions ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 [&>a]:min-h-11 [&>a]:min-w-0 [&>a]:rounded-xl [&>a]:px-4 [&>a]:py-2 [&>a]:text-center [&>a]:text-[13px] [&>a]:leading-5 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:rounded-xl [&>button]:px-4 [&>button]:py-2 [&>button]:text-center [&>button]:text-[13px] [&>button]:leading-5">
+                              <div className="customer-order-actions">
                                 {completedActions && <Link
                                   to={`/customer/orders/${encodeURIComponent(order.id)}`}
                                   className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
                                   aria-label={`Xem chi tiết đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết</Link>}
+                                ><Eye size={16} aria-hidden="true" /><span className="order-action-label-long">Xem chi tiết</span><span className="order-action-label-short">Chi tiết</span></Link>}
 
                                 {awaitingPayment && (
                                   <Link
@@ -1539,7 +1542,7 @@ export default function CustomerPortalPage() {
                                     className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
-                                    <span>Trả hàng / Hoàn tiền</span>
+                                    <span className="order-action-label-long">Trả hàng / Hoàn tiền</span><span className="order-action-label-short">Đổi trả</span>
                                   </button>
                                 )}
 
@@ -1561,7 +1564,7 @@ export default function CustomerPortalPage() {
                                     onClick={() => setViewedReviewOrder(order)}
                                     className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium transition-colors cursor-pointer"
                                   >
-                                    Xem đánh giá
+                                    <Star size={16} aria-hidden="true" /><span className="order-action-label-long">Xem đánh giá</span><span className="order-action-label-short">Đánh giá</span>
                                   </button>
                                 )}
                                   </>
@@ -1665,11 +1668,13 @@ export default function CustomerPortalPage() {
 
                 {/* SubTab 1: Thông tin cá nhân */}
                 {activeProfileSubTab === 'info' && (
-                  <div className="grid grid-cols-[minmax(0,1fr)_220px] @max-[719px]:grid-cols-1 items-start gap-[14px] min-w-0">
+                  <div className="grid grid-cols-[minmax(0,3fr)_minmax(220px,1fr)] @max-[719px]:grid-cols-1 items-start gap-[14px] min-w-0">
                     <div className="relative min-w-0 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs">
-                      <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[16px] @max-[519px]:gap-[14px] min-w-0 p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
+                      <form onSubmit={handleUpdateProfile} className="customer-profile-form flex flex-col gap-[16px] @max-[519px]:gap-[14px] min-w-0 p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
                         <div className="flex items-center gap-[10px] p-[10px_12px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5]">
-                          <span className="grid place-items-center shrink-0 w-[34px] h-[36px] rounded-[8px] bg-white text-[#B88E4F]" aria-hidden="true"><User size={16} /></span>
+                          <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-[#EAE4D7] bg-white text-[#B88E4F]" aria-hidden="true">
+                            {(profileData?.user.avatarUrl || currentUser?.avatarUrl) && failedProfileAvatar !== (profileData?.user.avatarUrl || currentUser?.avatarUrl) ? <img src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''} alt="" className="size-full object-cover" onError={() => setFailedProfileAvatar(profileData?.user.avatarUrl || currentUser?.avatarUrl || '')} /> : <User size={20} />}
+                          </span>
                           <div className="min-w-0">
                             <span className="block text-[#7D715E] text-[10px] leading-[1.5]">Tài khoản đăng nhập</span>
                             <strong className="block text-[13px] font-[600] leading-[1.5] break-words text-[#1A1612]">
@@ -1678,19 +1683,11 @@ export default function CustomerPortalPage() {
                           </div>
                         </div>
 
+                        <div className="grid grid-cols-2 @max-[519px]:grid-cols-1 gap-4">
                         <div className="flex flex-col gap-[6px] min-w-0">
                           <label htmlFor="customer-profile-name" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Họ và tên</label>
                           <input id="customer-profile-name" type="text" autoComplete="name" value={nameInput} onChange={(e) => setNameInput(e.target.value)} required placeholder="Nhập họ và tên" className="w-full min-w-0 h-[40px] px-[10px] py-[8px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition" />
                         </div>
-
-                        <div className="grid grid-cols-2 @max-[519px]:grid-cols-1 gap-[12px]">
-                          <div className="flex flex-col gap-[6px] min-w-0">
-                            <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Email</span>
-                            <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
-                              <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{maskEmail(profileData?.user.email || currentUser?.email)}</span>
-                              <span className="text-xs text-[#7D715E]">Email đăng nhập</span>
-                            </div>
-                          </div>
 
                           <div className="flex flex-col gap-[6px] min-w-0">
                             <label htmlFor={isEditingPhone ? 'customer-profile-phone' : undefined} className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Số điện thoại</label>
@@ -1700,19 +1697,27 @@ export default function CustomerPortalPage() {
                                 <button type="button" className="inline-flex items-center justify-center shrink-0 min-h-[30px] px-[8px] py-[5px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[11px] font-[550] cursor-pointer" onClick={() => setIsEditingPhone(false)}>Xong</button>
                               </div>
                             ) : (
-                              <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
+                              <div className="customer-profile-readonly flex items-center justify-between gap-[4px_8px] min-h-[46px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
                                 <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{phoneInput ? maskPhone(phoneInput) : 'Chưa cập nhật'}</span>
                                 <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-11 px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => setIsEditingPhone(true)} aria-label="Thay đổi số điện thoại"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
                               </div>
                             )}
                           </div>
                         </div>
+                          <div className="flex flex-col gap-[6px] min-w-0">
+                            <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Email</span>
+                            <div className="customer-profile-readonly flex items-center justify-between gap-[4px_8px] min-h-[46px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
+                              <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{maskEmail(profileData?.user.email || currentUser?.email)}</span>
+                              <span className="text-xs text-[#7D715E]">Email đăng nhập</span>
+                            </div>
+                          </div>
+
 
                         <fieldset className="m-0 p-0 border-0 min-w-0">
                           <legend className="p-0 mb-[6px] text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Giới tính</legend>
-                          <div className="inline-flex flex-wrap gap-[6px]">
+                          <div className="grid grid-cols-3 gap-2">
                             {([{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }, { value: 'OTHER', label: 'Khác' }] as const).map((option) => (
-                              <label key={option.value} className={`inline-flex items-center gap-[6px] min-h-[36px] px-[12px] py-[7px] border rounded-[7px] text-[12px] cursor-pointer transition-colors ${gender === option.value ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-[550]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>
+                              <label key={option.value} className={`inline-flex items-center justify-center gap-[6px] min-h-[46px] px-[12px] py-[7px] border rounded-[7px] text-[12px] cursor-pointer transition-colors ${gender === option.value ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-[550]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>
                                 <input type="radio" name="gender" checked={gender === option.value} onChange={() => setGender(option.value)} className="m-0 w-[14px] h-[14px] accent-[#B88E4F]" />
                                 <span>{option.label}</span>
                               </label>
@@ -1722,23 +1727,24 @@ export default function CustomerPortalPage() {
 
                         <div className="flex flex-col gap-[6px] min-w-0">
                           <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]" id="customer-profile-birthday-label">Ngày sinh</span>
-                          <div className="grid grid-cols-3 gap-[8px] @max-[339px]:gap-[5px]" role="group" aria-labelledby="customer-profile-birthday-label">
+                          <div className="customer-profile-birthday grid grid-cols-3 gap-[8px] @max-[339px]:gap-[5px]" role="group" aria-labelledby="customer-profile-birthday-label">
                             <Select value={birthDay} onChange={(e) => setBirthDay(e.target.value)} className="w-full" aria-label="Ngày sinh">
-                              {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => <option key={d} value={d}>Ngày {d}</option>)}
+                              {Array.from({ length: new Date(Number(birthYear), Number(birthMonth), 0).getDate() }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => <option key={d} value={d}>Ngày {d}</option>)}
                             </Select>
-                            <Select value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)} className="w-full" aria-label="Tháng sinh">
+                            <Select value={birthMonth} onChange={(e) => { setBirthMonth(e.target.value); setBirthDay(day => String(Math.min(Number(day), new Date(Number(birthYear), Number(e.target.value), 0).getDate())).padStart(2, '0')); }} className="w-full" aria-label="Tháng sinh">
                               {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => <option key={m} value={m}>Tháng {m}</option>)}
                             </Select>
-                            <Select value={birthYear} onChange={(e) => setBirthYear(e.target.value)} className="w-full" aria-label="Năm sinh">
-                              {Array.from({ length: 70 }, (_, i) => String(2015 - i)).map((y) => <option key={y} value={y}>Năm {y}</option>)}
+                            <Select value={birthYear} onChange={(e) => { setBirthYear(e.target.value); setBirthDay(day => String(Math.min(Number(day), new Date(Number(e.target.value), Number(birthMonth), 0).getDate())).padStart(2, '0')); }} className="w-full" aria-label="Năm sinh">
+                              {Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => <option key={y} value={y}>Năm {y}</option>)}
                             </Select>
                           </div>
                         </div>
 
-                        <div className="flex justify-end -mx-[20px] @max-[519px]:-mx-[16px] p-4 sm:px-6 border-t border-[#EAE4D7] rounded-b-2xl bg-[#FAF8F5]/60">
+                        <div className="flex flex-wrap items-center justify-end gap-2 -mx-[20px] @max-[519px]:-mx-[16px] p-4 sm:px-6 border-t border-[#EAE4D7] rounded-b-2xl bg-[#FAF8F5]/60">
+                          <button type="button" disabled={updatingProfile || profileLoading || !profileDirty} onClick={() => { setNameInput(profileData?.user.fullName || ''); setPhoneInput(profileData?.user.phoneNumber || ''); setIsEditingPhone(false); }} className="min-h-[42px] rounded-xl border border-[#EAE4D7] bg-white px-4 text-xs font-medium text-[#7D715E] disabled:opacity-50">Hủy thay đổi</button>
                           <button
                             type="submit"
-                            disabled={updatingProfile || profileLoading}
+                            disabled={updatingProfile || profileLoading || !profileDirty || !nameInput.trim() || (!!phoneInput && !/^(0|\+84)[0-9]{9}$/.test(phoneInput.trim()))}
                             className="inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold cursor-pointer transition-all shadow-xs active:scale-[0.96] disabled:opacity-60 disabled:cursor-wait"
                           >
                             {(updatingProfile || profileLoading) ? (
@@ -1761,14 +1767,14 @@ export default function CustomerPortalPage() {
                         accept="image/png,image/jpeg,image/webp,image/jpg"
                         className="hidden"
                       />
-                      <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="relative grid place-items-center w-[88px] h-[88px] @max-[719px]:w-[64px] @max-[719px]:h-[64px] @max-[719px]:col-start-1 @max-[719px]:row-span-2 p-0 border border-[#EEDFC6] rounded-full bg-[#FAF8F5] text-[#B88E4F] cursor-pointer overflow-hidden" aria-label="Chọn ảnh đại diện mới">
+                      <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="relative grid place-items-center w-[104px] h-[104px] @max-[719px]:w-[64px] @max-[719px]:h-[64px] @max-[719px]:col-start-1 @max-[719px]:row-span-2 p-0 border border-[#EEDFC6] rounded-full bg-[#FAF8F5] text-[#B88E4F] cursor-pointer overflow-hidden" aria-label="Chọn ảnh đại diện mới">
                         {uploadingAvatar ? <Loader2 size={24} className="animate-spin" /> : (profileData?.user.avatarUrl || currentUser?.avatarUrl) && failedProfileAvatar !== (profileData?.user.avatarUrl || currentUser?.avatarUrl) ? (
                           <img src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''} alt="Ảnh đại diện của bạn" className="w-full h-full object-cover" onError={() => setFailedProfileAvatar(profileData?.user.avatarUrl || currentUser?.avatarUrl || '')} />
                         ) : <User size={32} aria-hidden="true" />}
                         
                       </button>
-                      <div className="flex flex-col items-center gap-[8px] @max-[719px]:col-start-2 @max-[719px]:row-start-2 @max-[719px]:flex-row @max-[719px]:flex-wrap @max-[719px]:justify-start @max-[719px]:gap-[6px_10px]">
-                        <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] @max-[719px]:min-h-[32px] px-[12px] @max-[719px]:px-[10px] py-[7px] @max-[719px]:py-[6px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] @max-[719px]:text-[11px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait"><Camera size={13} className="text-[#B88E4F]" aria-hidden="true" />{uploadingAvatar ? 'Đang tải…' : 'Chọn ảnh'}</button>
+                      <div className="flex w-full flex-col items-center gap-[8px] @max-[719px]:col-start-2 @max-[719px]:row-start-2 @max-[719px]:flex-row @max-[719px]:flex-wrap @max-[719px]:justify-start @max-[719px]:gap-[6px_10px]">
+                        <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="inline-flex w-full items-center justify-center gap-[6px] min-h-[40px] @max-[719px]:min-h-[32px] px-[12px] @max-[719px]:px-[10px] py-[7px] @max-[719px]:py-[6px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] @max-[719px]:text-[11px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait"><Camera size={13} className="text-[#B88E4F]" aria-hidden="true" />{uploadingAvatar ? 'Đang tải…' : 'Đổi ảnh'}</button>
                         <p className="m-0 text-[#7D715E] text-[10px] leading-[1.5] text-center">JPEG, PNG, WEBP · Tối đa 5 MB</p>
                       </div>
                     </aside>
@@ -1777,8 +1783,9 @@ export default function CustomerPortalPage() {
 
                 {/* SubTab 2: Địa chỉ nhận hàng */}
                 {activeProfileSubTab === 'addresses' && (
-                  <div className="flex flex-col gap-[14px] min-w-0">
-                    <div className="flex items-center justify-end flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
+                  <div className="flex flex-col gap-[14px] min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
+                    <div className="flex items-center justify-between flex-wrap gap-[12px] pb-4 border-b border-[#EAE4D7]">
+                      <span className="text-xs text-[#7D715E]">{addresses.length} địa chỉ</span>
                       <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-11 px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
                         <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" />
                         <span>Thêm địa chỉ</span>
@@ -1802,7 +1809,7 @@ export default function CustomerPortalPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 @max-[719px]:grid-cols-1 items-stretch gap-[14px]">
+                      <div className={`grid ${addresses.length > 1 ? 'grid-cols-2 @max-[719px]:grid-cols-1' : 'grid-cols-1'} items-stretch gap-[14px]`}>
                         {addresses.map((addr) => (
                           <CustomerAddressCard
                             key={addr.id}

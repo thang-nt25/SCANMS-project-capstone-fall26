@@ -1,7 +1,6 @@
 import { useId } from 'react';
 import { FileCheck2, Upload } from 'lucide-react';
 import { PayoutBankAccount } from './PayoutBankAccount';
-import './payout-compact.css';
 
 export function PayoutCompactSummary({ name, code, amount, bankName, accountNumber, accountName, detail }: {
   name?: string; code?: string; amount: string; bankName: string; accountNumber: string; accountName: string; detail?: string;

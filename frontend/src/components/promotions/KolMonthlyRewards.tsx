@@ -3,7 +3,6 @@ import { ArrowUpRight, Store, CheckCircle2 } from 'lucide-react';
 import { monthlyRewards, type RewardOverview, type MonthlyRewardOrders } from '../../services/monthly-rewards.service';
 import { authService } from '../../services/auth.service';
 import { Modal } from '../ui/Modal';
-import './kol-monthly-rewards.css';
 
 const money = (amount: string | number) => `${Number(amount).toLocaleString('vi-VN')} ₫`;
 const pct = (amount: string | null, target: string) => amount !== null && Number(target) > 0 ? Math.max(0, Number(amount) / Number(target) * 100) : null;

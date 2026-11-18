@@ -5,6 +5,7 @@ import {
   ConflictException,
   Get,
   Header,
+  Logger,
   NotFoundException,
   Param,
   ParseUUIDPipe,
@@ -38,6 +39,7 @@ import {
   QueryMerchantPayoutsDto,
   ReceiptApprovalDto,
   RejectPayoutDto,
+  RequestPayoutInformationDto,
 } from './dto/manage-payout.dto';
 import { MerchantPayoutsService } from './merchant-payouts.service';
 import { PayoutBatchesService } from './payout-batches.service';
@@ -57,6 +59,7 @@ import { actualPayoutWhere, isTestPayout } from './payout-environment';
 @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
 @Controller('admin/payouts')
 export class AdminPayoutsController {
+  private readonly logger = new Logger(AdminPayoutsController.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly payouts: MerchantPayoutsService,
@@ -225,6 +228,7 @@ export class AdminPayoutsController {
   async evidence(@Param('payoutId', new ParseUUIDPipe()) payoutId: string) {
     const request = await this.prisma.payoutRequest.findUnique({ where: { id: payoutId }, include: {
       collaborator: { include: { collaboratorProfile: true, wallet: { include: { storeWallets: true } } } },
+      approvedBy: { select: { fullName: true } },
     } });
     if (!request) throw new NotFoundException('Không tìm thấy yêu cầu chi trả');
     const ledger = await this.prisma.financialLedger.findMany({ where: {
@@ -260,8 +264,28 @@ export class AdminPayoutsController {
     const context = request.taxContext;
     if (context && typeof context === 'object' && !Array.isArray(context) && typeof context.monthlyGrossBefore === 'string')
       details.TAX_SNAPSHOT.push(`Tổng trước lệnh: ${context.monthlyGrossBefore} đ · Tháng: ${String(context.month ?? '')}`);
+    const lastRequest = await this.prisma.auditLog.findFirst({ where: {
+      action: 'PAYOUT_INFORMATION_REQUESTED', details: { path: ['payoutId'], equals: payoutId },
+    }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, details: true, user: { select: { fullName: true } } } });
     return {
-      payoutId, name: request.collaborator.fullName, requestStatus: request.status, rejectedReason: request.rejectedReason, checkedAt: new Date().toISOString(),
+      payoutId, collaboratorId: request.collaboratorId, name: request.collaborator.fullName, requestStatus: request.status, rejectedReason: request.rejectedReason, checkedAt: new Date().toISOString(),
+      contact: { email: request.collaborator.email ?? null, phone: request.collaborator.phoneNumber ?? null, avatarUrl: profile?.avatarUrl ?? request.collaborator.avatarUrl ?? null },
+      payout: {
+        createdAt: request.createdAt?.toISOString() ?? null, processedAt: request.processedAt?.toISOString() ?? null,
+        amount: request.amount.toFixed(2), taxAmount: request.taxAmount.toFixed(2), netAmount: request.netAmount.toFixed(2),
+        bankName: request.bankName, accountNumber: request.bankAccountNumber, accountName: request.bankAccountName,
+        bankRefCode: request.bankRefCode, approvedBy: request.approvedBy?.fullName ?? null,
+        hasBill: Boolean(request.proofImagePublicId), isTest: isTestPayout(request),
+      },
+      profile: {
+        kycStatus: profile?.kycStatus ?? 'UNVERIFIED',
+        idNumberMasked: profile?.idCardNumber ? `•••• ${profile.idCardNumber.slice(-4)}` : null,
+        taxCode: profile?.taxCode || null,
+        bankName: profile?.bankName || null, accountNumber: profile?.bankAccountNumber || null, accountName: profile?.bankAccountName || null,
+        updatedAt: profile?.updatedAt.toISOString() ?? null,
+        verifiedAt: typeof documents.verifiedAt === 'string' && Number.isFinite(Date.parse(documents.verifiedAt)) ? documents.verifiedAt : null,
+      },
+      informationRequest: lastRequest ? { sentAt: lastRequest.createdAt.toISOString(), sentBy: lastRequest.user?.fullName ?? 'Vận hành', codes: (lastRequest.details as { codes?: string[] })?.codes ?? [] } : null,
       ...risk,
       checks: risk.checks.map(check => ({ ...check, detail: details[check.code], missing: check.passed ? null : missing[check.code],
         documents: check.code === 'VERIFIED_KYC' ? [
@@ -269,6 +293,42 @@ export class AdminPayoutsController {
         ] : [],
       })),
     };
+  }
+
+  @Post(':payoutId/request-information')
+  async requestInformation(
+    @Param('payoutId', new ParseUUIDPipe()) payoutId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RequestPayoutInformationDto,
+  ) {
+    const evidence = await this.evidence(payoutId);
+    const allowed = evidence.requestStatus === 'APPROVED' ? ['TAX_ID', 'BENEFICIARY_MATCH']
+      : ['PENDING', 'PROCESSING'].includes(evidence.requestStatus) ? ['VERIFIED_KYC', 'BENEFICIARY_MATCH', 'TAX_ID'] : [];
+    if (!Array.isArray(dto.codes) || !dto.codes.length || dto.codes.some(code => !allowed.includes(code)))
+      throw new BadRequestException('Lệnh đã chi chỉ được yêu cầu đối chiếu ngân hàng hoặc bổ sung mã số thuế; lệnh đã từ chối không gửi yêu cầu bổ sung.');
+    const codes = [...new Set(dto.codes)].sort();
+    const checks = codes.map(code => evidence.checks.find(check => check.code === code && !check.passed));
+    if (checks.some(check => !check)) throw new BadRequestException('Điều kiện đã thay đổi. Vui lòng kiểm tra lại trước khi gửi.');
+    const section = codes.includes('BENEFICIARY_MATCH') ? 'bank' : 'identity';
+    return this.prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM payout_requests WHERE id = ${payoutId}::uuid FOR UPDATE`;
+      const request = await tx.payoutRequest.findUnique({ where: { id: payoutId } });
+      if (!request || !(['PENDING', 'PROCESSING'].includes(request.status) || (request.status === 'APPROVED' && codes.every(code => ['TAX_ID', 'BENEFICIARY_MATCH'].includes(code)))))
+        throw new BadRequestException('Trạng thái yêu cầu đã thay đổi. Vui lòng kiểm tra lại.');
+      const recent = await tx.notification.findFirst({ where: {
+        userId: evidence.collaboratorId, type: 'PAYOUT_INFORMATION_REQUESTED',
+        data: { path: ['requestKey'], equals: `${payoutId}:${codes.join(',')}` },
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+      if (recent) return { sentAt: recent.createdAt.toISOString(), alreadySent: true };
+      const notification = await tx.notification.create({ data: {
+        userId: evidence.collaboratorId, type: 'PAYOUT_INFORMATION_REQUESTED', title: request.status === 'APPROVED' ? 'Cần kiểm tra hồ sơ chi trả' : 'Cần bổ sung hồ sơ rút tiền',
+        message: checks.map(check => request.status === 'APPROVED' && check!.code === 'BENEFICIARY_MATCH' ? 'Vui lòng kiểm tra tài khoản ngân hàng hiện tại khác thông tin trên lệnh rút đã chi. Nếu đã đổi tài khoản, liên hệ bộ phận vận hành để đối chiếu; không đổi lại theo lệnh cũ.' : check!.missing).join('\n') + (request.status === 'APPROVED' ? '\nBổ sung hồ sơ phục vụ đối soát thuế. Khoản chi đã hoàn tất được giữ nguyên.' : '\nCập nhật hồ sơ để bộ phận vận hành kiểm tra lại yêu cầu.'),
+        data: { payoutId, codes, requestKey: `${payoutId}:${codes.join(',')}`, actionUrl: `/collaborator/profile?tab=kyc&section=${section}&required=${codes.join(',')}`, items: codes.map(code => ({ code, actionUrl: `/collaborator/profile?tab=kyc&section=${code === 'BENEFICIARY_MATCH' ? 'bank' : 'identity'}` })) },
+      } });
+      await tx.auditLog.create({ data: { userId: user.id, action: 'PAYOUT_INFORMATION_REQUESTED', details: { payoutId, collaboratorId: evidence.collaboratorId, codes, notificationId: notification.id } } });
+      return { sentAt: notification.createdAt.toISOString(), alreadySent: false };
+    });
   }
 
   @Patch(':payoutId/approve')
@@ -294,7 +354,8 @@ export class AdminPayoutsController {
     @Body() dto: ApprovePayoutDto | ReceiptApprovalDto,
     @UploadedFile() bill: Express.Multer.File,
   ) {
-    const proofHash = this.bills.validateBill(bill);
+    const startedAt = performance.now();
+    this.bills.validateBill(bill);
     const bankRefCode =
       typeof dto.bankRefCode === 'string' && dto.bankRefCode.trim().length > 0
         ? dto.bankRefCode.trim().toUpperCase()
@@ -306,9 +367,7 @@ export class AdminPayoutsController {
     if (!/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/.test(bankRefCode))
       throw new BadRequestException('Mã giao dịch ngân hàng không hợp lệ (tối đa 100 ký tự)');
 
-    const request = await this.prisma.payoutRequest.findUnique({
-      where: { id: payoutId },
-    });
+    const request = await this.prisma.payoutRequest.findUnique({ where: { id: payoutId } });
     if (!request) {
       throw new NotFoundException('Yêu cầu chi trả không tồn tại');
     }
@@ -323,13 +382,9 @@ export class AdminPayoutsController {
       );
     }
 
-    if (await this.prisma.payoutRequest.findFirst({
-      where: { proofImageSha256: proofHash, id: { not: payoutId } },
-      select: { id: true },
-    })) {
-      throw new ConflictException('Chứng từ này đã được dùng cho yêu cầu khác. Vui lòng chọn đúng chứng từ chuyển khoản của yêu cầu này.');
-    }
-    const uploaded = await this.bills.uploadBill(bill);
+    const uploadStartedAt = performance.now();
+    const uploaded = await this.bills.uploadBill(bill, true);
+    const uploadMs = Math.round(performance.now() - uploadStartedAt);
     try {
       const result = await this.prisma.$transaction(async (tx) => {
         await lockPayoutTaxForRequest(tx, payoutId);
@@ -354,16 +409,6 @@ export class AdminPayoutsController {
         if (locked.transferLeaseUntil && locked.transferLeaseUntil > new Date())
           throw new BadRequestException('Đang đối soát ngân hàng, vui lòng chờ kết quả');
         if (locked.status === PayoutStatus.PENDING) await assertPayoutBeneficiary(tx, locked);
-        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`bank-reference:${bankRefCode}`}, 0))`;
-        const duplicate = await tx.payoutRequest.findFirst({
-          where: { OR: [{ bankRefCode }, { proofImageSha256: uploaded.sha256 }], id: { not: payoutId } },
-        });
-        if (duplicate?.proofImageSha256 === uploaded.sha256)
-          throw new ConflictException('Chứng từ này đã được dùng cho yêu cầu khác. Vui lòng chọn đúng chứng từ chuyển khoản của yêu cầu này.');
-        if (duplicate)
-          throw new BadRequestException(
-            'Mã giao dịch ngân hàng đã được sử dụng',
-          );
         const approved = await tx.payoutRequest.update({
           where: { id: payoutId },
           data: {
@@ -407,11 +452,12 @@ export class AdminPayoutsController {
         return this.payouts.serializePayout(approved);
       });
 
+      this.logger.log(`Manual payout saved: receipt=${uploadMs}ms, accounting=${Math.round(performance.now() - uploadStartedAt - uploadMs)}ms, total=${Math.round(performance.now() - startedAt)}ms`);
       return result;
     } catch (err) {
-      await this.bills.removeUnusedBill(uploaded.publicId).catch(() => undefined);
+      if (!uploaded.reused) await this.bills.removeUnusedBill(uploaded.publicId).catch(() => undefined);
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        throw new ConflictException('Chứng từ hoặc mã giao dịch ngân hàng đã được dùng cho yêu cầu khác. Vui lòng kiểm tra lại giao dịch và chứng từ.');
+        throw new ConflictException('Yêu cầu đã được xử lý hoặc bút toán đã tồn tại. Vui lòng tải lại lịch sử.');
       }
       throw err;
     }

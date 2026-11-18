@@ -6,7 +6,6 @@ import {
 } from "../../services/enterprise-pricing.service";
 import { Modal } from "../../components/ui/Modal";
 import { getSafeProductImageUrl } from "@/utils/marketplace.utils";
-import './product-pricing.css';
 import { authService } from "../../services/auth.service";
 import {
   calculateMinSafePrice,

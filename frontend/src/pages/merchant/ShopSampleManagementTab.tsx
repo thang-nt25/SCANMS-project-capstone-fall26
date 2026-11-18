@@ -1,6 +1,7 @@
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { SampleRequestDetails } from '../../components/orders/SampleRequestDetails';
 import { InviteKolModal } from '../../components/affiliate/InviteKolModal';
+import { ShopPartnerDataTab, useShopPartnerTeam } from '../../components/affiliate/ShopPartnerDataTabs';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Package,
@@ -19,7 +20,6 @@ import {
   BellRing,
   MessageSquare,
   RefreshCw,
-  Plus,
   Eye,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -78,49 +78,9 @@ export interface SampleRequestItem {
   productVariantName?: string;
 }
 
-export interface CreatorLeaderboardItem {
-  id: string;
-  fullName: string;
-  email: string;
-  avatarUrl?: string;
-  kycStatus?: string;
-  handle?: string;
-  platform?: string;
-  followers?: number;
-  gmv: number;
-  ordersCount: number;
-  commissionRate: number;
-}
-
-const getKolAvatarSrc = (src?: string, name?: string, id?: string) => {
-  if (src && !src.includes('placeholder') && !src.includes('default') && !src.endsWith('/null') && !src.endsWith('/undefined')) {
-    return src;
-  }
-  const normalized = (name || '').toLowerCase();
-  if (normalized.includes('thắng') || normalized.includes('thang')) return '/assets/kol-avatar-thang.jpg';
-  if (normalized.includes('linh')) return '/assets/kol-avatar-linh.jpg';
-  if (normalized.includes('nam')) return '/assets/kol-avatar-nam.jpg';
-  if (normalized.includes('nhật') || normalized.includes('nhat')) return '/assets/kol-avatar-nhat.jpg';
-  if (normalized.includes('hà') || normalized.includes('ha')) return '/assets/kol-avatar-ha.jpg';
-  if (normalized.includes('mai anh')) return '/assets/kol-avatar-maianh.jpg';
-  if (normalized.includes('tuấn') || normalized.includes('tuan')) return '/assets/kol-avatar-tuan.jpg';
-
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
-  ];
-  const str = id || name || 'KOL';
-  let sum = 0;
-  for (let i = 0; i < str.length; i++) sum += str.charCodeAt(i);
-  return fallbacks[sum % fallbacks.length] || fallbacks[0];
-};
-
 function KolAvatar({
   src,
   name,
-  id,
   className = 'w-9 h-9',
 }: {
   src?: string;
@@ -128,21 +88,10 @@ function KolAvatar({
   id?: string;
   className?: string;
 }) {
-  const resolvedSrc = getKolAvatarSrc(src, name, id);
-
-  return (
-    <span className={`${className} relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-[#F3EFE6] text-[#B88E4F] font-bold border border-[#EEDFC6] shadow-2xs shrink-0`}>
-      <img
-        src={resolvedSrc}
-        alt={name}
-        className="w-full h-full object-cover"
-        loading="lazy"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src = '/assets/kol-avatar-thang.jpg';
-        }}
-      />
-    </span>
-  );
+  const [failed,setFailed] = useState(false);
+  return <span className={`${className} inline-flex items-center justify-center overflow-hidden rounded-xl bg-[#F3EFE6] text-[#79592C] font-semibold border border-[#EAE4D7] shrink-0`}>
+    {src && !failed ? <img src={src} alt={name} className="w-full h-full object-cover" loading="lazy" onError={() => setFailed(true)} /> : name.trim().charAt(0).toUpperCase()}
+  </span>;
 }
 
 export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshButton = true, onLoadingChange }: {
@@ -158,12 +107,16 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   const [loading, setLoading] = useState(true);
   useEffect(() => { onLoadingChange?.(loading); }, [loading, onLoadingChange]);
   const [samples, setSamples] = useState<SampleRequestItem[]>([]);
+  const [sampleLoadError,setSampleLoadError] = useState('');
+  const partnerTeam = useShopPartnerTeam();
   const sampleLoadSequence = useRef(0);
   const [storeTab, setStoreTab] = useState<'SAMPLES_QUEUE' | 'LEADERBOARD' | 'DEALS'>(() => searchParams.get('section') === 'deals' ? 'DEALS' : 'SAMPLES_QUEUE');
   const [selectedSampleIds, setSelectedSampleIds] = useState<string[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'OVERDUE' | 'COMPLETED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [samplePage, setSamplePage] = useState(1);
+  useEffect(() => { setSamplePage(1); }, [statusFilter, searchQuery]);
   const [remindedSamples, setRemindedSamples] = useState<Record<string, boolean>>({});
   const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
 
@@ -190,6 +143,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   const loadData = useCallback(async () => {
     const sequence = ++sampleLoadSequence.current;
     setLoading(true);
+    setSampleLoadError('');
     try {
       const res: any = await api.get('/sample-requests/shop', { headers: { 'x-skip-cache': 'true' } });
       const data = res?.data || res;
@@ -259,8 +213,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
       }
     } catch (err: any) {
       if (sequence !== sampleLoadSequence.current) return;
-      setSamples([]);
-      setTrackingModalItem(null);
+      setSampleLoadError(err instanceof Error ? err.message : 'Kh?ng t?i ???c danh s?ch h?ng m?u.');
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
       if (sequence === sampleLoadSequence.current) setLoading(false);
@@ -293,8 +246,8 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
     samples.forEach((s) => {
       if (s.status === 'PENDING') pending++;
       if (sampleDisplayStatus(s) === 'APPROVED') readyToShip++;
+      if (s.status === 'VIDEO_SUBMITTED') videoPending++;
       if (s.status === 'RECEIVED') {
-        videoPending++;
         if (s.deadlineAt && new Date(s.deadlineAt).getTime() <= now) overdue++;
       }
       if (s.status === 'OVERDUE') overdue++;
@@ -335,37 +288,13 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
     });
   }, [samples, statusFilter, searchQuery]);
 
-  // Leaderboard data derived from samples & collaborators
-  const leaderboardCreators = useMemo(() => {
-    const map = new Map<string, CreatorLeaderboardItem>();
-    samples.forEach((s) => {
-      const id = s.collaboratorId;
-      if (!map.has(id)) {
-        map.set(id, {
-          id,
-          fullName: s.collaboratorInfo?.fullName || 'Nhà Sáng Tạo SCANMS',
-          email: s.collaboratorInfo?.email || '',
-          avatarUrl: s.collaboratorInfo?.avatarUrl,
-          kycStatus: s.collaboratorMetrics?.kycStatus || 'VERIFIED',
-          handle: s.socialChannel?.channelName ? `@${s.socialChannel.channelName}` : undefined,
-          platform: s.socialChannel?.platformName || 'TIKTOK',
-          followers: s.socialChannel?.followerCount || s.collaboratorMetrics?.totalFollowers || 25000,
-          gmv: 0,
-          ordersCount: s.collaboratorMetrics?.totalOrdersReferred || 0,
-          commissionRate: 10,
-        });
-      }
-    });
-
-    // Populate mock realistic GMV if zero for demo
-    const arr = Array.from(map.values());
-    return arr.map((creator, idx) => ({
-      ...creator,
-      gmv: creator.gmv || (idx === 0 ? 48500000 : idx === 1 ? 32100000 : idx === 2 ? 19800000 : 7200000),
-      ordersCount: creator.ordersCount || (idx === 0 ? 112 : idx === 1 ? 74 : idx === 2 ? 46 : 18),
-      commissionRate: idx === 0 ? 15 : idx === 1 ? 12 : 10,
-    })).sort((a, b) => b.gmv - a.gmv);
-  }, [samples]);
+  const samplePageCount = Math.max(1, Math.ceil(filteredSamples.length / 20));
+  const currentSamplePage = Math.min(samplePage, samplePageCount);
+  const pageSamples = filteredSamples.slice((currentSamplePage - 1) * 20, currentSamplePage * 20);
+  const recordedFreight = samples.flatMap(sample => sample.shippingCharges || []).reduce((sum, charge) => {
+    const amount = Number(charge.amount);
+    return sum + (charge.environment === 'TEST' || charge.amount === null || !Number.isFinite(amount) ? 0 : amount);
+  }, 0);
 
   // Handlers
 
@@ -484,17 +413,10 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   };
 
   return (
-    <div className="w-full flex flex-col space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EEDFC6] bg-white p-4">
-        <div>
-          <div className="font-bold text-[#1A1612]">Phí vận chuyển hàng mẫu · Shop chi trả 100%</div>
-        </div>
-        <div className="text-right">
-          <div className="font-bold text-[#B88E4F]">{samples.flatMap(s => s.shippingCharges || []).reduce((sum, c) => sum + (c.environment === 'TEST' || c.amount === null ? 0 : Number(c.amount)), 0).toLocaleString('vi-VN')} đ đã ghi nhận</div>
-        </div>
-      </div>
+    <div className="shop-samples-page w-full flex flex-col space-y-4">
+      {storeTab === 'SAMPLES_QUEUE' && <>
       {/* 4 THẺ SỐ LIỆU NHANH (STAT BADGES) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="sample-summary-grid grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Stat 1: Chờ duyệt */}
         <div
           onClick={() => {
@@ -530,7 +452,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-[#7D715E]">Mẫu chờ gửi (Đóng gói)</span>
+            <span className="text-xs font-bold text-[#7D715E]">Mẫu chờ gửi</span>
             <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center group-hover:scale-105 transition">
               <Package className="w-4 h-4" />
             </div>
@@ -574,18 +496,17 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-[#DC2626]">Quá hạn 14 ngày</span>
+            <span className="text-xs font-bold text-[#DC2626]">Quá hạn video</span>
             <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 text-[#DC2626] flex items-center justify-center group-hover:scale-105 transition">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-[#DC2626]">{storeStats.overdue}</div>
-          <div className="text-[11px] text-rose-600 mt-1">Đã khóa xin mẫu toàn sàn</div>
         </div>
-      </div>
+      </div></>}
 
       {/* STORE TABS CONTAINER */}
-      <div className="bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-2xs">
+      <div className="sample-data-container bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-2xs">
         {/* Tab Header Navigation */}
         <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3 sm:px-5">
           <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:gap-3">
@@ -615,9 +536,9 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
               }`}
             >
               <Award className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Xếp hạng KOL</span>
+              <span className="min-w-0 break-words">Hiệu quả KOL</span>
               <span className="px-1.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E] text-[10px] font-bold">
-                {leaderboardCreators.length}
+                {partnerTeam.data?.members.length ?? '—'}
               </span>
             </button>
 
@@ -631,7 +552,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
               }`}
             >
               <Handshake className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Deal & voucher</span>
+              <span className="min-w-0 break-words">Deal độc quyền</span>
             </button>
           </div>
 
@@ -734,6 +655,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                 <colgroup><col className="w-[5%]" /><col className="w-[17%]" /><col className="w-[23%]" /><col className="w-[19%]" /><col className="w-[18%]" /><col className="w-[18%]" /></colgroup>
                 <thead>
                   <tr className="border-b border-[#EAE4D7] bg-[#FBF5EB]/40 font-bold text-[#7D715E]">
+                    <th className="w-10" aria-label="Ch?n y?u c?u" />
                     <th className="py-3 px-3 font-medium">Nhà sáng tạo</th>
                     <th className="py-3 px-3 font-medium">Sản phẩm mẫu</th>
                     <th className="py-3 px-3 font-medium">Tiến độ & hạn video</th>
@@ -742,16 +664,15 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EAE4D7]">
-                  {filteredSamples.length === 0 ? (
+                  {loading && !samples.length ? <tr><td colSpan={6} className="sample-list-message" role="status">Đang tải yêu cầu hàng mẫu…</td></tr> : sampleLoadError ? <tr><td colSpan={6} className="sample-list-message"><div role="alert">Không tải được danh sách hàng mẫu. <button type="button" onClick={() => void loadData()}>Thử lại</button></div></td></tr> : filteredSamples.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-[#7D715E]">
                         <Package className="w-8 h-8 mx-auto mb-2 text-[#C59B58]/40" />
-                        <p className="font-semibold text-xs text-[#1A1612]">Không tìm thấy yêu cầu mẫu nào</p>
-                        <p className="text-[11px] mt-0.5">Thử đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+                        <p className="font-semibold text-xs text-[#1A1612]">{samples.length ? 'Không có yêu cầu phù hợp bộ lọc' : 'Chưa có yêu cầu hàng mẫu'}</p>
                       </td>
                     </tr>
                   ) : (
-                    filteredSamples.map((s) => {
+                    pageSamples.map((s) => {
                       const now = Math.max(deadlineNow, Date.now());
                       const deadlineTime = s.deadlineAt ? new Date(s.deadlineAt).getTime() : Number.POSITIVE_INFINITY;
                       const msLeft = deadlineTime - now;
@@ -1007,180 +928,18 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                 </tbody>
               </table>
             </div>
+            <footer className="sample-table-footer">
+              <span>Cước Shop đã ghi nhận: <strong>{loading || sampleLoadError ? '—' : `${recordedFreight.toLocaleString('vi-VN')} ₫`}</strong></span>
+              <nav aria-label="Phân trang hàng mẫu">
+                <button type="button" disabled={loading || !!sampleLoadError || currentSamplePage <= 1} onClick={() => setSamplePage(currentSamplePage - 1)}>Trang trước</button>
+                <span aria-live="polite">{currentSamplePage}/{samplePageCount}</span>
+                <button type="button" disabled={loading || !!sampleLoadError || currentSamplePage >= samplePageCount} onClick={() => setSamplePage(currentSamplePage + 1)}>Trang sau</button>
+              </nav>
+            </footer>
           </div>
         )}
 
-        {/* TAB 2: AFFILIATE LEADERBOARD (BẢNG XẾP HẠNG KOL TIẾP THỊ) */}
-        {storeTab === 'LEADERBOARD' && (
-          <div className="p-4 sm:p-5 space-y-4">
-
-            <div className="overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_10px_rgb(35_29_21_/_2%)]">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-[#EAE4D7] bg-[#FBF5EB]/40 font-bold text-[#7D715E]">
-                    <th className="py-3 px-4 w-14 text-center">Hạng</th>
-                    <th className="py-3 px-4">Nhà Sáng Tạo / KOC</th>
-                    <th className="py-3 px-4">Kênh & Lượt Theo Dõi</th>
-                    <th className="py-3 px-4 text-right">Doanh Số GMV</th>
-                    <th className="py-3 px-4 text-center">Đơn Hàng</th>
-                    <th className="py-3 px-4 text-center">Mức Hoa Hồng</th>
-                    <th className="py-3 px-4 text-right">Hành Động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EAE4D7]">
-                  {leaderboardCreators.map((creator, idx) => (
-                    <tr key={creator.id} className="bg-white transition hover:bg-[#FBF5EB]/30">
-                      <td className="py-3.5 px-4 text-center">
-                        {idx === 0 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 font-black text-xs border border-amber-300">
-                            👑 1
-                          </span>
-                        ) : idx === 1 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-black text-xs border border-slate-300">
-                            🥈 2
-                          </span>
-                        ) : idx === 2 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-50 text-amber-800 font-black text-xs border border-amber-200">
-                            🥉 3
-                          </span>
-                        ) : (
-                          <span className="font-bold text-[#7D715E]">#{idx + 1}</span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <KolAvatar
-                            src={creator.avatarUrl}
-                            name={creator.fullName}
-                            id={creator.id}
-                            className="w-9 h-9 rounded-xl border border-[#EAE4D7] shrink-0"
-                          />
-                          <div>
-                            <div className="font-bold text-[#1A1612] flex items-center gap-1.5">
-                              <span>{creator.fullName}</span>
-                              {creator.kycStatus === 'VERIFIED' && (
-                                <span className="text-[#059669] text-[10px]" title="Đã KYC">✓</span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-[#7D715E]">
-                              {creator.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        <div>
-                          <div className="font-semibold text-[#1A1612]">
-                            {creator.handle || creator.platform}
-                          </div>
-                          <div className="text-[11px] text-[#7D715E]">
-                            {(creator.followers || 0).toLocaleString('vi-VN')} người theo dõi
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right font-black text-[#1A1612]">
-                        {creator.gmv.toLocaleString('vi-VN')} ₫
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center font-bold text-[#7D715E]">
-                        {creator.ordersCount}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold text-[11px]">
-                          {creator.commissionRate}%
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/merchant/kol-hub?kol=${creator.id}`)}
-                          className="px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-[11px] flex items-center gap-1 transition cursor-pointer shadow-2xs ml-auto"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span>Nhắn tin</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: EXCLUSIVE DEALS & VIP AGREEMENTS */}
-        {storeTab === 'DEALS' && (
-          <div className="p-4 sm:p-5 space-y-4">
-            <div className="flex flex-col justify-between gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_0_rgb(35_29_21_/_3%)] sm:flex-row sm:items-center sm:px-5 sm:py-4">
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-[#1A1612]">Thỏa Thuận Hoa Hồng & Deal Độc Quyền (VIP)</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInviteModal(true)}
-                className="flex min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-xs font-semibold text-[#231D15] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58]"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Mời Thêm KOL & Tạo Deal</span>
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-stretch gap-4">
-              {leaderboardCreators.slice(0, 6).map((creator, idx) => (
-                <div
-                  key={creator.id}
-                  data-deal-card
-                  className="flex min-h-[340px] w-full max-w-[340px] flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-5 text-left shadow-[0_2px_8px_0_rgb(35_29_21_/_3%)] transition hover:border-[#C59B58] hover:shadow-[0_6px_20px_0_rgb(35_29_21_/_6%)]"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-[10px] font-bold">
-                      {idx % 2 === 0 ? 'Deal VIP 15%' : 'Deal Độc Quyền 18%'}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#7D715E]"><span className="h-1.5 w-1.5 rounded-full bg-[#C59B58]" />Đang hiệu lực</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <KolAvatar
-                      src={creator.avatarUrl}
-                      name={creator.fullName}
-                      id={creator.id}
-                      className="h-12 w-12 rounded-2xl border border-[#EAE4D7] shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-[#1A1612]">{creator.fullName}</div>
-                      <div className="mt-1 truncate text-[11px] text-[#7D715E]" title={creator.email}>{creator.email}</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 text-[11px]">
-                    <div className="min-w-0">
-                      <p className="text-[#7D715E]">Hoa hồng</p>
-                      <p className="mt-2 text-2xl font-semibold leading-none tracking-tight text-[#B88E4F]">{10 + (idx % 3) * 4}<span className="ml-0.5 text-sm">%</span></p>
-                    </div>
-                    <div className="min-w-0 border-l border-[#EEDFC6] pl-3">
-                      <p className="text-[#7D715E]">Voucher riêng</p>
-                      <p className="mt-2 break-all font-mono text-xs font-semibold text-[#795A2D]">VIP-{creator.fullName.split(' ').pop()?.toUpperCase() || 'SCANMS'}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/merchant/kol-hub?kol=${creator.id}`)}
-                    className="mt-auto flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] transition hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-2 focus-visible:outline-[#C59B58]"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>Trao đổi chi tiết</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {storeTab !== 'SAMPLES_QUEUE' && <ShopPartnerDataTab kind={storeTab} onInvite={() => setShowInviteModal(true)} />}
       </div>
 
       {showInviteModal && <InviteKolModal onClose={() => setShowInviteModal(false)} />}

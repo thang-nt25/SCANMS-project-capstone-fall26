@@ -121,14 +121,24 @@ describe('Customer withdrawal boundaries', () => {
       service.proof({ ...customer, id: 'other' }, 'withdrawal'),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
-  it('rejects reused customer evidence before uploading it', async () => {
+  it('allows reused customer evidence and bank references but posts each request once', async () => {
     const { service, tx, bills } = setup();
     tx.customerWithdrawal.findFirst.mockResolvedValueOnce({ id: 'other' });
+    await expect(service.approve(manager, 'withdrawal', { bankRefCode: 'REF' }, {} as Express.Multer.File)).resolves.toMatchObject({ status: 'APPROVED' });
+    expect(tx.customerWithdrawal.findFirst).not.toHaveBeenCalled();
+    expect(bills.uploadBill).toHaveBeenCalledTimes(1);
     await expect(service.approve(manager, 'withdrawal', { bankRefCode: 'REF' }, {} as Express.Multer.File)).rejects.toBeInstanceOf(ConflictException);
-    expect(bills.uploadBill).not.toHaveBeenCalled();
-    expect(tx.financePosting.create).not.toHaveBeenCalled();
+    expect(tx.financePosting.create).toHaveBeenCalledTimes(1);
   });
-  it('maps a concurrent customer receipt duplicate to 409 even if cleanup fails', async () => {
+  it('never removes shared customer evidence after an approval failure', async () => {
+    const { service, tx, bills } = setup();
+    bills.uploadBill.mockResolvedValueOnce({ publicId: 'shared-proof', format: 'png', sha256: 'hash', reused: true } as never);
+    tx.customerWithdrawal.update.mockRejectedValueOnce(new Error('database unavailable'));
+    await expect(service.approve(manager, 'withdrawal', { bankRefCode: 'REF' }, {} as Express.Multer.File)).rejects.toThrow('database unavailable');
+    expect(bills.removeUnusedBill).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+  });
+  it('maps a concurrent customer posting duplicate to 409 even if cleanup fails', async () => {
     const { service, tx, bills } = setup();
     tx.customerWithdrawal.update.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: 'test' }));
     bills.removeUnusedBill.mockRejectedValueOnce(new Error('storage unavailable'));

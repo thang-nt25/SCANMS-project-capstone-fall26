@@ -8,7 +8,6 @@ import { kolOrderCommissionStatus } from '../../utils/kol-order-status';
 import { KolReferralOrderDialog } from '../../components/affiliate/KolReferralOrderDialog';
 import KolProductCommissionTable from '../../components/affiliate/KolProductCommissionTable';
 import KolLivePerformanceCard from '../../components/affiliate/KolLivePerformanceCard';
-import './kol-dashboard.css';
 
 type ReportTab = 'orders' | 'products' | 'stores' | 'live';
 export default function KolMarketingReportsPage() {

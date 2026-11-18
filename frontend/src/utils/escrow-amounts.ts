@@ -1,4 +1,5 @@
 export interface EscrowAmounts {
+  status?: string;
   commissionAmount?: unknown;
   pendingStandardAmount?: unknown;
   pendingDealAmount?: unknown;
@@ -18,7 +19,7 @@ export function escrowAmounts(item: EscrowAmounts) {
   const deal = escrowNumber(item.pendingDealAmount);
   if (standard !== null && deal !== null) return { standard, deal };
   // Only use an explicitly supplied legacy snapshot, never infer the split from a total alone.
-  const base = escrowNumber(item.baseCommissionAmount)
+  const base = item.status && item.status !== 'PENDING' ? 0 : escrowNumber(item.baseCommissionAmount)
     ?? (item.baseCommissionAmount === null ? escrowNumber(item.commissionAmount) : null);
   const state = item.dealBonusStatus;
   const bonus = state === 'PENDING_KPI' || state === 'QUALIFIED'

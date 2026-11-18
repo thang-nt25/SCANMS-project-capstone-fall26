@@ -145,23 +145,23 @@ describe('PayoutsService FR-22', () => {
       amount: '1000000',
     });
     expect(response.request.status).toBe(PayoutStatus.PENDING);
-    expect(response.request.taxAmount).toBe('50000.00');
-    expect(response.request.netAmount).toBe('950000.00');
+    expect(response.request.taxAmount).toBe('100000.00');
+    expect(response.request.netAmount).toBe('900000.00');
     expect(getBalance()).toBe('6000.00');
     expect(getRequests()).toBe(1);
     expect(tx.store.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: seededShopId } }),
     );
   });
-  it('uses persisted monthly gross across stores when creating a new withdrawal', async () => {
+  it('uses 10% regardless of prior monthly withdrawal amounts', async () => {
     const { service, tx } = createService('1000000');
     tx.payoutRequest.aggregate.mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal(110000000) } });
     const result = await service.createWithdrawal(collaboratorId, { storeId, amount: '400000' });
-    expect(result.request.taxAmount).toBe('140000.00');
-    expect(result.request.netAmount).toBe('260000.00');
+    expect(result.request.taxAmount).toBe('40000.00');
+    expect(result.request.netAmount).toBe('360000.00');
     const input = tx.payoutRequest.create.mock.calls[0][0] as { data: Record<string, unknown> };
-    expect(input.data.taxContext).toMatchObject({ policy: 'MONTHLY_PROGRESSIVE_V1', monthlyGrossBefore: '110000000.00' });
-    expect(tx.payoutRequest.aggregate.mock.calls[0][0].where).not.toHaveProperty('storeId');
+    expect(input.data.taxContext).toMatchObject({ policy: 'FLAT_10_PERCENT_V1', rate: '0.10' });
+    expect(tx.payoutRequest.aggregate).not.toHaveBeenCalled();
   });
 
   it('debits available balance and creates PENDING request in the same transaction', async () => {
@@ -186,8 +186,8 @@ describe('PayoutsService FR-22', () => {
     const createInput = tx.payoutRequest.create.mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(response.request.taxAmount).toBe('10000.01');
-    expect(response.request.netAmount).toBe('190000.09');
+    expect(response.request.taxAmount).toBe('20000.01');
+    expect(response.request.netAmount).toBe('180000.09');
     expect(tx.financialLedger.create).toHaveBeenCalledTimes(1);
     expect(createInput.data.storeId).toBe(storeId);
   });

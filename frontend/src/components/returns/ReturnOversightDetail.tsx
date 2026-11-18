@@ -5,7 +5,7 @@ import { returnService, type ReturnDetail } from '@/services/return.service';
 import { toast } from '@/utils/toast';
 import { returnReasonLabel, returnStatusLabel } from '@/utils/return-status.utils';
 import { ReturnTimeline } from './ReturnTimeline';
-import { caseProducts, CaseProductImage, claimLabels, returnDate, returnMoney } from './ReturnCaseProducts';
+import { caseProducts, CaseProductImage, returnDate, returnMoney } from './ReturnCaseProducts';
 
 type Ruling = 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP';
 type Liability = 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON';
@@ -61,13 +61,17 @@ export function ReturnOversightDetail({ snapshot, onChanged, activePanel, onPane
       </>}
       {panel === 'shipping' && <>
         {shippingActions?.(request)}
-        <section className="return-detail-box"><h4>Vận chuyển đơn gốc</h4><p>Vận đơn GHN: {request.order.outboundGhnTrackingNumber || 'Chưa có'}</p></section>
-        {[{title:'Hàng khách trả về', shipment:request.customerShipment},{title:'Hàng đổi gửi khách',shipment:request.exchangeShipment}].map(({title,shipment}) => <section key={title} className="return-detail-box"><h4>{title}</h4>{shipment ? <><p>{shipment.carrierName} · {shipment.trackingNumber}</p><p>Gửi {returnDate(shipment.shippedAt)} · Nhận {returnDate(shipment.receivedAt)}</p>{shipment.receiptImageUrl && <a className="return-file-link" href={shipment.receiptImageUrl} target="_blank" rel="noopener noreferrer">Biên nhận vận chuyển <ExternalLink size={13}/></a>}</> : <p>Chưa có thông tin vận chuyển.</p>}</section>)}
-        <section className="return-detail-box"><h4>Bồi hoàn GHN</h4>{request.ghnClaim ? <><p>{claimLabels[request.ghnClaim.status]}</p><dl className="return-detail-facts">{[['Mã yêu cầu',request.ghnClaim.ghnReference || 'Chưa gửi'],['Yêu cầu bồi hoàn',request.ghnClaim.claimedAmount == null ? 'Chưa xác định' : returnMoney(request.ghnClaim.claimedAmount)],['GHN chấp thuận',request.ghnClaim.approvedAmount == null ? 'Chưa xác định' : returnMoney(request.ghnClaim.approvedAmount)],['Cập nhật',returnDate(request.ghnClaim.updatedAt)]].map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{request.ghnClaim.notes && <p>{request.ghnClaim.notes}</p>}<div className="return-file-links">{request.ghnClaim.evidenceUrls.map((url,index) => <a key={url} href={url} target="_blank" rel="noopener noreferrer">Bằng chứng GHN {index + 1}</a>)}{request.ghnClaim.proofUrl && <a href={request.ghnClaim.proofUrl} target="_blank" rel="noopener noreferrer">Chứng từ thanh toán</a>}</div></> : <p>Chưa có yêu cầu bồi hoàn GHN.</p>}<p className="return-inline-note">Bồi hoàn cho Shop và xử lý cho khách là hai luồng riêng.</p></section>
+        <section className="return-shipping-strip"><h4>Vận chuyển</h4><div><section><h5>Giao ban đầu</h5><p>{request.order.outboundGhnTrackingNumber ? `GHN · ${request.order.outboundGhnTrackingNumber}` : 'Chưa ghi nhận'}</p></section>
+        {[{title:'Khách gửi trả',shipment:request.customerShipment},{title:'Giao hàng đổi',shipment:request.exchangeShipment}].map(({title,shipment})=><section key={title}><h5>{title}</h5>{shipment?<><p>{shipment.carrierName.replace(/\s*Demo/gi,'')} · {shipment.trackingNumber}</p><p><small>Gửi {returnDate(shipment.shippedAt)} · Nhận {returnDate(shipment.receivedAt)}</small></p>{shipment.receiptImageUrl&&<a className="return-file-link" href={shipment.receiptImageUrl} target="_blank" rel="noopener noreferrer">Biên nhận <ExternalLink size={13}/></a>}</>:<p>{title==='Giao hàng đổi' && request.resolution==='REFUND'?'Không áp dụng':'Chưa ghi nhận'}</p>}</section>)}</div></section>
+        {!request.ghnClaim && <p className="return-muted">Chưa có yêu cầu bồi hoàn GHN.</p>}
       </>}
       {panel === 'handling' && <>
         {handlingActions?.(request)}
-        {request.dispute && <section className="return-detail-box"><h4>{request.dispute.status === 'OPEN' ? 'Nội dung cần phân xử' : 'Kết quả phân xử'}</h4><p>{reasonLabels[request.dispute.reason] || request.dispute.reason}</p><p>{request.dispute.details}</p>{request.dispute.ruling && <strong>{rulingLabels[request.dispute.ruling] || request.dispute.ruling}</strong>}{request.dispute.resolutionNotes && <p>{request.dispute.resolutionNotes}</p>}</section>}
+        {request.dispute && <section className="return-arbitration-result" aria-label="Kết quả phân xử">
+          <header><h4>Kết quả phân xử</h4><span>{request.dispute.status === 'RESOLVED' && request.dispute.ruling ? 'Đã phân xử' : 'Chờ phân xử'}</span></header>
+          <div className="return-arbitration-columns"><section><h5>{request.dispute.reason === 'CUSTOMER_DISAGREES' ? 'Ý kiến khách hàng' : 'Phản hồi của Shop'}</h5><strong>{reasonLabels[request.dispute.reason] || request.dispute.reason}</strong><p className="return-arbitration-original">{request.dispute.details}</p></section>
+            <section><h5>Kết luận vận hành</h5><strong>{request.dispute.ruling ? rulingLabels[request.dispute.ruling] || request.dispute.ruling : 'Chưa có quyết định'}</strong>{request.dispute.resolutionNotes && <div className="return-arbitration-notes"><h6>Ghi chú quyết định</h6><p>{request.dispute.resolutionNotes}</p></div>}</section></div>
+        </section>}
         {request.status === 'SHOP_REJECTED' && !request.dispute && <section className="return-detail-box"><h4>Xem xét quyết định của Shop</h4><p>Mở phân xử để xác minh thêm; thao tác này chưa kết luận bên nào có lỗi.</p><button type="button" className="return-primary" disabled={busy} onClick={() => openReview.mutate()}>{openReview.isPending ? 'Đang mở…' : 'Mở phân xử'}</button></section>}
         {canResolve && <form className="return-ruling-form" onSubmit={submit}><h4>Quyết định phân xử</h4>
           <label>Quyết định<select value={ruling} disabled={busy} onChange={event => setRuling(event.target.value as Ruling)}><option value="APPROVE_REFUND">Chấp thuận hoàn tiền</option><option value="APPROVE_EXCHANGE">Chấp thuận đổi hàng</option>{canUphold && <option value="UPHOLD_SHOP" disabled={liability === 'LOGISTICS_FAULT'}>Giữ quyết định của Shop</option>}</select></label>

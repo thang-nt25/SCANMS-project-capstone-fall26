@@ -22,5 +22,14 @@ export function monthlyTaxPreview(gross: bigint, monthlyGross: string, brackets 
   return { tax: (numerator + 50n) / 100n, rateLabel: rates.length > 1 ? `${rates[0]}–${rates.at(-1)}%` : `${rates[0] ?? 5}%` };
 }
 export function payoutTaxLabel(amount: string, context?: MonthlyTaxContext | null) {
+  if (context?.policy === 'FLAT_10_PERCENT_V1') return 'Thuế TNCN · 10%';
   return context?.policy === 'MONTHLY_PROGRESSIVE_V1' ? `Thuế TNCN · ${monthlyTaxPreview(minor(amount), context.monthlyGrossBefore).rateLabel}` : 'Thuế TNCN · đã lưu';
+}
+
+export function payoutTableTaxLabel(amount: string, taxAmount: string, context?: MonthlyTaxContext | null) {
+  if (context?.policy === 'FLAT_10_PERCENT_V1') return 'Thuế 10%';
+  if (context?.policy === 'MONTHLY_PROGRESSIVE_V1') return `Thuế ${monthlyTaxPreview(minor(amount), context.monthlyGrossBefore).rateLabel}`;
+  const gross = Number(amount), tax = Number(taxAmount);
+  if (!Number.isFinite(gross) || gross <= 0 || !Number.isFinite(tax) || tax < 0) return 'Thuế đã lưu';
+  return `Thuế ${(tax / gross * 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}%`;
 }

@@ -12,7 +12,6 @@ import api from "@/services/api";
 import type { ChatMessage } from "@/types/chat.types";
 import { chatContentUrl } from "@/utils/chat-explorer";
 import { ChatExplorerContent, Highlight } from "./ChatExplorerContent";
-import './conversation-explorer.css';
 
 type Filters = {
   q: string;

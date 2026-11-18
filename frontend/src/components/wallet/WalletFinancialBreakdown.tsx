@@ -4,7 +4,6 @@ import { Store, Info, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { handleStoreImageError } from '@/utils/image-fallback.utils';
 import { Modal } from '../ui/Modal';
 import type { WalletSummary } from '../../types/wallet.types';
-import './wallet-financial-breakdown.css';
 import { getSafeProductImageUrl, handleProductImageError } from '@/utils/marketplace.utils';
 import { DealKpiProgress } from '../affiliate/DealKpiProgress';
 import { referralLinksService, type DealKpiProgress as DealProgress } from '@/services/referral-links.service';

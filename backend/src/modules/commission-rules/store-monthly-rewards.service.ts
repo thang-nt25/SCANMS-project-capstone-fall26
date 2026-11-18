@@ -105,13 +105,24 @@ export class StoreMonthlyRewardsService {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value ?? ''))
       throw new BadRequestException('Kỳ thưởng phải có dạng YYYY-MM');
   }
+  private validateReward(target: string | Prisma.Decimal, reward: string | Prisma.Decimal) {
+    const kpi = new Prisma.Decimal(target), amount = new Prisma.Decimal(reward);
+    if (!kpi.isFinite() || !amount.isFinite() || kpi.lte(0) || amount.lte(0) || amount.gt(kpi))
+      throw new BadRequestException('Tiền thưởng phải lớn hơn 0 và không được vượt KPI doanh số sạch.');
+  }
+  private async notifyReviewers(tx: Prisma.TransactionClient, title: string, message: string, policyId: string, yearMonth: string) {
+    const reviewers = await tx.user.findMany({ where: { role: { in: [UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN] } }, select: { id: true } });
+    if (reviewers.length) await tx.notification.createMany({ data: reviewers.map(reviewer => ({ userId: reviewer.id, type: 'SYSTEM', title, message,
+      data: { actionUrl: `/admin/payouts?tab=monthly&yearMonth=${yearMonth}`, policyId, yearMonth } })) });
+  }
   async create(
     user: AuthenticatedUser,
     storeId: string,
     dto: CreateMonthlyRewardDto,
   ) {
-    await this.access(user, storeId, true);
+    const store = await this.access(user, storeId, true);
     this.month(dto.yearMonth);
+    this.validateReward(dto.targetRevenue, dto.rewardAmount);
     if (dto.name.trim().length < 3)
       throw new BadRequestException('Tên chính sách cần ít nhất 3 ký tự');
     if (dto.yearMonth < rewardMonth())
@@ -140,6 +151,7 @@ export class StoreMonthlyRewardsService {
               status: previous.status, reviewNote: previous.reviewNote, reviewedBy: previous.reviewedBy, reviewedAt: previous.reviewedAt?.toISOString() ?? null },
             submitted: { name: dto.name.trim(), targetRevenue: dto.targetRevenue, rewardAmount: dto.rewardAmount },
           } } });
+          await this.notifyReviewers(tx, 'Chính sách thưởng tháng gửi lại', `${store.name} · ${dto.yearMonth} · Chờ kiểm duyệt chính sách đã chỉnh sửa.`, previous.id, dto.yearMonth);
           return { id: previous.id, status: 'PENDING', resubmitted: true };
         }
         const policy = await tx.storeMonthlyRewardPolicy.create({
@@ -163,6 +175,7 @@ export class StoreMonthlyRewardsService {
             },
           },
         });
+        await this.notifyReviewers(tx, 'Chính sách thưởng tháng chờ duyệt', `${store.name} · ${dto.yearMonth} · KPI ${Number(dto.targetRevenue).toLocaleString('vi-VN')} đ · Thưởng ${Number(dto.rewardAmount).toLocaleString('vi-VN')} đ.`, policy.id, dto.yearMonth);
         return policy;
       });
     } catch (error) {
@@ -184,6 +197,9 @@ export class StoreMonthlyRewardsService {
     if (dto.decision === 'REJECTED' && !dto.note?.trim())
       throw new BadRequestException('Cần lý do từ chối');
     return this.db.$transaction(async (tx) => {
+      const policy = await tx.storeMonthlyRewardPolicy.findUnique({ where: { id } });
+      if (!policy) throw new NotFoundException('Không tìm thấy chính sách');
+      if (dto.decision === 'APPROVED') this.validateReward(policy.targetRevenue, policy.rewardAmount);
       const changed = await tx.storeMonthlyRewardPolicy.updateMany({
         where: { id, status: 'PENDING', createdBy: { not: user.id } },
         data: {
@@ -204,6 +220,21 @@ export class StoreMonthlyRewardsService {
           details: { policyId: id, ...dto },
         },
       });
+      await tx.notification.create({ data: { userId: policy.createdBy, type: 'SYSTEM',
+        title: dto.decision === 'APPROVED' ? 'Chính sách thưởng tháng đã được duyệt' : 'Chính sách thưởng tháng bị từ chối',
+        message: `${policy.name} · ${policy.yearMonth}${dto.note ? ` · ${dto.note}` : ''}`,
+        data: { actionUrl: `/merchant/promotions?tab=creator-incentives&yearMonth=${policy.yearMonth}`, policyId: id, yearMonth: policy.yearMonth },
+      } });
+      if (dto.decision === 'APPROVED') {
+        const store = await tx.store.findUnique({ where: { id: policy.storeId }, select: { name: true } });
+        const members = await tx.storeCollaborator.findMany({ where: { storeId: policy.storeId, status: 'APPROVED' }, select: { collaboratorId: true } });
+        const recipients = [...new Set(members.map(member => member.collaboratorId))];
+        if (recipients.length) await tx.notification.createMany({ data: recipients.map(userId => ({ userId, type: 'SYSTEM',
+          title: 'Có mốc thưởng doanh số tháng mới',
+          message: `${store?.name || policy.name} · ${policy.yearMonth}: đạt ${Number(policy.targetRevenue).toLocaleString('vi-VN')} đ doanh số sạch để được đề nghị thưởng ${Number(policy.rewardAmount).toLocaleString('vi-VN')} đ. Chính sách đã được duyệt, áp dụng cho các KOL hợp tác với cửa hàng; tiền thưởng cần kiểm duyệt trước khi cộng ví.`,
+          data: { actionUrl: `/collaborator/bonus-progress?yearMonth=${policy.yearMonth}`, policyId: id, yearMonth: policy.yearMonth },
+        })) });
+      }
       return {
         message:
           dto.decision === 'APPROVED'
@@ -435,6 +466,8 @@ export class StoreMonthlyRewardsService {
       throw new BadRequestException('KOL chưa hợp tác với cửa hàng');
     return this.db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`monthly-bonus:${policy.storeId}:${collaboratorId}`},0))`;
+      const existing = await tx.storeMonthlyRewardGrant.findUnique({ where: { policyId_collaboratorId: { policyId, collaboratorId } } });
+      if (existing) throw new ConflictException('Đề nghị thưởng đã được gửi hoặc xử lý; vui lòng tải lại để xem trạng thái.');
       const revenue = await this.commissions.calculateValidMonthlyRevenue(
         policy.storeId,
         collaboratorId,
@@ -474,6 +507,11 @@ export class StoreMonthlyRewardsService {
           details: { grantId: grant.id, policyId, collaboratorId },
         },
       });
+      await tx.notification.create({ data: { userId: collaboratorId, type: 'SYSTEM', title: 'Đề nghị thưởng tháng đang chờ duyệt',
+        message: `${policy.name} · ${policy.yearMonth}: bạn đạt ${Number(revenue.validRevenue).toLocaleString('vi-VN')} đ doanh số sạch. Shop đã gửi đề nghị thưởng ${Number(policy.rewardAmount).toLocaleString('vi-VN')} đ đến Manager/Admin; chưa cộng ví.`,
+        data: { actionUrl: `/collaborator/bonus-progress?yearMonth=${policy.yearMonth}`, policyId, grantId: grant.id, yearMonth: policy.yearMonth },
+      } });
+      await this.notifyReviewers(tx, 'Đề nghị thưởng KOL chờ duyệt', `${policy.name} · ${policy.yearMonth} · Đề nghị thưởng ${Number(policy.rewardAmount).toLocaleString('vi-VN')} đ cho KOL đã đạt KPI.`, policyId, policy.yearMonth);
       return {
         message: 'Đã gửi đề nghị thưởng, chờ System Manager/Admin duyệt',
         grant,
@@ -515,6 +553,7 @@ export class StoreMonthlyRewardsService {
           );
         const policy = grant.policy;
         if (dto.decision === 'APPROVED') {
+          this.validateReward(policy.targetRevenue, grant.amount);
           if (policy.status !== 'APPROVED' || policy.yearMonth > rewardMonth())
             throw new BadRequestException('Chính sách chưa có hiệu lực');
           const partnership = await tx.storeCollaborator.findFirst({
@@ -642,7 +681,7 @@ export class StoreMonthlyRewardsService {
                 ? 'Đã nhận thưởng doanh số tháng'
                 : 'Đề nghị thưởng bị từ chối',
             message: `${policy.name} · ${policy.yearMonth} · ${dto.decision === 'APPROVED' ? grant.amount.toString() + ' đ đã cộng ví' : dto.note}`,
-            data: { actionUrl: '/collaborator/bonus-progress', grantId: id },
+            data: { actionUrl: `/collaborator/bonus-progress?yearMonth=${policy.yearMonth}`, policyId: policy.id, grantId: id, yearMonth: policy.yearMonth },
           },
         });
         return {

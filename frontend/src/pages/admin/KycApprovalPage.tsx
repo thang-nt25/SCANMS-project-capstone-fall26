@@ -1,5 +1,6 @@
 import { handleAvatarImageError } from '@/utils/image-fallback.utils';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Download,
@@ -56,6 +57,11 @@ function normalizeVietnameseName(str: string): string {
 }
 
 export default function KycApprovalPage() {
+  const [searchParams] = useSearchParams();
+  const requestedUser = searchParams.get('userId');
+  const requestedSection = searchParams.get('section');
+  const requestedFocus = searchParams.get('focus');
+  const openedTarget = useRef('');
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'UNVERIFIED' | 'VERIFIED' | 'REJECTED'>('UNVERIFIED');
@@ -273,6 +279,20 @@ export default function KycApprovalPage() {
   const verifiedCount = displayKols.filter((u: any) => u.kycStatus === 'VERIFIED').length;
   const rejectedCount = displayKols.filter((u: any) => u.kycStatus === 'REJECTED').length;
   const totalCount = displayKols.length;
+  useEffect(() => {
+    const targetKey = `${requestedUser}:${requestedSection}`;
+    if (!requestedUser || !applicationsData || openedTarget.current === targetKey) return;
+    const target = displayKols.find((profile: any) => profile.userId === requestedUser);
+    if (!target) return;
+    openedTarget.current = targetKey;
+    setFilterStatus('ALL');
+    setInspectProfile(target);
+  }, [applicationsData, requestedUser, requestedSection]);
+  useEffect(() => {
+    if (!inspectProfile || !requestedSection) return;
+    const frame = requestAnimationFrame(() => document.getElementById(requestedFocus === 'tax' ? 'kyc-review-tax' : `kyc-review-${requestedSection}`)?.scrollIntoView({ block: 'center' }));
+    return () => cancelAnimationFrame(frame);
+  }, [inspectProfile, requestedSection, requestedFocus]);
 
   const handleExportCsv = () => {
     if (!displayKols || displayKols.length === 0) {
@@ -760,7 +780,7 @@ export default function KycApprovalPage() {
             {/* 3 KHỐI THẨM ĐỊNH CÂN ĐỐI */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
               {/* KHỐI 1: ĐỊNH DANH CÁ NHÂN */}
-              <div className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
+              <div id="kyc-review-identity" className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#FAF8F5]">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
@@ -790,7 +810,7 @@ export default function KycApprovalPage() {
                     </button>
                   </div>
 
-                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
+                  <div id="kyc-review-tax" className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
                     <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Mã số thuế</span>
                     <strong className={`font-mono text-xs block truncate ${inspectProfile.taxCode ? 'text-[#1A1612] font-bold' : 'text-[#7D715E] font-normal'}`}>
                       {inspectProfile.taxCode || 'Chưa cập nhật'}
@@ -918,7 +938,7 @@ export default function KycApprovalPage() {
               </div>
 
               {/* KHỐI 3: TÀI KHOẢN NGÂN HÀNG */}
-              <div className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
+              <div id="kyc-review-bank" className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#FAF8F5]">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">

@@ -1,6 +1,5 @@
 import { BadgePercent, Users } from 'lucide-react';
 import type { HubTabItem } from '../../components/common/HubTabs';
-import '../../components/promotions/promotion-navigation.css';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import { ShopPricePromotionsTab } from '../../components/promotions/ShopPricePromotionsTab';
 import { ShopCreatorIncentivesTab } from '../../components/promotions/ShopCreatorIncentivesTab';

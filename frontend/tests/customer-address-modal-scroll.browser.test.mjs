@@ -18,7 +18,8 @@ test('address dialog scrolls to the complete map and keeps save actions visible 
     const page = await browser.newPage();
     page.setDefaultTimeout(6000);
     const errors = [], writes = [];
-    page.on('pageerror', error => errors.push(error.message));
+    // The isolated fixture blocks Vite's development HMR socket.
+    page.on('pageerror', error => { if (error.message !== 'WebSocket closed without opened.') errors.push(error.message); });
     await page.evaluateOnNewDocument(() => {
       localStorage.setItem('token', 'qa-address-no-server-access');
       localStorage.setItem('user', JSON.stringify({ id: 'qa-customer', fullName: 'Khách kiểm thử', role: 'CUSTOMER' }));

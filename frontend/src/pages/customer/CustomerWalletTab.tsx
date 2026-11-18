@@ -24,7 +24,7 @@ import { customerLedgerReference } from '../../utils/customer-ledger-reference';
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
 
 export const CustomerWalletTab: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const targetWithdrawalId = searchParams.get('withdrawalId') || undefined;
   const [historyTab, setHistoryTab] = useState<'transactions' | 'withdrawals'>(() => targetWithdrawalId || searchParams.get('history') === 'withdrawals' ? 'withdrawals' : 'transactions');
   useEffect(() => {
@@ -49,9 +49,9 @@ export const CustomerWalletTab: React.FC = () => {
     return () => { active = false; };
   }, []);
 
-  const fetchWalletData = async () => {
+  const fetchWalletData = async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       const [walletData, ledgerData] = await Promise.all([
         walletService.getMyWallet(true),
         walletService.getMyLedger(page, true),
@@ -67,6 +67,23 @@ export const CustomerWalletTab: React.FC = () => {
 
   useEffect(() => {
     fetchWalletData();
+  }, [page]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchWalletData(true);
+        setWithdrawalRefresh(value => value + 1);
+      }
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+      window.clearInterval(timer);
+    };
   }, [page]);
 
   const handleTopUp = async (amount: number) => {
@@ -95,7 +112,11 @@ export const CustomerWalletTab: React.FC = () => {
     const numAmount = Number(entry.amount);
     const isPositive = numAmount > 0;
 
-    if (entry.referenceType === 'CUSTOMER_WITHDRAWAL' || entry.referenceType === 'CUSTOMER_WITHDRAWAL_REFUND') return { label: isPositive ? 'Hoàn tiền lệnh rút' : 'Giữ tiền chờ rút', badgeClass: 'bg-[#FBF5EB] text-[#7D715E] border-[#EEDFC6]', sign: isPositive ? '+' : '-', colorClass: 'text-[#1A1612] font-bold' };
+    if (entry.referenceType === 'CUSTOMER_WITHDRAWAL' || entry.referenceType === 'CUSTOMER_WITHDRAWAL_REFUND') {
+      const status = entry.referenceDetails?.withdrawalStatus;
+      const label = isPositive ? 'Hoàn tiền lệnh rút' : status === 'APPROVED' ? 'Rút tiền thành công' : status === 'REJECTED' ? 'Yêu cầu rút bị từ chối' : status === 'PROCESSING' ? 'Đang xử lý rút tiền' : 'Giữ tiền chờ rút';
+      return { label, badgeClass: 'bg-[#FBF5EB] text-[#7D715E] border-[#EEDFC6]', sign: isPositive ? '+' : '-', colorClass: 'text-[#1A1612] font-bold' };
+    }
     if (entry.referenceType === 'TOPUP_PAYOS') {
       return { label: 'Nạp tiền qua payOS', badgeClass: 'bg-[#FBF5EB] text-[#7D715E] border-[#EEDFC6]', sign: '+', colorClass: 'text-[#1A1612] font-bold' };
     }
@@ -172,15 +193,16 @@ export const CustomerWalletTab: React.FC = () => {
       <div className="grid grid-cols-2 gap-3 p-4" role="group" aria-label="Thao tác ví">
         {([['topup', 'Nạp tiền'], ['withdraw', 'Rút tiền']] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={walletTab === key} onClick={() => setWalletTab(key)} className={`min-h-12 rounded-xl border text-sm font-semibold ${walletTab === key ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'}`}>{label}</button>)}
       </div>
-      {walletTab === 'withdraw' ? <CustomerWithdrawals balance={Number(wallet?.shoppingBalance || 0)} onChanged={fetchWalletData} onSubmitted={() => { setHistoryTab('withdrawals'); setWithdrawalRefresh(value => value + 1); }}/> : <section aria-labelledby="customer-topup-title" className="block min-w-0 bg-white">
-        <header className="flex items-center gap-3 px-4 pt-5 sm:px-6">
-          <span className="inline-flex items-center justify-center shrink-0 w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] shadow-2xs">
-            <Plus size={18} />
-          </span>
-          <span className="grid gap-0.5 min-w-0 text-left">
-            <strong id="customer-topup-title" className="text-sm sm:text-base font-bold text-[#1A1612]">Nạp tiền vào ví</strong>
-          </span>
-        </header>
+      {walletTab === 'withdraw' ? <CustomerWithdrawals balance={Number(wallet?.shoppingBalance || 0)} onChanged={fetchWalletData} onSubmitted={withdrawal => {
+        setHistoryTab('withdrawals');
+        setWithdrawalRefresh(value => value + 1);
+        setSearchParams(previous => {
+          const next = new URLSearchParams(previous);
+          next.set('history', 'withdrawals');
+          next.set('withdrawalId', withdrawal.id);
+          return next;
+        }, { replace: true, preventScrollReset: true });
+      }}/> : <section aria-label="Nạp tiền" className="block min-w-0 bg-white">
 
         <div className="p-4 sm:p-6 text-left">
           <div className="grid gap-4">
@@ -343,6 +365,7 @@ export const CustomerWalletTab: React.FC = () => {
                           <span className="inline-flex items-center gap-3 font-medium text-[#1A1612]">
                             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]">{badge.sign === '+' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}</span>{badge.label}
                           </span>
+                          {entry.referenceType === 'CUSTOMER_WITHDRAWAL' && entry.referenceDetails?.withdrawalStatus === 'APPROVED' && entry.referenceDetails.processedAt && <div className="mt-1 pl-12 text-xs text-[#7D715E]">Đã chuyển khoản · {new Date(entry.referenceDetails.processedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hourCycle: 'h23' })}</div>}
                         </td>
                         <td className={`p-[11px_16px] text-right tabular-nums font-semibold whitespace-nowrap ${badge.colorClass}`}>
                           {badge.sign}{formatMoney(Math.abs(Number(entry.amount)))}
@@ -399,7 +422,7 @@ export const CustomerWalletTab: React.FC = () => {
             </div>
           )}
         </div>
-        <div role="tabpanel" id="wallet-history-withdrawals" aria-labelledby="wallet-history-tab-withdrawals" hidden={historyTab !== 'withdrawals'}><CustomerWithdrawalHistory key={withdrawalRefresh} refreshKey={withdrawalRefresh} targetId={targetWithdrawalId}/></div>
+        <div role="tabpanel" id="wallet-history-withdrawals" aria-labelledby="wallet-history-tab-withdrawals" hidden={historyTab !== 'withdrawals'}><CustomerWithdrawalHistory refreshKey={withdrawalRefresh} targetId={targetWithdrawalId}/></div>
       </section>
     </section>
   );

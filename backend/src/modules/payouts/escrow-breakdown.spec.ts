@@ -4,7 +4,7 @@ const d = (value: number) => new Prisma.Decimal(value);
 describe('escrow standard and conditional Deal amounts', () => {
   it('keeps legacy base fallback and separates held Deal amounts without changing money', async () => {
     const row = (id: string, total: number, base: number | null, deal: number, state: string, returns: any[] = []) => ({
-      id, commissionAmount: d(total), baseCommissionAmount: base === null ? null : d(base), dealBonusAmount: d(deal), dealBonusStatus: state,
+      id, status: 'PENDING', commissionAmount: d(total), baseCommissionAmount: base === null ? null : d(base), dealBonusAmount: d(deal), dealBonusStatus: state,
       order: { status: 'DELIVERED', rawPayload: {}, returnRequests: returns },
     });
     const rows = [row('legacy', 41600, null, 0, 'NONE'), row('a',40000,27500,12500,'PENDING_KPI'),row('b',80000,55000,25000,'PENDING_KPI'),row('qualified',110,100,10,'QUALIFIED'),row('revoked',110,100,10,'CLAWED_BACK')];
@@ -14,6 +14,14 @@ describe('escrow standard and conditional Deal amounts', () => {
     expect(result.items[3].pendingDealAmount).toBe('10.00');
     expect(result.items[4].pendingDealAmount).toBe('0.00');
     expect(result.pendingAmount).toBe('161820.00');
+  });
+  it('includes remaining Deal funds after standard commission was released without counting standard twice', async () => {
+    const rows = [{ id: 'released-base', status: 'APPROVED', commissionAmount: d(40000), baseCommissionAmount: d(27500), dealBonusAmount: d(12500), dealBonusStatus: 'PENDING_KPI', dealProposalId: 'deal-id', order: { status: 'DELIVERED', rawPayload: {}, returnRequests: [] } }];
+    const findMany = jest.fn();
+    const prisma = { commission: { findMany, count: jest.fn(), aggregate: jest.fn() }, $transaction: jest.fn().mockResolvedValue([rows, 1, { _sum: { commissionAmount: d(40000) } }]) };
+    const result = await new FinanceReportService(prisma as never).escrow();
+    expect(findMany.mock.calls[0][0].where.OR[1]).toEqual({ status: { in: ['APPROVED', 'PAID'] }, dealBonusStatus: 'PENDING_KPI', dealBonusAmount: { gt: 0 } });
+    expect(result.items[0]).toMatchObject({ pendingStandardAmount: '0.00', pendingDealAmount: '12500.00', dealProposalId: 'deal-id' });
   });
   it('retains blockers from earlier open disputes even if the latest return is closed', async () => {
     const row={id:'a',commissionAmount:d(100),baseCommissionAmount:d(100),dealBonusAmount:d(0),dealBonusStatus:'NONE',order:{status:'RETURN_REQUESTED',rawPayload:{selfReferralReviewRequired:true},returnRequests:[{id:'latest-closed',status:'CLOSED',dispute:null},{id:'earlier-dispute',status:'COMPLETED',dispute:{status:'OPEN'}}]}};

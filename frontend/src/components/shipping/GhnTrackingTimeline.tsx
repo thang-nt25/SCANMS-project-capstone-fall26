@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Truck, RefreshCw, Phone, Check, Clock, UserRound, ChevronDown } from 'lucide-react';
+import { Truck, RefreshCw, Phone, Check, Clock, UserRound } from 'lucide-react';
 import api from '../../services/api';
 import { GHN_MILESTONES } from '../../utils/ghn-tracking';
 
@@ -19,11 +19,12 @@ const formatTime = (value?: string | null) => value && Number.isFinite(Date.pars
   ? new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : null;
 const phoneHref = (phone: string) => `tel:${phone.replace(/[^+\d]/g, '')}`;
 
-export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelivered, onTrackingStatusChange, onTimelineChange, environment }: {
+export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelivered, onTrackingStatusChange, onTimelineChange, environment, compact = false }: {
   orderCode: string; sampleRequestId?: string; onSampleDelivered?: () => void;
   onTrackingStatusChange?: (status: string, isFresh: boolean) => void;
   onTimelineChange?: (events: TrackingEvent[]) => void;
   environment?: 'LIVE' | 'TEST';
+  compact?: boolean;
 }) {
   const [tracking, setTracking] = useState<Tracking | null>(null);
   const [error, setError] = useState('');
@@ -142,7 +143,7 @@ export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelive
         ? 'Mỗi mốc cách nhau 15 giây; hoàn tất hành trình sau 1 phút'
         : '';
   return (
-    <section className="ghn-journey min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-[18px] text-[12px] text-[#1A1612] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-[3px] [&_button:focus-visible]:outline-[#B88E4F] [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-[3px] [&_a:focus-visible]:outline-[#B88E4F] [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-offset-[3px] [&_summary:focus-visible]:outline-[#B88E4F] [&_button:disabled]:text-[#7D715E] [&_button:disabled]:opacity-60 [&_button:disabled]:cursor-default [@media(max-width:480px)]:p-3.5 [.ghn-tracking-dialog_&]:rounded-none [.ghn-tracking-dialog_&]:border-0 [.ghn-tracking-dialog_&]:p-0" aria-label={`Hành trình GHN ${orderCode}`}>
+    <section data-compact={compact || undefined} className="ghn-journey min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-[18px] text-[12px] text-[#1A1612] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-[3px] [&_button:focus-visible]:outline-[#B88E4F] [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-[3px] [&_a:focus-visible]:outline-[#B88E4F] [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-offset-[3px] [&_summary:focus-visible]:outline-[#B88E4F] [&_button:disabled]:text-[#7D715E] [&_button:disabled]:opacity-60 [&_button:disabled]:cursor-default [@media(max-width:480px)]:p-3.5 [.ghn-tracking-dialog_&]:rounded-none [.ghn-tracking-dialog_&]:border-0 [.ghn-tracking-dialog_&]:p-0" aria-label={`Hành trình GHN ${orderCode}`}>
       <div className="ghn-journey__header flex items-center gap-[11px]">
         <span className="ghn-journey__carrier-icon flex shrink-0 items-center justify-center text-[#8C6B32] size-[42px] rounded-xl bg-[#FBF5EB]"><Truck size={21} aria-hidden="true" /></span>
         <div className="ghn-journey__identity min-w-0 flex-1 [&_strong]:text-[13px] [&_p]:mt-[3px] [&_p]:text-[11px] [&_p]:text-[#7D715E] [&_code]:ml-[5px] [&_code]:font-semibold [&_code]:text-[#231D15] [&_code]:[overflow-wrap:anywhere]"><strong>Giao Hàng Nhanh</strong><p>Mã vận đơn <code>{orderCode}</code></p></div>
@@ -155,7 +156,7 @@ export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelive
       {!tracking && !error && <p className="text-[#7D715E]">Đang tra cứu GHN...</p>}
       {tracking && <div aria-live="polite">
         <div>
-        <ol className="ghn-journey__steps my-[17px] list-none p-0" aria-label="Các mốc giao hàng">
+        {(!compact || !tracking.timeline.length) && <ol className="ghn-journey__steps my-[17px] list-none p-0" aria-label="Các mốc giao hàng">
           {milestones.map(stage => {
             const evidence = tracking.timeline.find(event => stage.statuses.includes(event.status));
             const current = !pending && stage.statuses.includes(tracking.status);
@@ -165,26 +166,26 @@ export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelive
               <p className="ghn-journey__step-title pt-[3px] text-[11px] font-medium leading-[1.5]">{stage.title}</p><span className="ghn-journey__step-time max-w-[150px] pt-1 text-right text-[10px] leading-[1.5] tabular-nums [@media(max-width:480px)]:col-start-2 [@media(max-width:480px)]:max-w-none [@media(max-width:480px)]:pt-0.5 [@media(max-width:480px)]:text-left">{formatTime(evidence?.time) || (current ? tracking.isStale ? 'Trạng thái lưu trước đó' : tracking.isSimulation ? 'Trạng thái mô phỏng hiện tại' : 'Trạng thái hiện tại theo GHN' : evidence ? 'GHN chưa cung cấp thời gian' : tracking.isSimulation ? stage.statuses.includes('delivered') && formatTime(tracking.expectedDeliveryTime) ? `Dự kiến ${formatTime(tracking.expectedDeliveryTime)}` : 'Chờ đến mốc mô phỏng' : 'Chưa có xác nhận từ GHN')}</span>
             </li>;
           })}
-        </ol>
+        </ol>}
         {(['delivering', 'money_collect_delivering'].includes(tracking.status) || (tracking.isSimulation && tracking.status === 'delivered')) && <div className="ghn-journey__driver flex items-center gap-2.5 rounded-xl border border-[#EAE4D7] p-3">
           <span className="ghn-journey__avatar flex shrink-0 items-center justify-center text-[#8C6B32] size-[35px] rounded-full bg-[#F3EFE6]"><UserRound size={20} aria-hidden="true" /></span>
           <div className="ghn-journey__driver-info min-w-0 flex-1 [&_strong]:my-0.5 [&_strong]:block [&_strong]:text-[12px] [&_strong]:[overflow-wrap:anywhere] [&>p:last-child]:text-[10px] [&>p:last-child]:text-[#7D715E]"><p className="ghn-journey__caption text-[10px] font-normal text-[#7D715E]">{tracking.isSimulation ? 'Shipper mô phỏng' : 'Shipper phụ trách giao hàng'}</p><strong>{tracking.shipperName || 'GHN chưa cung cấp tên shipper'}</strong><p>{tracking.isSimulation ? tracking.shipperPhoneDisplay || '09xx xxx xxx' : tracking.shipperPhone || 'Đang chờ GHN cập nhật SĐT liên hệ.'}</p></div>
           {tracking.isSimulation ? <button type="button" disabled className="ghn-journey__call [&:is(a)]:text-[#795A2D]! inline-flex min-h-9 cursor-pointer items-center justify-center gap-[7px] whitespace-nowrap rounded-[9px] border border-[#EAE4D7] bg-white px-[11px] py-2 text-[11px] font-semibold text-[#795A2D] no-underline transition-[background] duration-150 ease-[ease] hover:bg-[#FBF5EB] [@media(max-width:480px)]:w-[34px] [@media(max-width:480px)]:p-2 [@media(max-width:480px)]:[&>span]:hidden" aria-label="Gọi shipper" title="Số điện thoại mô phỏng, không hỗ trợ gọi"><Phone size={14} /><span>Gọi shipper</span></button> : tracking.shipperPhone ? <a href={phoneHref(tracking.shipperPhone)} className="ghn-journey__call [&:is(a)]:text-[#795A2D]! inline-flex min-h-9 cursor-pointer items-center justify-center gap-[7px] whitespace-nowrap rounded-[9px] border border-[#EAE4D7] bg-white px-[11px] py-2 text-[11px] font-semibold text-[#795A2D] no-underline transition-[background] duration-150 ease-[ease] hover:bg-[#FBF5EB] [@media(max-width:480px)]:w-[34px] [@media(max-width:480px)]:p-2 [@media(max-width:480px)]:[&>span]:hidden" aria-label="Gọi shipper"><Phone size={14} /><span>Gọi shipper</span></a> : null}
         </div>}
-        {tracking.timeline.length ? <details open className="mt-4 p-3.5 border border-[#eae4d7] rounded-2xl bg-white [&>summary]:flex [&>summary]:items-center [&>summary]:justify-between [&>summary]:gap-3 [&>summary]:min-h-[32px] [&>summary]:list-none [&>summary]:cursor-pointer [&>summary]:text-[13px] [&>summary]:font-semibold [&>summary]:text-[#1a1612] [&>summary::-webkit-details-marker]:hidden [&[open]>summary]:pb-3 [&[open]>summary]:border-b [&[open]>summary]:border-[#eae4d7] [&[open]>summary_svg]:rotate-180 [&>ol]:grid [&>ol]:grid-cols-1 sm:[&>ol]:grid-cols-3 [&>ol]:gap-2.5 [&>ol]:mt-3 [&>ol]:p-0 [&>ol]:list-none [&>ol>li]:flex [&>ol>li]:items-start [&>ol>li]:gap-2.25 [&>ol>li]:p-3 [&>ol>li]:min-w-0 [&>ol>li]:border [&>ol>li]:border-[#eae4d7] [&>ol>li]:rounded-[10px] [&>ol>li]:bg-white [&>ol>li.is-latest]:border-[#eedfc6] [&>ol>li.is-latest]:bg-[#fbf5eb]">
-          <summary><span>Lịch sử vận chuyển</span><span className="inline-flex items-center gap-2 text-[#7d715e] text-[11px] font-normal">{tracking.timeline.length} mốc<ChevronDown size={14} /></span></summary>
+        {tracking.timeline.length ? <section className="ghn-journey__history" aria-label="Chi tiết lịch sử vận chuyển">
+          <header><h3>Lịch sử vận chuyển</h3><span>{tracking.timeline.length} mốc</span></header>
           <ol aria-label="Lịch sử vận chuyển">
             {tracking.timeline.map((event, index) => <li key={`${event.status}-${event.time || index}`} className={index === tracking.timeline.length - 1 ? 'is-latest' : ''}>
               <span className="grid place-items-center shrink-0 w-[26px] h-[26px] border border-[#eedfc6] rounded-full bg-white text-[#8c6b32] text-xs">{index + 1}</span>
               <div className="min-w-0 [overflow-wrap:anywhere] [&_strong]:block [&_strong]:text-xs [&_strong]:leading-normal [&_strong]:text-[#1a1612] [&_time]:block [&_time]:mt-1.25 [&_time]:text-[11px] [&_time]:leading-normal [&_time]:text-[#7d715e] [&_p]:block [&_p]:mt-1.25 [&_p]:text-[11px] [&_p]:leading-normal [&_p]:text-[#7d715e] [&_a]:text-[#8c6b32]">
                 <strong>{event.title}</strong>
-                <time>{formatTime(event.time) || 'Chưa có thời gian xác nhận'}</time>
+                <time dateTime={event.time || undefined}>{formatTime(event.time) || 'Chưa có thời gian xác nhận'}</time>
                 {event.warehouse && <p>{event.warehouse}</p>}
                 {(event.shipperName || event.shipperPhone) && <p>Shipper: {event.shipperName || 'Chưa có tên'}{event.shipperPhone && <> · <a href={phoneHref(event.shipperPhone)}>{event.shipperPhone}</a></>}</p>}
               </div>
             </li>)}
           </ol>
-        </details> : <p className="ghn-journey__empty my-3 text-[11px] leading-[1.6] text-[#7D715E]">GHN chưa gửi thêm lịch sử. Các mốc phía dưới chỉ đổi khi GHN xác nhận trạng thái mới.</p>}
+        </section> : <p className="ghn-journey__empty my-3 text-[11px] leading-[1.6] text-[#7D715E]">GHN chưa gửi thêm lịch sử. Các mốc phía dưới chỉ đổi khi GHN xác nhận trạng thái mới.</p>}
         </div>
         <p className="ghn-journey__updated flex flex-wrap items-center justify-between gap-2 border-t border-[#EAE4D7] pt-2.5 text-[9px] leading-[1.7] text-[#7D715E]">
           <span>{formatTime(tracking.lastCheckedAt) ? `Cập nhật: ${formatTime(tracking.lastCheckedAt)}` : ''}{trackingNote ? `${formatTime(tracking.lastCheckedAt) ? ' · ' : ''}${trackingNote}` : ''}</span>

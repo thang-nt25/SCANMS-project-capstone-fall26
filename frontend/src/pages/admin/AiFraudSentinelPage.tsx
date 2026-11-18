@@ -28,11 +28,9 @@ import {
   type FraudMitigationAction,
 } from '../../services/ai-fraud.service';
 import { Select } from '../../components/ui/Select';
-import './security-audit.css';
 import { useRef } from 'react';
 import { workspaceButton } from '@/components/ui/FeatureWorkspace';
 import { getSafeProductImageUrl,handleProductImageError } from '@/utils/marketplace.utils';
-import './fraud-oversight.css';
 
 export default function AiFraudSentinelPage() {
   const [summary, setSummary] = useState<FraudScanSummary | null>(null);

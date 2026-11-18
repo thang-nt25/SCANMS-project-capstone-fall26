@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from 'react-router-dom';
 import { Plus, CheckCircle2, MessageSquareText } from "lucide-react";
-import "./monthly-rewards.css";
 import {
   monthlyRewards,
   currentRewardMonth,
@@ -42,7 +42,10 @@ export function MonthlyRewardsPanel({
   initialMonth?: string;
   onChanged?: () => void;
 }) {
-  const [month, setMonth] = useState(initialMonth || currentRewardMonth());
+  const [searchParams] = useSearchParams();
+  const requestedMonth = searchParams.get('yearMonth');
+  const [month, setMonth] = useState(initialMonth || (requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) ? requestedMonth : currentRewardMonth()));
+  useEffect(() => { if (requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)) setMonth(requestedMonth); }, [requestedMonth]);
   const [data, setData] = useState<RewardOverview | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -54,6 +57,7 @@ export function MonthlyRewardsPanel({
   const [name, setName] = useState("Thưởng doanh số tháng");
   const [target, setTarget] = useState("50000000");
   const [reward, setReward] = useState("2000000");
+  const rewardTooHigh = Number(reward) > Number(target);
   const [action, setAction] = useState<Action | null>(null);
   const [note, setNote] = useState("");
   const lastView = useRef<{ key: string; data: RewardOverview } | null>(null);
@@ -339,6 +343,7 @@ export function MonthlyRewardsPanel({
             onSubmit={(event) => {
               event.preventDefault();
               if (!storeId) return;
+              if (rewardTooHigh) return;
               void run(async () => {
                 await monthlyRewards.create(storeId, {
                   yearMonth: createMonth,
@@ -393,6 +398,8 @@ export function MonthlyRewardsPanel({
                   inputMode="numeric"
                   pattern="[1-9][0-9]{0,11}"
                   value={reward}
+                  aria-invalid={rewardTooHigh}
+                  aria-describedby={rewardTooHigh ? 'monthly-reward-error' : undefined}
                   onChange={(event) =>
                     setReward(event.target.value.replace(/\D/g, ""))
                   }
@@ -400,6 +407,7 @@ export function MonthlyRewardsPanel({
                 />
               </label>
             </div>
+            {rewardTooHigh && <p id="monthly-reward-error" role="alert" className="m-0 text-sm text-[#DC2626]">Tiền thưởng không được vượt KPI doanh số sạch ({money(target)}).</p>}
             <p className="m-0 text-xs text-[#7D715E]">
               Gửi System Manager/Admin kiểm duyệt. Thưởng tháng không tự động
               thay đổi cấp bậc KOL.
@@ -413,7 +421,7 @@ export function MonthlyRewardsPanel({
               >
                 Hủy
               </button>
-              <button type="submit" disabled={busy} className={button}>
+              <button type="submit" disabled={busy || rewardTooHigh} className={button}>
                 {resubmitting ? 'Gửi lại kiểm duyệt' : 'Gửi kiểm duyệt'}
               </button>
             </div>

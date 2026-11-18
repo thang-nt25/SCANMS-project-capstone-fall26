@@ -16,9 +16,7 @@ services:
       - caddy_config:/config
     depends_on:
       - frontend
-    networks:
-      app:
-        ipv4_address: 172.30.94.2
+    networks: [app]
 
   frontend:
     build:
@@ -29,6 +27,8 @@ services:
         VITE_SOCKET_URL: https://${DOMAIN}
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
     depends_on:
       - backend
     networks: [app]
@@ -55,6 +55,11 @@ services:
       REDIS_TLS: "false"
       TRUST_PROXY: "true"
       TRUSTED_PROXIES: 172.30.94.0/24
+      DISABLE_SCHEDULED_JOBS: ${DISABLE_SCHEDULED_JOBS:-true}
+      NODE_OPTIONS: --max-old-space-size=448
+      SEMANTIC_MODEL_CACHE_DIR: /app/semantic-models
+    volumes:
+      - semantic_models:/app/semantic-models
     depends_on:
       redis:
         condition: service_healthy
@@ -86,3 +91,4 @@ volumes:
   caddy_data:
   caddy_config:
   redis_data:
+  semantic_models:

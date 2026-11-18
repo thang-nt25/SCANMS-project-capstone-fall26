@@ -1,6 +1,6 @@
 # Triển khai SCANMS — scanms.io.vn
 
-Bộ cấu hình này dành cho VPS Linux có Docker Engine và Docker Compose v2. Chưa có VPS/IP nên chưa thể trỏ DNS hoặc cấp HTTPS. Không cần mua thêm hosting PHP nếu dùng VPS.
+Bộ cấu hình đang triển khai tại VPS Ubuntu 24.04, IP `110.172.28.88`, thư mục `/opt/scanms`. Docker chạy frontend, backend, Redis và Caddy; PostgreSQL tiếp tục dùng cơ sở dữ liệu Supabase hiện có. Không cần hosting PHP.
 
 ## 1. Chuẩn bị máy chủ
 
@@ -28,7 +28,7 @@ chmod 600 deploy/backend.env
 - Các tích hợp cần dùng lấy tên biến từ `backend/.env.example`: email OTP, lưu ảnh/tệp, GHN, Google OAuth, thanh toán, ngân hàng. Không sao chép biến localhost hoặc đường dẫn Windows sang Linux.
 - Nếu dùng chứng thư BIDV, bổ sung mount chỉ đọc tới thư mục khóa ngoài mã nguồn và cấu hình đường dẫn Linux. Bộ Compose hiện chưa mount khóa và chưa nghiệm thu kết nối ngân hàng.
 
-`DISABLE_SCHEDULED_JOBS=true` tạm ngừng các lịch có kiểm tra cờ này trong lần triển khai đầu, gồm giải tỏa hoa hồng và email payout. Sau khi kiểm tra môi trường và bảo đảm chỉ một instance chạy lịch, đổi thành `false` để hoạt động tự động.
+`DISABLE_SCHEDULED_JOBS=false` hiện bật cron/interval/timeout của Nest Schedule trên VPS sau khi đã Suspend backend Render cũ. Worker email xác nhận đơn giữ cấu hình tắt sẵn của dự án (`ORDER_CONFIRMATION_EMAIL_WORKER_DISABLED=true`). Khi chạy thêm bản staging trên cùng dữ liệu, đặt `DISABLE_SCHEDULED_JOBS=true` cho bản staging để tránh chạy hai bộ tác vụ.
 
 ## 3. Trỏ DNS TenTen
 
@@ -36,12 +36,25 @@ Khi đã có IP public VPS, tạo hai bản ghi A:
 
 | Host | Giá trị |
 | --- | --- |
-| @ | IP public VPS |
-| api | IP public VPS |
+| @ | 110.172.28.88 |
+| api | 110.172.28.88 |
 
 Giữ nguyên bản ghi email/xác minh đang cần dùng. Kiểm tra bản ghi A/AAAA cũ có gây trỏ nhầm hay không. Bộ cấu hình chỉ phục vụ `scanms.io.vn` và `api.scanms.io.vn`, chưa khai báo `www`.
 
 ## 4. Build và chạy
+
+VPS hiện tại có 1 vCPU / 1 GB RAM và 2 GB swap. Bản triển khai này biên dịch TypeScript/Vite trên máy phát triển rồi đưa `backend/dist` vào `backend/deploy-dist`, `frontend/dist` vào `frontend/deploy-dist` trên VPS. Image backend vẫn cài dependencies/native ONNX trên Linux. Khi build frontend, dùng `node deploy/build-frontend-local.cjs` để đặt API `/api`, Socket URL HTTPS và bỏ tài khoản đăng nhập mẫu khỏi bundle.
+
+Sau khi chuyển mã nguồn và hai thư mục artifact tương ứng lên VPS:
+
+```sh
+cd /opt/scanms
+sh deploy/build-prebuilt-vps.sh
+docker compose --env-file deploy/backend.env -f deploy/compose.production.yml -f deploy/compose.prebuilt.yml up -d
+python3 deploy/smoke-vps.py https://scanms.io.vn
+```
+
+Không dùng artifact cũ sau khi thay mã nguồn. Máy chủ có đủ tài nguyên có thể build trực tiếp theo lệnh bên dưới:
 
 ```sh
 docker compose --env-file deploy/backend.env -f deploy/compose.production.yml config --quiet
@@ -70,4 +83,10 @@ Sau khi API HTTPS chạy ổn định, cập nhật API base URL của bản Mob
 
 ## Trạng thái xác minh
 
-Đã kiểm tra cấu trúc Compose bằng chế độ không đọc env riêng. Chưa build các image hoặc kiểm tra Nginx/Caddy trong container vì Docker Engine trên máy hiện chưa chạy. Chưa triển khai lên VPS, chưa trỏ DNS và chưa xác minh tích hợp production.
+Ngày 18/11/2026: đã triển khai các container trên VPS, cập nhật bản ghi `@` và `api` tại TenTen, cấp chứng chỉ HTTPS hợp lệ cho hai tên miền. Kiểm tra qua `https://scanms.io.vn` đạt: API health UP/database CONNECTED, frontend và đường dẫn sâu HTTP 200, API sản phẩm công khai hợp lệ, Socket.IO polling handshake có hỗ trợ nâng cấp WebSocket. ONNX native binding CPU tải được; chưa kiểm thử toàn bộ mô hình dưới tải.
+
+Backend Render `scanms-api` (`srv-dbq15fgu01pc739hkcq0`) đã Suspend; giao diện có Resume và endpoint cũ trả HTTP 503. Các lịch tự động đã bật trên VPS và đã kiểm tra lại health, frontend, API sản phẩm, Socket.IO thành công. Chưa nghiệm thu đăng nhập đủ năm vai trò, email OTP, thanh toán, GHN, ngân hàng và ứng dụng Android. Chưa xóa dịch vụ Render hoặc chạy migration/seed/reset database.
+
+Cập nhật tối 18/11/2026: đã đồng bộ lại toàn bộ ứng dụng và đối chiếu checksum nguồn, artifact và container. Đăng nhập đủ 5 vai trò, 32 kiểm tra API và 17 màn hình thực đã đạt. Gmail SMTP, Cloudinary API và GHN location API đã xác thực thành công; nạp ví demo Customer bị khóa, PayOS đã có return URL HTTPS hợp lệ. Google OAuth còn cần chủ client thêm origin tên miền. Xem [báo cáo đối chiếu](DOMAIN-DEPLOYMENT-AUDIT.md) để biết phạm vi kiểm tra và giới hạn.
+
+Khôi phục web về Render khi cần: tạm dừng lịch trên VPS, Resume `scanms-api` trên Render, kiểm tra API/frontend Render rồi đổi bản ghi A `@` về `216.24.57.1`. Không bật đồng thời lịch của hai backend. Giữ bản sao cấu hình và xác định API tương ứng trước khi khôi phục. Việc DNS chuyển máy chủ không tạo bản sao dữ liệu; hai backend đang sử dụng cơ sở dữ liệu hiện có.

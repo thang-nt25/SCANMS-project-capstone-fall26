@@ -8,61 +8,58 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const require = createRequire(import.meta.url);
-const source = readFileSync(new URL('../src/pages/admin/AdminReturnDisputesPage.tsx', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../src/pages/admin/AdminReturnOversightPage.tsx', import.meta.url), 'utf8');
 function fixture(queue, withRecords = false) {
   const module = { exports: {} };
-  let params = new URLSearchParams({ tab: 'returns', ...(queue ? { queue } : {}) });
+  let params = new URLSearchParams({ tab: 'returns', ...(queue ? { group: queue } : {}) });
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX,
   } }).outputText, { module, exports: module.exports, URLSearchParams, require: name => {
     if (name === '@tanstack/react-query') return {
-      useQueryClient: () => ({}), useMutation: () => ({}),
-      useQuery: ({ queryKey }) => {
-        const record = { id: 'case-1', status: 'SHOP_REJECTED', order: { externalOrderSn: 'DH-2026-TEST', storeName: 'PRIVATE_SHOP_DETAILS' }, events: [], shopResponse: 'PRIVATE_SHOP_RESPONSE' };
-        const item = queryKey[0] === 'return-disputes' ? { id: 'dispute-1', returnRequest: record } : record;
-        return { data: { items: withRecords ? [item] : [], total: withRecords ? 1 : 0 }, isLoading: false };
-      },
+      useQuery: () => ({ data: [], isPending: false }),
+      useQueries: ({ queries }) => queries.map(({ queryKey }) => {
+        const request = { id: `case-${queryKey[0]}`, status: 'SHOP_REJECTED', order: { externalOrderSn: `ORDER-${queryKey[0]}`, storeName: 'Store' }, events: [], shopResponse: 'PRIVATE_SHOP_RESPONSE' };
+        return { data: { items: withRecords ? [{ request, dispute: queryKey[0] === 'return-disputes' ? { id: 'dispute-1' } : undefined }] : [], total: withRecords ? 1 : 0, pageSize: 20 }, isPending: false, isError: false };
+      }),
     };
-    if (name === 'react-router-dom') return { Link: 'a', useSearchParams: () => [params, fn => { params = fn(params); }] };
-    if (name.endsWith('return-case-search')) return { searchReturnCases: () => [] };
-    if (name.endsWith('return.service')) return { returnService: {} };
-    if (name.startsWith('../../') || name === '../returns/ReturnDetailPage') return {};
+    if (name === 'react-router-dom') return { Link: ({ to, state, children, ...props }) => React.createElement('a', { ...props, href: to }, children), useLocation: () => ({ pathname: '/admin/arbitration', search: '' }), useSearchParams: () => [params, () => {}] };
+    if (name.endsWith('auth.service')) return { authService: { getCurrentUser: () => ({ id: 'manager-1' }) } };
+    if (name.endsWith('ReturnCaseProducts')) return { caseProducts: () => [], CaseProductImage: () => null, claimLabels: {}, returnDate: () => '', returnMoney: value => String(value) };
+    if (name.endsWith('return-status.utils')) return { returnStatusLabel: value => value };
+    if (name.startsWith('@/') || name.endsWith('.css')) return {};
     return require(name);
   } });
   return { Component: module.exports.default, params: () => params };
 }
 
-const queues = ['shop-rejected', 'active-returns', 'ghn-claims', 'stalled-returns', 'open-disputes', 'return-history'];
-test('each manager queue displays only its own panel and keeps every category accessible', () => {
-  for (const queue of queues) {
-    const { Component } = fixture(queue);
-    const html = renderToStaticMarkup(React.createElement(Component));
-    for (const id of queues) {
-      const panel = html.match(new RegExp(`<section[^>]*id="${id}"[^>]*>`));
-      assert.ok(panel, id);
-      assert.equal(panel[0].includes('hidden=""'), id !== queue, `${queue}: ${id}`);
-      assert.ok(html.includes(`aria-controls="${id}"`));
-    }
-    assert.equal((html.match(/aria-pressed="true"/g) || []).length, 1);
-  }
-});
-test('default and invalid queue links show disputes without exposing all panels', () => {
-  for (const queue of [undefined, 'invalid']) {
-    const { Component } = fixture(queue);
-    const html = renderToStaticMarkup(React.createElement(Component));
-    assert.match(html, /<section id="open-disputes"/);
-    assert.equal((html.match(/<section hidden=""/g) || []).length, 5);
-  }
-});
-
-test('loaded queues show order codes without auto-opening evidence or decision forms', () => {
+const queues = ['rejected', 'active', 'ghn', 'stalled', 'disputes', 'history'];
+const keys = ['rejected-return-reviews', 'active-return-oversight', 'ghn-claims', 'stalled-return-inspections', 'return-disputes', 'return-history'];
+test('each manager queue displays only its own list and keeps every category accessible', () => {
   for (const queue of queues) {
     const { Component } = fixture(queue, true);
     const html = renderToStaticMarkup(React.createElement(Component));
-    assert.ok(html.includes('DH-2026-TEST'));
-    assert.ok(!html.includes('PRIVATE_SHOP_DETAILS'));
+    assert.equal((html.match(/aria-pressed=/g) || []).length, 6);
+    assert.equal((html.match(/aria-pressed="true"/g) || []).length, 1);
+    for (let i = 0; i < keys.length; i++) assert.equal(html.includes(`ORDER-${keys[i]}`), queues[i] === queue);
+    assert.equal((html.match(/class="return-unified-list"/g) || []).length, 1);
+  }
+});
+test('default and invalid queue links show disputes without exposing other records', () => {
+  for (const queue of [undefined, 'invalid']) {
+    const { Component } = fixture(queue, true);
+    const html = renderToStaticMarkup(React.createElement(Component));
+    assert.ok(html.includes('ORDER-return-disputes'));
+    assert.ok(!html.includes('ORDER-active-return-oversight'));
+  }
+});
+test('loaded queues link to the case without auto-opening private evidence or decision forms', () => {
+  for (let i = 0; i < queues.length; i++) {
+    const { Component } = fixture(queues[i], true);
+    const html = renderToStaticMarkup(React.createElement(Component));
+    assert.ok(html.includes(`/admin/returns/case-${keys[i]}`));
     assert.ok(!html.includes('PRIVATE_SHOP_RESPONSE'));
     assert.ok(!html.includes('role="dialog"'));
-    assert.ok(!html.includes('Lưu quyết định'));
+    assert.ok(!html.includes('<form'));
+    if (queues[i] === 'disputes') assert.ok(html.includes('?panel=handling'));
   }
 });

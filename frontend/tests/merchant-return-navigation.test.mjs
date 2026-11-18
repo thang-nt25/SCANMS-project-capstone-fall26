@@ -56,7 +56,7 @@ test('merchant return CTA opens the actionable return case instead of the read-o
     action.props.onClick();
     assert.deepEqual(visited, ['/merchant/returns/return-case-1']);
     assert.equal(modals.length, 0);
-    assert.match(renderToStaticMarkup(tree), status === 'REQUESTED' ? /Xử lý yêu cầu đổi trả/ : /Tiếp tục xử lý đổi trả/);
+    assert.match(renderToStaticMarkup(tree), /Xử lý đổi trả/);
   }
 });
 

@@ -20,7 +20,6 @@ import {
 import { useSandboxSampleState, type SandboxSampleState } from '@/components/shipping/useSandboxSampleState';
 import { SandboxSampleReceipt } from '@/components/shipping/SandboxSampleReceipt';
 import type { SampleRequest } from '@/types/samples.types';
-import './kol-samples-workspace.css';
 import { Select } from '@/components/ui/Select';
 import {
   canSubmitSampleVideo,

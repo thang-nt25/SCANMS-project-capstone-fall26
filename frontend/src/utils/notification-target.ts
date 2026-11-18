@@ -8,6 +8,8 @@ const param = (value: unknown) => typeof value === 'string' && value.trim() ? en
 export function notificationTarget(notification: Notification, role: Role): string | null {
   const { type, data = {} } = notification;
   const admin = role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER';
+  if (type === 'PAYOUT_INFORMATION_REQUESTED' && role === 'COLLABORATOR')
+    return localNotificationAction(data.actionUrl) || '/collaborator/profile?tab=kyc';
   if (role === 'CUSTOMER') {
     if (param(data.withdrawalId)) return '/customer/wallet?history=withdrawals&withdrawalId=' + param(data.withdrawalId);
     const returnId = param(data.returnRequestId) || param(data.returnId);

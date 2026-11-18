@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import './submit-kol-video.css';
 import { mediaService } from '../../services/media.service';
 import { referralLinksService, type EligibleProduct } from '../../services/referral-links.service';
 import api from '../../services/api';

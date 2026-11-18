@@ -9,14 +9,15 @@ test('Shop replies/reports a low rating without moderation powers; platform reso
 }, async () => {
   const origin = new URL(base).origin;
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
-  const browser = await puppeteer.launch({ executablePath, headless: true });
+  const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox'], timeout: 10000 });
   const review = { id: 'qa-review', productId: 'qa-product', rating: 1, status: 'APPROVED', isApproved: true,
     customerName: 'Khách kiểm thử', comment: 'Chai bị rò, shop xử lý chậm.', createdAt: new Date().toISOString(), images: ['/scanms-placeholder.svg'],
     product: { id: 'qa-product', title: 'Serum kiểm thử', sku: 'QA', imageUrl: '/scanms-placeholder.svg' }, reports: [] };
   const writes = [], errors = [];
   try {
     const page = await browser.newPage(); page.setDefaultTimeout(10000);
-    page.on('pageerror', error => errors.push(error.message));
+    // The isolated fixture blocks background sockets; retain all application errors.
+    page.on('pageerror', error => { if (error.message !== 'WebSocket closed without opened.') errors.push(error.message); });
     await page.setViewport({ width: 1440, height: 1000 });
     await page.evaluateOnNewDocument(() => {
       localStorage.setItem('token', 'fixture-only');
@@ -47,29 +48,30 @@ test('Shop replies/reports a low rating without moderation powers; platform reso
       if (url.origin !== origin && !['data:', 'blob:'].includes(url.protocol)) return request.abort();
       return request.continue();
     });
-    await page.goto(origin + '/merchant/products');
-    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Đánh giá khách hàng'));
-    await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Đánh giá khách hàng').click());
+    await page.goto(origin + '/merchant/products', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Đánh giá'));
+    await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Đánh giá').click());
     await page.waitForSelector('article');
     assert.match(await page.$eval('article', el => el.textContent), /Chai bị rò/);
     assert.equal(await page.$$eval('article button', elements => elements.some(el => /Ẩn|Duyệt|Từ chối/.test(el.textContent))), false);
     const clickText = text => page.evaluate(text => [...document.querySelectorAll('article button')].find(button => button.textContent.trim() === text).click(), text);
     await clickText('Trả lời khách hàng'); await page.type('article textarea', 'Shop ghi nhận và sẽ hỗ trợ bạn.');
     await page.click('article button[type="submit"]');
+    await page.waitForSelector('article form', { hidden: true });
     await page.waitForFunction(() => document.querySelector('article')?.textContent.includes('Shop ghi nhận'));
     await clickText('Báo cáo vi phạm'); await page.type('article textarea', 'Cần kiểm tra nội dung có liên quan sản phẩm.');
-    await page.click('article button[type="submit"]');
-    await page.waitForFunction(() => document.querySelector('article')?.textContent.includes('Báo cáo chờ sàn'));
+    await page.$eval('article button[type="submit"]', el => el.click());
+    await page.waitForFunction(() => document.querySelector('article')?.textContent.includes('Báo cáo vi phạm đang chờ'));
     assert.equal(review.rating, 1); assert.equal(review.isApproved, true);
     assert.ok(writes.every(row => !row.path.endsWith('/moderation')));
     await page.evaluate(() => sessionStorage.setItem('qa-role', 'SYSTEM_ADMIN'));
     await page.setViewport({ width: 390, height: 850 });
-    await page.goto(origin + '/admin/customer-reviews');
-    await page.waitForFunction(() => [...document.querySelectorAll('article button')].some(button => button.textContent.includes('Giữ / công khai')));
-    await clickText('Giữ / công khai đánh giá');
+    await page.goto(origin + '/admin/customer-reviews', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => [...document.querySelectorAll('article button')].some(button => button.textContent.includes('Giữ công khai')));
+    await clickText('Giữ công khai');
     await page.type('article textarea', 'Phản hồi chất lượng hợp lệ, giữ nguyên đánh giá.');
     await page.click('article button[type="submit"]');
-    await page.waitForFunction(() => document.querySelector('article')?.textContent.includes('Quyết định của sàn'));
+    await page.waitForFunction(() => document.querySelector('article')?.textContent.includes('Báo cáo đã xử lý'));
     assert.equal(writes.at(-1).decision, 'KEEP');
     assert.equal(review.rating, 1); assert.equal(review.isApproved, true);
     assert.deepEqual(errors, []);

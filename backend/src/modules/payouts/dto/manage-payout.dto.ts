@@ -6,6 +6,7 @@ import {
   ArrayUnique,
   IsArray,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -15,6 +16,15 @@ import {
 } from 'class-validator';
 import { PayoutStatus } from '@prisma/client';
 import { QueryWithdrawalsDto } from './query-withdrawals.dto';
+
+export class RequestPayoutInformationDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(3)
+  @ArrayUnique()
+  @IsIn(['VERIFIED_KYC', 'BENEFICIARY_MATCH', 'TAX_ID'], { each: true })
+  codes: string[];
+}
 
 export enum MerchantPayoutFilter {
   ALL = 'ALL', PENDING = 'PENDING', APPROVED = 'APPROVED', TAX = 'TAX', KYC = 'KYC',
