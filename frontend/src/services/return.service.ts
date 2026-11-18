@@ -59,6 +59,7 @@ export interface ReturnDetail {
   exchangeRecipient?: ReturnAddress;
   exchangePackage?: { weight: number; length: number; width: number; height: number } | null;
   exchangeBooking?: { pending: boolean; recipient?: PickupBookingInput | null; warehouse?: ReturnAddress | null } | null;
+  exchangeDelivery?: { recipient: PickupBookingInput; warehouse: ReturnAddress } | null;
   receivedAt?: string | null;
   inspectionEscalatedAt?: string | null;
   inspectionCompletedAt?: string | null;
@@ -82,12 +83,12 @@ export interface ReturnDetail {
     proofUrl?: string;
     updatedAt: string;
   } | null;
-  order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null; outboundGhnTrackingNumber?: string | null };
+  order: { id: string; externalOrderSn: string; storeName: string; storeId?: string; products?: { id: string; title: string; imageUrl?: string | null; variantName?: string | null; quantity: number; unitPrice: string | number }[]; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null; outboundGhnTrackingNumber?: string | null };
   items: Array<{
     id: string;
     quantity: number;
     unitPrice: number | string;
-    orderItem: { product: { title: string; imageUrl?: string | null } };
+    orderItem: { product: { title: string; imageUrl?: string | null }; variant?: { name: string } | null };
   }>;
   customerShipment?: ReturnShipment | null;
   exchangeShipment?: ReturnShipment | null;
@@ -122,12 +123,22 @@ const unwrap = <T,>(response: unknown): T => {
   return ((value?.data as { data?: T } | undefined)?.data ?? value?.data ?? response) as T;
 };
 
+export interface ExchangeFeeQuote {
+  amount: number;
+  currency: 'VND';
+  source: 'GHN_TEST';
+  estimated: true;
+  charged: false;
+  quotedAt: string;
+  validUntil: string;
+}
+
 export const returnService = {
   getOversightQueue: async <T extends ReturnDetail | ReturnDisputeRecord>(
-    kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes', page = 1,
+    kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes', page = 1, filters?: { query?: string; storeId?: string },
   ) => unwrap<{ total: number; page: number; pageSize: number; items: T[] }>(
     await api.get('/admin/return-disputes/queue', {
-      params: { kind, page }, headers: { 'x-skip-cache': 'true' },
+      params: { kind, page, ...filters }, headers: { 'x-skip-cache': 'true' },
     })),
   getOne: async (id: string) => unwrap<ReturnDetail>(await api.get(`/returns/${id}`, {
     headers: { 'x-skip-cache': 'true' },
@@ -165,6 +176,8 @@ export const returnService = {
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-shipment`, data)),
   bookExchangeShipment: async (id: string, data: PickupBookingInput) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-booking`, data, { timeout: 45000 })),
+  quoteExchangeShipment: async (id: string, data: PickupBookingInput, signal?: AbortSignal) =>
+    unwrap<ExchangeFeeQuote>(await api.post(`/returns/${id}/exchange-quote`, data, { timeout: 15000, signal })),
   syncExchangeShipment: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-booking/sync`)),
   simulateExchangeShipment: async (id: string, data: { status: 'picked' | 'delivered' }) =>
     unwrap<ReturnDetail>(await api.patch(`/returns/${id}/exchange-booking/simulate`, data)),
@@ -201,9 +214,9 @@ export const returnService = {
   getAdminStalled: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/overdue-inspections', {
     headers: { 'x-skip-cache': 'true' },
   })),
-  getAdminHistory: async (page = 1, query = '') => unwrap<{ total: number; page: number; pageSize: number; items: ReturnDetail[] }>(
+  getAdminHistory: async (page = 1, query = '', storeId?: string) => unwrap<{ total: number; page: number; pageSize: number; items: ReturnDetail[] }>(
     await api.get('/admin/return-disputes/history', {
-      params: { page, query },
+      params: { page, query, ...(storeId ? { storeId } : {}) },
       headers: { 'x-skip-cache': 'true' },
     })),
   resolveDispute: async (id: string, data: {

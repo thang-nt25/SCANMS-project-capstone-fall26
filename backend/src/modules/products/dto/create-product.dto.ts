@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   IsUrl,
   Max,
   Min,
@@ -59,6 +60,12 @@ export class CreateProductDto extends ProductPackageDto {
   @IsString()
   @IsNotEmpty({ message: 'Danh mục sản phẩm không được để trống' })
   categoryName: string;
+
+  @ApiPropertyOptional({ description: 'Nhóm sản phẩm trong ngành hàng của cửa hàng' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  productGroup?: string;
 
   @ApiProperty({
     example: 'Chống ồn chủ động Hybrid ANC 45dB, Pin 40 giờ liên tục',

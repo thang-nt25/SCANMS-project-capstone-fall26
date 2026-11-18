@@ -1,3 +1,4 @@
+import { resolvePublicAppUrl } from '../../common/public-app-url';
 import { activeDealMap } from '../affiliate-deals/deal-scope.policy';
 import {
   Injectable,
@@ -75,6 +76,7 @@ export function computeEffectiveStatus(link: {
   if (link.status === ReferralLinkStatus.BLOCKED) {
     return 'BLOCKED';
   }
+  if (link.status === ReferralLinkStatus.EXPIRED) return 'EXPIRED';
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
     return 'EXPIRED';
   }
@@ -98,11 +100,7 @@ export class ReferralLinksService {
   ) {}
 
   private getPublicAppUrl(): string {
-    return (
-      this.configService.get<string>('PUBLIC_APP_URL') ||
-      this.configService.get<string>('FRONTEND_URL') ||
-      'http://localhost:5173'
-    ).replace(/\/+$/, '');
+    return resolvePublicAppUrl(this.configService.get<string>('PUBLIC_APP_URL'), this.configService.get<string>('FRONTEND_URL'));
   }
 
   private async getCurrentApprovedDeals(
@@ -656,9 +654,17 @@ export class ReferralLinksService {
       deletedAt: null,
     };
 
-    if (query.status) {
+    const notExpired = { OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] };
+    if (query.status === 'EXPIRED') {
+      where.status = { not: 'BLOCKED' };
+      where.AND = [{ OR: [{ status: 'EXPIRED' }, { expiresAt: { lt: new Date() } }] }];
+    } else if (query.status) {
       where.status = query.status;
+      if (query.status !== 'BLOCKED') where.AND = [notExpired];
     }
+    if (query.remuneration === 'DEAL') where.exclusiveDealId = { not: null };
+    if (query.remuneration === 'CAMPAIGN') { where.exclusiveDealId = null; where.campaignId = { not: null }; }
+    if (query.remuneration === 'STANDARD') { where.exclusiveDealId = null; where.campaignId = null; }
 
     if (query.channel) {
       where.channel = query.channel;
@@ -693,11 +699,27 @@ export class ReferralLinksService {
       : 'createdAt';
     orderBy[sortField] = query.sortOrder === 'asc' ? 'asc' : 'desc';
 
-    const [total, items] = await Promise.all([
+    // Use the same non-cancelled attributed orders as link analytics. Stored
+    // totalOrders can drift after imports or historical attribution updates.
+    const attributedOrderWhere: Prisma.OrderWhereInput = {
+      status: { not: OrderStatus.CANCELLED },
+      referralLink: { is: where },
+    };
+    let orderedIds: string[] | undefined;
+    if (sortField === 'totalOrders') {
+      const [candidates, counts] = await Promise.all([
+        this.prisma.referralLink.findMany({ where, select: { id: true }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] }),
+        this.prisma.order.groupBy({ by: ['referralLinkId'], where: attributedOrderWhere, _count: { _all: true } }),
+      ]);
+      const countById = new Map(counts.map(row => [row.referralLinkId, row._count._all]));
+      orderedIds = candidates.sort((a, b) => ((countById.get(a.id) ?? 0) - (countById.get(b.id) ?? 0)) * (query.sortOrder === 'asc' ? 1 : -1)).slice(skip, skip + limit).map(row => row.id);
+    }
+    const [total, items, summary, totalOrders] = await Promise.all([
       this.prisma.referralLink.count({ where }),
       this.prisma.referralLink.findMany({
-        where,
+        where: orderedIds ? { ...where, id: { in: orderedIds } } : where,
         include: {
+          _count: { select: { orders: { where: { status: { not: OrderStatus.CANCELLED } } } } },
           product: {
             select: {
               id: true,
@@ -723,11 +745,17 @@ export class ReferralLinksService {
             },
           },
         },
-        orderBy,
-        skip,
+        orderBy: orderedIds ? { createdAt: 'desc' } : orderBy,
+        skip: orderedIds ? 0 : skip,
         take: limit,
       }),
+      this.prisma.referralLink.aggregate({ where, _sum: { totalClicks: true, uniqueClicks: true } }),
+      this.prisma.order.count({ where: attributedOrderWhere }),
     ]);
+    if (orderedIds) {
+      const positions = new Map(orderedIds.map((id, index) => [id, index]));
+      items.sort((a, b) => positions.get(a.id)! - positions.get(b.id)!);
+    }
 
     const currentDeals = await this.getCurrentApprovedDeals(
       items
@@ -757,6 +785,7 @@ export class ReferralLinksService {
 
       return {
         ...item,
+        totalOrders: item._count.orders,
         status: effectiveStatus,
         shortUrl: `${publicAppUrl}/r/${item.shortCode}`,
         commissionRate,
@@ -765,6 +794,7 @@ export class ReferralLinksService {
 
     return {
       data: formattedItems,
+      summary: { totalClicks: summary._sum.totalClicks ?? 0, uniqueClicks: summary._sum.uniqueClicks ?? 0, totalOrders },
       meta: {
         total,
         page,

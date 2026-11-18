@@ -10,6 +10,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
 import { postPayoutCompletion } from './finance-posting';
 import { assertPayoutFunding } from './payout-funding';
+import { assertPayoutNetSnapshot, lockPayoutTaxForRequest } from './payout-monthly-tax';
 import { assertPayoutBeneficiary } from './payout-beneficiary';
 import { randomUUID } from 'crypto';
 import { BidvPayoutAdapter, type BidvPayoutSnapshot } from './bidv-payout.adapter';
@@ -85,7 +86,7 @@ export class PayoutTransferService {
     }
   }
 
-  async transfer(id: string, actorId: string, reconcile = false) {
+  async transfer(id: string, actorId: string, reconcile = false, expectedNetAmount?: string) {
     const availability = this.availability();
     const provider = availability.provider;
     const sandbox = provider === 'BIDV_SANDBOX';
@@ -99,6 +100,7 @@ export class PayoutTransferService {
     const leaseId = randomUUID();
     let snapshot: BidvPayoutSnapshot | undefined;
     const request = await this.prisma.$transaction(async (tx) => {
+      await lockPayoutTaxForRequest(tx, id);
       await tx.$queryRaw`SELECT id FROM payout_requests WHERE id = ${id}::uuid FOR UPDATE`;
       const row = await tx.payoutRequest.findUnique({
         where: { id },
@@ -151,6 +153,7 @@ export class PayoutTransferService {
           'Thiếu tài khoản nhận hoặc số tiền đối soát không hợp lệ',
         );
       await assertPayoutFunding(tx, row);
+      if (!reconcile) assertPayoutNetSnapshot(row, expectedNetAmount);
       if (!reconcile) await assertPayoutBeneficiary(tx, row);
       if (sandbox && !reconcile) snapshot = this.bidv!.prepare(row);
       await tx.payoutRequest.update({

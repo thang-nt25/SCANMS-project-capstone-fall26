@@ -1,3 +1,4 @@
+import { resolvePublicAppUrl } from '../../common/public-app-url';
 import {
   BadRequestException,
   ForbiddenException,
@@ -412,7 +413,7 @@ export async function decideExclusiveDeal(
 }
 
 function publicLink(shortCode: string) {
-  return `${(process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '')}/r/${shortCode}`;
+  return `${resolvePublicAppUrl(process.env.PUBLIC_APP_URL, process.env.FRONTEND_URL)}/r/${shortCode}`;
 }
 
 export function couponTerms(input: unknown = {}): ApproveExclusiveDealDto {

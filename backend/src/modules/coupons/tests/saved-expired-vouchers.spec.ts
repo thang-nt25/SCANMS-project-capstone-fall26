@@ -36,6 +36,13 @@ describe('Saved expired voucher history', () => {
 
   it("saving any coupon is retired without reading or writing inventory", async () => {await expect(service.saveCoupon('a','expired-a')).rejects.toBeInstanceOf(GoneException);expect(prisma.coupon.findFirst).not.toHaveBeenCalled();});
 
+  it('rejects saving an active exclusive KOL code without writing a saved record', async () => {
+    prisma.coupon.findFirst.mockResolvedValue({ id: 'kol-code', collaborator: { role: 'COLLABORATOR' }, usageLimitTotal: null, usageCount: 0, liveSession: null });
+    prisma.customerSavedCoupon.upsert = jest.fn();
+    await expect(service.saveCoupon('a', 'kol-code')).rejects.toBeInstanceOf(GoneException);
+    expect(prisma.customerSavedCoupon.upsert).not.toHaveBeenCalled();
+  });
+
   it('rejects expired shop, platform and shipping vouchers at the apply endpoints', async () => {
     (service as any).checkRateLimit = jest.fn();
     (service as any).recordValidationFailure = jest.fn();

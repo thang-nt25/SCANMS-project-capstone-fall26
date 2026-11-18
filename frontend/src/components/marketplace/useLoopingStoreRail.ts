@@ -55,7 +55,7 @@ export function useLoopingStoreRail(enabled: boolean, contentKey: string) {
 
   const scroll = (direction: number) => {
     const element = rail.current;
-    if (element) element.scrollLeft = wrap(element.scrollLeft + direction * element.clientWidth * 0.85);
+    if (element) element.scrollLeft = wrap(element.scrollLeft + direction * (window.matchMedia('(max-width: 639px)').matches ? element.clientWidth + 12 : element.clientWidth * 0.85));
   };
   const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'touch') { touchUntil.current = performance.now() + 1000; return; }

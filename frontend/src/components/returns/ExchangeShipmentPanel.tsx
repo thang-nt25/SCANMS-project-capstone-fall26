@@ -1,122 +1,121 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, Copy, Info, Pencil, Truck } from 'lucide-react';
+import { Modal } from '../ui/Modal';
+import { VietnamAddressSelects } from './VietnamAddressSelects';
+import { ReturnWarehouseCard } from './ReturnWarehouseCard';
+import { ExchangeFreightQuote } from './ExchangeFreightQuote';
+import { CaseProductImage, caseProducts } from './ReturnCaseProducts';
 import { useReturnAction } from '../../hooks/useReturnDetail';
-import { returnService, type PickupBookingInput, type ReturnDetail } from '../../services/return.service';
+import { returnService, type PickupBookingInput, type ReturnAddress, type ReturnDetail } from '../../services/return.service';
 import { carrierStatusLabel } from '../../utils/return-status.utils';
-
-const inputClass = 'mt-1 min-h-11 w-full min-w-0 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] disabled:bg-[#F3EFE6]';
-const buttonClass = 'min-h-11 max-w-full rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-[#231D15] hover:bg-[#B88E4F] disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]';
-const addressFields = [
-  ['name', 'Người nhận'], ['phone', 'Số điện thoại'], ['address', 'Địa chỉ nhận hàng'],
-  ['provinceName', 'Tỉnh / Thành phố'], ['wardName', 'Phường / Xã'], ['districtName', 'Quận / Huyện (nếu có)'],
-] as const;
-const packageFields = [['weight', 'Khối lượng (g)'], ['length', 'Dài (cm)'], ['width', 'Rộng (cm)'], ['height', 'Cao (cm)']] as const;
+import { completeReturnAddress, resolveSavedReturnAddress, returnFullAddress, returnStreet } from '../../utils/return-address';
 
 function ActionError({ error }: { error: unknown }) {
-  return error ? <p role="alert" className="text-sm leading-relaxed text-[#DC2626] [overflow-wrap:anywhere]">{error instanceof Error ? error.message : 'Chưa xử lý được vận đơn. Vui lòng thử lại.'}</p> : null;
+  return error ? <p role="alert" className="exchange-error">{error instanceof Error ? error.message : 'Chưa xử lý được vận đơn. Vui lòng thử lại.'}</p> : null;
 }
 
 export function ExchangeShipmentPanel({ request }: { request: ReturnDetail }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<PickupBookingInput>(() => request.exchangeBooking?.recipient || {
-    name: request.exchangeRecipient?.name || request.order.customerName || '',
-    phone: request.exchangeRecipient?.phone || request.order.customerPhone || '',
-    address: request.exchangeRecipient?.address || request.order.shippingAddress || '',
-    provinceName: request.exchangeRecipient?.provinceName || '', wardName: request.exchangeRecipient?.wardName || '',
-    districtName: request.exchangeRecipient?.districtName || '',
-    weight: request.exchangePackage?.weight || 0, length: request.exchangePackage?.length || 0,
-    width: request.exchangePackage?.width || 0, height: request.exchangePackage?.height || 0,
+  const [snapshot, setSnapshot] = useState(request);
+  const [seed] = useState<ReturnAddress>(() => request.exchangeBooking?.recipient || request.exchangeRecipient || {
+    name: request.order.customerName || '', phone: request.order.customerPhone || '', address: request.order.shippingAddress || '', provinceName: '', wardName: '', districtName: '',
   });
-  const [manual, setManual] = useState({ carrierName: '', trackingNumber: '' });
+  const [form, setForm] = useState<PickupBookingInput>(() => ({ ...seed, weight: request.exchangePackage?.weight || 0, length: request.exchangePackage?.length || 0, width: request.exchangePackage?.width || 0, height: request.exchangePackage?.height || 0, ...request.exchangeBooking?.recipient }));
+  const [draft, setDraft] = useState<ReturnAddress>(seed);
+  const [draftValid, setDraftValid] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [copiedCode, setCopiedCode] = useState('');
+  const [copyFailed, setCopyFailed] = useState(false);
+  const [working, setWorking] = useState<string | null>(null);
+  const lock = useRef(false);
+  const addressEdited = useRef(false);
   const booking = useReturnAction(request.id, returnService.bookExchangeShipment);
-  const external = useReturnAction(request.id, returnService.submitExchangeShipment);
   const sync = useReturnAction(request.id, returnService.syncExchangeShipment);
   const simulation = useReturnAction(request.id, returnService.simulateExchangeShipment);
-  const locked = Boolean(request.exchangeBooking?.pending);
-  const busy = booking.isPending || external.isPending;
-  const update = (key: keyof PickupBookingInput, value: string | number) => setForm(current => ({ ...current, [key]: value }));
-  const shipment = request.exchangeShipment;
-  const sender = request.exchangeBooking?.warehouse || request.returnWarehouse;
-  useEffect(() => {
-    if (request.exchangeBooking?.pending && request.exchangeBooking.recipient) setForm(request.exchangeBooking.recipient);
-  }, [request.exchangeBooking]);
+  const locked = Boolean(snapshot.exchangeBooking?.pending);
+  const busy = Boolean(working) || booking.isPending || sync.isPending || simulation.isPending;
+  const shipment = snapshot.exchangeShipment;
+  const sender = snapshot.exchangeDelivery?.warehouse || snapshot.exchangeBooking?.warehouse || snapshot.returnWarehouse;
+  const recipient = snapshot.exchangeDelivery?.recipient || form;
+  const products = caseProducts(snapshot);
+  const formId = `exchange-address-${request.id}`;
+  const resolved = useQuery({ queryKey: ['exchange-saved-address', request.id, seed], queryFn: ({ signal }) => resolveSavedReturnAddress(seed, signal), enabled: snapshot.status === 'EXCHANGE_PENDING' && !locked && !shipment && !completeReturnAddress(seed), staleTime: 86400000, retry: 1 });
+  useEffect(() => { setSnapshot(request); }, [request]);
+  useEffect(() => { if (resolved.data && !addressEdited.current && !locked) setForm(current => ({ ...current, ...resolved.data! })); }, [resolved.data, locked]);
+  useEffect(() => { if (request.exchangeBooking?.pending && request.exchangeBooking.recipient) setForm(request.exchangeBooking.recipient); }, [request.exchangeBooking]);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  async function run(kind: string, action: () => Promise<unknown>) {
+    if (lock.current) return;
+    lock.current = true; setWorking(kind);
     try {
-      await booking.mutateAsync({ ...form, name: form.name.trim(), phone: form.phone.trim(), address: form.address.trim(),
-        provinceName: form.provinceName.trim(), wardName: form.wardName.trim(), districtName: form.districtName?.trim() || undefined });
-    } catch {
-      await queryClient.invalidateQueries({ queryKey: ['return-detail', request.id] });
-    }
+      const result = await action() as ReturnDetail;
+      if (result?.id === request.id && result.status) setSnapshot(result);
+    } catch { await queryClient.invalidateQueries({ queryKey: ['return-detail', request.id] }); }
+    finally { lock.current = false; setWorking(null); }
   }
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || shipment || !sender || snapshot.pickupProviderMode === 'disabled' || (!locked && !completeReturnAddress(form))) return;
+    const value = locked && snapshot.exchangeBooking?.recipient ? snapshot.exchangeBooking.recipient : {
+      ...form, name: form.name.trim(), phone: form.phone.trim(), address: returnFullAddress(form), provinceName: form.provinceName.trim(), wardName: form.wardName.trim(), districtName: form.districtName?.trim() || undefined,
+    };
+    void run('booking', () => booking.mutateAsync(value));
+  }
+  const openEditor = () => { setDraft({ ...form, address: returnStreet(form) }); setDraftValid(false); setEditing(true); };
 
-  if (shipment) return <section className="min-w-0 space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5" aria-label="Vận đơn giao hàng đổi">
-    <h3 className="font-bold text-[#1A1612]">Vận đơn giao hàng đổi</h3>
-    <p className="break-words text-sm">{shipment.carrierName} · <strong>{shipment.trackingNumber}</strong></p>
-    <p className="text-sm text-[#7D715E]">{carrierStatusLabel(shipment.providerStatus)} · Khách không thanh toán lại tiền sản phẩm.</p>
-    <p className="text-sm text-[#7D715E]">Cước: {shipment.feeAmount == null ? 'Chưa có phí xác nhận từ hãng vận chuyển' : `${shipment.feeAmount.toLocaleString('vi-VN')} ₫`} · Shop thanh toán cho hãng vận chuyển.</p>
-    {shipment.provider === 'MOCK' && <p className="text-xs text-[#7D715E]">Vận đơn demo; không có chuyến giao hay khoản phí thật.</p>}
-    {shipment.provider === 'GHN_STAGING' && <p className="text-xs text-[#7D715E]">GHN Staging: vận đơn thử tích hợp, không điều phối shipper thật.</p>}
-    <div className="flex flex-wrap gap-2">
-      {shipment.provider === 'GHN_STAGING' && <button type="button" className={buttonClass} disabled={sync.isPending}
-        onClick={() => void sync.mutateAsync(undefined).catch(() => undefined)}>{sync.isPending ? 'Đang đồng bộ…' : 'Đồng bộ trạng thái GHN'}</button>}
-      {request.pickupSimulationEnabled && shipment.provider && shipment.providerStatus !== 'delivered' && request.status === 'EXCHANGE_SHIPPED' &&
-        <button type="button" className={buttonClass} disabled={simulation.isPending}
-          onClick={() => void simulation.mutateAsync({ status: shipment.pickedUpAt ? 'delivered' : 'picked' }).catch(() => undefined)}>
-          {simulation.isPending ? 'Đang mô phỏng…' : shipment.pickedUpAt ? 'Mô phỏng giao hàng đổi thành công' : 'Mô phỏng shipper lấy hàng đổi'}
-        </button>}
-    </div>
-    {shipment.providerStatus === 'delivered' && !shipment.receivedAt && <p className="text-sm text-[#7D715E]">Đã báo giao thành công. Chờ khách kiểm tra và xác nhận nhận hàng đổi trong đơn gốc.</p>}
-    <ActionError error={sync.error || simulation.error} />
-  </section>;
-
-  if (request.status !== 'EXCHANGE_PENDING') return null;
-  return <section className="min-w-0 space-y-4 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5" aria-label="Tạo vận đơn hàng thay thế">
-    <div>
-      <h3 className="font-bold text-[#1A1612]">Tạo vận đơn giao sản phẩm thay thế</h3>
-      <p className="mt-2 text-sm leading-relaxed text-[#7D715E]">Gửi đúng sản phẩm và số lượng đã duyệt trong hồ sơ. Khách không cần đặt đơn mới. Hệ thống kiểm tra tồn kho, không thu lại tiền hàng và không tính thêm thù lao KOL.</p>
-      <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">Shop thanh toán cước cho GHN; trách nhiệm chi phí cuối cùng theo kết luận xử lý. Yêu cầu bồi hoàn GHN được theo dõi riêng.</p>
-      {sender ? <p className="mt-2 break-words text-xs text-[#7D715E]">Kho gửi: {sender.name} · {sender.address}</p>
-        : <p role="alert" className="mt-2 text-sm text-[#DC2626]">Shop cần lưu kho nhận/gửi hàng ở phần trên trước khi tạo vận đơn.</p>}
-      {request.pickupProviderMode === 'mock' && <p className="mt-2 text-xs text-[#7D715E]">Chế độ demo: chỉ tạo vận đơn mô phỏng, không có shipper thật.</p>}
-      {request.pickupProviderMode === 'staging' && <p className="mt-2 text-xs text-[#7D715E]">GHN Staging: chỉ thử tích hợp, không điều phối giao hàng thật.</p>}
-      {request.pickupProviderMode === 'disabled' && <p role="alert" className="mt-2 text-sm text-[#DC2626]">Dịch vụ tạo vận đơn chưa được cấu hình.</p>}
-    </div>
-    {locked && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-white p-3 text-sm leading-relaxed text-[#7D715E]">Đang đối chiếu lần đặt trước. Hàng đã được giữ kho; giữ nguyên thông tin và thử lại để lấy đúng vận đơn, không trừ kho lần nữa.</p>}
-    <form onSubmit={event => void submit(event)} className="min-w-0 space-y-4">
-      <fieldset disabled={busy || locked} className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-        <legend className="mb-2 text-sm font-semibold">Kiểm tra địa chỉ nhận hàng thay thế</legend>
-        {addressFields.map(([key, label]) => <label key={key} className={`min-w-0 text-sm ${key === 'address' ? 'sm:col-span-2' : ''}`}>{label}
-          <input required={key !== 'districtName'} minLength={key === 'address' ? 10 : key === 'phone' ? 9 : 2}
-            maxLength={key === 'address' ? 500 : key === 'phone' ? 20 : key === 'name' ? 150 : 100}
-            type={key === 'phone' ? 'tel' : 'text'} pattern={key === 'phone' ? '\\+?[0-9]{9,15}' : undefined}
-            value={form[key] || ''} onChange={event => update(key, event.target.value)} className={inputClass} />
-        </label>)}
+  if (shipment) {
+    const delivered = shipment.providerStatus === 'delivered' || Boolean(shipment.receivedAt);
+    const maySimulate = snapshot.pickupSimulationEnabled && shipment.provider && shipment.providerStatus !== 'delivered' && snapshot.status === 'EXCHANGE_SHIPPED';
+    const status = shipment.receivedAt ? 'Khách đã xác nhận nhận hàng' : shipment.providerStatus === 'ready_to_pick' ? 'Chờ lấy hàng đổi' : shipment.providerStatus ? carrierStatusLabel(shipment.providerStatus, 'customer') : 'Đã tạo vận đơn hàng đổi';
+    return <section className="pickup-card exchange-card" aria-label="Vận đơn giao hàng đổi">
+      <header className="pickup-header"><h3><Truck size={19} />Giao hàng đổi cho khách</h3><span className="pickup-state" role="status">{status}</span></header>
+      <div className="pickup-waybill"><p><strong>{shipment.provider === 'MOCK' && /SCANMS Demo/i.test(shipment.carrierName) ? 'Vận chuyển SCANMS' : shipment.carrierName}</strong> · <code>{shipment.trackingNumber}</code></p><button type="button" className="pickup-copy" onClick={() => { void navigator.clipboard.writeText(shipment.trackingNumber).then(() => { setCopiedCode(shipment.trackingNumber); setCopyFailed(false); }).catch(() => setCopyFailed(true)); }}>{copiedCode === shipment.trackingNumber ? <Check size={15} /> : <Copy size={15} />}{copiedCode === shipment.trackingNumber ? 'Đã sao chép' : 'Sao chép'}</button></div>
+      {copyFailed && <p role="alert" className="exchange-error">Chưa sao chép được mã vận đơn.</p>}
+      <div className="pickup-success-addresses"><section><h4>Gửi từ</h4><p className="pickup-contact">{sender?.name || 'Kho Shop'}{sender?.phone ? ` · ${sender.phone}` : ''}</p><p className="pickup-address-text">{sender ? returnFullAddress(sender) : 'Chưa có địa chỉ kho gửi'}</p></section><section><h4>Giao đến</h4><p className="pickup-contact">{recipient.name} · {recipient.phone}</p><p className="pickup-address-text">{returnFullAddress(recipient)}</p></section></div>
+      <div className="exchange-shipment-summary"><span>Kiện hàng: <strong>{recipient.weight ? `${recipient.weight.toLocaleString('vi-VN')} g · ${recipient.length} × ${recipient.width} × ${recipient.height} cm` : 'Chưa có thông số xác nhận'}</strong></span><ExchangeFreightQuote id={request.id} recipient={recipient} sender={sender} feeAmount={shipment.feeAmount} enabled={!!snapshot.exchangeDelivery && snapshot.pickupProviderMode !== 'disabled'} /></div>
+      {delivered ? <footer className="exchange-delivery-status" role="status">
+        <div className="exchange-delivery-copy"><span className="exchange-delivery-icon" aria-hidden="true"><Check size={18} /></span><div><strong>{shipment.receivedAt ? 'Khách đã nhận hàng đổi' : 'Đã giao hàng đổi'}</strong><p>Không thu thêm tiền hàng</p></div></div>
+        <div className="exchange-delivery-actions"><span className="exchange-delivery-badge">{shipment.receivedAt ? 'Khách đã xác nhận' : 'Chờ khách xác nhận'}</span>
+          {shipment.provider === 'GHN_STAGING' && <button type="button" className="pickup-secondary" disabled={busy} onClick={() => void run('sync', () => sync.mutateAsync(undefined))}>{working === 'sync' ? 'Đang đồng bộ…' : 'Đồng bộ vận chuyển'}</button>}
+        </div>
+      </footer> : <footer className="exchange-footer"><span>Không thu thêm tiền hàng từ khách.</span><div>
+        {shipment.provider === 'GHN_STAGING' && <button type="button" className="pickup-secondary" disabled={busy} onClick={() => void run('sync', () => sync.mutateAsync(undefined))}>{working === 'sync' ? 'Đang đồng bộ…' : 'Đồng bộ vận chuyển'}</button>}
+        {maySimulate && <button type="button" className="pickup-primary" disabled={busy} onClick={() => void run('simulation', () => simulation.mutateAsync({ status: shipment.pickedUpAt ? 'delivered' : 'picked' }))}>{working === 'simulation' ? 'Đang cập nhật…' : shipment.pickedUpAt ? 'Xác nhận giao hàng thành công' : 'Xác nhận đã lấy hàng đổi'}</button>}
+      </div></footer>}
+      <ActionError error={sync.error || simulation.error} />
+    </section>;
+  }
+  if (snapshot.status !== 'EXCHANGE_PENDING') return null;
+  return <section className="pickup-card exchange-card" aria-label="Tạo vận đơn hàng thay thế">
+    <header className="pickup-header"><h3><Truck size={19} />Gửi hàng đổi cho khách</h3><span className="pickup-state">{locked ? 'Đang đối chiếu vận đơn' : 'Chờ tạo vận đơn'}</span></header>
+    <section className="exchange-products" aria-label="Sản phẩm gửi đổi"><h4>Sản phẩm gửi đổi</h4>{products.length ? products.map(product => <div className="exchange-product" key={product.id}><CaseProductImage product={product} size={48} /><div><strong>{product.title}</strong><p>{product.variantName ? `${product.variantName} · ` : ''}Số lượng: {product.quantity}</p></div></div>) : <p className="exchange-muted">Chưa có sản phẩm được duyệt trong hồ sơ.</p>}</section>
+    <div className="exchange-addresses">
+      <fieldset disabled={busy || locked}><div className="exchange-address-heading"><h4>Gửi từ</h4><ReturnWarehouseCard request={snapshot} triggerOnly title="Kho gửi hàng" onSaved={value => setSnapshot(current => ({ ...current, returnWarehouse: value }))} /></div>
+        {sender ? <><p className="exchange-contact">{sender.name} · {sender.phone}</p><p className="exchange-address-text">{returnFullAddress(sender)}</p></> : <p className="exchange-muted">Chưa có kho gửi hàng.</p>}
       </fieldset>
-      <fieldset disabled={busy || locked} className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
-        <legend className="mb-2 text-sm font-semibold">Kiện hàng thực tế</legend>
-        {packageFields.map(([key, label]) => <label key={key} className="min-w-0 text-sm">{label}
-          <input required type="number" min={1} max={key === 'weight' ? 19999 : 150} step={1} value={form[key] || ''}
-            onChange={event => update(key, Number(event.target.value))} className={inputClass} />
-        </label>)}
+      <fieldset disabled={busy || locked}><div className="exchange-address-heading"><h4>Giao đến</h4><button type="button" className="exchange-edit-address" onClick={openEditor}><Pencil size={14} />Chỉnh sửa</button></div><p className="exchange-contact">{form.name || 'Chưa có người nhận'} · {form.phone || 'Chưa có số điện thoại'}</p><p className="exchange-address-text">{returnFullAddress(form) || 'Chưa có địa chỉ nhận hàng'}</p>
+        {!completeReturnAddress(form) && <p className="exchange-locality-note">{resolved.isFetching ? 'Đang đối chiếu địa phương đã lưu…' : 'Bổ sung địa phương trong Chỉnh sửa địa chỉ.'}{resolved.isError && <button type="button" onClick={() => void resolved.refetch()}>Thử lại</button>}</p>}
       </fieldset>
+    </div>
+    <form onSubmit={submit}>
+      <fieldset className="exchange-parcel" disabled={busy || locked}><legend>Kiện hàng</legend>{([['weight', 'Khối lượng (g)'], ['length', 'Dài (cm)'], ['width', 'Rộng (cm)'], ['height', 'Cao (cm)']] as const).map(([key, label]) => <label key={key}>{label}<input type="number" required min={1} max={key === 'weight' ? 19999 : 150} step={1} value={form[key] || ''} onChange={event => setForm(current => ({ ...current, [key]: Number(event.target.value) }))} className="pickup-input" /></label>)}</fieldset>
+      {locked && <p role="status" className="exchange-notice"><Info size={16} />Đang đối chiếu lần tạo trước. Thử lại để lấy đúng vận đơn đã giữ hàng.</p>}
+      {snapshot.pickupProviderMode === 'disabled' && <p role="status" className="exchange-notice"><Info size={16} />Chưa thể tạo vận đơn lúc này.</p>}
       <ActionError error={booking.error} />
-      <button type="submit" disabled={busy || !sender || request.pickupProviderMode === 'disabled'} className={`${buttonClass} w-full sm:w-auto`}>
-        {booking.isPending ? 'Đang tạo vận đơn…' : locked ? 'Đối chiếu / Thử lại vận đơn hàng đổi' : 'Tạo vận đơn giao hàng đổi'}
-      </button>
+      <footer className="exchange-footer"><div className="exchange-payment-facts"><ExchangeFreightQuote id={request.id} recipient={form} sender={sender} enabled={!locked && snapshot.pickupProviderMode !== 'disabled'} /><span>Shop trả cước · Không thu thêm tiền hàng</span></div><div className="exchange-footer-actions">
+
+        <button type="submit" className="pickup-primary exchange-create-shipment" disabled={busy || !sender || snapshot.pickupProviderMode === 'disabled' || (!locked && (!completeReturnAddress(form) || !products.length))}><Truck size={16} aria-hidden="true" />{working === 'booking' ? 'Đang tạo vận đơn…' : locked ? 'Thử lại vận đơn hàng đổi' : 'Tạo vận đơn hàng đổi'}</button>
+      </div></footer>
     </form>
-    {!locked && <details className="border-t border-[#EEDFC6] pt-3">
-      <summary className="min-h-11 cursor-pointer py-2 text-sm text-[#7D715E]">Đã có vận đơn tạo bên ngoài? Ghi nhận tại đây</summary>
-      <form className="mt-3 space-y-3" onSubmit={event => {
-        event.preventDefault();
-        void external.mutateAsync({ carrierName: manual.carrierName.trim(), trackingNumber: manual.trackingNumber.trim() }).catch(() => undefined);
-      }}>
-        <label className="block text-sm">Đơn vị vận chuyển<input required minLength={2} maxLength={100} disabled={busy} value={manual.carrierName} onChange={event => setManual(current => ({ ...current, carrierName: event.target.value }))} className={inputClass} /></label>
-        <label className="block text-sm">Mã vận đơn đã tạo<input required minLength={5} maxLength={100} disabled={busy} value={manual.trackingNumber} onChange={event => setManual(current => ({ ...current, trackingNumber: event.target.value }))} className={inputClass} /></label>
-        <button disabled={busy} className={buttonClass}>Ghi nhận vận đơn có sẵn</button>
-        <ActionError error={external.error} />
+    {editing && createPortal(<Modal isOpen title="Địa chỉ giao hàng đổi" stickyHeader maxWidth="2xl" className="max-w-[640px]" onClose={() => setEditing(false)} footer={<div className="flex justify-end gap-2"><button type="button" className="pickup-secondary" onClick={() => setEditing(false)}>Hủy</button><button type="submit" form={formId} className="pickup-primary" disabled={!draftValid}>Dùng địa chỉ này</button></div>}>
+      <form id={formId} className="exchange-address-editor" onSubmit={event => { event.preventDefault(); if (!draftValid) return; addressEdited.current = true; setForm(current => ({ ...current, ...draft, address: returnStreet(draft) })); setEditing(false); }}>
+        <label>Người nhận<input className="pickup-input" required minLength={2} maxLength={150} autoComplete="name" value={draft.name} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} /></label>
+        <label>Số điện thoại<input className="pickup-input" required type="tel" pattern="\+?[0-9]{9,15}" maxLength={16} autoComplete="tel" value={draft.phone} onChange={event => setDraft(current => ({ ...current, phone: event.target.value }))} /></label>
+        <label className="sm:col-span-2">Số nhà, tên đường<input className="pickup-input" required minLength={2} maxLength={350} autoComplete="street-address" value={draft.address} onChange={event => setDraft(current => ({ ...current, address: event.target.value }))} /></label>
+        <VietnamAddressSelects value={draft} onChange={value => setDraft(current => ({ ...current, ...value }))} onValidityChange={setDraftValid} />
       </form>
-    </details>}
+    </Modal>, document.querySelector('dialog[open]') || document.body)}
   </section>;
 }

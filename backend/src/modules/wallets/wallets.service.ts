@@ -470,6 +470,13 @@ export class WalletsService {
             : 'CORPORATE_BANK'
           : 'CUSTOMER_FUNDS';
         credit = change.amount.gt(0) ? 'CUSTOMER_FUNDS' : 'SALES_CLEARING';
+        if (reference.type === 'CUSTOMER_WITHDRAWAL') {
+          debit = 'CUSTOMER_FUNDS';
+          credit = 'CUSTOMER_WITHDRAWAL_RESERVED';
+        } else if (reference.type === 'CUSTOMER_WITHDRAWAL_REFUND') {
+          debit = 'CUSTOMER_WITHDRAWAL_RESERVED';
+          credit = 'CUSTOMER_FUNDS';
+        }
       } else if (
         change.transactionType === TransactionType.COMMISSION_PENDING
       ) {
@@ -630,6 +637,23 @@ export class WalletsService {
   /**
    * Trừ số dư ví khi khách hàng thanh toán đơn hàng (1-Click Wallet Checkout)
    */
+  async reserveCustomerWithdrawal(tx: Prisma.TransactionClient, userId: string, amount: Prisma.Decimal, id: string) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, userId);
+    if (wallet.shoppingBalance.lessThan(amount)) throw new BadRequestException('Số dư mua sắm không đủ');
+    return this.applyBalanceChanges(tx, wallet, { id, type: 'CUSTOMER_WITHDRAWAL' }, [
+      this.buildChange(WalletBalanceBucket.SHOPPING, TransactionType.PAYOUT_WITHDRAW, wallet.shoppingBalance, amount.negated()),
+    ]);
+  }
+
+  async refundCustomerWithdrawal(tx: Prisma.TransactionClient, userId: string, amount: Prisma.Decimal, id: string) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, userId);
+    return this.applyBalanceChanges(tx, wallet, { id, type: 'CUSTOMER_WITHDRAWAL_REFUND' }, [
+      this.buildChange(WalletBalanceBucket.SHOPPING, TransactionType.PAYOUT_REJECT_REFUND, wallet.shoppingBalance, amount),
+    ]);
+  }
+
   async debitAvailableBalanceForOrder(
     tx: Prisma.TransactionClient,
     userId: string,

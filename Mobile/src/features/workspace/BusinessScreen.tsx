@@ -21,6 +21,7 @@ import { KycScreen } from "../kyc/KycScreen";
 import { StaffScreen } from "../admin/StaffScreen";
 import { ShopSettingsScreen } from "../shop/ShopSettingsScreen";
 import { PayoutsScreen } from "../payouts/PayoutsScreen";
+import { FinanceReportsScreen } from "../payouts/FinanceReportsScreen";
 import { ProductEditScreen } from "../catalog/ProductEditScreen";
 import { StorefrontScreen } from "../stores/StorefrontScreen";
 import { CouponsScreen } from "../coupons/CouponsScreen";
@@ -39,7 +40,7 @@ export function BusinessScreen({ route }: ScreenProps<"Business">) {
   const stack = useNavigation();
   useEffect(() => {
     if (canOpenModule(user.role, route.params.feature))
-      stack.setOptions({ title: modules[route.params.feature].title });
+      stack.setOptions({ title: user.role === "SHOP_MANAGER" && route.params.feature === "payouts" ? "Đối soát chi trả" : user.role === "SHOP_MANAGER" && route.params.feature === "wallet" ? "Tài chính Shop" : user.role === "COLLABORATOR" && route.params.feature === "coupons" ? "Mã giảm giá độc quyền" : user.role === "COLLABORATOR" && route.params.feature === "wallet" ? "Ví thù lao" : modules[route.params.feature].title });
   }, [stack, user.role, route.params.feature]);
   if (!canOpenModule(user.role, route.params.feature))
     return (
@@ -95,6 +96,8 @@ function BusinessContent({ route }: Pick<ScreenProps<"Business">, "route">) {
       return <AuditScreen />;
     case "payouts":
       return <PayoutsScreen />;
+    case "finance-reports":
+      return <FinanceReportsScreen />;
     case "product-edit":
       return <ProductEditScreen params={route.params} />;
     case "storefront":

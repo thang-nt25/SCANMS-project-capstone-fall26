@@ -1,3 +1,4 @@
+import { handleStoreImageError } from '@/utils/image-fallback.utils';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -95,7 +96,7 @@ const DateRangeDropdown: React.FC<{
     <div className="relative min-w-0" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-sm font-medium text-[#1A1612] hover:border-[#C59B58] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+        className="flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-2 py-2 text-xs font-medium text-[#1A1612] hover:border-[#C59B58] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
       >
         <Calendar className="w-3.5 h-3.5 text-[#C59B58]" />
         <span>{rangeLabels[range] || '30 ngày gần nhất'}</span>
@@ -146,9 +147,10 @@ const DateRangeDropdown: React.FC<{
 
 interface RealtimeAnalyticsPageProps {
   headerTabs?: React.ReactNode;
+  headerColumnCount?: number;
 }
 
-export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ headerTabs }) => {
+export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ headerTabs, headerColumnCount = 1 }) => {
   const user = authService.getCurrentUser();
   const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.role === 'SYSTEM_MANAGER';
   const [range, setRange] = useState<string>('30d');
@@ -302,8 +304,9 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
       <div className="flex w-full min-w-0 flex-col gap-3 pt-1 pb-1">
         {/* Right Action Controls: Tab Switcher + Date Dropdown + Refresh + Export */}
         {headerTabs && <div className="w-full min-w-0">{headerTabs}</div>}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-2xs">
-          <div className="flex-1 min-w-[240px]">
+        <div className="w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 shadow-2xs">
+        <div className="analytics-report-toolbar grid w-full min-w-0 grid-cols-2 items-stretch gap-2.5 xl:w-[var(--analytics-controls-width)]" style={{ '--analytics-controls-width': headerTabs ? `calc((100% - ${(headerColumnCount - 1) * 10}px) / ${headerColumnCount})` : 'min(100%, 520px)' } as React.CSSProperties}>
+          <div className="min-w-0">
             <DateRangeDropdown
               range={range}
               setRange={(r) => { setRange(r); setIsCustomOpen(false); }}
@@ -314,11 +317,12 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
           <button
             onClick={handleExportCsv}
             disabled={loading || !!error || !timeSeries.length}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-xs font-bold text-[#8F682E] transition-all hover:border-[#C59B58] hover:bg-[#F3EFE6] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer shrink-0"
+            className="inline-flex h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-2 text-xs font-medium text-[#8F682E] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-[#B88E4F]" />
             <span>Xuất báo cáo</span>
           </button>
+        </div>
         </div>
       </div>
 
@@ -672,7 +676,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-lg bg-[#FAF5EB] border border-[#EEDFC6] text-[#8C6226] flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
                             {st.logoUrl ? (
-                              <img src={st.logoUrl} alt={st.name} className="w-full h-full object-cover" />
+                              <img src={st.logoUrl} onError={handleStoreImageError} alt={st.name} className="w-full h-full object-cover" />
                             ) : (
                               st.avatar
                             )}

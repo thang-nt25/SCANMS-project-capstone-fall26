@@ -5,9 +5,13 @@ import { WithdrawalPolicyService } from './withdrawal-policy.service';
 import {
   PAYOUT_TAX_RATE,
   PAYOUT_TAX_THRESHOLD,
+  PAYOUT_TAX_BRACKETS,
+  PAYOUT_TAX_POLICY,
+  payoutTaxMonth,
 } from '../payouts/payout-tax.service';
 import { QueryLedgerDto } from './dto/query-ledger.dto';
 import { walletBalanceConsistency } from './wallet-balance-consistency';
+import { isUUID } from 'class-validator';
 
 @Injectable()
 export class WalletSummaryService {
@@ -17,7 +21,12 @@ export class WalletSummaryService {
   ) {}
 
   async getMyWallet(collaboratorId: string) {
-    const [wallet, profile, partnerships, activeDeals] = await Promise.all([
+    const taxPeriod = payoutTaxMonth();
+    const monthlyWithdrawals = await this.prisma.payoutRequest.aggregate({
+      where: { collaboratorId, status: { in: ['PENDING', 'PROCESSING', 'APPROVED'] }, createdAt: { gte: taxPeriod.start, lt: taxPeriod.end } },
+      _sum: { amount: true },
+    });
+    const [wallet, profile, partnerships, activeDeals, heldDealCommissions] = await Promise.all([
       this.prisma.wallet.upsert({
         where: { collaboratorId },
         update: {},
@@ -73,8 +82,20 @@ export class WalletSummaryService {
             },
             orderBy: { createdAt: 'desc' },
           })
-        : Promise.resolve([])
+        : Promise.resolve([]),
+      this.prisma.commission?.findMany
+        ? this.prisma.commission.findMany({
+            where: { collaboratorId, dealBonusStatus: 'PENDING_KPI', dealBonusAmount: { gt: 0 } },
+            select: { dealBonusAmount: true, order: { select: { storeId: true } } },
+          })
+        : Promise.resolve(null),
     ]);
+    const heldDealByStore = new Map<string, Prisma.Decimal>();
+    for (const commission of heldDealCommissions ?? []) {
+      const storeId = commission.order.storeId;
+      heldDealByStore.set(storeId, (heldDealByStore.get(storeId) ?? new Prisma.Decimal(0)).plus(commission.dealBonusAmount ?? 0));
+    }
+    const allocatedDealBalance = [...heldDealByStore.values()].reduce((sum, amount) => sum.plus(amount), new Prisma.Decimal(0));
 
     const hasBankAccount = Boolean(
       profile?.bankName.trim() &&
@@ -113,12 +134,17 @@ export class WalletSummaryService {
           availableBalance: balance?.availableBalance.toFixed(2) ?? '0.00',
           pendingBalance: balance?.pendingBalance.toFixed(2) ?? '0.00',
           hasWallet: Boolean(balance),
+          conditionalDealEscrowBalance: heldDealCommissions === null ? undefined : (heldDealByStore.get(partnership.storeId) ?? new Prisma.Decimal(0)).toFixed(2),
         };
       }),
       pendingBalance: wallet?.pendingBalance.toFixed(2) ?? '0.00',
       availableBalance: wallet?.availableBalance.toFixed(2) ?? '0.00',
       shoppingBalance: wallet?.shoppingBalance?.toFixed(2) ?? '0.00',
       conditionalDealEscrowBalance: (wallet as any)?.conditionalDealEscrowBalance?.toFixed(2) ?? '0.00',
+      dealBalanceConsistency: heldDealCommissions === null ? undefined : {
+        allocatedBalance: allocatedDealBalance.toFixed(2),
+        requiresReview: !allocatedDealBalance.equals((wallet as any)?.conditionalDealEscrowBalance ?? 0),
+      },
       earningsReviewRequired,
       stores: (wallet?.storeWallets ?? []).map((balance) => ({
         storeId: balance.storeId,
@@ -128,6 +154,7 @@ export class WalletSummaryService {
           wallet?.availableBalance ?? new Prisma.Decimal(0),
         ).toFixed(2),
         pendingBalance: balance.pendingBalance.toFixed(2),
+        conditionalDealEscrowBalance: heldDealCommissions === null ? undefined : (heldDealByStore.get(balance.storeId) ?? new Prisma.Decimal(0)).toFixed(2),
         isActive:
           !balance.store.isDeleted &&
           balance.store.owner.isActive &&
@@ -157,6 +184,10 @@ export class WalletSummaryService {
       withdrawalTaxPolicy: {
         threshold: PAYOUT_TAX_THRESHOLD,
         rate: PAYOUT_TAX_RATE,
+        policy: PAYOUT_TAX_POLICY,
+        month: taxPeriod.month,
+        monthlyGross: (monthlyWithdrawals._sum.amount ?? new Prisma.Decimal(0)).toFixed(2),
+        brackets: PAYOUT_TAX_BRACKETS,
       },
       kycStatus: profile?.kycStatus ?? KycStatus.UNVERIFIED,
       canWithdraw:
@@ -193,7 +224,22 @@ export class WalletSummaryService {
   }
 
   async getMyLedger(collaboratorId: string, query: QueryLedgerDto) {
-    const where = { wallet: { collaboratorId } };
+    const where: Prisma.FinancialLedgerWhereInput = { wallet: { collaboratorId },
+      ...(query.transactionType ? { transactionType: query.transactionType } : {}),
+      ...(query.balanceBucket ? { balanceBucket: query.balanceBucket } : {}),
+      ...(query.days ? { createdAt: { gte: new Date(Date.now() - query.days * 86400000) } } : {}),
+    };
+    const search = query.search?.trim();
+    if (search) {
+      const matchingOrders = await this.prisma.order.findMany({
+        where: { externalOrderSn: { contains: search, mode: 'insensitive' }, OR: [{ customerId: collaboratorId }, { attributedCollaboratorId: collaboratorId }, { commissions: { some: { collaboratorId } } }] },
+        select: { id: true },
+      });
+      const orderIds = matchingOrders.map(order => order.id);
+      const commissions = orderIds.length ? await this.prisma.commission.findMany({ where: { collaboratorId, orderId: { in: orderIds } }, select: { id: true } }) : [];
+      const references = [...orderIds, ...commissions.map(commission => commission.id)];
+      where.OR = [{ referenceId: { in: references } }, ...(isUUID(search) ? [{ id: search }, { referenceId: search }] : [])];
+    }
     const [entries, total] = await this.prisma.$transaction([
       this.prisma.financialLedger.findMany({
         where,
@@ -212,6 +258,8 @@ export class WalletSummaryService {
     const bonusIds = referenceIds('MONTHLY_BONUS');
     const orderIds = referenceIds('ORDER_PAYMENT', 'ORDER_REFUND', 'RECONCILIATION_ORDER');
     const refundIds = referenceIds('ORDER_REFUND');
+    const topUpIds = referenceIds('TOPUP_PAYOS');
+    const withdrawalIds = referenceIds('CUSTOMER_WITHDRAWAL', 'CUSTOMER_WITHDRAWAL_REFUND');
     const storeIds = [...new Set(entries.map(entry => entry.storeId).filter((id): id is string => Boolean(id)))];
     const orderSelect = { id: true, externalOrderSn: true, store: { select: { name: true } } } as const;
     const ownOrder: Prisma.OrderWhereInput = { OR: [
@@ -220,7 +268,7 @@ export class WalletSummaryService {
     ] };
     const queryWhen = <T>(ids: string[], query: () => PromiseLike<T[]>): Promise<T[]> =>
       ids.length ? Promise.resolve(query()) : Promise.resolve([]);
-    const [commissions, payouts, bonuses, orders, refunds, stores] = await Promise.all([
+    const [commissions, payouts, bonuses, orders, refunds, stores, topUps, withdrawals] = await Promise.all([
       queryWhen(commissionIds, () => this.prisma.commission.findMany({
         where: { id: { in: commissionIds }, collaboratorId },
         select: { id: true, order: { select: orderSelect } },
@@ -243,9 +291,25 @@ export class WalletSummaryService {
       queryWhen(storeIds, () => this.prisma.store.findMany({
         where: { id: { in: storeIds } }, select: { id: true, name: true },
       })),
+      queryWhen(topUpIds, () => this.prisma.walletTopUp.findMany({
+        where: { id: { in: topUpIds }, userId: collaboratorId },
+        select: { id: true, orderCode: true },
+      })),
+      queryWhen(withdrawalIds, () => this.prisma.customerWithdrawal.findMany({
+        where: { id: { in: withdrawalIds }, userId: collaboratorId },
+        select: { id: true, status: true, processedAt: true },
+      })),
     ]);
-    type ReferenceDetails = { storeName: string | null; orderId: string | null; orderCode: string | null; period: string | null };
+    type ReferenceDetails = { storeName: string | null; orderId: string | null; orderCode: string | null; period: string | null; topUpCode?: string; withdrawalStatus?: string; processedAt?: Date | null };
     const details = new Map<string, ReferenceDetails>();
+    withdrawals.forEach(withdrawal => {
+      const value: ReferenceDetails = { storeName: null, orderId: null, orderCode: null, period: null, withdrawalStatus: withdrawal.status, processedAt: withdrawal.processedAt };
+      details.set(`CUSTOMER_WITHDRAWAL:${withdrawal.id}`, value);
+      details.set(`CUSTOMER_WITHDRAWAL_REFUND:${withdrawal.id}`, value);
+    });
+    topUps.forEach(topUp => details.set(`TOPUP_PAYOS:${topUp.id}`, {
+      storeName: null, orderId: null, orderCode: null, period: null, topUpCode: topUp.orderCode.toString(),
+    }));
     const forOrder = (order: { id: string; externalOrderSn: string; store: { name: string } }): ReferenceDetails => ({
       storeName: order.store.name, orderId: order.id, orderCode: order.externalOrderSn, period: null,
     });

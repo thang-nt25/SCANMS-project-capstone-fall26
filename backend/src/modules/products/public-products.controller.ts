@@ -1,3 +1,4 @@
+import { resolvePublicAppUrl } from '../../common/public-app-url';
 import {
   Controller,
   ExecutionContext,
@@ -158,10 +159,11 @@ export class PublicProductsController {
   async getLandingPage(
     @Param('idOrSlug') idOrSlug: string,
     @Req() req?: Request,
+    @Query('review') reviewId?: string,
   ): Promise<ProductLandingResponseDto> {
     const attrCookie =
       req?.cookies?.['scanms_attr'] || req?.cookies?.['scanms_attribution'];
-    return this.productsService.getLandingPageData(idOrSlug, attrCookie);
+    return this.productsService.getLandingPageData(idOrSlug, attrCookie, reviewId);
   }
 
   @Post('analytics/events')
@@ -212,9 +214,7 @@ export class PublicProductsController {
       const landingData =
         await this.productsService.getLandingPageData(idOrSlug);
       const frontendBaseUrl =
-        this.configService.get<string>('FRONTEND_URL') ||
-        process.env.FRONTEND_URL ||
-        'http://localhost:5173';
+        resolvePublicAppUrl(this.configService.get<string>('PUBLIC_APP_URL'), process.env.PUBLIC_APP_URL, this.configService.get<string>('FRONTEND_URL'), process.env.FRONTEND_URL);
       const normalizedFrontendUrl = frontendBaseUrl.replace(/\/+$/, '');
       const targetSlug = landingData.product.sku || landingData.product.id;
       const targetUrl = new URL(
@@ -282,9 +282,7 @@ export class PublicProductsController {
       return res.send(html);
     } catch (err: any) {
       const frontendBaseUrl =
-        this.configService.get<string>('FRONTEND_URL') ||
-        process.env.FRONTEND_URL ||
-        'http://localhost:5173';
+        resolvePublicAppUrl(this.configService.get<string>('PUBLIC_APP_URL'), process.env.PUBLIC_APP_URL, this.configService.get<string>('FRONTEND_URL'), process.env.FRONTEND_URL);
       return res.redirect(`${frontendBaseUrl}/marketplace`);
     }
   }

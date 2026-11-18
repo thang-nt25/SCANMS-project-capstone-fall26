@@ -16,6 +16,7 @@ import { QueryWithdrawalsDto } from './dto/query-withdrawals.dto';
 import { randomUUID } from 'crypto';
 import { PayoutTaxService } from './payout-tax.service';
 import { postFinance } from './finance-posting';
+import { lockPayoutTax, monthlyPayoutTax } from './payout-monthly-tax';
 
 // FR-24 owns processing and approval.
 const PAYOUT_SUMMARY_SELECT = {
@@ -27,10 +28,12 @@ const PAYOUT_SUMMARY_SELECT = {
   store: { select: { name: true } },
   amount: true,
   taxAmount: true,
+  taxContext: true,
   netAmount: true,
   status: true,
   createdAt: true,
   processedAt: true,
+  rejectedReason: true,
 } satisfies Prisma.PayoutRequestSelect;
 
 @Injectable()
@@ -57,7 +60,7 @@ export class PayoutsService {
     if (storeId !== null && !isUUID(storeId, 'all')) {
       throw new BadRequestException('Mã shop không hợp lệ');
     }
-    const taxCalculation = this.taxService.calculateTax(amount);
+    this.taxService.calculateTax(amount);
     if (amount.lessThan(this.policy.minimumAmount)) {
       throw new BadRequestException(
         `Số tiền rút tối thiểu là ${this.policy.minimumAmount.toFixed(2)} VNĐ`,
@@ -124,6 +127,9 @@ export class PayoutsService {
           );
         }
 
+        await lockPayoutTax(tx, collaboratorId);
+        const createdAt = new Date();
+        const taxCalculation = await monthlyPayoutTax(tx, collaboratorId, amount, createdAt);
         const requestId = randomUUID();
         const wallet =
           await this.walletsService.debitAvailableBalanceForWithdrawal(
@@ -140,6 +146,8 @@ export class PayoutsService {
             storeId: validatedStoreId,
             amount,
             taxAmount: taxCalculation.taxAmount,
+            taxContext: taxCalculation.taxContext,
+            createdAt,
             netAmount: taxCalculation.netAmount,
             status: PayoutStatus.PENDING,
             bankName: profile.bankName.trim(),
@@ -197,7 +205,7 @@ export class PayoutsService {
   }
 
   async getMyWithdrawals(collaboratorId: string, query: QueryWithdrawalsDto) {
-    const where = { collaboratorId };
+    const where = { collaboratorId, ...(query.status ? { status: query.status } : {}), ...(query.payoutId ? { id: query.payoutId } : {}) };
     const [requests, total] = await this.prisma.$transaction([
       this.prisma.payoutRequest.findMany({
         where,
@@ -208,8 +216,15 @@ export class PayoutsService {
       }),
       this.prisma.payoutRequest.count({ where }),
     ]);
+    const rejectedIds = requests.filter(request => request.status === 'REJECTED').map(request => request.id);
+    const refundEntries = rejectedIds.length ? await this.prisma.financialLedger.findMany({
+      where: { wallet: { collaboratorId }, referenceType: 'PAYOUT_REQUEST', referenceId: { in: rejectedIds }, transactionType: 'PAYOUT_REJECT_REFUND', balanceBucket: 'AVAILABLE', amount: { gt: 0 } },
+      select: { referenceId: true, amount: true },
+    }) : [];
+    const refundedById = new Map<string, Prisma.Decimal>();
+    for (const entry of refundEntries) if (entry.referenceId) refundedById.set(entry.referenceId, (refundedById.get(entry.referenceId) ?? new Prisma.Decimal(0)).plus(entry.amount));
     return {
-      requests: requests.map((request) => this.serializeRequest(request)),
+      requests: requests.map((request) => ({ ...this.serializeRequest(request), refundedAmount: refundedById.get(request.id)?.toFixed(2) ?? null })),
       total,
       page: query.page,
       limit: query.limit,

@@ -59,6 +59,8 @@ describe('customer order status notifications', () => {
     };
     const service = Object.assign(Object.create(OrdersService.prototype), { prisma }) as OrdersService;
 
+    const cacheService = { delPrefix: jest.fn().mockResolvedValue(undefined) };
+    Object.assign(service, { cacheService });
     await service.updateOrderFulfillment('order-1', 'shop-1', 'SHOP_MANAGER', {
       status: OrderStatus.SHIPPING,
       trackingNumber: 'GHN123',
@@ -68,6 +70,8 @@ describe('customer order status notifications', () => {
       status: OrderStatus.DELIVERED,
     });
 
+    expect(cacheService.delPrefix).toHaveBeenCalledTimes(2);
+    expect(cacheService.delPrefix).toHaveBeenCalledWith('orders:store:');
     expect(notificationCreate).toHaveBeenCalledTimes(2);
     expect(notificationCreate).toHaveBeenNthCalledWith(1, {
       data: expect.objectContaining({

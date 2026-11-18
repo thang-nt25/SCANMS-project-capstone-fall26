@@ -176,10 +176,6 @@ export function CreateExclusiveDealModal({
     }
   };
 
-  const selectedProducts = products.filter((p) =>
-    selectedProductIds.includes(p.id)
-  );
-
   const isEscalation = (Number(commissionRate) || 0) > 16;
 
   const modalContent = (
@@ -191,7 +187,7 @@ export function CreateExclusiveDealModal({
     >
       <div
         ref={dialogRef}
-        className="w-full max-w-5xl h-[92vh] max-h-[720px] flex flex-col rounded-2xl bg-[#FFFFFF] border border-[#EAE4D7] shadow-2xl overflow-hidden text-[#1A1612]"
+        className="shop-deal-offer-dialog w-full max-w-[960px] max-h-[85dvh] flex flex-col rounded-2xl bg-[#FFFFFF] border border-[#EAE4D7] shadow-2xl overflow-hidden text-[#1A1612]"
       >
         {/* Header */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-[#EAE4D7] bg-[#FAF8F5] shrink-0">
@@ -204,10 +200,10 @@ export function CreateExclusiveDealModal({
                 id="deal-modal-title"
                 className="text-base font-bold text-[#1A1612]"
               >
-                Đề xuất Thỏa thuận Độc quyền VIP
+                Đề xuất thỏa thuận độc quyền
               </h2>
               <p className="text-xs text-[#7D715E]">
-                Ký kết thỏa thuận hợp tác 1-1 với nhà sáng tạo{' '}
+                KOL:{' '}
                 <strong className="text-[#1A1612] font-semibold">
                   {collaboratorName}
                 </strong>
@@ -387,7 +383,7 @@ export function CreateExclusiveDealModal({
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5 whitespace-nowrap">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
-                    1. Mức thù lao độc quyền *
+                    Thù lao tổng (%) *
                   </label>
                   <button
                     type="button"
@@ -401,7 +397,7 @@ export function CreateExclusiveDealModal({
                 </div>
 
                 <span className="text-xs font-bold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] px-2 py-0.5 rounded-md tabular-nums whitespace-nowrap">
-                  {commissionRate}% {Number(commissionRate) > 10 ? `(+${Number(commissionRate) - 10}% so với gốc)` : ''}
+                  {isEscalation ? 'Cần Admin duyệt' : 'Thù lao tổng'}
                 </span>
               </div>
 
@@ -476,7 +472,7 @@ export function CreateExclusiveDealModal({
                 <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
-                    Vượt hạn mức tự trị (<strong>{commissionRate}%</strong> &gt; 16%): Cần Tổng Giám Đốc (Admin) duyệt ngoại lệ.
+                    Mức {commissionRate}% cần Admin phê duyệt.
                   </span>
                 </div>
               )}
@@ -488,7 +484,7 @@ export function CreateExclusiveDealModal({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
-                      2. KPI cam kết *
+                      KPI đơn hàng *
                     </label>
                     <span className="text-xs font-semibold text-[#1A1612] tabular-nums whitespace-nowrap">
                       {targetOrders || 0} đơn
@@ -522,7 +518,7 @@ export function CreateExclusiveDealModal({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
-                      3. Thời hạn *
+                      Thời hạn *
                     </label>
                     <span className="text-xs font-semibold text-[#1A1612] tabular-nums whitespace-nowrap">
                       {commitmentDays || 0} ngày
@@ -558,7 +554,7 @@ export function CreateExclusiveDealModal({
             {/* 4. Ghi chú điều khoản hợp tác */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#7D715E] mb-1">
-                4. Ghi chú điều khoản
+                Ghi chú điều khoản
               </label>
               <textarea
                 rows={2}
@@ -569,40 +565,12 @@ export function CreateExclusiveDealModal({
               />
             </div>
 
-            {/* 5. Tóm tắt hợp đồng thỏa thuận (Compact 1-Line Metrics) */}
-            <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#1A1612] flex items-center justify-between mt-auto">
-              <div className="font-bold text-[#8C6226] flex items-center gap-1.5 shrink-0">
-                <Handshake className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Tóm tắt:</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs flex-wrap justify-end">
-                <span>Thù lao: <strong className="text-[#8C6226] font-bold tabular-nums">{commissionRate}%</strong></span>
-                <span className="text-[#EEDFC6]">•</span>
-                <span>SP: <strong className="text-[#1A1612] font-bold tabular-nums">{selectedProducts.length}</strong></span>
-                <span className="text-[#EEDFC6]">•</span>
-                <span>KPI: <strong className="text-[#1A1612] font-bold tabular-nums">{targetOrders} đơn</strong></span>
-                <span className="text-[#EEDFC6]">•</span>
-                <span>Thời hạn: <strong className="text-[#1A1612] font-bold tabular-nums">{commitmentDays} ngày</strong></span>
-              </div>
-            </div>
           </section>
         </div>
 
         {/* Footer Actions */}
         <footer className="flex items-center justify-between px-6 py-3.5 border-t border-[#EAE4D7] bg-[#FAF8F5] shrink-0">
-          <div className="text-xs text-[#7D715E]">
-            {selectedProductIds.length > 0 ? (
-              <span>
-                Đang áp dụng cho{' '}
-                <strong className="text-[#1A1612] font-bold">
-                  {selectedProductIds.length}
-                </strong>{' '}
-                sản phẩm
-              </span>
-            ) : (
-              <span className="text-[#DC2626]">Chưa chọn sản phẩm</span>
-            )}
-          </div>
+          <div className="exclusive-deal-summary">{selectedProductIds.length} sản phẩm · {commissionRate}% · {targetOrders} đơn · {commitmentDays} ngày</div>
 
           <div className="flex items-center gap-2">
             <button
@@ -611,7 +579,7 @@ export function CreateExclusiveDealModal({
               disabled={submitting}
               className="px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
             >
-              Hủy bỏ
+              Quay lại
             </button>
             <button
               type="button"
@@ -622,15 +590,15 @@ export function CreateExclusiveDealModal({
               {submitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Đang gửi thỏa thuận...</span>
+                  <span>Đang gửi…</span>
                 </>
               ) : (
                 <>
                   <Handshake className="w-4 h-4 stroke-[2]" />
                   <span>
                     {isEscalation
-                      ? `Đề Xuất Ban Giám Đốc (${selectedProductIds.length} SP)`
-                      : `Gửi Thỏa Thuận Độc Quyền (${selectedProductIds.length} SP)`}
+                      ? 'Gửi Admin duyệt'
+                      : 'Gửi đề xuất'}
                   </span>
                 </>
               )}

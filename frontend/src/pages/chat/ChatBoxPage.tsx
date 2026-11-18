@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { replyActionClass, replyHighlightClass } from '../../components/chat/chat-reply.styles';
 import { CouponVoucherCardBubble, type CouponVoucherCardData } from '../../components/chat/CouponVoucherCardBubble';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
@@ -1002,6 +1003,8 @@ interface ChatBoxPageProps {
   targetCollaboratorAvatar?: string;
   hideSidebar?: boolean;
   hideHeaderInChat?: boolean;
+  searchRequestKey?: number;
+  onConversationRead?: (conversationId: string) => void;
   className?: string;
   initialProductContext?: ProductContextData;
   initialConversations?: Conversation[];
@@ -1044,6 +1047,8 @@ export default function ChatBoxPage({
   targetCollaboratorAvatar: _targetCollaboratorAvatar,
   hideSidebar = false,
   hideHeaderInChat = false,
+  searchRequestKey = 0,
+  onConversationRead,
   className = '',
   initialProductContext,
   initialConversations,
@@ -1111,12 +1116,12 @@ export default function ChatBoxPage({
   const resizeMessageInput = useCallback((textarea = messageInputRef.current) => {
     if (!textarea) return;
 
-    const maxHeight = Math.max(120, Math.min(window.innerHeight * 0.4, 320));
+    const maxHeight = embedded && hideHeaderInChat ? 100 : Math.max(120, Math.min(window.innerHeight * 0.4, 320));
     textarea.style.height = 'auto';
     const contentHeight = textarea.scrollHeight;
     textarea.style.height = `${Math.min(contentHeight, maxHeight)}px`;
     textarea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
-  }, []);
+  }, [embedded, hideHeaderInChat]);
 
   useLayoutEffect(() => {
     resizeMessageInput();
@@ -1158,6 +1163,17 @@ export default function ChatBoxPage({
   const [showCustomerOrdersDrawer, setShowCustomerOrdersDrawer] = useState(false);
   const [showQuickRepliesModal, setShowQuickRepliesModal] = useState(false);
   const [explorerConversationId, setExplorerConversationId] = useState<string | null>(null);
+  const consumedSearchRequest = useRef(0);
+  useEffect(() => {
+    if (searchRequestKey && searchRequestKey !== consumedSearchRequest.current && activeConvId) {
+      consumedSearchRequest.current = searchRequestKey;
+      setExplorerConversationId(activeConvId);
+    }
+  }, [searchRequestKey, activeConvId]);
+  const [dealStates, setDealStates] = useState<Record<string, any>>({});
+  const onDealStateChange = useCallback((id: string, state: any) => {
+    setDealStates(previous => ({ ...previous, [id]: state }));
+  }, []);
   const [showCustomerToolsMenu, setShowCustomerToolsMenu] = useState(false);
   const customerToolsDropdownRef = useRef<HTMLDivElement>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -1166,35 +1182,41 @@ export default function ChatBoxPage({
     ? messages
     : messages.filter((message) => !tryParseExclusiveDealCard(message.messageText));
 
-  const activePendingDeal = useMemo(() => {
+  const activeDealBanner = useMemo(() => {
     if (!canSeeAffiliateDeals || !messages || messages.length === 0) return null;
+    const candidates: Array<{ messageId: string; card: any; rate: any; isForMe: boolean; isWaitingAdmin: boolean; waitingFor: string }> = [];
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
       const dealCard = tryParseExclusiveDealCard(msg.messageText);
+      const resolved = dealCard?.proposalId ? dealStates[dealCard.proposalId] : null;
+      if (dealCard?.proposalId && !resolved) continue;
+      const effectiveCard = resolved ? { ...dealCard, ...resolved, status: resolved.closedAt ? 'CLOSED' : resolved.status } : dealCard;
       if (
-        dealCard &&
-        dealCard.type === 'EXCLUSIVE_DEAL_PROPOSAL' &&
-        (dealCard.status === 'PENDING' || dealCard.status === 'PENDING_ADMIN_APPROVAL')
+        effectiveCard &&
+        (dealCard.type === 'EXCLUSIVE_DEAL_PROPOSAL' || dealCard.type === 'EXCLUSIVE_DEAL_DECISION')
       ) {
         const isShopOffer =
-          dealCard.initiatorRole === 'SHOP_MANAGER' || dealCard.offeredBy === 'SHOP';
+          effectiveCard.initiatorRole === 'SHOP_MANAGER' || effectiveCard.offeredBy === 'SHOP';
         const isForMe = isShopOffer ? !isShop : isShop;
-        return {
+        candidates.push({
           messageId: msg.id,
-          card: dealCard,
-          rate: dealCard.approvedCommissionRate ?? dealCard.proposedCommissionRate,
+          card: effectiveCard,
+          rate: effectiveCard.approvedCommissionRate ?? effectiveCard.proposedCommissionRate,
           isForMe,
-          isWaitingAdmin: dealCard.status === 'PENDING_ADMIN_APPROVAL',
-        };
+          isWaitingAdmin: effectiveCard.status === 'PENDING_ADMIN_APPROVAL',
+          waitingFor: isShopOffer ? 'KOL' : 'Shop',
+        });
       }
     }
-    return null;
-  }, [canSeeAffiliateDeals, messages, isShop]);
+    return candidates.find(candidate => ['PENDING', 'PENDING_ADMIN_APPROVAL'].includes(candidate.card.status))
+      || (embedded && hideHeaderInChat ? candidates[0] : null) || null;
+  }, [canSeeAffiliateDeals, messages, isShop, dealStates, embedded, hideHeaderInChat]);
 
   const jumpToDealMessage = useCallback((messageId: string) => {
     const el = document.getElementById(`chat-message-${messageId}`);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const container = messagesContainerRef.current;
+      if (container) container.scrollTo({ top: container.scrollTop + el.getBoundingClientRect().top - container.getBoundingClientRect().top - Math.max(16, (container.clientHeight - Math.min(el.clientHeight, container.clientHeight)) / 2), behavior: 'smooth' });
       setHighlightedMessage(messageId);
       setTimeout(() => setHighlightedMessage((id) => (id === messageId ? null : id)), 2500);
     }
@@ -1202,6 +1224,9 @@ export default function ChatBoxPage({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const nearBottomRef = useRef(true);
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  useEffect(() => { nearBottomRef.current = true; setNewMessageCount(0); }, [activeConvId]);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openConversationRef = useRef<(conv: Conversation) => Promise<void>>(() => Promise.resolve());
   const activeConvIdRef = useRef<string | null>(null);
@@ -1221,7 +1246,23 @@ export default function ChatBoxPage({
   const scrollToBottom = useCallback((smooth = false) => {
     const container = messagesContainerRef.current;
     if (container) container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    nearBottomRef.current = true;
+    setNewMessageCount(0);
   }, []);
+
+  const markConversationRead = useCallback(async (conversationId: string) => {
+    try {
+      await api.patch(`/chat/conversations/${conversationId}/read`);
+      setConversations(previous => {
+        const updated = previous.map(item => item.id === conversationId
+          ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.map(message => ({ ...message, isRead: true })) }
+          : item);
+        chatSessionCache.conversations = updated;
+        return updated;
+      });
+      onConversationRead?.(conversationId);
+    } catch { /* Keep unread state when the receipt could not be saved. */ }
+  }, [onConversationRead]);
 
 
   useEffect(() => {
@@ -1429,9 +1470,10 @@ export default function ChatBoxPage({
           return updated;
         });
         if (msg.senderId !== currentUser?.id && document.visibilityState === 'visible') {
-          api.patch(`/chat/conversations/${msg.conversationId}/read`).catch(() => undefined);
+          void markConversationRead(msg.conversationId);
         }
-        setTimeout(() => scrollToBottom(true), 50);
+        if (nearBottomRef.current || msg.senderId === currentUser?.id) setTimeout(() => scrollToBottom(true), 50);
+        else setNewMessageCount(count => count + 1);
       } else {
         const existing = chatSessionCache.messagesByConvId.get(msg.conversationId);
         if (existing && !existing.some((item) => item.id === msg.id)) {
@@ -1469,6 +1511,7 @@ export default function ChatBoxPage({
       });
     };
     const onRead = ({ conversationId, readerId }: { conversationId: string; readerId: string }) => {
+      if (readerId === currentUser?.id) onConversationRead?.(conversationId);
       if (conversationId === activeConvIdRef.current && readerId !== currentUser?.id) {
         setMessages(prev => prev.map(msg => msg.senderId === currentUser?.id ? { ...msg, isRead: true } : msg));
       }
@@ -1476,7 +1519,7 @@ export default function ChatBoxPage({
     const onVisible = () => {
       const conversationId = activeConvIdRef.current;
       if (document.visibilityState === 'visible' && conversationId && UUID_REGEX.test(conversationId)) {
-        void api.patch(`/chat/conversations/${conversationId}/read`).catch(() => undefined);
+        void markConversationRead(conversationId);
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -1512,7 +1555,7 @@ export default function ChatBoxPage({
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (incomingTypingTimer.current) clearTimeout(incomingTypingTimer.current);
     };
-  }, [scrollToBottom, onlyCustomerChats, currentUser?.id, canSeeAffiliateDeals]);
+  }, [scrollToBottom, onlyCustomerChats, currentUser?.id, canSeeAffiliateDeals, markConversationRead, onConversationRead]);
 
 
   const openConversation = async (conv: Conversation) => {
@@ -1575,13 +1618,7 @@ export default function ChatBoxPage({
         });
         setHasMore(msgs.length === 50);
         setOldestMsgId(msgs[0]?.id);
-        if (document.visibilityState === 'visible') await api.patch(`/chat/conversations/${conv.id}/read`).catch(() => undefined);
-        setConversations(prev => {
-          const updated = prev.map(item => item.id === conv.id
-            ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.[0] ? [{ ...item.chatMessages[0], isRead: true }] : [] } : item);
-          chatSessionCache.conversations = updated;
-          return updated;
-        });
+        if (document.visibilityState === 'visible') await markConversationRead(conv.id);
       } catch (err) {
         if (activeConvIdRef.current === conv.id) setMessageError('Không tải được tin nhắn. Vui lòng thử lại.');
         console.error(err);
@@ -2524,7 +2561,7 @@ export default function ChatBoxPage({
             )}
 
 
-{activePendingDeal && (
+{activeDealBanner && (
               <div
                 id="chat-pinned-deal-banner"
                 className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-xs shadow-xs"
@@ -2535,22 +2572,24 @@ export default function ChatBoxPage({
                   </span>
                   <div className="min-w-0">
                     <p className="m-0 truncate font-semibold text-[#1A1612]">
-                      {activePendingDeal.isWaitingAdmin ? (
+                      {!['PENDING', 'PENDING_ADMIN_APPROVAL'].includes(activeDealBanner.card.status) ? (
+                        <span>Thỏa thuận độc quyền ({activeDealBanner.rate}%) · {activeDealBanner.card.status === 'APPROVED' ? 'Đã duyệt' : activeDealBanner.card.status === 'REJECTED' ? 'Đã từ chối' : 'Đã kết thúc'}</span>
+                      ) : activeDealBanner.isWaitingAdmin ? (
                         <span className="text-[#8C6226]">
-                          ⚠️ Thỏa thuận thù lao {activePendingDeal.rate}% đang chờ Tổng Giám Đốc (Admin) phê duyệt ngoại lệ
+                          Thỏa thuận độc quyền ({activeDealBanner.rate}%) · Chờ Admin phê duyệt
                         </span>
-                      ) : activePendingDeal.isForMe ? (
+                      ) : activeDealBanner.isForMe ? (
                         <span>
-                          ⚡ Có 1 Thỏa thuận Độc quyền ({activePendingDeal.rate}%) đang chờ bạn phản hồi
+                          Có 1 Thỏa thuận Độc quyền ({activeDealBanner.rate}%) đang chờ bạn phản hồi
                         </span>
                       ) : (
                         <span className="text-[#7D715E]">
-                          ⏱️ Đã gửi Thỏa thuận Độc quyền ({activePendingDeal.rate}%) · Đang chờ đối tác phản hồi
+                          Thỏa thuận độc quyền ({activeDealBanner.rate}%) · Chờ {activeDealBanner.waitingFor} chấp thuận
                         </span>
                       )}
                     </p>
                     <p className="m-0 truncate text-[10px] text-[#7D715E]">
-                      {activePendingDeal.card.productTitle || 'Sản phẩm áp dụng'}
+                      {activeDealBanner.card.productTitle || 'Sản phẩm áp dụng'}
                     </p>
                   </div>
                 </div>
@@ -2558,11 +2597,11 @@ export default function ChatBoxPage({
                 <button
                   type="button"
                   id="btn-jump-to-deal"
-                  onClick={() => jumpToDealMessage(activePendingDeal.messageId)}
+                  onClick={() => jumpToDealMessage(activeDealBanner.messageId)}
                   className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#B88E4F] bg-[#231D15] px-2.5 py-1 text-[11px] font-semibold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none shadow-2xs"
                 >
                   <ArrowDown size={12} className="text-[#C59B58]" />
-                  <span>Cuộn tới tin nhắn deal ▾</span>
+                  <span>Cuộn tới tin nhắn Deal</span>
                 </button>
               </div>
             )}
@@ -2584,14 +2623,14 @@ export default function ChatBoxPage({
               className={`chat-message-list min-h-0 flex-1 overflow-y-auto ${embedded ? 'space-y-3 p-3 sm:p-4' : 'space-y-5 p-4 sm:p-7 lg:p-8'}`}
               ref={messagesContainerRef}
               onScroll={e => {
+                const container = e.currentTarget;
+                nearBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+                if (nearBottomRef.current) setNewMessageCount(0);
                 if ((e.target as HTMLElement).scrollTop < 60 && hasMore && !messageError) {
                   loadMore();
                 }
               }}
             >
-              {embedded && visibleMessages.length > 0 && <div className="flex justify-center">
-                <button type="button" onClick={() => { if (messagesContainerRef.current) messagesContainerRef.current.scrollTop = 0; }} className="rounded-full border border-[#EAE4D7] bg-white px-3 py-1 text-[11px] text-[#7D715E] hover:bg-[#FBF5EB]">↑ Xem tin nhắn cũ</button>
-              </div>}
               {messageError && <div role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-xs text-[#DC2626]">{messageError}<button type="button" className="ml-2 underline" onClick={() => { if (hasMore && messages.length) void loadMore(); else void openConversation(activeConv); }}>Thử lại</button></div>}
               {hasMore && (
                 <div className="text-center">
@@ -2680,7 +2719,7 @@ export default function ChatBoxPage({
                         {(() => {
                           if (exclusiveDealCard) {
                             if (!canSeeAffiliateDeals) return null;
-                            return <ExclusiveDealCardBubble card={exclusiveDealCard} isMine={isMine} isShop={isShop} compact={embedded && hideHeaderInChat} />;
+                            return <ExclusiveDealCardBubble card={exclusiveDealCard} isMine={isMine} isShop={isShop} compact={embedded && hideHeaderInChat} onStateChange={onDealStateChange} />;
                           }
 
                           if (inquiryCard) {
@@ -2796,6 +2835,7 @@ export default function ChatBoxPage({
 
               <div ref={messagesEndRef} />
             </div>
+            {newMessageCount > 0 && <button type="button" className="chat-new-messages" onClick={() => scrollToBottom(true)}><ArrowDown size={14} />{newMessageCount} tin nhắn mới</button>}
 
 
             <div className="border-t border-[#EAE4D7] bg-white">
@@ -2806,7 +2846,7 @@ export default function ChatBoxPage({
                     <div className="flex items-center gap-2.5 min-w-0">
                       {pinnedProduct.image ? (
                         <img
-                          src={pinnedProduct.image}
+                          src={pinnedProduct.image} onError={handleProductImageError}
                           alt={pinnedProduct.title}
                           className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] shrink-0 bg-white"
                         />

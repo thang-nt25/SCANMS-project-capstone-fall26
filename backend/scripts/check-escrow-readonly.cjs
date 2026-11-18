@@ -1,0 +1,15 @@
+﻿require('dotenv/config');
+const {PrismaClient}=require('@prisma/client');
+const {PrismaPg}=require('@prisma/adapter-pg');
+const db=new PrismaClient({adapter:new PrismaPg({connectionString:process.env.DATABASE_URL})});
+(async()=>{try {
+ const admin=await db.user.findFirst({where:{role:{in:['SYSTEM_MANAGER','SYSTEM_ADMIN']},isActive:true,isDeleted:false},select:{id:true,role:true,email:true}});
+ const token=require('jsonwebtoken').sign({sub:admin.id,role:admin.role,email:admin.email},process.env.JWT_SECRET,{expiresIn:'3m'});
+ const all=await db.commission.findMany({where:{status:'PENDING'},orderBy:[{availableAt:'asc'},{id:'asc'}],include:{order:{include:{orderItems:{include:{product:{select:{title:true}},variant:{select:{name:true}}}},returnRequests:{select:{status:true,resolution:true,dispute:{select:{status:true}}},orderBy:{submittedAt:'desc'}},attributedCollaborator:{select:{fullName:true}}}}}});
+ let apiItems=[],report;
+ for(let page=1;;page++) {const response=await fetch(`http://localhost:3000/api/admin/payouts/escrow?page=${page}`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok)throw Error(`API ${response.status}`);const body=await response.json();report=body.data||body;apiItems.push(...report.items);if(page*report.limit>=report.total)break;}
+ const missingItems=all.flatMap(c=>{const api=apiItems.find(i=>i.id===c.id);return !api?[c.order.externalOrderSn]:api.order.orderItems.length!==c.order.orderItems.length?[c.order.externalOrderSn+': item mismatch']:[];});
+ const missingOrders=await db.order.findMany({where:{status:{in:['DELIVERED','COMPLETED']},attributedCollaboratorId:{not:null},attributedCollaborator:{is:{role:'COLLABORATOR',isActive:true,isDeleted:false}},commissions:{none:{}}},select:{id:true,externalOrderSn:true,rawPayload:true,attributedCollaborator:{select:{id:true,email:true,phoneNumber:true}},customerId:true,customerEmail:true,customerPhone:true}});
+ const {isSelfReferral,requiresReferralReview}=require('../dist/modules/commissions/self-referral');
+ console.log(JSON.stringify({at:new Date().toISOString(),scheduledJobsDisabled:process.env.DISABLE_SCHEDULED_JOBS==='true',dbPending:all.length,apiTotal:report.total,apiRows:apiItems.length,reportAmount:report.pendingAmount,missingOrIncomplete:missingItems,missingCommissionOrders:missingOrders.map(o=>({order:o.externalOrderSn,selfReferral:isSelfReferral(o,o.attributedCollaborator),review:requiresReferralReview(o)})),rows:all.map(c=>({order:c.order.externalOrderSn,kol:c.order.attributedCollaborator?.fullName,status:c.order.status,total:c.commissionAmount.toString(),base:c.baseCommissionAmount?.toString(),deal:c.dealBonusAmount?.toString(),dealState:c.dealBonusStatus,availableAt:c.availableAt,deliveredAt:c.order.deliveredAt,review:c.order.rawPayload?.selfReferralReviewRequired===true,returns:c.order.returnRequests,products:c.order.orderItems.map(i=>({title:i.product.title,variant:i.variant?.name,quantity:i.quantity,price:i.unitPrice.toString(),rate:i.appliedCommissionRate?.toString()}))}))}));
+} finally{await db.$disconnect();}})().catch(e=>{console.error(e.message);process.exitCode=1;});

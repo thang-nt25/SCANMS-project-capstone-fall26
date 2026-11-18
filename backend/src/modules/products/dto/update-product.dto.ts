@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   IsUrl,
   ArrayMaxSize,
   IsInt,
@@ -38,6 +39,12 @@ export class UpdateProductDto extends ProductPackageDto {
   @IsOptional()
   @IsString()
   categoryName?: string;
+
+  @ApiPropertyOptional({ description: 'Nhóm sản phẩm trong ngành hàng của cửa hàng' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  productGroup?: string;
 
   @ApiPropertyOptional({
     example: 'Chống ồn chủ động Hybrid ANC 45dB, Pin 40 giờ liên tục',

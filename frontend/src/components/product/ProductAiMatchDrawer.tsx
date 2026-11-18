@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Cpu, MessageSquare, Award, UserPlus } from 'lucide-react';
@@ -64,7 +65,7 @@ export function ProductAiMatchDrawer({ product, isOpen, onClose }: Props) {
           <button type="button" onClick={onClose} aria-label="Đóng gợi ý KOC" className="rounded-lg p-2 text-[#7D715E] hover:bg-[#F3EFE6]"><X size={18} /></button>
         </header>
         <div className="flex items-center gap-3 border-b border-[#EAE4D7] bg-white p-4">
-          <img className="h-14 w-14 rounded-xl border border-[#EAE4D7] object-cover" src={getSafeProductImageUrl(product.imageUrl)} alt="" />
+          <img className="h-14 w-14 rounded-xl border border-[#EAE4D7] object-cover" src={getSafeProductImageUrl(product.imageUrl)} onError={handleProductImageError} alt="" />
           <div className="min-w-0"><p className="text-xs text-[#7D715E]">{product.categoryName}</p><h3 className="break-words font-semibold text-[#1A1612]">{product.title}</h3></div>
         </div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-busy={loading}>

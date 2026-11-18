@@ -1,8 +1,14 @@
 import { Type } from 'class-transformer';
-import { IsInt, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { PayoutStatus } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QueryWithdrawalsDto {
+  @IsOptional() @IsUUID() payoutId?: string;
+  @ApiPropertyOptional({ enum: PayoutStatus })
+  @IsOptional()
+  @IsEnum(PayoutStatus)
+  status?: PayoutStatus;
   @ApiPropertyOptional({ default: 1, minimum: 1 })
   @Type(() => Number)
   @IsInt()

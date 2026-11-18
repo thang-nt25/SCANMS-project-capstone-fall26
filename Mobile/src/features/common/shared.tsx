@@ -4,6 +4,8 @@ import {
   Image,
   Linking,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Text,
   View,
@@ -27,7 +29,9 @@ import { validateInput } from "../../utils/validate-input";
 import { colors } from "../../theme/tokens";
 import { unwrapEnvelope } from "../../services/api/client";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { IconButton } from "../../components/commerce";
+import { Icon, IconButton } from "../../components/commerce";
+import { EvidenceViewer, evidenceKind } from "../../components/EvidenceViewer";
+import { ProductPhoto } from "../../components/ProductPhoto";
 import { SelectField } from "./SelectField";
 
 export { amount, https, required } from "./validation";
@@ -50,8 +54,14 @@ export function useResource<T>(
   const { user, store } = useActor();
   return useQuery({
     queryKey: [user.id, "business", key, store?.id, path],
-    queryFn: async ({ signal }) =>
-      schema.parse(unwrapEnvelope(await api.request(path, { signal }))),
+    queryFn: async ({ signal }) => {
+      const result = schema.safeParse(unwrapEnvelope(await api.request(path, { signal })));
+      if (!result.success) {
+        if (__DEV__) console.warn("API contract mismatch", key, result.error.issues.map(issue => `${issue.path.join(".")}: ${issue.code}`).join(", "));
+        throw result.error;
+      }
+      return result.data;
+    },
     enabled,
     refetchInterval: 30000,
   });
@@ -213,35 +223,8 @@ export function ActionForm<T>({
       }}
     >
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas }}>
-        {compact && (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              backgroundColor: colors.white,
-            }}
-          >
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 16,
-                fontWeight: "700",
-                color: colors.ink,
-              }}
-            >
-              {title}
-            </Text>
-            <IconButton
-              name="x"
-              label="Đóng biểu mẫu"
-              disabled={busy || local.busy}
-              onPress={close}
-            />
-          </View>
-        )}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        {compact && <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, backgroundColor: colors.white }}><Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: colors.ink }}>{title}</Text><IconButton name="x" label="Đóng biểu mẫu" disabled={busy || local.busy} onPress={close} /></View>}
         <Screen scroll compact={compact}>
           {!compact && <Title>{title}</Title>}
           {fields.map((field) =>
@@ -290,6 +273,7 @@ export function ActionForm<T>({
             />
           )}
         </Screen>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
@@ -304,33 +288,37 @@ export function confirmAction(
     { text: "Xác nhận", onPress: action },
   ]);
 }
-export function Evidence({ urls }: { urls: readonly string[] }) {
+export function Evidence({ urls, compact = false }: { urls: readonly string[]; compact?: boolean }) {
   const operation = useOperation();
+  const [preview, setPreview] = useState<string | null>(null);
   return (
     <View style={{ gap: 8 }}>
       {urls.map((url, index) => (
-        <View key={`${index}-${url}`}>
+          <View key={`${index}-${url}`} style={compact ? { flexDirection: "row", alignItems: "center", gap: 10 } : undefined}>
           {/\.(png|jpe?g|webp)(\?|$)/i.test(url) && (
-            <Image
+              compact ? <ProductPhoto uri={url} style={{ height: 56, width: 56, borderRadius: 8 }} resizeMode="contain" /> : <Image
               source={{ uri: url }}
-              style={{ height: 160, width: "100%" }}
+                style={{ height: 160, width: "100%" }}
               resizeMode="contain"
             />
           )}
-          <Button
-            title={`Xem bằng chứng ${index + 1}`}
+          {compact && evidenceKind(url) !== "image" && <View style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: colors.soft, justifyContent: "center", alignItems: "center" }}><Icon name={evidenceKind(url) === "video" ? "play-circle" : "file-text"} size={24} color={colors.strong} /></View>}
+            <View style={compact ? { flex: 1 } : undefined}><Button
+            title={evidenceKind(url) === "image" ? `Xem ảnh ${index + 1}` : evidenceKind(url) === "video" ? "Xem video mở hàng" : `Mở tài liệu ${index + 1}`}
             secondary
             loading={operation.busy}
             onPress={() =>
               void operation.run(async () => {
                 https.parse(url);
-                await Linking.openURL(url);
+                if (evidenceKind(url) !== "document") setPreview(url);
+                else await Linking.openURL(url);
               })
             }
-          />
+            /></View>
         </View>
       ))}
       <ErrorNotice error={operation.error} />
+      {preview && <EvidenceViewer url={preview} close={() => setPreview(null)} />}
     </View>
   );
 }
@@ -338,40 +326,21 @@ export function Sheet({
   title,
   children,
   close,
+  backHeader = false,
   compact = false,
 }: {
   title: string;
   children: React.ReactNode;
   close(): void;
+  backHeader?: boolean;
   compact?: boolean;
 }) {
   return (
     <Modal visible animationType="slide" onRequestClose={close}>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas }}>
-        {compact && (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              backgroundColor: colors.white,
-            }}
-          >
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 16,
-                fontWeight: "700",
-                color: colors.ink,
-              }}
-            >
-              {title}
-            </Text>
-            <IconButton name="x" label="Đóng chi tiết" onPress={close} />
-          </View>
-        )}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          {backHeader && <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.line }}><IconButton name="arrow-left" label="Quay lại danh sách đổi trả" onPress={close} /><View style={{ flex: 1 }}><Title>{title}</Title></View></View>}
+          {compact && !backHeader && <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, backgroundColor: colors.white }}><Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: colors.ink }}>{title}</Text><IconButton name="x" label="Đóng chi tiết" onPress={close} /></View>}
         <ScrollView
           contentContainerStyle={{
             padding: compact ? 12 : 18,
@@ -379,11 +348,13 @@ export function Sheet({
             paddingBottom: 40,
           }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          {!compact && <Title>{title}</Title>}
+            {!backHeader && !compact && <Title>{title}</Title>}
           {children}
           {!compact && <Button title="Quay lại" secondary onPress={close} />}
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );

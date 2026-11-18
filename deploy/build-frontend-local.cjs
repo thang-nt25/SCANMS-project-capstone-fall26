@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const {spawnSync} = require('node:child_process');
+const dotenv = require('../backend/node_modules/dotenv');
+const frontend = path.resolve(__dirname, '../frontend');
+const values = dotenv.parse(fs.readFileSync(path.join(frontend, '.env')));
+const env = {...process.env, VITE_API_URL:'/api', VITE_SOCKET_URL:'https://scanms.io.vn', VITE_ENABLE_DEMO_LOGIN:'false'};
+for (const key of Object.keys(values)) if (key.startsWith('VITE_DEMO_')) env[key]='';
+env.VITE_GOOGLE_CLIENT_ID=values.VITE_GOOGLE_CLIENT_ID || '';
+const result=spawnSync('cmd.exe',['/d','/c','npm.cmd run build'],{cwd:frontend,env,stdio:'inherit'});
+process.exit(result.status ?? 1);

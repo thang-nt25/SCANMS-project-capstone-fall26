@@ -16,6 +16,7 @@ describe('monthly finance reports', () => {
 
   it('compares only monthly movements, including reservations spanning months', async () => {
     const tx = {
+      customerWithdrawal: { aggregate: jest.fn().mockResolvedValue({ _sum: { amount: d(0) } }) },
       financialLedger: { groupBy: jest.fn().mockResolvedValue([{ balanceBucket: 'AVAILABLE', _sum: { amount: d(200000) } }]) },
       financePosting: { findMany: jest.fn().mockResolvedValue([
         { debitAccount: 'PAYOUT_RESERVED', creditAccount: 'PARTNER_EARNINGS_PAYABLE', amount: d(200000) },
@@ -36,5 +37,25 @@ describe('monthly finance reports', () => {
 
   it('rejects an invalid month', async () => {
     await expect(new FinanceReportService({} as any).reconcileLedger('2026-13')).rejects.toThrow();
+  });
+
+  it('includes customer withdrawals in bank outflows and excludes top-up receipts', async () => {
+    const tx = {
+      financialLedger: { groupBy: jest.fn().mockResolvedValue([]) },
+      financePosting: { findMany: jest.fn().mockResolvedValue([
+        { referenceType: 'CUSTOMER_WITHDRAWAL', debitAccount: 'CUSTOMER_WITHDRAWAL_RESERVED', creditAccount: 'CORPORATE_BANK', amount: d(200000) },
+        { referenceType: 'TOPUP_PAYOS', debitAccount: 'CORPORATE_BANK', creditAccount: 'CUSTOMER_FUNDS', amount: d(700000) },
+      ]) },
+      payoutRequest: { aggregate: jest.fn().mockResolvedValue({ _sum: { amount: d(0) } }), findMany: jest.fn().mockResolvedValue([]) },
+      customerWithdrawal: { aggregate: jest.fn().mockResolvedValue({ _sum: { amount: d(200000) } }) },
+    };
+    const report = await new FinanceReportService({ $transaction: (fn: any) => fn(tx) } as any).reconcileLedger('2026-11');
+    expect(report.items.find(row => row.account === 'CORPORATE_BANK')).toMatchObject({ walletAmount: '200000.00', bookAmount: '200000.00', difference: '0.00' });
+  });
+
+  it('validates detail account and pagination before accessing data', async () => {
+    const service = new FinanceReportService({} as any);
+    await expect(service.reconciliationDetails('2026-11', 'UNKNOWN')).rejects.toThrow();
+    await expect(service.reconciliationDetails('2026-11', 'CORPORATE_BANK', 0)).rejects.toThrow();
   });
 });

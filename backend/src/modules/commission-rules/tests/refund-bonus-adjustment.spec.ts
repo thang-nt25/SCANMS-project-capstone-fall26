@@ -52,6 +52,7 @@ describe('Refund bonus incremental recovery', () => {
       orderItem: { findMany: jest.fn(async () => []) },
       commission: { findMany: jest.fn(async () => []) },
       commissionRule: { findMany: jest.fn(async () => []) },
+      storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
       monthlyBonusResult: {
         findUnique: jest.fn(async ({ where }) =>
           where.storeId_collaboratorId_yearMonth.yearMonth === '2026-09'
@@ -148,6 +149,22 @@ describe('Refund bonus incremental recovery', () => {
     f.tx.monthlyBonusResult.findUnique.mockResolvedValue(null as any);
     expect((await f.refund('20000')).adjustment).toBeNull();
     expect(f.tx.bonusAdjustment.aggregate).not.toHaveBeenCalled();
+  });
+
+  it('recovers a reviewed shop reward using its saved KPI, not current policies', async () => {
+    const f = fixture();
+    jest.spyOn(f.service, 'calculateProgressiveBonus').mockRestore();
+    f.tx.monthlyBonusResult.findUnique.mockImplementation(async ({ where }) =>
+      where.storeId_collaboratorId_yearMonth.yearMonth === '2026-09'
+        ? { id: 'settlement-a', bonusAmount: decimal(2000000), status: 'PAID', ruleSnapshot: {
+            policyVersion: 3, netBonus: '2000000', rules: [{ id: 'shop-policy', name: 'Shop reward',
+              minMonthlyRevenue: '50000000', achievementBonus: '2000000', bonusPercentage: '0',
+              isActive: true, version: 1, effectiveFrom: null, effectiveTo: null }],
+          } } : null as any);
+    jest.spyOn(f.service, 'calculateValidMonthlyRevenue').mockResolvedValue({ validRevenue: '49900000' } as any);
+    const result = await f.refund('100000');
+    expect(result.adjustment.adjustmentAmount.toString()).toBe('-2000000');
+    expect(f.tx.commissionRule.findMany).not.toHaveBeenCalled();
   });
 
   it('rolls no further writes when the refund exceeds remaining order value', async () => {

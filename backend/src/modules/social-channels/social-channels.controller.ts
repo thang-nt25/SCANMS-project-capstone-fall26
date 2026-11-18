@@ -11,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SocialChannelsService } from './social-channels.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
+import { UpdateChannelDto } from './dto/update-channel.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -45,6 +46,16 @@ export class SocialChannelsController {
     @Param('id') channelId: string,
   ) {
     return this.channelsService.deleteChannel(userId, channelId);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Cập nhật kênh mạng xã hội của bạn' })
+  async updateChannel(
+    @CurrentUser('id') userId: string,
+    @Param('id') channelId: string,
+    @Body() dto: UpdateChannelDto,
+  ) {
+    return this.channelsService.updateChannel(userId, channelId, dto);
   }
 
   @Patch(':id/primary')

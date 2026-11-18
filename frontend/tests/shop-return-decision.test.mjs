@@ -17,18 +17,23 @@ const { buildShopApprovalResponse } = helpers.exports;
 const module = { exports: {} };
 vm.runInNewContext(ts.transpileModule(source, { compilerOptions: options }).outputText, {
   module, exports: module.exports, require: name => {
+    if (name.endsWith('.css')) return {};
     if (name.endsWith('ReturnActionDialog')) return { ReturnActionDialog: ({ children }) => React.createElement('div', null, children) };
     if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => {} }) };
     if (name.endsWith('order.service')) return { orderService: {} };
     if (name.endsWith('upload.service')) return { uploadService: {} };
     if (name.endsWith('toast')) return { toast: { success() {} } };
     if (name.endsWith('return-actions')) return helpers.exports;
+    if (name.endsWith('return-status.utils')) return { returnReasonLabel: reason => reason === 'DAMAGED' ? 'Sản phẩm bị hư hỏng' : reason };
+    if (name.endsWith('image-fallback.utils')) return { handleProductImageError() {} };
     if (name === 'react-router-dom') return { Link: ({ to, children }) => React.createElement('a', { href: to }, children) };
     return require(name);
   },
 });
 const { ShopReturnDecisionForm } = module.exports;
-const request = { id: 'case-1', status: 'REQUESTED', preferredResolution: 'EXCHANGE' };
+const request = { id: 'case-1', status: 'REQUESTED', preferredResolution: 'EXCHANGE', reason: 'DAMAGED', details: 'Nắp hộp bị vỡ',
+  order: { externalOrderSn: 'DH-001', products: [{ id: 'p1', title: 'Sản phẩm trong đơn', quantity: 5 }] },
+  items: [{ id: 'line-1', quantity: 1, orderItem: { product: { title: 'Serum phục hồi', imageUrl: '/serum.png' }, variant: { name: '30ml' } } }] };
 const file = ts.createSourceFile('ShopReturnDecisionForm.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 let decide;
 function find(node) { if (ts.isFunctionDeclaration(node) && node.name?.text === 'decide') decide = node; ts.forEachChild(node, find); }
@@ -54,11 +59,19 @@ test('blank notes keep approval enabled, while rejection remains protected by ev
   const html = renderToStaticMarkup(React.createElement(ShopReturnDecisionForm, { orderId: 'order-1', request }));
   const forms = html.match(/<form\b[\s\S]*?<\/form>/g);
   assert.equal(forms.length, 2);
-  assert.match(forms[0], /Chấp nhận yêu cầu đổi sản phẩm/);
+  assert.match(forms[0], /Thông tin yêu cầu/);
+  assert.match(forms[0], /Serum phục hồi/);
+  assert.match(forms[0], /30ml.*Số lượng: 1/);
+  assert.ok(!forms[0].includes('Sản phẩm trong đơn'));
+  assert.match(forms[0], /Sản phẩm bị hư hỏng/);
+  assert.match(forms[0], /Nắp hộp bị vỡ/);
+  assert.match(forms[0], /Nhập lời nhắn cho khách…/);
+  assert.ok(!forms[0].includes('Khách đề nghị'));
+  assert.ok(!forms[0].includes('giao hàng thay thế'));
   assert.ok(!forms[0].includes('disabled=""'));
   assert.ok(!forms[0].includes('required=""'));
-  assert.match(forms[0], /không bắt buộc/);
-  assert.match(forms[1], /<button[^>]*disabled=""/);
+  assert.match(forms[0], /Không bắt buộc/);
+  assert.match(forms[1], /minLength="20" maxLength="850"/);
   assert.ok(!html.includes("<details"));
 });
 

@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, LoaderCircle, ShoppingBag, X } from "lucide-react";
@@ -260,7 +261,7 @@ export function ProductReviewModal({
         <div className="flex items-center gap-3 rounded-2xl border border-line bg-canvas p-3">
           {product.imageUrl ? (
             <img
-              src={product.imageUrl}
+              src={product.imageUrl} onError={handleProductImageError}
               alt={product.productTitle}
               className="h-16 w-16 rounded-xl bg-white object-cover"
             />

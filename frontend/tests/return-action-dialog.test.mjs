@@ -49,3 +49,21 @@ test('submitting keeps the dialog open and disables closing until the request se
   render(props).props.children[1].props.onClose();
   assert.equal(render(props).props.children[1], false);
 });
+
+test('approval confirmation submits its form from a fixed footer and blocks repeat actions while busy', () => {
+  const { render } = fixture();
+  const props = { title: 'Chấp thuận đổi hàng', subtitle: 'Mã đơn: DH-001', children: 'Form',
+    confirmation: { formId: 'approve-case-1', label: 'Xác nhận chấp thuận', busyLabel: 'Đang xác nhận…' } };
+  render(props).props.children[0].props.children[0].props.onClick();
+  const modal = render(props).props.children[1];
+  assert.equal(modal.props.subtitle, 'Mã đơn: DH-001');
+  assert.equal(modal.props.className, 'max-w-[600px]');
+  const [back, submit] = modal.props.footer.props.children;
+  assert.equal(back.props.children, 'Quay lại');
+  assert.equal(submit.props.type, 'submit');
+  assert.equal(submit.props.form, 'approve-case-1');
+  assert.equal(submit.props.children, 'Xác nhận chấp thuận');
+  const pending = render({ ...props, busy: true }).props.children[1].props.footer.props.children;
+  assert.ok(pending.every(button => button.props.disabled));
+  assert.equal(pending[1].props.children, 'Đang xác nhận…');
+});

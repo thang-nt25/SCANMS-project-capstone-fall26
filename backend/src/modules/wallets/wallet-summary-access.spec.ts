@@ -15,6 +15,8 @@ describe('wallet account and ledger access', () => {
       order: { findMany: jest.fn().mockResolvedValue([]) },
       orderRefund: { findMany: jest.fn().mockResolvedValue([]) },
       store: { findMany: jest.fn().mockResolvedValue([]) },
+      walletTopUp: { findMany: jest.fn().mockResolvedValue([]) },
+      customerWithdrawal: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn((queries: Promise<unknown>[]) => Promise.all(queries)),
     };
     const service = new WalletSummaryService(prisma as unknown as PrismaService, {} as WithdrawalPolicyService);
@@ -29,6 +31,28 @@ describe('wallet account and ledger access', () => {
       create: { userId: 'owner-a', idCardNumber: '', bankName: 'MBBank', bankAccountNumber: '123456789', bankAccountName: 'NGUYEN VAN A' },
       update: { bankName: 'MBBank', bankAccountNumber: '123456789', bankAccountName: 'NGUYEN VAN A', kycStatus: 'UNVERIFIED' },
     });
+  });
+
+  it('returns the current withdrawal status without creating another debit and scopes the lookup to its owner', async () => {
+    const { service, prisma } = setup();
+    const amount = new Prisma.Decimal('-200000');
+    prisma.financialLedger.findMany.mockResolvedValue([{
+      id: 'hold', referenceType: 'CUSTOMER_WITHDRAWAL', referenceId: 'withdrawal',
+      amount, balanceBefore: new Prisma.Decimal('624991'), balanceAfter: new Prisma.Decimal('424991'),
+    }]);
+    prisma.financialLedger.count.mockResolvedValue(1);
+    const processedAt = new Date('2026-11-16T06:00:00Z');
+    prisma.customerWithdrawal.findMany.mockResolvedValue([{ id: 'withdrawal', status: 'APPROVED', processedAt }]);
+    const result = await service.getMyLedger('owner-a', { page: 1, limit: 10 });
+    expect(prisma.customerWithdrawal.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ['withdrawal'] }, userId: 'owner-a' },
+      select: { id: true, status: true, processedAt: true },
+    });
+    expect(result.entries).toMatchObject([{
+      amount: '-200000.00', balanceBefore: '624991.00', balanceAfter: '424991.00',
+      referenceDetails: { withdrawalStatus: 'APPROVED', processedAt },
+    }]);
+    expect(result.entries).toHaveLength(1);
   });
 
   it.each(['bankName', 'bankAccountNumber', 'bankAccountName'] as const)('rejects a blank %s without writing', async field => {
@@ -58,6 +82,17 @@ describe('wallet account and ledger access', () => {
     });
     expect(prisma.financialLedger.count).toHaveBeenCalledWith({ where: { wallet: { collaboratorId: 'owner-a' } } });
     expect(result).toMatchObject({ page: 2, limit: 10, total: 11, entries: [{ amount: '-200000.10', balanceBefore: '500000.31', balanceAfter: '300000.21' }] });
+  });
+  it('applies ledger search, bucket, type and time filters before pagination while retaining owner scope', async () => {
+    const { service, prisma } = setup();
+    prisma.order.findMany.mockResolvedValue([{ id: 'owned-order' }] as never);
+    prisma.commission.findMany.mockResolvedValue([{ id: 'owned-commission' }] as never);
+    prisma.financialLedger.findMany.mockResolvedValue([]);
+    prisma.financialLedger.count.mockResolvedValue(0);
+    await service.getMyLedger('owner-a', { page: 2, limit: 10, search: 'DH-2026', transactionType: 'REVERSAL', balanceBucket: 'PENDING', days: 30 });
+    expect(prisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ externalOrderSn: { contains: 'DH-2026', mode: 'insensitive' }, OR: [{ customerId: 'owner-a' }, { attributedCollaboratorId: 'owner-a' }, { commissions: { some: { collaboratorId: 'owner-a' } } }] }) }));
+    expect(prisma.financialLedger.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 10, take: 10, where: { wallet: { collaboratorId: 'owner-a' }, transactionType: 'REVERSAL', balanceBucket: 'PENDING', createdAt: { gte: expect.any(Date) }, OR: [{ referenceId: { in: ['owned-order', 'owned-commission'] } }] } }));
+    expect(prisma.financialLedger.count).toHaveBeenCalledWith({ where: prisma.financialLedger.findMany.mock.calls[0][0].where });
   });
 
   it('resolves shared commission references, payouts and monthly bonuses without exposing unrelated fields', async () => {
@@ -108,12 +143,30 @@ describe('wallet account and ledger access', () => {
     expect(prisma.commission.findMany.mock.calls[0][0].where.collaboratorId).toBe('owner-a');
   });
 
+  it('resolves payOS codes as strings and only for the authenticated owner', async () => {
+    const { service, prisma } = setup();
+    const amount = new Prisma.Decimal('200000');
+    prisma.financialLedger.findMany.mockResolvedValue([
+      { id: 'entry', referenceType: 'TOPUP_PAYOS', referenceId: 'topup', amount, balanceBefore: amount, balanceAfter: amount },
+      { id: 'missing-entry', referenceType: 'TOPUP_PAYOS', referenceId: 'missing', amount, balanceBefore: amount, balanceAfter: amount },
+    ]);
+    prisma.financialLedger.count.mockResolvedValue(2);
+    prisma.walletTopUp.findMany.mockResolvedValue([{ id: 'topup', orderCode: BigInt('123456789012345') }]);
+    const result = await service.getMyLedger('owner-a', { page: 1, limit: 10 });
+    expect(prisma.walletTopUp.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ['topup', 'missing'] }, userId: 'owner-a' }, select: { id: true, orderCode: true },
+    });
+    expect(result.entries[0].referenceDetails?.topUpCode).toBe('123456789012345');
+    expect(result.entries[1].referenceDetails).toBeNull();
+    expect(() => JSON.stringify(result)).not.toThrow();
+  });
+
   it('does not load unrelated reference tables for an empty ledger', async () => {
     const { service, prisma } = setup();
     prisma.financialLedger.findMany.mockResolvedValue([]);
     prisma.financialLedger.count.mockResolvedValue(0);
     expect((await service.getMyLedger('owner-a', { page: 1, limit: 10 })).entries).toEqual([]);
-    for (const lookup of [prisma.commission, prisma.payoutRequest, prisma.monthlyBonusResult, prisma.order, prisma.orderRefund, prisma.store]) {
+    for (const lookup of [prisma.commission, prisma.payoutRequest, prisma.monthlyBonusResult, prisma.order, prisma.orderRefund, prisma.store, prisma.walletTopUp]) {
       expect(lookup.findMany).not.toHaveBeenCalled();
     }
   });

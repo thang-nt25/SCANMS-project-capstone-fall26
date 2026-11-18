@@ -1,19 +1,10 @@
-import { useEffect, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import {
-  ActivityIndicator,
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Caption, ErrorNotice } from "../../components/ui";
-import { BottomSheet } from "../../components/BottomSheet";
-import { Icon } from "../../components/commerce";
-import { colors } from "../../theme/tokens";
+import { Platform, View } from "react-native";
+import { Button, Caption, ErrorNotice } from "../../components/ui";
 import { useOperation } from "../../hooks/useOperation";
 import { api } from "../../services/api";
 const AttachmentSchema = z.object({
@@ -31,201 +22,123 @@ export function AttachmentPicker({
   conversationId: string;
   disabled: boolean;
   onSelected(value: Attachment): void;
-  onBusyChange(busy: boolean): void;
+  onBusyChange?(busy: boolean): void;
 }) {
   const operation = useOperation();
-  const [open, setOpen] = useState(false);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  const pick = async (document: boolean) => {
-    let completed = false;
-    await operation.run(async () => {
-      // Lock message sending as soon as a native picker opens, including upload.
-      onBusyChange(true);
+  useEffect(() => { onBusyChange?.(operation.busy); }, [operation.busy, onBusyChange]);
+  const [active, setActive] = useState<"document" | "media" | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const uploadController = useRef<AbortController | null>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
+  const pick = (document: boolean) =>
+    void operation.run(async () => {
+      setActive(document ? "document" : "media");
+      setUploading(false);
       try {
-        let uri: string, name: string, mime: string, size: number | undefined;
-        if (document) {
-          const selected = await DocumentPicker.getDocumentAsync({
-            multiple: false,
-            copyToCacheDirectory: true,
-            type: [
-              "application/pdf",
-              "text/plain",
-              "application/msword",
-              "application/vnd.ms-excel",
-              "application/vnd.ms-powerpoint",
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-              "text/csv",
-              "application/csv",
-            ],
-          });
-          if (selected.canceled) {
-            completed = true;
-            return;
-          }
-          const asset = selected.assets[0];
-          uri = asset.uri;
-          name = asset.name;
-          mime = asset.mimeType || "application/octet-stream";
-          size = asset.size;
-        } else {
-          const selected = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images", "videos"],
-            quality: 1,
-          });
-          if (selected.canceled) {
-            completed = true;
-            return;
-          }
-          const asset = selected.assets[0];
-          uri = asset.uri;
-          name =
-            asset.fileName ||
-            (asset.type === "video" ? "video.mp4" : "photo.jpg");
-          mime =
-            asset.mimeType ||
-            (asset.type === "video" ? "video/mp4" : "image/jpeg");
-          size = asset.fileSize;
-        }
-        const max = document ? 20 : mime.startsWith("image/") ? 5 : 50;
-        if (
-          !size ||
-          !Number.isFinite(size) ||
-          size < 0 ||
-          size > max * 1024 * 1024
-        )
-          throw new Error(`Tệp tối đa ${max} MB.`);
-        const form = new FormData();
-        form.append("file", { uri, name, type: mime } as unknown as Blob);
-        const uploaded = AttachmentSchema.parse(
+      let uri: string, name: string, mime: string, size: number | undefined;
+      if (document) {
+        const selected = await DocumentPicker.getDocumentAsync({
+          multiple: false,
+          copyToCacheDirectory: true,
+          type: [
+            "application/pdf",
+            "text/plain",
+            "text/csv",
+            "application/csv",
+            "application/msword",
+            "application/vnd.ms-excel",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          ],
+        });
+        if (selected.canceled) return;
+        const asset = selected.assets[0];
+        if (!asset?.uri) throw new Error("Không đọc được tài liệu. Hãy chọn tệp đã tải về thiết bị.");
+        uri = asset.uri;
+        name = asset.name;
+        mime = asset.mimeType || "application/octet-stream";
+        size = asset.size;
+      } else {
+        const selected = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images", "videos"],
+          quality: 1,
+        });
+        if (selected.canceled) return;
+        const asset = selected.assets[0];
+        if (!asset?.uri) throw new Error("Không đọc được ảnh hoặc video đã chọn.");
+        uri = asset.uri;
+        name =
+          asset.fileName ||
+          (asset.type === "video" ? "video.mp4" : "photo.jpg");
+        mime =
+          asset.mimeType ||
+          (asset.type === "video" ? "video/mp4" : "image/jpeg");
+        size = asset.fileSize;
+      }
+      const extension = name.toLowerCase().split(".").pop() || "";
+      const mimeByExtension: Record<string, string> = {
+        pdf: "application/pdf", txt: "text/plain", csv: "text/csv",
+        doc: "application/msword", xls: "application/vnd.ms-excel", ppt: "application/vnd.ms-powerpoint",
+        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+        mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm",
+      };
+      if (!mime || mime === "application/octet-stream") mime = mimeByExtension[extension] || mime;
+      if (document ? !["pdf", "txt", "csv", "doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)
+        : !["jpg", "jpeg", "png", "mp4", "mov", "webm"].includes(extension))
+        throw new Error(document ? "Chọn PDF, Word, Excel, PowerPoint, TXT hoặc CSV." : "Chat hỗ trợ ảnh JPG, PNG và video MP4, MOV, WEBM.");
+      const max = document ? 20 : mime.startsWith("image/") ? 5 : 50;
+      if (size !== undefined && (!Number.isFinite(size) || size <= 0 || size > max * 1024 * 1024))
+        throw new Error(`Tệp tối đa ${max} MB.`);
+      setUploading(true);
+      const controller = new AbortController();
+      uploadController.current = controller;
+      const form = new FormData();
+      // Expo 58 fetch expects a Blob/File, not the legacy RN { uri, name, type } object.
+      const file = Platform.OS === "web" ? await (await fetch(uri)).blob() : new File(uri);
+      form.append("file", file, name);
+      onSelected(
+        { ...AttachmentSchema.parse(
           await api.request(
             `/chat/conversations/${conversationId}/attachments`,
-            { method: "POST", body: form, timeout: 120000 },
+            { method: "POST", body: form, timeout: 120000, signal: controller.signal },
           ),
-        );
-        if (mounted.current) onSelected(uploaded);
-        completed = true;
+        ), fileName: name },
+      );
+      } catch (error) {
+        if (uploadController.current?.signal.aborted) throw new Error("Đã hủy tải tệp. Tệp chưa được gửi cho đối tác.");
+        throw error;
       } finally {
-        if (mounted.current) onBusyChange(false);
+        uploadController.current = null;
+        setUploading(false);
+        setActive(null);
       }
     });
-    // Keep errors visible in the sheet. Cancelling does not discard the draft.
-    if (completed && mounted.current) setOpen(false);
-  };
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Thêm tệp đính kèm"
-        accessibilityState={{
-          disabled: disabled || operation.busy,
-          busy: operation.busy,
-          expanded: open,
-        }}
-        disabled={disabled || operation.busy}
-        hitSlop={4}
-        style={({ pressed }) => [
-          styles.plus,
-          { opacity: disabled ? 0.4 : pressed ? 0.65 : 1 },
-        ]}
-        onPress={() => {
-          Keyboard.dismiss();
-          operation.clearError();
-          setOpen(true);
-        }}
-      >
-        {operation.busy ? (
-          <ActivityIndicator size="small" color={colors.strong} />
-        ) : (
-          <Icon name="plus" size={24} color={colors.ink} />
-        )}
-      </Pressable>
-      {open && (
-        <BottomSheet title="Đính kèm" close={() => setOpen(false)}>
-          <Caption>Chọn một tệp để xem trước, sau đó bấm gửi tin nhắn.</Caption>
-          {[
-            {
-              document: false,
-              icon: "image" as const,
-              title: "Ảnh và video",
-              detail: "Ảnh tối đa 5 MB · Video tối đa 50 MB",
-            },
-            {
-              document: true,
-              icon: "file-text" as const,
-              title: "Tài liệu",
-              detail: "PDF, Word, Excel hoặc văn bản · Tối đa 20 MB",
-            },
-          ].map((option) => (
-            <Pressable
-              key={option.title}
-              accessibilityRole="button"
-              accessibilityLabel={option.title}
-              disabled={disabled || operation.busy}
-              onPress={() => void pick(option.document)}
-              style={({ pressed }) => [
-                styles.option,
-                {
-                  opacity:
-                    disabled || operation.busy ? 0.5 : pressed ? 0.65 : 1,
-                },
-              ]}
-            >
-              <View style={styles.optionIcon}>
-                <Icon name={option.icon} color={colors.strong} size={23} />
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Caption>{option.detail}</Caption>
-              </View>
-              <Icon name="chevron-right" color={colors.muted} size={18} />
-            </Pressable>
-          ))}
-          {operation.busy && (
-            <View style={styles.progress}>
-              <ActivityIndicator color={colors.strong} />
-              <Caption>Đang chọn hoặc tải tệp…</Caption>
-            </View>
-          )}
-          <ErrorNotice error={operation.error} />
-        </BottomSheet>
-      )}
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Button
+          title="Ảnh/Video"
+          secondary
+          disabled={disabled || operation.busy}
+          loading={uploading && active === "media"}
+          onPress={() => pick(false)}
+        />
+        <Button
+          title="Tài liệu"
+          secondary
+          disabled={disabled || operation.busy}
+          loading={uploading && active === "document"}
+          onPress={() => pick(true)}
+        />
+      </View>
+      {operation.busy && <Caption>{uploading ? "Đang tải tệp lên… Chưa gửi cho đối tác." : "Chọn tệp trong cửa sổ Android; bấm Quay lại để hủy."}</Caption>}
+      {uploading && <Button title="Hủy tải tệp" secondary onPress={() => uploadController.current?.abort()} />}
+      <ErrorNotice error={operation.error} />
     </>
   );
 }
-const styles = StyleSheet.create({
-  plus: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.sand,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  optionIcon: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.soft,
-    borderRadius: 14,
-  },
-  optionTitle: { fontSize: 16, fontWeight: "600", color: colors.ink },
-  progress: { flexDirection: "row", alignItems: "center", gap: 10 },
-});

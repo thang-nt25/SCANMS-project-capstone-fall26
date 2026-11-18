@@ -4287,6 +4287,7 @@ export class OrdersService {
       limit?: number | string;
       storeId?: string;
     },
+    fresh = false,
   ) {
     let targetStoreId = query.storeId;
     if (
@@ -4314,6 +4315,7 @@ export class OrdersService {
         if (!userStore) {
           return {
             items: [],
+            metrics: { total: 0, pending: 0, shipping: 0, delivered: 0 },
             pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
           };
         }
@@ -4326,8 +4328,8 @@ export class OrdersService {
 
     // Cache hit cho trang đầu không có tìm kiếm văn bản tự do
     const isCacheableOrderQuery = !query.search?.trim() && page === 1;
-    const orderCacheKey = `orders:store:${targetStoreId || userId}:${query.status || 'ALL'}:${query.paymentStatus || 'ALL'}:${limit}`;
-    if (isCacheableOrderQuery && this.cacheService) {
+    const orderCacheKey = `orders:store:${targetStoreId || userId}:metrics-v2:${query.customerId || 'ALL'}:${query.status || 'ALL'}:${query.paymentStatus || 'ALL'}:${limit}`;
+    if (isCacheableOrderQuery && !fresh && this.cacheService) {
       const cached = await this.cacheService.get(orderCacheKey);
       if (cached) return cached;
     }
@@ -4343,6 +4345,15 @@ export class OrdersService {
       where.storeId = targetStoreId;
     }
     if (query.customerId) where.customerId = query.customerId;
+    const pendingShopWork: Prisma.OrderWhereInput = {
+      OR: [
+        { status: OrderStatus.PENDING },
+        {
+          status: { in: [OrderStatus.RETURN_REQUESTED, OrderStatus.DISPUTED] },
+          returnRequests: { some: { status: { in: ['REQUESTED', 'RETURN_RECEIVED', 'INSPECTING', 'EXCHANGE_PENDING'] } } },
+        },
+      ],
+    };
     if (query.status === 'RETURNS') {
       where.AND = [
         {
@@ -4354,6 +4365,10 @@ export class OrdersService {
           ],
         },
       ];
+    } else if (query.status === OrderStatus.PENDING) {
+      where.AND = [pendingShopWork];
+    } else if (query.status === OrderStatus.DELIVERED) {
+      where.status = { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] };
     } else if (query.status) {
       where.status = query.status;
     }
@@ -4371,7 +4386,13 @@ export class OrdersService {
       where.OR = searchCond.OR;
     }
 
-    const [total, orders] = await Promise.all([
+    // Metrics span all pages and status tabs, retaining store/customer/search scope.
+    const metricsWhere: Prisma.OrderWhereInput = {
+      ...(targetStoreId ? { storeId: targetStoreId } : {}),
+      ...(query.customerId ? { customerId: query.customerId } : {}),
+      ...(where.OR ? { OR: where.OR } : {}),
+    };
+    const [total, orders, metricsTotal, pending, shipping, delivered] = await Promise.all([
       this.prisma.order.count({ where }),
       this.prisma.order.findMany({
         where,
@@ -4436,9 +4457,14 @@ export class OrdersService {
           },
         },
       }),
+      this.prisma.order.count({ where: metricsWhere }),
+      this.prisma.order.count({ where: { AND: [metricsWhere, pendingShopWork] } }),
+      this.prisma.order.count({ where: { ...metricsWhere, status: OrderStatus.SHIPPING } }),
+      this.prisma.order.count({ where: { ...metricsWhere, status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] } } }),
     ]);
 
     const ordersResult = {
+      metrics: { total: metricsTotal, pending, shipping, delivered },
       items: orders.map((order) => {
         const raw = (order.rawPayload as Record<string, any>) || {};
         const currentReturn = order.returnRequests[0];
@@ -4792,7 +4818,7 @@ export class OrdersService {
    * Cập nhật trạng thái giao hàng & mã vận đơn bưu cục của Shop
    */
   async confirmOrder(orderId: string, userId: string, userRole: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const confirmation = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
       const order = await tx.order.findUnique({
         where: { id: orderId },
@@ -4844,6 +4870,14 @@ export class OrdersService {
       });
       return { success: true, shopConfirmedAt };
     });
+    // Clear list snapshots only after the transaction has committed, including
+    // idempotent confirmations, so the next read exposes the shipping action.
+    try {
+      await this.cacheService?.delPrefix('orders:store:');
+    } catch {
+      this.logger.warn('Đã xác nhận đơn; cache danh sách sẽ cập nhật khi hết hạn.');
+    }
+    return confirmation;
   }
 
   async updateOrderFulfillment(
@@ -4971,6 +5005,12 @@ export class OrdersService {
       );
       return current;
     });
+
+    try {
+      await this.cacheService?.delPrefix('orders:store:');
+    } catch {
+      this.logger.warn('Đã lưu vận đơn; chưa xóa được cache danh sách đơn.');
+    }
 
     return {
       success: true,

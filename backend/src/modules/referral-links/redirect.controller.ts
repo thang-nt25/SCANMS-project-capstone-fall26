@@ -1,3 +1,4 @@
+import { resolvePublicAppUrl } from '../../common/public-app-url';
 import {
   Controller,
   Get,
@@ -36,20 +37,7 @@ export class RedirectController {
   ) {}
 
   private getPublicAppUrl(): string {
-    const raw =
-      this.configService.get<string>('FRONTEND_URL') ||
-      this.configService.get<string>('PUBLIC_APP_URL') ||
-      'http://localhost:5173';
-
-    try {
-      const parsed = new URL(raw);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-        return parsed.origin;
-      }
-    } catch {
-      // ignore
-    }
-    return 'http://localhost:5173';
+    return resolvePublicAppUrl(this.configService.get<string>('PUBLIC_APP_URL'), this.configService.get<string>('FRONTEND_URL'));
   }
 
   private getJwtSecret(): string {
@@ -181,7 +169,7 @@ export class RedirectController {
         description: 'URL trang đích hợp lệ thuộc allowlist',
         schema: {
           type: 'string',
-          example: 'http://localhost:5173/products/prod-123',
+          example: 'https://scanms.io.vn/products/prod-123',
         },
       },
       'Set-Cookie': {

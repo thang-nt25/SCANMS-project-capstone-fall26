@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import { ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { returnService, type ReturnStatus } from '../../services/return.service';
 import { returnReasonLabel, returnStatusLabel } from '../../utils/return-status.utils';
+import { caseProducts } from '../../components/returns/ReturnCaseProducts';
+import { handleProductImageError } from '../../utils/image-fallback.utils';
 
 const filters: Array<{ label: string; status?: ReturnStatus }> = [
   { label: 'Tất cả' },
   { label: 'Chờ Shop', status: 'REQUESTED' },
-  { label: 'Đang xử lý', status: 'INSPECTING' },
+  { label: 'Đang kiểm tra', status: 'INSPECTING' },
   { label: 'Khiếu nại', status: 'DISPUTED' },
   { label: 'Chờ hoàn tiền', status: 'REFUND_PENDING' },
 ];
@@ -18,7 +20,7 @@ export default function ShopReturnsQueuePage() {
   const [status, setStatus] = useState<ReturnStatus | undefined>();
   const [page, setPage] = useState(1);
   const queue = useQuery({
-    queryKey: ['shop-return-queue', page, status],
+    queryKey: ['shop-returns', 'queue', page, status],
     queryFn: () => returnService.getShopQueue(page, status),
     refetchInterval: 30_000,
   });
@@ -26,31 +28,20 @@ export default function ShopReturnsQueuePage() {
   const total = queue.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 20));
 
-  return <main className="min-h-screen min-w-0 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6">
-    <div className="mx-auto max-w-6xl space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#B88E4F]">SCANMS · Đổi trả</p>
-          <h1 className="mt-1 text-2xl font-black">Hồ sơ đổi trả của Shop</h1>
-          <p className="mt-1 text-sm text-[#7D715E]">Theo dõi yêu cầu của khách và mở từng hồ sơ để xử lý, gửi bằng chứng hoặc xem kết luận Manager.</p>
-        </div>
-        <button type="button" onClick={() => void queue.refetch()} disabled={queue.isFetching}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm disabled:opacity-50">
-          <RefreshCw size={16} /> Làm mới
-        </button>
-      </header>
+  return <main className="shop-returns-queue" aria-label="Hồ sơ đổi trả của Shop">
+    <h1 className="sr-only">Hồ sơ đổi trả của Shop</h1>
+    <div className="shop-returns-content">
       {targetId && <Link to={`/merchant/returns/${encodeURIComponent(targetId)}`}
         className="block rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm font-semibold text-[#795A2D]">
         Mở hồ sơ từ thông báo →
       </Link>}
-      <nav aria-label="Lọc hồ sơ đổi trả" className="flex gap-2 overflow-x-auto pb-1">
+      <div className="shop-returns-toolbar"><nav aria-label="Lọc hồ sơ đổi trả" className="shop-returns-filters">
         {filters.map((item) => <button type="button" key={item.label}
           aria-pressed={status === item.status} onClick={() => { setStatus(item.status); setPage(1); }}
-          className={`min-h-11 shrink-0 rounded-xl border px-4 text-sm font-semibold ${status === item.status
-            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#795A2D]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>
+          >
           {item.label}
         </button>)}
-      </nav>
+      </nav></div>
       {queue.isLoading && <p role="status" className="rounded-2xl border border-[#EAE4D7] bg-white p-5 text-sm">Đang tải hồ sơ…</p>}
       {queue.error && <div role="alert" className="rounded-2xl border border-[#F4B7B7] bg-white p-5 text-sm text-[#DC2626]">
         Không tải được hồ sơ đổi trả. Kiểm tra kết nối rồi thử lại.
@@ -58,17 +49,26 @@ export default function ShopReturnsQueuePage() {
       </div>}
       {!queue.isLoading && !queue.error && queue.data?.items.length === 0 &&
         <p className="rounded-2xl border border-[#EAE4D7] bg-white p-5 text-sm text-[#7D715E]">Chưa có hồ sơ ở trạng thái này.</p>}
-      <div className="grid gap-3">
-        {queue.data?.items.map((item) => <Link key={item.id} to={`/merchant/returns/${item.id}`}
-          className="min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 text-[#1A1612] no-underline hover:border-[#C59B58] focus-visible:outline-2 focus-visible:outline-[#C59B58] sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <strong className="break-all">#{item.order.externalOrderSn}</strong>
-            <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-xs font-semibold text-[#795A2D]">{returnStatusLabel(item.status)}</span>
-          </div>
-          <p className="mt-2 text-sm">{item.items.map((line) => line.orderItem.product.title).join(', ') || 'Xem sản phẩm trong hồ sơ'}</p>
-          <p className="mt-2 text-xs text-[#7D715E]">{returnReasonLabel(item.reason)} · {new Date(item.submittedAt).toLocaleString('vi-VN')}</p>
-        </Link>)}
-      </div>
+      {!queue.isLoading && !queue.error && Boolean(queue.data?.items.length) && <section className="shop-returns-list" aria-label="Danh sách hồ sơ đổi trả">
+        <div className="shop-returns-columns" aria-hidden="true"><span>Đơn hàng / Sản phẩm</span><span>Yêu cầu</span><span>Trạng thái</span><span>Thao tác</span></div>
+        {queue.data?.items.map(item => {
+          const products = caseProducts(item);
+          const first = products[0];
+          const quantity = products.reduce((sum, product) => sum + product.quantity, 0);
+          const awaiting = item.status === 'REQUESTED';
+          return <article key={item.id} className="shop-returns-row" aria-label={`Hồ sơ ${item.order.externalOrderSn}`}>
+            <div className="shop-returns-order"><span className="shop-returns-image">{first?.imageUrl ? <img src={first.imageUrl} alt={first.title} onError={handleProductImageError} /> : <ImageIcon size={20} aria-label="Chưa có ảnh sản phẩm" />}</span><div>
+              <Link to={`/merchant/returns/${item.id}`} className="shop-returns-order-code">{item.order.externalOrderSn}</Link>
+              <p className="shop-returns-product" title={products.map(product => `${product.title} × ${product.quantity}`).join('; ')}>{first?.title || 'Sản phẩm trong hồ sơ'}{products.length > 1 ? ` +${products.length - 1}` : ''}<span>{quantity > 0 ? ` · SL: ${quantity}` : ''}</span></p>
+              {first?.variantName && <p className="shop-returns-variant">{first.variantName}</p>}
+              <time dateTime={item.submittedAt}>{new Date(item.submittedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</time>
+            </div></div>
+            <div className="shop-returns-request"><p>{returnReasonLabel(item.reason)}</p><span>{item.preferredResolution === 'EXCHANGE' ? 'Đổi sản phẩm' : item.preferredResolution === 'REFUND' ? 'Trả hàng / Hoàn tiền' : 'Chưa ghi nhận phương án'}</span></div>
+            <div className="shop-returns-status-cell"><span className="shop-returns-status" data-pending={awaiting}>{returnStatusLabel(item.status)}</span></div>
+            <div className="shop-returns-action-cell"><Link to={`/merchant/returns/${item.id}`} className={`shop-returns-open${awaiting ? ' shop-returns-open-primary' : ''}`}>{awaiting ? 'Xử lý yêu cầu' : 'Xem hồ sơ'}<ChevronRight size={14} aria-hidden="true" /></Link></div>
+          </article>;
+        })}
+      </section>}
       {!queue.error && total > 20 && <nav aria-label="Phân trang hồ sơ đổi trả" className="flex flex-wrap items-center justify-center gap-3">
         <button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 disabled:opacity-50">Trang trước</button>
         <span className="text-sm text-[#7D715E]">Trang {page}/{pages} · {total} hồ sơ</span>

@@ -10,15 +10,19 @@ import { StoreCollaboratorsController } from './store-collaborators.controller';
 import { StoreCollaboratorsService } from './store-collaborators.service';
 import { WalletsModule } from '../wallets/wallets.module';
 import { MonthlyBonusScheduler } from './monthly-bonus.scheduler';
+import { StoreMonthlyRewardsService } from './store-monthly-rewards.service';
+import { StoreMonthlyRewardsController } from './store-monthly-rewards.controller';
 
 @Module({
   imports: [PrismaModule, AuthModule, WalletsModule],
   controllers: [
+    StoreMonthlyRewardsController,
     CommissionRulesController,
     CollaboratorCommissionRulesController,
     StoreCollaboratorsController,
   ],
   providers: [
+    StoreMonthlyRewardsService,
     CommissionRulesService,
     MonthlyBonusScheduler,
     StoreCollaboratorsService,

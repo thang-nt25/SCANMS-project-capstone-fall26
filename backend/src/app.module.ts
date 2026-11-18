@@ -44,6 +44,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
 import { MobileModule } from './modules/mobile/mobile.module';
 
 import { validateEnv } from './core/config/env.validation';
+import { scheduleOptions } from './core/config/schedule.options';
 
 @Module({
   imports: [
@@ -51,7 +52,7 @@ import { validateEnv } from './core/config/env.validation';
       isGlobal: true,
       validate: validateEnv,
     }),
-    ScheduleModule.forRoot(),
+    ScheduleModule.forRoot(scheduleOptions()),
     CacheModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({

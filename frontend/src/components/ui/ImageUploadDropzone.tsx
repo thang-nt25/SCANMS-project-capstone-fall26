@@ -22,7 +22,7 @@ export interface ImageUploadDropzoneProps {
   iconType?: 'camera' | 'idcard' | 'file' | 'upload';
   required?: boolean;
   className?: string;
-  variant?: 'compact' | 'document';
+  variant?: 'compact' | 'document' | 'channel';
 }
 
 export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
@@ -38,6 +38,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const fileNames = useRef(new Map<string, string>());
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,6 +56,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
     try {
       // 1. Tải lên Cloudinary qua uploadService
       const secureUrl = await uploadService.uploadImage(file, folder);
+      fileNames.current.set(secureUrl, file.name);
       onChange(secureUrl);
       toast.success('Tải ảnh từ máy lên thành công!');
     } catch (err: any) {
@@ -63,6 +65,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
+        fileNames.current.set(dataUrl, file.name);
         onChange(dataUrl);
         toast.success('Đã tải ảnh lên thành công!');
       };
@@ -87,6 +90,20 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
         return <UploadCloud className="w-4 h-4 text-[#B88E4F]" />;
     }
   };
+
+  if (variant === 'channel') {
+    return <div className={`partner-channel-proof ${className}`}>
+      <label className="partner-channel-proof-label">{label}{required && <span> *</span>}</label>
+      <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileSelected} className="hidden" aria-label={label}/>
+      <div className="partner-channel-proof-control">
+        {value ? <button type="button" className="partner-channel-proof-preview" onClick={() => window.open(value, '_blank', 'noopener,noreferrer')} aria-label="Xem ảnh minh chứng"><img src={value} alt="Ảnh minh chứng quản trị kênh"/></button> : <span aria-hidden="true">{renderIcon()}</span>}
+        <div className="partner-channel-proof-file"><strong title={value ? fileNames.current.get(value) : undefined}>{uploading ? 'Đang tải ảnh…' : value ? fileNames.current.get(value) || 'Ảnh quản trị đã đính kèm' : 'Tải ảnh quản trị'}</strong>{value && <small>Đã đính kèm</small>}</div>
+        <button type="button" className="partner-channel-proof-pick" disabled={uploading} onClick={() => fileInputRef.current?.click()}>{uploading ? <Loader2 size={15} className="animate-spin"/> : value ? 'Thay ảnh' : 'Chọn ảnh'}</button>
+        {value && <button type="button" disabled={uploading} className="partner-channel-proof-remove" onClick={() => onChange('')} aria-label={`Xóa ${label}`}><Trash2 size={14}/></button>}
+      </div>
+      <p className="partner-channel-proof-hint">PNG, JPG, WEBP · Tối đa 5 MB</p>
+    </div>;
+  }
 
   if (variant === 'document') {
     return (

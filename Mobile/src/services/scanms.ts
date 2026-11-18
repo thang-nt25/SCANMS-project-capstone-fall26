@@ -37,24 +37,19 @@ export async function products(
     role === "CUSTOMER" || role === "COLLABORATOR"
       ? "/public/products"
       : "/products";
-  const data = z
+  const response = await api.request(
+    path + query({ page, limit: 20, search, storeId, category: filters?.category,
+      ...(path === "/public/products" ? { sortBy: filters?.sortBy } : {}) }),
+    { signal },
+  );
+  const parsed = z
     .object({ items: z.array(ProductSchema), pagination: PaginationSchema })
-    .parse(
-      await api.request(
-        path +
-          query({
-            page,
-            limit: 20,
-            search,
-            storeId,
-            category: filters?.category,
-            ...(path === "/public/products" ? { sortBy: filters?.sortBy } : {}),
-          }),
-        {
-          signal,
-        },
-      ),
-    );
+    .safeParse(response);
+  if (!parsed.success) {
+    if (__DEV__) console.warn("Product contract mismatch", parsed.error.issues.map(issue => `${issue.path.join(".")}: ${issue.code}`).join(", "));
+    throw parsed.error;
+  }
+  const data = parsed.data;
   return { items: data.items, ...data.pagination };
 }
 export async function productDetail(id: string, signal?: AbortSignal) {
@@ -193,6 +188,8 @@ export const dealState = async (id: string) =>
       id: z.string(),
       status: z.string(),
       initiatorRole: z.string(),
+      closedAt: z.string().nullish(),
+      exceptionNote: z.string().nullish(),
       shortUrl: z.string().nullish(),
       vipVoucherCode: z.string().nullish(),
       approvedCommissionRate: z.union([z.number(), z.string()]).nullish(),

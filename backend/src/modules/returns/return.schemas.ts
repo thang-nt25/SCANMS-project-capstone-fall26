@@ -107,6 +107,7 @@ export const shopQueueSchema = z
 export const returnHistoryQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(100000).default(1),
   query: z.string().trim().max(80).default(''),
+  storeId: z.string().uuid().optional(),
 }).strict();
 export type ReturnHistoryQuery = z.infer<typeof returnHistoryQuerySchema>;
 

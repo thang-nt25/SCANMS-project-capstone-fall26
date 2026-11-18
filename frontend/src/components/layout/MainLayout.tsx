@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { applyTheme } from '../../utils/theme.utils';
 import { SeedDataNotice } from '../common/SeedDataNotice';
+import { WorkspaceMobileNavigation } from './WorkspaceMobileNavigation';
 import { Menu, X } from 'lucide-react';
 
 export default function MainLayout() {
@@ -106,12 +107,12 @@ export default function MainLayout() {
       <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col">
         <div className="flex flex-col lg:flex-row gap-5 items-start flex-1 min-h-0">
           {/* Cột trái: Sidebar điều hướng các chức năng của từng vai trò */}
-          <div id="workspace-mobile-navigation" onClick={event => { if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false); }} className={`relative w-full lg:w-[250px] lg:shrink-0 lg:h-full lg:flex lg:flex-col ${mobileMenuOpen ? 'max-h-[70vh] overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white' : 'hidden'} lg:!max-h-none lg:!overflow-visible lg:!rounded-none lg:!border-0 lg:!bg-transparent after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
+          <div id="workspace-mobile-navigation" className={`${mobileMenuOpen ? 'block' : 'hidden'} relative w-full lg:w-[250px] lg:shrink-0 lg:h-full lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
             <Sidebar currentUser={currentUser} onLogout={handleLogout} />
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div ref={pageColumnRef} className={`workspace-page-column w-full flex-1 min-w-0 min-h-0 pt-4 sm:pt-5 pb-5 [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
+          <div ref={pageColumnRef} className={`workspace-page-column w-full flex-1 min-w-0 min-h-0 lg:px-3 pt-4 sm:pt-5 pb-5 [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
             <SeedDataNotice user={currentUser} />
             <Suspense
               fallback={
@@ -126,6 +127,7 @@ export default function MainLayout() {
           </div>
         </div>
       </main>
+      <WorkspaceMobileNavigation user={currentUser} />
     </div>
   );
 }

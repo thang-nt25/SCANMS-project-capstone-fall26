@@ -12,6 +12,8 @@ export const AddressSchema = z.object({
   wardName: z.string(),
   detailAddress: z.string(),
   isDefault: z.boolean(),
+  latitude: z.coerce.number().min(-90).max(90).nullish(),
+  longitude: z.coerce.number().min(-180).max(180).nullish(),
 });
 export type Address = z.infer<typeof AddressSchema>;
 export const AddressInput = AddressSchema.omit({ id: true }).extend({
@@ -21,7 +23,7 @@ export const AddressInput = AddressSchema.omit({ id: true }).extend({
   districtCode: required,
   wardCode: required,
   detailAddress: required.max(500),
-});
+}).refine(value => (value.latitude == null) === (value.longitude == null), { message: "Cần đủ vĩ độ và kinh độ.", path: ["latitude"] });
 export const CartItemSchema = z.object({
   cartItemId: z.string(),
   productId: z.string().uuid(),

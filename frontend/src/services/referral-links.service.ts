@@ -80,6 +80,7 @@ export interface ReferralLinkItem {
 
 export interface CreateReferralLinkPayload {
   productId: string;
+  exclusiveDealId?: string;
   campaignId?: string;
   label?: string;
   channel?: string;
@@ -130,6 +131,7 @@ export interface ExclusiveDealProposal {
 }
 
 export interface QueryReferralLinksParams {
+  remuneration?: string;
   page?: number;
   limit?: number;
   status?: string;
@@ -241,11 +243,12 @@ export const referralLinksService = {
     return res?.data || res || [];
   },
 
-  async getMyLinks(params?: QueryReferralLinksParams): Promise<{ data: ReferralLinkItem[]; meta: any }> {
-    const res: any = await api.get('/collaborator/referral-links', { params });
+  async getMyLinks(params?: QueryReferralLinksParams): Promise<{ data: ReferralLinkItem[]; meta: any; summary?: { totalClicks: number; uniqueClicks: number; totalOrders: number } }> {
+    const res: any = await api.get('/collaborator/referral-links', { params, headers: { 'x-skip-cache': 'true' } });
     const payload = res?.data || res;
     return {
       data: payload?.data || [],
+      summary: payload?.summary,
       meta: payload?.meta || { total: 0, page: 1, limit: 20, totalPages: 1 },
     };
   },

@@ -1,9 +1,13 @@
-import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsInt, IsIn, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ReferralLinkStatus, SocialPlatform } from '@prisma/client';
 
 export class QueryReferralLinksDto {
+  @ApiPropertyOptional({ enum: ['ALL', 'STANDARD', 'DEAL', 'CAMPAIGN'], description: 'Nguồn thù lao của liên kết' })
+  @IsOptional()
+  @IsIn(['ALL', 'STANDARD', 'DEAL', 'CAMPAIGN'])
+  remuneration?: 'ALL' | 'STANDARD' | 'DEAL' | 'CAMPAIGN';
   @ApiPropertyOptional({
     description: 'Trang hiện tại (mặc định 1)',
     default: 1,

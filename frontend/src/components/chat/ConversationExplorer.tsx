@@ -6,7 +6,6 @@ import {
   X,
   ExternalLink,
   Loader2,
-  RefreshCw,
 } from "lucide-react";
 import { DateTimePicker } from "@/components/common/DateTimePicker";
 import api from "@/services/api";
@@ -29,7 +28,7 @@ const defaults: Filters = {
   to: "",
 };
 const field =
-  "w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm text-[#1A1612] focus:outline-none focus:ring-2 focus:ring-[#C59B58]";
+  "h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] focus:outline-none focus:ring-1 focus:ring-[#C59B58]";
 
 /** Mounted per conversation: filters and pending responses cannot cross threads. */
 export function ConversationExplorer({
@@ -48,7 +47,6 @@ export function ConversationExplorer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [validationError, setValidationError] = useState("");
-  const [reload, setReload] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
   const request = useRef<AbortController | null>(null);
   const sequence = useRef(0);
@@ -149,7 +147,7 @@ export function ConversationExplorer({
     };
     // load depends only on the conversation and the explicitly applied filters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied, conversationId, reload, hasSearched]);
+  }, [applied, conversationId, hasSearched]);
 
   const update = (key: keyof Filters, value: string) => {
     setValidationError('');
@@ -181,7 +179,7 @@ export function ConversationExplorer({
         aria-modal="true"
         aria-label="Kho nội dung hội thoại"
         onClick={(e) => e.stopPropagation()}
-        className="relative flex min-h-0 w-full max-w-[720px] max-h-[calc(100dvh-48px)] flex-col overflow-hidden rounded-[24px] border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.2)]"
+        className="conversation-explorer relative flex min-h-0 h-[min(740px,85dvh)] w-full max-w-[760px] flex-col overflow-hidden rounded-[20px] border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.16)]"
       >
         <button
           type="button"
@@ -191,16 +189,16 @@ export function ConversationExplorer({
         >
           <X size={20} />
         </button>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <header className="flex items-center gap-3 border-b border-[#EAE4D7] bg-white p-5 pr-16 sm:p-6 sm:pr-20">
+        <header className="flex shrink-0 items-center gap-3 border-b border-[#EAE4D7] bg-white p-5 pr-16 sm:px-6 sm:pr-20">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><FileSearch className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">
             <h2 className="m-0 text-lg font-bold tracking-tight text-[#1A1612]">Kho nội dung hội thoại</h2>
             <p className="truncate text-sm text-[#7D715E]">{partnerName}</p>
           </div>
         </header>
+        <div className="min-h-0 flex-1 flex flex-col overflow-y-auto overscroll-contain sm:overflow-hidden">
         <form
-          className="space-y-4 p-5 sm:p-6"
+          className="shrink-0 space-y-3 bg-[#FAF8F5]/50 p-5 sm:px-6"
           onSubmit={(event) => {
             event.preventDefault();
             if (draft.from && draft.to && draft.from > draft.to) {
@@ -212,18 +210,19 @@ export function ConversationExplorer({
             setHasSearched(true);
           }}
         >
-          <label className="block text-xs text-[#7D715E]">
-            Tìm nội dung hoặc tên tệp
+          <label className="relative block">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
             <input
               ref={input}
-              className={`${field} mt-1`}
+              aria-label="Tìm nội dung hoặc tên tệp"
+              className={`${field} pl-10`}
               value={draft.q}
               maxLength={200}
               onChange={(e) => update("q", e.target.value)}
-              placeholder="Ví dụ: kịch bản, báo giá, review..."
+              placeholder="Tìm nội dung, tên tệp…"
             />
           </label>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <label className="text-xs text-[#7D715E]">
               Loại nội dung
               <select
@@ -253,6 +252,7 @@ export function ConversationExplorer({
               Từ ngày
               <DateTimePicker
                 mode="date"
+                smallCalendar
                 compact
                 className="mt-1"
                 placeholder="Chọn ngày"
@@ -266,6 +266,7 @@ export function ConversationExplorer({
               Đến ngày
               <DateTimePicker
                 mode="date"
+                smallCalendar
                 compact
                 className="mt-1"
                 placeholder="Chọn ngày"
@@ -277,8 +278,8 @@ export function ConversationExplorer({
               />
             </label>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-4 py-2 text-sm font-semibold text-[#231D15] hover:bg-[#B88E4F]">
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-sm font-semibold text-[#855F2D] hover:bg-[#F3EFE6]">
               <Search size={16} />
               Tìm kiếm
             </button>
@@ -286,23 +287,15 @@ export function ConversationExplorer({
               type="button"
               onClick={clearFilters}
               aria-label="Đặt lại điều kiện lọc; nội dung hội thoại sẽ không bị xóa"
-              className="cursor-pointer rounded-xl px-3 py-2 text-sm text-[#7D715E] transition-colors hover:bg-[#F3EFE6] hover:text-[#1A1612]"
+              className="h-11 cursor-pointer rounded-xl border border-[#EAE4D7] bg-white px-2 text-sm text-[#7D715E] transition-colors hover:bg-[#F3EFE6] hover:text-[#1A1612]"
             >
-              Đặt lại bộ lọc
-            </button>
-            <button
-              type="button"
-              onClick={() => setReload((n) => n + 1)}
-              aria-label="Làm mới kết quả"
-              disabled={!hasSearched}
-              className="ml-auto rounded-xl p-2 hover:bg-[#F3EFE6] disabled:opacity-40"
-            >
-              <RefreshCw size={16} />
+              Đặt lại
             </button>
           </div>
           {validationError && <p role="alert" className="text-sm text-[#DC2626]">{validationError}</p>}
         </form>
-        {hasSearched && <div className="border-t border-[#EAE4D7] p-5 sm:p-6" aria-busy={busy}>
+        {!hasSearched && <div className="flex min-h-[100px] flex-1 flex-col items-center justify-center gap-2 border-t border-[#EAE4D7] p-5 text-center text-sm text-[#7D715E]"><FileSearch size={28} className="text-[#B88E4F]" /><p>Tìm tin nhắn, hình ảnh và tài liệu đã chia sẻ.</p></div>}
+        {hasSearched && <div className="min-h-[120px] flex-1 overflow-y-auto overscroll-contain border-t border-[#EAE4D7] p-5 sm:px-6" aria-busy={busy}>
           <p className="mb-3 text-xs text-[#7D715E]" aria-live="polite">
             {busy ? "Đang tìm kiếm…" : `${items.length} kết quả${nextCursor ? ' đã tải' : ''}`}
             {nextCursor ? " · Còn kết quả phía sau" : ""}

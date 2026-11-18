@@ -1,17 +1,13 @@
 import { Navigate } from 'react-router-dom';
-import { ShieldAlert, ShieldCheck, Activity } from 'lucide-react';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
-import { PageHeader } from '../../components/ui/PageHeader';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import AiFraudSentinelPage from './AiFraudSentinelPage';
 import { AuditLogsPage } from './AuditLogsPage';
-import InternalTrafficTestPage from './InternalTrafficTestPage';
 
-const SECURITY_AUDIT_TABS = ['fraud', 'audit', 'sandbox'] as const;
+const SECURITY_AUDIT_TABS = ['fraud', 'audit'] as const;
 type SecurityAuditTab = (typeof SECURITY_AUDIT_TABS)[number];
-
-const internalTestToolsEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_TOOLS === 'true';
 
 export default function AdminSecurityAuditHubPage() {
   const { activeTab, setActiveTab, visitedTabs } = useControlledTab<SecurityAuditTab>({
@@ -44,28 +40,17 @@ export default function AdminSecurityAuditHubPage() {
       label: 'Sổ cái kiểm toán',
       icon: ShieldCheck,
     },
-    ...(internalTestToolsEnabled
-      ? [
-          {
-            id: 'sandbox',
-            label: 'Mô phỏng thử tải',
-            icon: Activity,
-          },
-        ]
-      : []),
   ];
 
   return (
     <div className="w-full min-w-0 flex flex-col gap-3 text-[#1A1612]" id="admin-security-audit-hub">
-      <PageHeader
-        title="An ninh & Kiểm toán"
-        icon={<ShieldCheck className="w-5 h-5 text-[#B88E4F]" />}
-      />
-
       <HubTabs
         tabs={tabs}
         activeTab={activeTab}
         onChange={(tabId) => setActiveTab(tabId as SecurityAuditTab)}
+        stretchTabs
+        tone="white"
+        className="mb-0"
       />
 
       <div className="w-full min-w-0">
@@ -75,11 +60,6 @@ export default function AdminSecurityAuditHubPage() {
         <div style={{ display: activeTab === 'audit' ? 'block' : 'none' }}>
           {visitedTabs['audit'] && <AuditLogsPage />}
         </div>
-        {internalTestToolsEnabled && (
-          <div style={{ display: activeTab === 'sandbox' ? 'block' : 'none' }}>
-            {visitedTabs['sandbox'] && <InternalTrafficTestPage />}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { KolCouponsScreen } from "./KolCouponsScreen";
 import { useState } from "react";
 import { Text } from "react-native";
 import * as Clipboard from "expo-clipboard";
@@ -93,7 +94,8 @@ function termFields(item: Coupon): FormField[] {
   return fields;
 }
 
-export function CouponsScreen() {
+export function CouponsScreen({ onScrollOffset }: { onScrollOffset?: (offset: number) => void } = {}) { const { user } = useActor(); return user.role === "COLLABORATOR" ? <KolCouponsScreen onScrollOffset={onScrollOffset} /> : <CouponManagementScreen />; }
+function CouponManagementScreen() {
   const { user, store, reviewer } = useActor();
   const customer = user.role === "CUSTOMER",
     koc = user.role === "COLLABORATOR";

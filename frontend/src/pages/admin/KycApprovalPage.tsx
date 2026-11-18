@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { handleAvatarImageError } from '@/utils/image-fallback.utils';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Download,
@@ -55,6 +57,11 @@ function normalizeVietnameseName(str: string): string {
 }
 
 export default function KycApprovalPage() {
+  const [searchParams] = useSearchParams();
+  const requestedUser = searchParams.get('userId');
+  const requestedSection = searchParams.get('section');
+  const requestedFocus = searchParams.get('focus');
+  const openedTarget = useRef('');
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'UNVERIFIED' | 'VERIFIED' | 'REJECTED'>('UNVERIFIED');
@@ -272,6 +279,20 @@ export default function KycApprovalPage() {
   const verifiedCount = displayKols.filter((u: any) => u.kycStatus === 'VERIFIED').length;
   const rejectedCount = displayKols.filter((u: any) => u.kycStatus === 'REJECTED').length;
   const totalCount = displayKols.length;
+  useEffect(() => {
+    const targetKey = `${requestedUser}:${requestedSection}`;
+    if (!requestedUser || !applicationsData || openedTarget.current === targetKey) return;
+    const target = displayKols.find((profile: any) => profile.userId === requestedUser);
+    if (!target) return;
+    openedTarget.current = targetKey;
+    setFilterStatus('ALL');
+    setInspectProfile(target);
+  }, [applicationsData, requestedUser, requestedSection]);
+  useEffect(() => {
+    if (!inspectProfile || !requestedSection) return;
+    const frame = requestAnimationFrame(() => document.getElementById(requestedFocus === 'tax' ? 'kyc-review-tax' : `kyc-review-${requestedSection}`)?.scrollIntoView({ block: 'center' }));
+    return () => cancelAnimationFrame(frame);
+  }, [inspectProfile, requestedSection, requestedFocus]);
 
   const handleExportCsv = () => {
     if (!displayKols || displayKols.length === 0) {
@@ -365,36 +386,7 @@ export default function KycApprovalPage() {
         </div>
       )}
 
-      {/* Header Chuẩn Mực */}
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 sm:px-6 shadow-[0_1px_2px_rgba(35,29,21,0.02)]">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid place-items-center shrink-0 w-10 h-10 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <h1 className="m-0 text-base font-bold tracking-tight text-[#1A1612]">Duyệt hồ sơ đối tác</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#7D715E] transition hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#8F682E] cursor-pointer"
-          >
-            <Download className="h-4 w-4 text-[#B88E4F]" />
-            <span>Xuất báo cáo</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => loadApplications()}
-            disabled={loading}
-            className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-        </div>
-      </header>
-
-      {/* 4 Thẻ Thống Kê */}
+      {/* 4 Thẻ Thống Kê Theo Quy Trình Vận Hành */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
@@ -462,7 +454,8 @@ export default function KycApprovalPage() {
       </div>
 
       {/* Bộ Lọc Tìm Kiếm & Trạng Thái */}
-      <Card className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_240px_auto] items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3.5 shadow-none">
+      <Card className="grid grid-cols-1 items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3.5 shadow-none sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_300px]">
+        <div className="min-w-0 sm:col-span-2 xl:col-span-1">
         <Input
           aria-label="Tìm hồ sơ đối tác"
           placeholder="Tìm theo tên đối tác, email, SĐT, số CCCD hoặc tên kênh..."
@@ -473,6 +466,7 @@ export default function KycApprovalPage() {
           icon={<Search className="h-4 w-4 text-[#7D715E]" />}
           className="border-[#EAE4D7] bg-white focus-within:border-[#C59B58] focus-within:ring-[#C59B58]/15"
         />
+        </div>
 
         <Select
           aria-label="Lọc trạng thái thẩm định"
@@ -487,9 +481,25 @@ export default function KycApprovalPage() {
             { value: 'REJECTED', label: 'Cần bổ sung / Từ chối' },
           ]}
         />
-        <span className="whitespace-nowrap text-xs text-[#7D715E] font-medium" aria-live="polite">
-          Hiển thị <strong className="text-[#1A1612]">{filteredKols.length}</strong> / {displayKols.length} hồ sơ
-        </span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] cursor-pointer"
+          >
+            <Download className="h-4 w-4 shrink-0" />
+            <span>Xuất báo cáo</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => loadApplications()}
+            disabled={loading}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </button>
+        </div>
       </Card>
 
       {/* Bảng Danh Sách Hồ Sơ Đối Tác */}
@@ -567,7 +577,7 @@ export default function KycApprovalPage() {
                           className={`h-9 w-9 shrink-0 overflow-hidden rounded-xl flex items-center justify-center font-bold text-xs ${u.avatarBg}`}
                         >
                           {u.avatarUrl ? (
-                            <img src={u.avatarUrl} alt={u.fullName} className="h-full w-full object-cover" />
+                            <img src={u.avatarUrl} onError={handleAvatarImageError} alt={u.fullName} className="h-full w-full object-cover" />
                           ) : (
                             u.avatar
                           )}
@@ -712,7 +722,7 @@ export default function KycApprovalPage() {
               <div className="flex items-center gap-3 min-w-0">
                 <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] font-bold text-sm text-[#8F682E]">
                   {inspectProfile.avatarUrl ? (
-                    <img src={inspectProfile.avatarUrl} alt={inspectProfile.fullName} className="h-full w-full object-cover" />
+                    <img src={inspectProfile.avatarUrl} onError={handleAvatarImageError} alt={inspectProfile.fullName} className="h-full w-full object-cover" />
                   ) : (
                     inspectProfile.avatar
                   )}
@@ -770,7 +780,7 @@ export default function KycApprovalPage() {
             {/* 3 KHỐI THẨM ĐỊNH CÂN ĐỐI */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
               {/* KHỐI 1: ĐỊNH DANH CÁ NHÂN */}
-              <div className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
+              <div id="kyc-review-identity" className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#FAF8F5]">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
@@ -800,7 +810,7 @@ export default function KycApprovalPage() {
                     </button>
                   </div>
 
-                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
+                  <div id="kyc-review-tax" className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
                     <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Mã số thuế</span>
                     <strong className={`font-mono text-xs block truncate ${inspectProfile.taxCode ? 'text-[#1A1612] font-bold' : 'text-[#7D715E] font-normal'}`}>
                       {inspectProfile.taxCode || 'Chưa cập nhật'}
@@ -928,7 +938,7 @@ export default function KycApprovalPage() {
               </div>
 
               {/* KHỐI 3: TÀI KHOẢN NGÂN HÀNG */}
-              <div className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
+              <div id="kyc-review-bank" className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#FAF8F5]">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
