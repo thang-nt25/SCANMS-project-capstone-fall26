@@ -654,6 +654,42 @@ export class AdminCouponsController {
     return this.service.getAdminCoupons(query);
   }
 
+  @Patch(':id/approve-exception')
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ summary: 'System Admin phê duyệt hoặc từ chối Voucher KOL vượt ngưỡng 10% (tối đa 20%)' })
+  approveExceptionCoupon(
+    @Param('id') id: string,
+    @CurrentUser('id') adminId: string,
+    @Body() body: { approve: boolean; reason?: string },
+  ) {
+    return this.service.adminApproveExceptionCoupon(
+      id,
+      adminId,
+      Boolean(body?.approve),
+      body?.reason,
+    );
+  }
+
+  @Patch(':id/review-block')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({
+    summary: 'System Manager / Admin xét duyệt yêu cầu ngừng mã KOC từ Shop',
+  })
+  async reviewBlockRequest(
+    @Param('id') id: string,
+    @CurrentUser('id') reviewerId: string,
+    @Body() body: { approve: boolean; reason?: string },
+    @Ip() ipAddress: string,
+  ) {
+    return this.service.adminReviewBlockRequest(
+      id,
+      reviewerId,
+      Boolean(body?.approve),
+      body?.reason,
+      ipAddress,
+    );
+  }
+
   @Patch(':id/block')
   @ApiOperation({
     summary: 'Admin khóa coupon gian lận hoặc vi phạm quy định (Section 4.3)',

@@ -3,8 +3,10 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { CreateConversationDto } from './dto/send-message.dto';
 import {
@@ -16,7 +18,6 @@ import { CouponStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { chatNotificationPreview } from './chat-notification';
 import { buildExplorerWhere, ChatExplorerQuery } from './chat-explorer.query';
-import { liveVoucherActive } from '../coupons/voucher-pricing';
 import { chatReplySelect, chatMessageSelect } from './chat-reply';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { validateChatReaction, type ChatReactionSummary } from './chat-reactions';
@@ -66,6 +67,7 @@ export class ChatService {
   constructor(
     private prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async getSocketUser(userId: string) {
@@ -301,6 +303,9 @@ export class ChatService {
   }
 
   async getConversationsByUser(userId: string) {
+    const cacheKey = `chat:conversations:${userId}`;
+    const cached = await this.cacheService?.get<any[]>(cacheKey);
+    if (cached) return cached;
     // Lấy danh sách hội thoại mà user tham gia (là shop owner hoặc collaborator)
     const requester = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -408,11 +413,14 @@ export class ChatService {
       ...conversation,
       messageCount: totals.get(conversation.id) || 0,
     }));
-    if (!isCustomer) return conversationsWithTotals;
+    if (!isCustomer) {
+      await this.cacheService?.set(cacheKey, conversationsWithTotals, 20);
+      return conversationsWithTotals;
+    }
 
     // Protect against legacy/malformed customer conversations that contain a
     // private deal card, including the conversation-list preview payload.
-    return conversationsWithTotals.map((conversation) => ({
+    const sanitized = conversationsWithTotals.map((conversation) => ({
       ...conversation,
       chatMessages: conversation.chatMessages.map((message) =>
         isExclusiveDealMessage(message.messageText)
@@ -420,6 +428,8 @@ export class ChatService {
           : message,
       ),
     }));
+    await this.cacheService?.set(cacheKey, sanitized, 20);
+    return sanitized;
   }
 
   async getConversationById(conversationId: string, userId: string) {
@@ -617,7 +627,6 @@ export class ChatService {
           budgetTotal: true,
           budgetUsed: true,
           campaign: { select: { isActive: true, startDate: true, endDate: true } },
-          liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } },
           minimumOrderAmount: true,
           maximumDiscountAmount: true,
           usageLimitTotal: true,
@@ -643,7 +652,6 @@ export class ChatService {
         (coupon.usageLimitTotal !== null &&
           coupon.usageCount >= coupon.usageLimitTotal) ||
         (coupon.budgetTotal != null && Number(coupon.budgetUsed) >= Number(coupon.budgetTotal)) ||
-        !liveVoucherActive(coupon.liveSession, now) ||
         (coupon.scopeType === 'CAMPAIGN' && (!coupon.campaign?.isActive || coupon.campaign.startDate > now || coupon.campaign.endDate <= now))
       ) {
         throw new BadRequestException('Mã giảm giá đã hết hạn hoặc hết lượt.');
@@ -1010,6 +1018,7 @@ export class ChatService {
           },
         }),
       ]);
+      await this.cacheService?.delPrefix?.('chat:conversations:');
     } catch (error: any) {
       if (messageId && error?.code === 'P2002') {
         const existing = await this.prisma.chatMessage.findUnique({
