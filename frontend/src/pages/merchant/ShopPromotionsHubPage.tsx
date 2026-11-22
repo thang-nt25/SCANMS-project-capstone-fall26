@@ -1,5 +1,5 @@
 import { BadgePercent, Users } from 'lucide-react';
-import type { HubTabItem } from '../../components/common/HubTabs';
+import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import { ShopPricePromotionsTab } from '../../components/promotions/ShopPricePromotionsTab';
 import { ShopCreatorIncentivesTab } from '../../components/promotions/ShopCreatorIncentivesTab';
@@ -28,12 +28,14 @@ export default function ShopPromotionsHubPage() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 pb-6 text-[#1A1612]" id="shop-promotions-hub">
-      <nav className="promotion-primary-nav" aria-label="Nhóm quản lý ưu đãi">
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          return <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id as PromotionHubTab)}><Icon size={17}/><span>{tab.label}</span></button>;
-        })}
-      </nav>
+      <HubTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={tabId => setActiveTab(tabId as PromotionHubTab)}
+        stretchTabs
+        tone="white"
+        className="mb-1"
+      />
 
       <div className="w-full min-w-0">
         {visitedTabs['price-promotions'] && (
