@@ -115,30 +115,32 @@ export class StoresService {
       },
     });
     if (!store) throw new NotFoundException('Không tìm thấy Shop');
-    const categories = await this.prisma.product.findMany({
-      where: {
-        storeId: store.id,
-        isDeleted: false,
-        isActive: true,
-        moderationStatus: 'APPROVED',
-      },
-      distinct: ['categoryName'],
-      select: { categoryName: true },
-      orderBy: { categoryName: 'asc' },
-    });
-    const reviewsAggregate = await this.prisma.productReview.aggregate({
-      where: {
-        isApproved: true,
-        product: { storeId: store.id },
-      },
-      _avg: { rating: true },
-      _count: { rating: true },
-    });
+    const [categories, reviewsAggregate, responseRows] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          storeId: store.id,
+          isDeleted: false,
+          isActive: true,
+          moderationStatus: 'APPROVED',
+        },
+        distinct: ['categoryName'],
+        select: { categoryName: true },
+        orderBy: { categoryName: 'asc' },
+      }),
+      this.prisma.productReview.aggregate({
+        where: {
+          isApproved: true,
+          product: { storeId: store.id },
+        },
+        _avg: { rating: true },
+        _count: { rating: true },
+      }),
+      this.prisma.$queryRaw<ShopResponseRow[]>(shopResponseQuery(store.id)),
+    ]);
     const reviewCount = reviewsAggregate._count.rating || 0;
     const rating = reviewCount && reviewsAggregate._avg.rating != null
       ? Math.round(reviewsAggregate._avg.rating * 10) / 10
       : null;
-    const responseRows = await this.prisma.$queryRaw<ShopResponseRow[]>(shopResponseQuery(store.id));
     const { onboardingData, returnWarehouse, _count, ...publicStore } = store;
 
     const result = {
@@ -217,43 +219,15 @@ export class StoresService {
       },
     });
 
-    // Nếu chưa có store (chủ shop vừa đăng ký), tự tạo mới
     if (!store) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: ownerId },
-      });
-      const storeName = user ? `${user.fullName} Store` : 'Cửa Hàng Chính Hãng';
-      const slug =
-        storeName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '') +
-        '-' +
-        Date.now().toString().slice(-4);
-
-      store = await this.prisma.store.create({
-        data: {
-          ownerId,
-          name: storeName,
-          slug,
-          defaultCommissionRate: 10.0,
-          attributionWindowDays: 30,
-        },
-        include: {
-          _count: {
-            select: {
-              products: { where: { isDeleted: false } },
-              orders: true,
-              campaigns: true,
-            },
-          },
-          owner: {
-            select: { fullName: true, email: true, phoneNumber: true },
-          },
-        },
-      });
+      throw new NotFoundException(
+        'Tài khoản chưa được phân công quản lý cửa hàng nội bộ. Vui lòng liên hệ System Admin.',
+      );
     }
 
+    if (this.cache?.set) {
+      await this.cache.set(cacheKey, store, 60);
+    }
     return store;
   }
 

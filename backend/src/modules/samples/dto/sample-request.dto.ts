@@ -153,6 +153,27 @@ export class ReportSampleDeliveryIssueDto {
   reason: string;
 }
 
+export class ReviewSampleVideoDto {
+  @ApiProperty({ description: 'true = Nghiệm thu đạt, false = Yêu cầu chỉnh sửa' })
+  @IsBoolean()
+  approve: boolean;
+
+  @ApiPropertyOptional({ description: 'Lý do yêu cầu chỉnh sửa (bắt buộc >= 15 ký tự nếu từ chối)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  rejectionReason?: string;
+}
+
+export class AppealSampleRevisionDto {
+  @ApiProperty({ description: 'Giải trình của KOL yêu cầu System Manager trọng tài' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(15)
+  @MaxLength(1000)
+  reason: string;
+}
+
 export class ShipSampleRequestDto {
   @ApiProperty({
     description: 'Mã vận đơn GHTK / GHN',
@@ -181,6 +202,9 @@ export class AdminResolveSampleRequestDto {
       'RESOLVE_DELIVERY_ISSUE',
       'BLOCK_SAMPLE_REQUESTS',
       'DISMISS_REPORT',
+      'FORCE_COMPLETE',
+      'UPHOLD_REVISION',
+      'CONFIRM_VIOLATION',
     ],
   })
   @IsIn([
@@ -189,13 +213,19 @@ export class AdminResolveSampleRequestDto {
     'RESOLVE_DELIVERY_ISSUE',
     'BLOCK_SAMPLE_REQUESTS',
     'DISMISS_REPORT',
+    'FORCE_COMPLETE',
+    'UPHOLD_REVISION',
+    'CONFIRM_VIOLATION',
   ])
   action:
     | 'EXTEND_DEADLINE'
     | 'CANCEL_OBLIGATION'
     | 'RESOLVE_DELIVERY_ISSUE'
     | 'BLOCK_SAMPLE_REQUESTS'
-    | 'DISMISS_REPORT';
+    | 'DISMISS_REPORT'
+    | 'FORCE_COMPLETE'
+    | 'UPHOLD_REVISION'
+    | 'CONFIRM_VIOLATION';
 
   @ApiProperty({ description: 'Lý do và căn cứ xử lý của quản trị viên' })
   @IsString()
