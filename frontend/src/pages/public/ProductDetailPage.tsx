@@ -2228,7 +2228,14 @@ export default function ProductDetailPage() {
 
               {/* Nội dung mô tả */}
               <div className="text-xs sm:text-[13px] leading-relaxed text-[#1A1612] whitespace-pre-line bg-[#FAF8F5] p-4 rounded-xl border border-[#EAE4D7]">
-                {product.description || 'Chưa có mô tả chi tiết cho sản phẩm này.'}
+                {product.description
+                  ? product.description
+                      .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+                      .replace(/<br\s*\/?>/gi, '\n')
+                      .replace(/<[^>]+>/g, '')
+                      .replace(/\n{3,}/g, '\n\n')
+                      .trim()
+                  : 'Chưa có mô tả chi tiết cho sản phẩm này.'}
               </div>
 
               {/* Cam kết thương hiệu SCANMS */}

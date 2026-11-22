@@ -45,16 +45,13 @@ export function CustomerWishlistTab({ items, loading, onRemove }: CustomerWishli
       {loading ? <div className="customer-wishlist-empty" role="status"><Loader2 size={24} className="animate-spin"/><p>Đang tải sản phẩm đã lưu…</p></div>
         : !visible.length ? <div className="customer-wishlist-empty">{items.length ? <Search size={25}/> : <Heart size={25}/>}<h3>{items.length ? 'Không tìm thấy sản phẩm' : 'Chưa có sản phẩm đã lưu'}</h3>{items.length ? <button type="button" onClick={() => changeQuery('')}>Xem tất cả sản phẩm</button> : <Link to="/marketplace">Khám phá sản phẩm <ArrowRight size={14}/></Link>}</div>
         : visible.map(({ wishlistId, product }) => {
-          const price = Number(product.price);
-          const original = Number(product.originalPrice);
-          const discount = original > price ? Math.round((1 - price / original) * 100) : 0;
           const unavailable = !product.isActive || product.stockQuantity <= 0;
           const busy = removing.includes(product.id);
           const productUrl = `/products/${product.sku || product.id}`;
           return <article key={wishlistId} className="customer-wishlist-row">
             <Link to={productUrl} className="customer-wishlist-photo" aria-label={`Xem ${product.title}`}><img src={getSafeProductImageUrl(product.imageUrl, product.title)} alt={product.title} loading="lazy" onError={handleProductImageError}/></Link>
             <div className="customer-wishlist-info"><Link className="customer-wishlist-product" to={productUrl} title={product.title}>{product.title}</Link><Link className="customer-wishlist-store" to={product.store?.id ? `/shops/${product.store.id}` : '/marketplace'}><Store size={13}/><span>{product.store?.name || 'Cửa hàng'}</span></Link>{unavailable && <span className="customer-wishlist-availability">{product.isActive ? 'Tạm hết hàng' : 'Ngừng bán'}</span>}</div>
-            <div className="customer-wishlist-price"><strong>{formatMoney(product.price)}</strong>{discount > 0 && <div><del>{formatMoney(product.originalPrice!)}</del><span>−{discount}%</span></div>}</div>
+            <div className="customer-wishlist-price"><strong>{formatMoney(product.price)}</strong></div>
             <div className="customer-wishlist-actions"><Link to={productUrl}>Xem sản phẩm <ArrowRight size={14}/></Link><button type="button" disabled={busy} onClick={() => void removeItem(product.id)} aria-label={`Bỏ lưu ${product.title}`} title="Bỏ lưu">{busy ? <Loader2 size={16} className="animate-spin"/> : <Heart size={16} fill="currentColor"/>}</button></div>
           </article>;
         })}

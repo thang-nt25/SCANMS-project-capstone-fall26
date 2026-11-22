@@ -128,8 +128,12 @@ export function CreateExclusiveDealModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedProductIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một sản phẩm áp dụng thỏa thuận.');
+    const unlockedSelectedIds = selectedProductIds.filter((id) => {
+      const p = products.find((item) => item.id === id);
+      return p && !p.activeDeal?.isLocked;
+    });
+    if (unlockedSelectedIds.length === 0) {
+      setError('Vui lòng chọn ít nhất một sản phẩm chưa bị khóa Deal.');
       return;
     }
     const numRate = Number(commissionRate) || 0;

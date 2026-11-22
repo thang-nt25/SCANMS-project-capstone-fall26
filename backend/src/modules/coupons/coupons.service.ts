@@ -3033,14 +3033,8 @@ export class CouponsService {
       });
     }
 
-    // 6.5. Kiểm tra chính sách cộng dồn (Issue 6)
-    const hasDirectDiscount = storeItems.some((item) => {
-      const product = dbProductMap.get(item.productId)!;
-      const price = item.variantId
-        ? (dbVariantMap.get(item.variantId)?.price ?? product.price)
-        : product.price;
-      return Number(product.originalPrice || 0) > Number(price);
-    });
+    // 6.5. Kiểm tra chính sách cộng dồn (chỉ còn price & floorPrice; không còn giá gạch ngang originalPrice)
+    const hasDirectDiscount = false;
     const isKolCoupon = coupon.collaborator?.role === UserRole.COLLABORATOR;
     if (
       (dto.hasProductDiscount || hasDirectDiscount) &&

@@ -1353,7 +1353,7 @@ export class ProductsService {
           price: dto.price,
           listPrice: dto.price,
           floorPrice: dto.floorPrice ?? (preparedVariants[0]?.floorPrice ?? null),
-          originalPrice: dto.originalPrice || null,
+          originalPrice: null,
           customCommissionRate: 10,
           stockQuantity: preparedVariants.length
             ? preparedVariants.reduce(
@@ -1667,9 +1667,7 @@ export class ProductsService {
         }),
         ...(dto.price !== undefined && { price: dto.price, ...(Number(dto.price) !== Number(product.price) ? { listPrice: dto.price } : {}) }),
         ...(dto.floorPrice !== undefined && { floorPrice: dto.floorPrice }),
-        ...(dto.originalPrice !== undefined && {
-          originalPrice: dto.originalPrice,
-        }),
+        originalPrice: null,
         customCommissionRate: 10,
         ...(dto.stockQuantity !== undefined && {
           stockQuantity: dto.stockQuantity,

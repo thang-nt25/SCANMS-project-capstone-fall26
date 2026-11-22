@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { Link } from 'react-router-dom';
 import {
   Copy,
   ExternalLink,
-  Package,
   Search,
   Truck,
   Video,
@@ -222,17 +223,13 @@ export default function SampleRequestsPage({ embedded = false, onSubmitVideo }: 
                 className={`samples-page-card rounded-2xl border bg-white p-5 ${needsAttention ? 'border-[#C59B58]' : 'border-[#EAE4D7]'}`}
               >
                 <div className="samples-page-product flex items-start gap-3">
-                  {item.product.imageUrl ? (
-                    <img
-                      src={item.product.imageUrl}
-                      alt=""
-                      loading="lazy"
-                      className="h-16 w-16 rounded-xl bg-white object-contain"
-                      onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/assets/product-placeholder.svg'; }}
-                    />
-                  ) : (
-                    <Package className="h-16 w-16 rounded-xl bg-[#F3EFE6] p-4 text-[#B88E4F]" />
-                  )}
+                  <img
+                    src={getSafeProductImageUrl(item.product.imageUrl)}
+                    alt={item.product.title}
+                    loading="lazy"
+                    className="h-16 w-16 shrink-0 rounded-xl border border-[#EAE4D7] bg-white object-cover"
+                    onError={handleProductImageError}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="m-0 text-[11px] text-[#7D715E]">
                       {item.product.store.name}
