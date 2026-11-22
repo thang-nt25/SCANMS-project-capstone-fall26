@@ -307,7 +307,7 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
     <button onClick={() => navigate('/login')} className={`${primary} mt-3`}>Đăng nhập</button></div>;
 
   return <div className={mode === 'customer' ? 'customer-return-layout customer-portal-layout min-h-dvh bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans' : ''}>
-    {mode === 'customer' && <div className="sticky top-0 isolate shrink-0 bg-[#FAF8F5] z-40"><MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} /></div>}
+    {mode === 'customer' && <div className="sticky top-0 isolate shrink-0 bg-[#FAF8F5] z-40"><MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} /></div>}
     <main className={mode === 'customer' ? 'w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col' : mode === 'shop' ? 'shop-return-workspace min-h-screen bg-[#FAF8F5] text-[#1A1612]' : 'min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6'}>
       <div className={mode === 'customer' ? 'flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0' : ''}>
       {mode === 'customer' && <aside className="relative hidden w-full lg:w-[265px] lg:shrink-0 lg:sticky lg:top-[155px] lg:flex lg:flex-col after:pointer-events-none after:absolute after:top-7 after:bottom-5 after:-right-3 after:w-px after:bg-[#EAE4D7]"><Sidebar currentUser={user} className="px-0 lg:max-h-[calc(100dvh-165px)] lg:overflow-y-auto no-scrollbar" onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}

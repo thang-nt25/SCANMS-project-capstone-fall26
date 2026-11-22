@@ -7,8 +7,10 @@ import { productService, type Product } from '../../services/product.service';
 import { toast } from '../../utils/toast';
 import { authService } from '../../services/auth.service';
 import { isOwnProductSubmission } from '../../utils/product-moderation.policy';
+import { calculateMinSafePrice, estimateMaxLossPerUnit } from '../../utils/pricing-math';
 
 type ModerationProduct = Product & {
+  floorPrice?: number | string | null;
   createdAt?: string;
   moderationStatus?: 'DRAFT' | 'APPROVED' | 'REJECTED';
   moderationReason?: string | null;
@@ -170,6 +172,11 @@ export default function ProductModerationPage() {
                     <div><dt>Tồn kho</dt><dd>{Number(product.stockQuantity || 0).toLocaleString('vi-VN')}</dd></div>
                     <div><dt>Ngày gửi</dt><dd>{product.createdAt ? new Date(product.createdAt).toLocaleDateString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}) : 'Chưa có thông tin'}</dd></div>
                   </dl>
+                  {Number(product.floorPrice || 0) > 0 && Number(product.price) < calculateMinSafePrice(Number(product.floorPrice)) && (
+                    <p className="mx-4 mb-3 rounded-xl border border-[#F59E0B]/40 bg-[#FEF3C7]/50 px-3 py-2 text-xs font-semibold text-[#92400E]">
+                      Biên mỏng: Giá dưới ngưỡng an toàn ({calculateMinSafePrice(Number(product.floorPrice)).toLocaleString('vi-VN')} ₫) · Rủi ro hụt tối đa {estimateMaxLossPerUnit(Number(product.price), Number(product.floorPrice)).toLocaleString('vi-VN')} ₫/sp
+                    </p>
+                  )}
                   {rejected && product.moderationReason && <p className="mx-4 mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Lý do từ chối: {product.moderationReason}</p>}
                   <div className={`moderation-card-actions ${pending ? "has-review-actions" : ""}`}>
                     <Button size="sm" variant="outline" icon={<Eye className="h-4 w-4" />} onClick={() => setSelected(product)}>Xem hồ sơ</Button>
@@ -201,10 +208,16 @@ export default function ProductModerationPage() {
               <h2>{selected.title}</h2>
               <dl className="moderation-review-facts grid grid-cols-2 gap-4 [&_dt]:mb-1.5 [&_dt]:text-[11px] [&_dt]:text-[#7D715E] [&_dd]:text-[13px] [&_dd]:font-semibold [&_dd]:wrap-anywhere">
                 <div><dt>Giá bán</dt><dd className="moderation-review-price text-xl!">{money(selected.price)}</dd></div>
+                <div><dt>Giá sàn bảo vệ</dt><dd>{Number(selected.floorPrice || 0) > 0 ? money(Number(selected.floorPrice)) : 'Chưa đặt'}</dd></div>
                 <div><dt>Tồn kho</dt><dd>{Number(selected.stockQuantity || 0).toLocaleString('vi-VN')}</dd></div>
                 <div><dt>SKU</dt><dd>{selected.sku || 'Chưa cung cấp'}</dd></div>
                 <div><dt>Danh mục</dt><dd>{selected.categoryName || 'Chưa cung cấp'}</dd></div>
               </dl>
+              {Number(selected.floorPrice || 0) > 0 && Number(selected.price) < calculateMinSafePrice(Number(selected.floorPrice)) && (
+                <div className="mt-3 rounded-xl border border-[#F59E0B]/40 bg-[#FEF3C7]/60 p-3 text-xs leading-relaxed text-[#92400E]">
+                  <strong>Cảnh báo biên mỏng (System Manager lưu ý):</strong> Giá bán đang thấp hơn ngưỡng an toàn {calculateMinSafePrice(Number(selected.floorPrice)).toLocaleString('vi-VN')} ₫. Nếu áp tối đa Voucher KOL + Deal 25%, doanh nghiệp có thể hụt tối đa {estimateMaxLossPerUnit(Number(selected.price), Number(selected.floorPrice)).toLocaleString('vi-VN')} ₫/sp so với giá sàn.
+                </div>
+              )}
             </div>
             </div>
           </div>

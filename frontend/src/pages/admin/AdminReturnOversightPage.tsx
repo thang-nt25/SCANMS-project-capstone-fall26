@@ -74,7 +74,7 @@ export default function AdminReturnOversightPage() {
             <td data-label="Khách / Cửa hàng"><strong>{request.order.customerName||'Chưa có tên khách'}</strong><p>{request.order.storeName}</p></td>
             <td data-label="Trạng thái"><span className={`return-status-badge ${group==='stalled'?'is-overdue':''}`}>{returnStatusLabel(request.status)}</span>{group==='ghn'&&<small className="return-ghn-status">GHN: {claimLabels[request.ghnClaim?.status||'']||'Chờ đối soát'}</small>}</td>
             <td data-label="Ngày gửi"><time>{returnDate(request.submittedAt)}</time>{group!=='history'&&<small>{group==='stalled'?'Đã nhận':'Đã gửi'} {waitingSince(group==='stalled'?request.receivedAt:request.submittedAt)}</small>}</td>
-            <td data-label="Tiền hoàn"><strong className="return-money">{request.refund?returnMoney(request.refund.amount):'Chưa xác định'}</strong></td>
+            <td data-label="Tiền hoàn"><strong className="return-money">{request.refund?returnMoney(request.refund.amount):request.resolution==='EXCHANGE'?'0 ₫ (Đổi 1-1)':'0 ₫'}</strong></td>
             <td data-label="Thao tác"><Link className="return-row-action" to={`/admin/returns/${request.id}${dispute?'?panel=handling':''}`} state={{returnTo:location.pathname+location.search}}>{dispute?'Phân xử':'Xem hồ sơ'}<ArrowRight size={13}/></Link></td>
           </tr>;
         })}</tbody></table></div>
