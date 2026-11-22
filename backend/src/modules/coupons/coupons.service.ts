@@ -835,7 +835,7 @@ export class CouponsService {
         where: {
           collaboratorId,
           storeId: dto.storeId,
-          status: CouponStatus.PENDING_APPROVAL,
+          status: { in: [CouponStatus.PENDING_APPROVAL, CouponStatus.PENDING_ADMIN_APPROVAL] },
         },
       }),
       this.prisma.coupon.count({
@@ -848,7 +848,7 @@ export class CouponsService {
         where: {
           collaboratorId,
           storeId: dto.storeId,
-          status: CouponStatus.ACTIVE,
+          status: { in: [CouponStatus.ACTIVE, CouponStatus.PAUSED, CouponStatus.PENDING_BLOCK_APPROVAL] },
         },
       }),
       this.prisma.coupon.count({
@@ -859,9 +859,9 @@ export class CouponsService {
       }),
     ]);
 
-    if (pendingStoreCount >= 5) {
+    if (pendingStoreCount >= 1) {
       throw new BadRequestException(
-        'Bạn đang có tối đa 5 mã chờ duyệt tại Gian hàng này. Vui lòng đợi Shop xử lý.',
+        'Bạn đã có đề xuất mã đang chờ duyệt tại Cửa hàng này. Mỗi KOC chỉ được phép có 1 mã tồn tại trên mỗi cửa hàng.',
       );
     }
     if (pendingGlobalCount >= 20) {
@@ -869,9 +869,9 @@ export class CouponsService {
         'Bạn đang có tối đa 20 mã chờ duyệt trên toàn hệ thống.',
       );
     }
-    if (activeStoreCount >= 10) {
+    if (activeStoreCount >= 1) {
       throw new BadRequestException(
-        'Bạn đã đạt giới hạn tối đa 10 mã hoạt động tại Gian hàng này.',
+        'Đã có mã ưu đãi của bạn đang tồn tại tại Cửa hàng này. Mỗi KOC chỉ được phép có 1 mã trên mỗi cửa hàng.',
       );
     }
     if (activeGlobalCount >= 100) {
@@ -1257,6 +1257,22 @@ export class CouponsService {
         'Voucher đã hết hạn, không thể kích hoạt lại.',
       );
     }
+    if (nextStatus === CouponStatus.ACTIVE) {
+      const existingActive = await this.prisma.coupon.findFirst({
+        where: {
+          id: { not: coupon.id },
+          collaboratorId,
+          storeId: coupon.storeId,
+          status: { in: [CouponStatus.ACTIVE, CouponStatus.PENDING_BLOCK_APPROVAL] },
+        },
+        select: { id: true, displayCode: true },
+      });
+      if (existingActive && existingActive.id !== coupon.id) {
+        throw new BadRequestException(
+          `Đã có mã "${existingActive.displayCode}" đang tồn tại và hoạt động tại cửa hàng này. Mỗi KOC chỉ được dùng 1 mã trên mỗi cửa hàng.`,
+        );
+      }
+    }
 
     let inFlightOrdersCount = 0;
     if (nextStatus === CouponStatus.PAUSED) {
@@ -1621,7 +1637,13 @@ export class CouponsService {
             collaboratorId: coupon.collaboratorId,
             storeId: coupon.storeId,
             id: { not: coupon.id },
-            status: CouponStatus.ACTIVE,
+            status: {
+              in: [
+                CouponStatus.ACTIVE,
+                CouponStatus.PAUSED,
+                CouponStatus.PENDING_BLOCK_APPROVAL,
+              ],
+            },
           },
           data: {
             status: CouponStatus.EXPIRED,
@@ -2643,6 +2665,33 @@ export class CouponsService {
     )
       restoredStatus = CouponStatus.EXPIRED;
 
+    if (
+      (restoredStatus === CouponStatus.ACTIVE ||
+        restoredStatus === CouponStatus.PAUSED) &&
+      coupon.collaboratorId
+    ) {
+      const existingActive = await this.prisma.coupon.findFirst({
+        where: {
+          id: { not: coupon.id },
+          collaboratorId: coupon.collaboratorId,
+          storeId: coupon.storeId,
+          status: {
+            in: [
+              CouponStatus.ACTIVE,
+              CouponStatus.PAUSED,
+              CouponStatus.PENDING_BLOCK_APPROVAL,
+            ],
+          },
+        },
+        select: { id: true, displayCode: true },
+      });
+      if (existingActive && existingActive.id !== coupon.id) {
+        throw new BadRequestException(
+          `Không thể mở khóa vì KOC này đã có mã "${existingActive.displayCode}" đang tồn tại tại cửa hàng. Mỗi KOC chỉ được phép có 1 mã hoạt động trên mỗi cửa hàng.`,
+        );
+      }
+    }
+
     const updated = await this.updateCurrentCoupon(coupon, {
       status: restoredStatus,
       statusBeforeBlock: null,
@@ -3205,7 +3254,13 @@ export class CouponsService {
             collaboratorId: coupon.collaboratorId,
             storeId: coupon.storeId,
             id: { not: coupon.id },
-            status: CouponStatus.ACTIVE,
+            status: {
+              in: [
+                CouponStatus.ACTIVE,
+                CouponStatus.PAUSED,
+                CouponStatus.PENDING_BLOCK_APPROVAL,
+              ],
+            },
           },
           data: { status: CouponStatus.EXPIRED },
         });
