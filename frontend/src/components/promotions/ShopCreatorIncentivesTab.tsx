@@ -763,15 +763,15 @@ export function ShopCreatorIncentivesTab() {
 
                       {group.activeCoupons.length > 0 && (
                         <div className="overflow-x-auto">
-                          <table className="w-full min-w-[640px] text-left text-xs">
+                          <table className="w-full min-w-[640px] table-fixed text-left text-xs">
                             <thead className="bg-[#FAF8F5] text-[#7D715E] font-semibold">
                               <tr>
-                                <th className="px-4 py-2.5 whitespace-nowrap">Mã đang hiệu lực</th>
-                                <th className="px-4 py-2.5 whitespace-nowrap">Mức giảm cho fan</th>
-                                <th className="px-4 py-2.5 whitespace-nowrap">Lượt sử dụng</th>
-                                <th className="px-4 py-2.5 whitespace-nowrap">Thời hạn</th>
-                                <th className="px-4 py-2.5 whitespace-nowrap">Trạng thái</th>
-                                <th className="px-4 py-2.5 whitespace-nowrap text-right">Thao tác</th>
+                                <th className="w-[28%] px-4 py-2.5 whitespace-nowrap">Mã đang hiệu lực</th>
+                                <th className="w-[14%] px-4 py-2.5 whitespace-nowrap">Mức giảm</th>
+                                <th className="w-[12%] px-4 py-2.5 whitespace-nowrap">Lượt dùng</th>
+                                <th className="w-[16%] px-4 py-2.5 whitespace-nowrap">Thời hạn</th>
+                                <th className="w-[16%] px-4 py-2.5 whitespace-nowrap">Trạng thái</th>
+                                <th className="w-[14%] px-4 py-2.5 whitespace-nowrap text-right">Thao tác</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[#EAE4D7]">
@@ -860,28 +860,28 @@ export function ShopCreatorIncentivesTab() {
 
                           {isHistoryExpanded && (
                             <div className="overflow-x-auto border-t border-[#EAE4D7] bg-white">
-                              <table className="w-full min-w-[640px] text-left text-xs">
+                              <table className="w-full min-w-[640px] table-fixed text-left text-xs">
                                 <tbody className="divide-y divide-[#EAE4D7]">
                                   {group.historyCoupons.map((c) => (
                                     <tr key={c.id} className="hover:bg-[#FAF8F5] transition">
-                                      <td className="px-4 py-2.5">
+                                      <td className="w-[28%] px-4 py-2.5">
                                         <span className="font-mono font-bold text-[#7D715E] text-xs px-2 py-0.5 rounded-md bg-[#F3EFE6] border border-[#EAE4D7]">
                                           {c.displayCode || c.codeNormalized}
                                         </span>
                                       </td>
-                                      <td className="px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
+                                      <td className="w-[14%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
                                         -{c.discountValue}%
                                       </td>
-                                      <td className="px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
+                                      <td className="w-[12%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
                                         {c.usageCount || 0} lượt
                                       </td>
-                                      <td className="px-4 py-2.5 text-[11px] text-[#7D715E] tabular-nums">
+                                      <td className="w-[16%] px-4 py-2.5 text-[11px] text-[#7D715E] tabular-nums">
                                         {c.expiresAt
                                           ? new Date(c.expiresAt).toLocaleDateString('vi-VN')
                                           : 'Theo Hợp đồng VIP'}
                                       </td>
-                                      <td className="px-4 py-2.5">{renderStatusBadge(c.status)}</td>
-                                      <td className="px-4 py-2.5 text-right">
+                                      <td className="w-[16%] px-4 py-2.5">{renderStatusBadge(c.status)}</td>
+                                      <td className="w-[14%] px-4 py-2.5 text-right">
                                         <button
                                           type="button"
                                           onClick={() => openCouponDetail(c)}

@@ -768,18 +768,21 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
               <div className="wallet-available-line"><span>Có thể rút</span><strong>{wallet ? formatMoney(wallet.availableBalance) : '—'}</strong></div>
               {/* Quick shortcut pills */}
               <div className="wallet-quick-amounts">
-                {[200000, 500000, 1000000].map((quickVal) => (
-                  <button
-                    key={quickVal}
-                    type="button"
-                    onClick={() => setAmount(quickVal.toString())}
-                    disabled={submitting || loading}
-                    aria-pressed={amount === quickVal.toString()}
-                    className="px-2 py-0.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[10.5px] font-mono font-semibold text-[#1A1612] transition cursor-pointer disabled:opacity-40"
-                  >
-                    {new Intl.NumberFormat("vi-VN").format(quickVal)} ₫
-                  </button>
-                ))}
+                {[200000, 500000, 1000000].map((quickVal) => {
+                  const exceedsAvailable = !wallet || quickVal > Number(wallet.availableBalance || 0);
+                  return (
+                    <button
+                      key={quickVal}
+                      type="button"
+                      onClick={() => setAmount(quickVal.toString())}
+                      disabled={submitting || loading || exceedsAvailable}
+                      aria-pressed={amount === quickVal.toString()}
+                      className="px-2 py-0.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[10.5px] font-mono font-semibold text-[#1A1612] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {new Intl.NumberFormat("vi-VN").format(quickVal)} ₫
+                    </button>
+                  );
+                })}
               </div>
               </div>
 

@@ -16,22 +16,24 @@ import {
   IsArray,
   ArrayUnique,
   ArrayMaxSize,
+  ValidateIf,
 } from 'class-validator';
 import { ExclusiveDealScope } from '@prisma/client';
 
 export class CreateExclusiveDealDto {
-  @IsOptional()
+  @ValidateIf((o) => o.targetRevenue == null || o.targetOrders != null)
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(1000000)
   targetOrders?: number;
 
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(1)
   @Max(1000000000000)
-  targetRevenue!: number;
+  targetRevenue?: number;
 
   @IsOptional()
   @IsEnum(ExclusiveDealScope)

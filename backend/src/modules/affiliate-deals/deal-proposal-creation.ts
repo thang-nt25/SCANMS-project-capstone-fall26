@@ -9,7 +9,7 @@ import { ChatGateway } from '../chat/chat.gateway';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
 import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
 import { dealScope, sameDealScope, scopedProducts } from './deal-scope.policy';
-import { validateRevenueKpi } from './deal-kpi.policy';
+import { validateDealKpi, validateRevenueKpi } from './deal-kpi.policy';
 import { lockDealPair } from './exclusive-deal-activation';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
@@ -24,7 +24,10 @@ export async function createDealProposal(
 ) {
   if (dto.videoReviewCommitment !== true)
     throw new BadRequestException('Cần cam kết thực hiện video review.');
-  const kpi = validateRevenueKpi(dto.targetRevenue, dto.commitmentDays);
+  const kpi =
+    dto.targetOrders != null || dto.targetRevenue == null
+      ? validateDealKpi(dto.targetOrders, dto.commitmentDays)
+      : validateRevenueKpi(dto.targetRevenue, dto.commitmentDays);
   const rate = Number(dto.proposedCommissionRate);
   if (!Number.isFinite(rate) || rate < 10 || rate > 25)
     throw new BadRequestException('Hoa hồng VIP phải từ 10% đến 25%.');
@@ -77,19 +80,62 @@ export async function createDealProposal(
           'KOC đang trong thời gian tạm khóa quyền đề xuất Deal.',
         );
       const scopeFilter = sameDealScope(scope.scopeKey, product.id);
+      const overlapFilter =
+        scope.scopeType === 'STORE_WIDE'
+          ? {}
+          : {
+              OR: [
+                { scopeType: 'STORE_WIDE' as const },
+                { productId: { in: scope.productIds } },
+                {
+                  scopeProducts: {
+                    some: { productId: { in: scope.productIds } },
+                  },
+                },
+              ],
+            };
       const pending = await tx.exclusiveDealProposal.findFirst({
         where: {
           collaboratorId,
           storeId: product.storeId,
-          ...scopeFilter,
+          ...overlapFilter,
           status: { in: ['PENDING', 'PENDING_ADMIN_APPROVAL'] },
           closedAt: null,
         },
       });
       if (pending)
         throw new BadRequestException(
-          'Phạm vi này đã có đề nghị đang chờ xử lý.',
+          'Sản phẩm trong phạm vi này đã có đề nghị đang chờ xử lý.',
         );
+      const now = new Date();
+      const currentOverlap = await tx.exclusiveDealProposal.findFirst({
+        where: {
+          collaboratorId,
+          storeId: product.storeId,
+          status: 'APPROVED',
+          closedAt: null,
+          AND: [
+            overlapFilter,
+            {
+              OR: [
+                { commitmentEndsAt: null },
+                { commitmentEndsAt: { gt: now } },
+              ],
+            },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (
+        currentOverlap &&
+        currentOverlap.scopeKey &&
+        scope.scopeKey &&
+        currentOverlap.scopeKey !== scope.scopeKey
+      ) {
+        throw new BadRequestException(
+          'Sản phẩm đã chọn đang có thỏa thuận độc quyền còn thời hạn KPI. Không thể tạo thỏa thuận mới.',
+        );
+      }
       const current = await tx.exclusiveDealProposal.findFirst({
         where: {
           collaboratorId,
@@ -101,7 +147,7 @@ export async function createDealProposal(
             {
               OR: [
                 { commitmentEndsAt: null },
-                { commitmentEndsAt: { gt: new Date() } },
+                { commitmentEndsAt: { gt: now } },
               ],
             },
           ],
@@ -216,7 +262,8 @@ export async function createDealProposal(
           details: {
             proposalId: proposal.id,
             scopeType: scope.scopeType,
-            targetRevenue: kpi.targetRevenue,
+            targetOrders: 'targetOrders' in kpi ? kpi.targetOrders : null,
+            targetRevenue: 'targetRevenue' in kpi ? kpi.targetRevenue : null,
             rate,
           },
         },

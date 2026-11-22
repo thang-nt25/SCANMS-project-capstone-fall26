@@ -943,11 +943,6 @@ export function ScanmsFloatingChatWidget() {
                             {p.title}
                           </div>
                           <div className="flex items-center gap-1.5 mt-1">
-                            {p.originalPrice && p.originalPrice > p.price && (
-                              <span className="text-[11px] text-[#888888] line-through">
-                                {p.originalPrice.toLocaleString('vi-VN')}₫
-                              </span>
-                            )}
                             <span className="text-xs font-bold text-[#B88E4F]">
                               {p.price.toLocaleString('vi-VN')}₫
                             </span>
@@ -1312,10 +1307,6 @@ export function ScanmsFloatingChatWidget() {
                       </div>
                       <div className="divide-y divide-[#F3F4F6] px-3 pb-2.5">
                         {msg.products!.map((p) => {
-                          const discountPercent =
-                            p.originalPrice && p.originalPrice > p.price
-                              ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100)
-                              : null;
                           return (
                             <div key={p.id} className="flex gap-2.5 items-center pt-2 first:pt-1">
                               <img
@@ -1335,19 +1326,9 @@ export function ScanmsFloatingChatWidget() {
                                   {p.title}
                                 </div>
                                 <div className="flex items-center flex-wrap gap-1.5 mt-1 text-[11px]">
-                                  {p.originalPrice && p.originalPrice > p.price && (
-                                    <span className="text-gray-400 line-through">
-                                      {p.originalPrice.toLocaleString('vi-VN')}₫
-                                    </span>
-                                  )}
                                   <span className="font-bold text-[#B88E4F]">
                                     {p.price.toLocaleString('vi-VN')}₫
                                   </span>
-                                  {discountPercent && discountPercent > 0 && (
-                                    <span className="text-[10px] text-[#B88E4F] font-semibold">
-                                      -{discountPercent}%
-                                    </span>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1447,11 +1428,6 @@ export function ScanmsFloatingChatWidget() {
                     <span className="text-xs font-bold text-[#B88E4F]">
                       {activeProduct.price.toLocaleString('vi-VN')}₫
                     </span>
-                    {activeProduct.originalPrice && activeProduct.originalPrice > activeProduct.price && (
-                      <span className="text-[10px] text-[#7D715E] line-through">
-                        {activeProduct.originalPrice.toLocaleString('vi-VN')}₫
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>

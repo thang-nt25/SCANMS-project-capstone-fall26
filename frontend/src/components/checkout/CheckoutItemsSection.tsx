@@ -96,7 +96,7 @@ function ShopVoucherRow({
                     }
                   }
                 }}
-                placeholder="Nhập mã KOC (VD: THAONHI16)"
+                placeholder="Nhập mã ưu đãi KOC"
                 className="flex-1 min-h-[40px] px-3.5 py-1.5 text-xs font-mono font-bold uppercase rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] placeholder:text-[#7D715E] placeholder:font-sans placeholder:normal-case focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 focus:outline-none transition-all shadow-2xs"
               />
               <button

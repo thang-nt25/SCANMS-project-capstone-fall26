@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
-import { Link2, Package, Tag, Sparkles } from 'lucide-react';
+import { Handshake, Link2, Package, Tag } from 'lucide-react';
 import { type HubTabItem } from '../../components/common/HubTabs';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import ReferralLinksPage from './ReferralLinksPage';
@@ -26,7 +26,7 @@ export default function MarketingToolkitPage() {
     {
       id: 'deals',
       label: 'Deal độc quyền',
-      icon: Sparkles,
+      icon: Handshake,
     },
     {
       id: 'samples',
@@ -35,7 +35,7 @@ export default function MarketingToolkitPage() {
     },
     {
       id: 'coupons',
-      label: 'Mã ưu đãi (Coupon)',
+      label: 'Mã ưu đãi',
       icon: Tag,
     },
   ];

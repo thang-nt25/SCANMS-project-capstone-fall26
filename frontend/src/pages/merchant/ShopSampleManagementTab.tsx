@@ -1,16 +1,11 @@
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { SampleRequestDetails } from '../../components/orders/SampleRequestDetails';
-import { InviteKolModal } from '../../components/affiliate/InviteKolModal';
-import { ShopPartnerDataTab, useShopPartnerTeam } from '../../components/affiliate/ShopPartnerDataTabs';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Package,
   Clock,
   Video,
   AlertTriangle,
-  PackageCheck,
-  Award,
-  Handshake,
   Search,
   Truck,
   CheckCircle2,
@@ -27,7 +22,7 @@ import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineEx
 import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
 import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
 import { toast } from '../../utils/toast';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
 
 export interface SampleRequestItem {
@@ -100,17 +95,13 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   onLoadingChange?: (loading: boolean) => void;
 } = {}) {
   const navigate = useNavigate();
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [searchParams] = useSearchParams();
   const [detailSampleId, setDetailSampleId] = useState<string | null>(null);
   const closeSampleDetails = useCallback(() => setDetailSampleId(null), []);
   const [loading, setLoading] = useState(true);
   useEffect(() => { onLoadingChange?.(loading); }, [loading, onLoadingChange]);
   const [samples, setSamples] = useState<SampleRequestItem[]>([]);
   const [sampleLoadError,setSampleLoadError] = useState('');
-  const partnerTeam = useShopPartnerTeam();
   const sampleLoadSequence = useRef(0);
-  const [storeTab, setStoreTab] = useState<'SAMPLES_QUEUE' | 'LEADERBOARD' | 'DEALS'>(() => searchParams.get('section') === 'deals' ? 'DEALS' : 'SAMPLES_QUEUE');
   const [selectedSampleIds, setSelectedSampleIds] = useState<string[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'OVERDUE' | 'COMPLETED'>('ALL');
@@ -420,17 +411,13 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
   return (
     <div className="shop-samples-page w-full flex flex-col space-y-4">
-      {storeTab === 'SAMPLES_QUEUE' && <>
       {/* 4 THẺ SỐ LIỆU NHANH (STAT BADGES) */}
       <div className="sample-summary-grid grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Stat 1: Chờ duyệt */}
         <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('PENDING');
-          }}
+          onClick={() => setStatusFilter('PENDING')}
           className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'PENDING'
+            statusFilter === 'PENDING'
               ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/50'
               : 'border-[#EAE4D7] hover:border-[#C59B58]'
           }`}
@@ -447,12 +434,9 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
         {/* Stat 2: Chờ gửi (Đóng gói) */}
         <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('APPROVED');
-          }}
+          onClick={() => setStatusFilter('APPROVED')}
           className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'APPROVED'
+            statusFilter === 'APPROVED'
               ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/50'
               : 'border-[#EAE4D7] hover:border-[#C59B58]'
           }`}
@@ -469,12 +453,9 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
         {/* Stat 3: Video chờ nghiệm thu */}
         <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('VIDEO_SUBMITTED');
-          }}
+          onClick={() => setStatusFilter('VIDEO_SUBMITTED')}
           className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'VIDEO_SUBMITTED'
+            statusFilter === 'VIDEO_SUBMITTED'
               ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/50'
               : 'border-[#EAE4D7] hover:border-[#C59B58]'
           }`}
@@ -491,12 +472,9 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
         {/* Stat 4: Quá hạn 14 ngày */}
         <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('OVERDUE');
-          }}
+          onClick={() => setStatusFilter('OVERDUE')}
           className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'OVERDUE'
+            statusFilter === 'OVERDUE'
               ? 'border-[#DC2626] ring-2 ring-[#DC2626]/20 bg-rose-50/50'
               : 'border-rose-200 hover:border-rose-400'
           }`}
@@ -509,64 +487,26 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
           </div>
           <div className="text-2xl font-black text-[#DC2626]">{storeStats.overdue}</div>
         </div>
-      </div></>}
+      </div>
 
-      {/* STORE TABS CONTAINER */}
+      {/* CENTRAL SAMPLE QUEUE CONTAINER */}
       <div className="sample-data-container bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-2xs">
-        {/* Tab Header Navigation */}
-        <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3 sm:px-5">
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setStoreTab('SAMPLES_QUEUE')}
-              className={`flex min-h-12 min-w-0 cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 text-center text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:gap-2 sm:px-3.5 sm:text-xs ${
-                storeTab === 'SAMPLES_QUEUE'
-                  ? 'border-[#C59B58] text-[#8C6B32] shadow-sm'
-                  : 'border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
-              }`}
-            >
-              <PackageCheck className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Hàng mẫu</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E] text-[10px] font-bold">
-                {samples.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStoreTab('LEADERBOARD')}
-              className={`flex min-h-12 min-w-0 cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 text-center text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:gap-2 sm:px-3.5 sm:text-xs ${
-                storeTab === 'LEADERBOARD'
-                  ? 'border-[#C59B58] text-[#8C6B32] shadow-sm'
-                  : 'border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
-              }`}
-            >
-              <Award className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Hiệu quả KOL</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E] text-[10px] font-bold">
-                {partnerTeam.data?.members.length ?? '—'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStoreTab('DEALS')}
-              className={`flex min-h-12 min-w-0 cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 text-center text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:gap-2 sm:px-3.5 sm:text-xs ${
-                storeTab === 'DEALS'
-                  ? 'border-[#C59B58] text-[#8C6B32] shadow-sm'
-                  : 'border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
-              }`}
-            >
-              <Handshake className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Deal độc quyền</span>
-            </button>
+        <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3 sm:px-5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+              <Package className="h-4 w-4" />
+            </div>
+            <h2 className="text-sm font-bold text-[#1A1612]">Danh sách yêu cầu hàng mẫu</h2>
+            <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-0.5 text-[11px] font-semibold text-[#7D715E] tabular-nums">
+              {filteredSamples.length} / {samples.length} mẫu
+            </span>
           </div>
 
           {showRefreshButton && <button
             type="button"
             onClick={loadData}
             disabled={loading}
-            className="mb-3 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            className="px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium flex items-center gap-1 transition cursor-pointer"
             title="Làm mới danh sách mẫu"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
@@ -574,9 +514,8 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
           </button>}
         </div>
 
-        {/* TAB 1: CENTRAL SAMPLE QUEUE (HÀNG ĐỢI HÀNG MẪU TOÀN SHOP) */}
-        {storeTab === 'SAMPLES_QUEUE' && (
-          <div className="p-4 sm:p-5 space-y-4">
+        {/* CENTRAL SAMPLE QUEUE (HÀNG ĐỢI HÀNG MẪU TOÀN SHOP) */}
+        <div className="p-4 sm:p-5 space-y-4">
             {/* Search & Filters bar */}
             <div className="@container w-full min-w-0" data-sample-toolbar>
               <div className="flex min-w-0 flex-col gap-2 @[1000px]:flex-row @[1000px]:items-center">
@@ -943,12 +882,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
               </nav>
             </footer>
           </div>
-        )}
-
-        {storeTab !== 'SAMPLES_QUEUE' && <ShopPartnerDataTab kind={storeTab} onInvite={() => setShowInviteModal(true)} />}
       </div>
-
-      {showInviteModal && <InviteKolModal onClose={() => setShowInviteModal(false)} />}
       {/* MODAL: TẠO VẬN ĐƠN GHN CHO HÀNG MẪU */}
       {trackingModalItem && (
         <div

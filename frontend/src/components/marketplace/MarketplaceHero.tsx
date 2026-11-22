@@ -26,7 +26,7 @@ export function MarketplaceHero({ stores }: { stores: BannerStore[] }) {
       image: '/assets/marketplace/scanms-affiliate-banner-v2.png',
       eyebrow: 'KHÁM PHÁ CÙNG NHÀ SÁNG TẠO',
       title: 'Chọn sản phẩm hay, cùng KOC bạn thích.',
-      description: 'Khám phá sản phẩm chính hãng từ 4 nhãn hàng trực thuộc và nhập mã ưu đãi độc quyền từ KOC.',
+      description: 'Khám phá sản phẩm chính hãng từ hệ thống nhãn hàng trực thuộc và nhập mã ưu đãi độc quyền từ KOC.',
       label: 'Khám phá sản phẩm',
       href: '/search',
     },

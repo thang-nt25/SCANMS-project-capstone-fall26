@@ -508,6 +508,7 @@ export default function ProductManagementPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<any | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [savingProduct, setSavingProduct] = useState(false);
   const saveLocked = useRef(false);
   const submittedForm = useRef<HTMLFormElement | null>(null);
@@ -823,7 +824,7 @@ export default function ProductManagementPage() {
       const v1 = validateStep1();
       if (!v1.valid) {
         setSaveError(v1.errors.join('\n'));
-        showToast(v1.errors[0]);
+        showToast(v1.errors[0], 'error');
         return;
       }
       // Đảm bảo Phân loại 1 có SKU từ formSku nếu chưa có
@@ -835,7 +836,7 @@ export default function ProductManagementPage() {
       const v2 = validateStep2();
       if (!v2.valid) {
         setSaveError(v2.errors.join('\n'));
-        showToast(v2.errors[0]);
+        showToast(v2.errors[0], 'error');
         return;
       }
       // Tự động gán fallback nếu trống để đồng bộ
@@ -1134,10 +1135,15 @@ export default function ProductManagementPage() {
     }
   }, [isAdminOrManager, isKol, currentStoreId]);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToastType(type);
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
   };
+
+  useEffect(() => {
+    if (saveError) setSaveError(null);
+  }, [formTitle, formPrice, formFloorPrice, formVariants]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -1955,7 +1961,7 @@ export default function ProductManagementPage() {
         const stepErrors = !v1.valid ? v1.errors : (!v2.valid ? v2.errors : v3.errors);
         setSaveError(stepErrors.join('\n'));
         setModalStep(stepToFocus);
-        showToast(stepErrors[0]);
+        showToast(stepErrors[0], 'error');
         return;
       }
     }
@@ -1963,26 +1969,26 @@ export default function ProductManagementPage() {
     if (!formImage) {
       const message = 'Vui lòng tải lên ảnh chính (ảnh bìa) cho sản phẩm.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
     if (!formTitle.trim()) {
       const message = 'Vui lòng nhập tên sản phẩm.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
     if (!formCategory) {
       const message = 'Chọn loại sản phẩm để hiện đúng màu, size, dung tích hoặc quy cách phân loại.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
 
     if (!formSku.trim()) {
       const message = 'Vui lòng nhập mã SKU sản phẩm.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
@@ -1990,7 +1996,7 @@ export default function ProductManagementPage() {
     if (effectivePrice <= 0) {
       const message = 'Giá bán lẻ phải lớn hơn 0 ₫.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
@@ -1999,36 +2005,36 @@ export default function ProductManagementPage() {
       if (hasInvalidStock) {
         const message = 'Vui lòng nhập số lượng tồn kho hợp lệ (≥ 0) cho tất cả các phân loại SKU.';
         setSaveError(message);
-        showToast(message);
+        showToast(message, 'error');
         return;
       }
     } else if (formStock === '' || Number(formStock) < 0) {
       const message = 'Vui lòng nhập số lượng tồn kho hợp lệ.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
     if (formVariants.some((variant) => !variant.name.trim() || !variant.sku.trim() || (!variant.imageUrl?.trim() && !formImage))) {
       const message = 'Mỗi phân loại cần có tên và mã SKU riêng (ảnh phân loại tự kế thừa từ ảnh bìa).';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
     if (formVariants.some((variant) => variant.name.trim().length > 150 || variant.sku.trim().length > 100)) {
       const message = 'Tên phân loại tối đa 150 ký tự và SKU tối đa 100 ký tự.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
     if (formVariants.some((variant) => !variant.id && !getVariantFields(formCategory).some((field) => variant.attributes[field.key]?.trim()))) {
       const message = 'Mỗi phân loại mới cần ít nhất một thuộc tính phù hợp với danh mục.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
     const optionKeys = formVariants.map((variant) => getVariantFields(formCategory)
       .map((field) => variant.attributes[field.key]?.trim().toLocaleLowerCase('vi-VN') || '').join('|'));
     const filledKeys = optionKeys.filter((key) => key.replace(/\|/g, '').trim());
     if (new Set(filledKeys).size !== filledKeys.length) {
       const message = 'Có phân loại trùng tổ hợp thuộc tính. Hãy nhập màu, size hoặc quy cách khác nhau cho từng SKU.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
 
     const proofLinks = [...formOriginProofLinks, ...formLabelProofLinks].map((url) => url.trim()).filter(Boolean);
@@ -2037,7 +2043,7 @@ export default function ProductManagementPage() {
       catch { return true; }
     })) {
       const message = 'Link minh chứng cần là địa chỉ bắt đầu bằng http:// hoặc https://.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
 
     const effectiveCategory =
@@ -2166,8 +2172,8 @@ export default function ProductManagementPage() {
   return (
     <div className="product-management @container/product-management space-y-4 text-left w-full min-w-0 text-[#1A1612]">
       {toastMsg && (
-        <div role={toastMsg === saveError ? 'alert' : 'status'} className={`fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${toastMsg === saveError ? 'border-[#FECACA]' : 'border-[#EEDFC6]'}`}>
-          {toastMsg === saveError
+        <div role={toastType === 'error' ? 'alert' : 'status'} className={`fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${toastType === 'error' ? 'border-[#FECACA]' : 'border-[#EEDFC6]'}`}>
+          {toastType === 'error'
             ? <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0" />
             : <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />}
           <span>{toastMsg}</span>
