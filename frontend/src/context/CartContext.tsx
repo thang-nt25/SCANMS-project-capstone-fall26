@@ -163,7 +163,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('scanms_auth_changed', syncIdentity);
     window.addEventListener('auth-user-updated', syncIdentity);
     window.addEventListener('storage', syncIdentity);
-    window.addEventListener('focus', syncIdentity);
     return () => {
       mounted = false;
       sessionController?.abort();
@@ -410,7 +409,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Add Item to Cart
   const addItem = useCallback(
-    ({ product, variantId, quantity = 1, store, openCartAfterAdd = false, liveSessionId, liveCouponCode }: AddItemParams) => {
+    ({ product, variantId, quantity = 1, store, openCartAfterAdd = false }: AddItemParams) => {
       const prodTitle = product.title || product.name || 'Sản phẩm';
       const prodImage = getSafeProductImageUrl(product.imageUrl || product.image, prodTitle);
       const availableVariants = product.variants || [];
@@ -462,16 +461,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: newQty,
             stockQuantity: availableStock,
             price: finalPrice,
-            liveSessionId,
-            liveCouponCode,
           };
           return next;
         }
 
         // Add new item
         const newItem: CartItem = {
-          liveSessionId,
-          liveCouponCode,
           cartItemId,
           productId: product.id,
           variantId,
@@ -715,8 +710,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const qty = params.quantity || 1;
 
       const directItem: CartItem = {
-        liveSessionId: params.liveSessionId,
-        liveCouponCode: params.liveCouponCode,
         cartItemId,
         productId: params.product.id,
         variantId,

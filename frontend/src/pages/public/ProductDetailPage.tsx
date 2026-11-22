@@ -42,7 +42,6 @@ import { customerService } from '@/services/customer.service';
 import { toast } from '@/utils/toast';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
-import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
 import { StoreActivityStatus } from '@/components/store/StoreActivityStatus';
 import { ProductBreadcrumbs } from '@/components/product/ProductBreadcrumbs';
 import { ProductPurchaseSummary } from '@/components/product/ProductPurchaseSummary';
@@ -784,11 +783,8 @@ export default function ProductDetailPage() {
       }
     };
 
-    fetchStock();
     const interval = setInterval(fetchStock, 30_000);
-    const onFocus = () => void fetchStock();
-    window.addEventListener('focus', onFocus);
-    return () => { disposed = true; clearInterval(interval); window.removeEventListener('focus', onFocus); };
+    return () => { disposed = true; clearInterval(interval); };
   }, [data?.product?.id, data?.product?.sku]);
 
   useEffect(() => {
@@ -802,7 +798,7 @@ export default function ProductDetailPage() {
     });
 
     const prevTitle = document.title;
-    document.title = `${data.product.title} - ${data.store.name} | Sàn SCANMS`;
+    document.title = `${data.product.title} - ${data.store.name} | Hệ thống SCANMS`;
 
 
     let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
@@ -1021,11 +1017,6 @@ export default function ProductDetailPage() {
     } finally {
       if (requestId === couponRequest.current) setCouponLoading(false);
     }
-  };
-
-  const applyCouponDirectly = async (code: string): Promise<boolean> => {
-    try { await navigator.clipboard.writeText(code); toast.success('Đã sao chép mã KOL. Hãy tự nhập khi thanh toán.'); return true; }
-    catch { setCouponError('Chưa sao chép được. Bạn có thể chọn mã và sao chép thủ công.'); return false; }
   };
 
   // Never retain a discount calculated for another product, variant or quantity.
@@ -1548,10 +1539,21 @@ export default function ProductDetailPage() {
                   <span className="font-extrabold text-[#B88E4F] underline text-sm">
                     {reviews.averageRating !== null ? reviews.averageRating.toFixed(1) : '—'}
                   </span>
-                  <div className="flex items-center text-[#B88E4F]">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-[#C59B58] text-[#B88E4F]" />
-                    ))}
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => {
+                      const hasRating = reviews.totalReviews > 0 && reviews.averageRating !== null;
+                      const filled = hasRating && i < Math.round(reviews.averageRating as number);
+                      return (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${
+                            filled
+                              ? 'fill-[#C59B58] text-[#B88E4F]'
+                              : 'fill-[#F3EFE6] text-[#EAE4D7]'
+                          }`}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1593,7 +1595,6 @@ export default function ProductDetailPage() {
                 quantity={quantity}
                 voucher={verifiedCoupon && discountAmount > 0 ? { code: verifiedCoupon.code, discount: discountAmount, total: finalTotal } : undefined}
               />
-              <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponDirectly} />
 
               {/* Ưu Đãi Độc Quyền KOL */}
               <div className="flex items-start gap-4 py-3 border-t border-[#EAE4D7]/80">
@@ -2077,11 +2078,9 @@ export default function ProductDetailPage() {
                 </button>
               </div>
 
-              {(!currentUser || isKolUser) && (
+              {isKolUser && (
                 <div className="mt-2 text-[11px] text-[#7D715E]" aria-live="polite">
-                  {!currentUser ? (
-                    'Đăng nhập tài khoản KOL/Creator để gửi cam kết nhận mẫu.'
-                  ) : loadingSampleStatus ? (
+                  {loadingSampleStatus ? (
                     'Đang kiểm tra điều kiện và trạng thái yêu cầu mẫu…'
                   ) : sampleRequestStatus?.status === 'COMPLETED' ? (
                     <span className="text-[#059669] font-medium">Bạn đã nhận mẫu sản phẩm này và hoàn tất video đánh giá (Mỗi Creator nhận tối đa 1 suất).</span>
@@ -2526,11 +2525,15 @@ export default function ProductDetailPage() {
                 <div>
                   <h3 className="m-0 text-sm sm:text-base font-bold text-[#1A1612]">Chưa có video review được phê duyệt</h3>
                   <p className="m-0 mt-0.5 text-xs text-[#7D715E] leading-relaxed">
-                    Gian hàng <strong className="text-[#1A1612]">{store?.name}</strong> đang mở suất cấp mẫu thử miễn phí 14 ngày cho Nhà sáng tạo (KOL/KOC).
+                    {sampleFeatureEnabled && sampleQuotaAvailable ? (
+                      <>Gian hàng <strong className="text-[#1A1612]">{store?.name}</strong> đang mở suất cấp mẫu thử miễn phí 14 ngày cho Nhà sáng tạo (KOL/KOC).</>
+                    ) : (
+                      <>Gian hàng <strong className="text-[#1A1612]">{store?.name}</strong> hiện chưa mở suất cấp mẫu thử cho sản phẩm này.</>
+                    )}
                   </p>
                 </div>
               </div>
-              {(!currentUser || isKolUser) && (
+              {(!currentUser || isKolUser) && sampleFeatureEnabled && sampleQuotaAvailable && (
                 <button
                   type="button"
                   onClick={handleRequestSample}
