@@ -106,7 +106,7 @@ export function ShippingLabel({ order, trackingNumber, carrier, note, storeName 
       <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #000", paddingBottom: "6px", marginBottom: "6px" }}>
         <div>
           <div style={{ fontWeight: 900, fontSize: "15px", letterSpacing: "0.5px" }}>{carrier.toUpperCase()}</div>
-          <div style={{ fontSize: "8px", color: "#555" }}>Vận chuyển liên kết sàn SCANMS</div>
+          <div style={{ fontSize: "8px", color: "#555" }}>Vận chuyển hệ thống SCANMS</div>
         </div>
         <div style={{ textAlign: "right", fontSize: "8px", color: "#444" }}>
           <div>In: {printDate}</div>
@@ -127,7 +127,7 @@ export function ShippingLabel({ order, trackingNumber, carrier, note, storeName 
         <div style={{ flex: 1, borderRight: "1px solid #ccc", paddingRight: "8px" }}>
           <div style={{ fontSize: "7px", fontWeight: 700, color: "#555", textTransform: "uppercase" }}>Người gửi</div>
           <div style={{ fontWeight: 700, marginTop: "2px" }}>{storeName ?? "SCANMS Store"}</div>
-          <div style={{ fontSize: "8px", color: "#666" }}>Sàn TMĐT SCANMS</div>
+          <div style={{ fontSize: "8px", color: "#666" }}>Hệ thống SCANMS</div>
         </div>
         <div style={{ flex: 1.3 }}>
           <div style={{ fontSize: "7px", fontWeight: 700, color: "#555", textTransform: "uppercase" }}>Người nhận</div>
@@ -211,14 +211,14 @@ export function printShippingLabel(
     `body{width:105mm;min-height:148mm;font-family:Arial,sans-serif;font-size:10px;color:#000;background:#fff;padding:6mm}` +
     `@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>` +
     `<div style="display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:3mm;margin-bottom:3mm">` +
-    `<div><div style="font-weight:900;font-size:15px">${carrier.toUpperCase()}</div><div style="font-size:8px;color:#555">Vận chuyển liên kết sàn SCANMS</div></div>` +
+    `<div><div style="font-weight:900;font-size:15px">${carrier.toUpperCase()}</div><div style="font-size:8px;color:#555">Vận chuyển hệ thống SCANMS</div></div>` +
     `<div style="text-align:right;font-size:8px;color:#444"><div>In: ${printDate}</div><div>Đơn #${order.externalOrderSn}</div></div></div>` +
     `<div style="text-align:center;margin-bottom:3mm">` +
     `<svg width="${tw}" height="70" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;display:block;margin:0 auto"><rect width="${tw}" height="70" fill="#fff"/>${bars}</svg>` +
     `<div style="font-weight:900;font-size:14px;letter-spacing:3px;font-family:monospace;margin-top:2px">${trackingNumber}</div></div>` +
     `<div style="border-bottom:1px dashed #000;margin:3mm 0"></div>` +
     `<div style="display:flex;gap:3mm;margin-bottom:3mm">` +
-    `<div style="flex:1;border-right:1px solid #ccc;padding-right:3mm"><div style="font-size:7px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:1mm">Người gửi</div><div style="font-weight:700">${storeName ?? "SCANMS Store"}</div><div style="font-size:8px;color:#666">Sàn TMĐT SCANMS</div></div>` +
+    `<div style="flex:1;border-right:1px solid #ccc;padding-right:3mm"><div style="font-size:7px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:1mm">Người gửi</div><div style="font-weight:700">${storeName ?? "SCANMS Store"}</div><div style="font-size:8px;color:#666">Hệ thống SCANMS</div></div>` +
     `<div style="flex:1.3"><div style="font-size:7px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:1mm">Người nhận</div><div style="font-weight:900;font-size:12px">${order.customerName}</div><div style="font-size:10px;font-weight:700">\uD83D\uDCDE ${order.customerPhone}</div><div style="font-size:8px;color:#222;margin-top:1mm;line-height:1.4">${order.shippingAddress}</div></div>` +
     `</div><div style="border-bottom:1px dashed #000;margin:3mm 0"></div>` +
     `<div style="font-size:7px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:1mm">Nội dung kiện hàng</div>` +

@@ -1111,7 +1111,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                   chuyên môn hồ sơ eKYC, phân ngành đăng ký và độ tương tác thực của kênh MXH.
                 </p>
                 <p className="text-[10.5px] text-[#7D715E]">
-                  • Thuật toán quét và đối soát tự động trên <strong>{totalScanned || 16}</strong> hồ sơ KOC hoạt động toàn sàn.
+                  • Thuật toán quét và đối soát tự động trên <strong>{totalScanned || 16}</strong> hồ sơ KOC hoạt động toàn hệ thống.
                 </p>
               </div>
             </div>

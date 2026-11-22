@@ -176,27 +176,7 @@ export interface ProductCommissionBreakdownItem {
     tierName: string;
     dealBonus: number;
     hasExclusiveDeal: boolean;
-    liveBonus: number;
     finalRate: number;
-  };
-}
-
-export interface LiveSessionSummaryItem {
-  id: string;
-  title: string;
-  coverImageUrl?: string;
-  storeName: string;
-  storeLogo?: string;
-  startsAt: string;
-  endsAt: string;
-  status: string;
-  pinnedProductsCount: number;
-  liveBonusRate: number;
-  metrics: {
-    ordersCount: number;
-    unitsSold: number;
-    grossRevenue: number;
-    commissionEarned: number;
   };
 }
 
@@ -341,22 +321,6 @@ export const analyticsService = {
   }> => {
     const res = await api.get('/dashboard/collaborator/top-products', {
       params: { limit },
-      headers: fresh ? { 'x-skip-cache': 'true' } : undefined,
-    });
-    return (res.data as any)?.data || res.data;
-  },
-
-  getCollaboratorLiveSessionsSummary: async (fresh = false): Promise<{
-    success: boolean;
-    totalSessions: number;
-    totals: {
-      totalLiveRevenue: number;
-      totalLiveCommission: number;
-      totalLiveOrders: number;
-    };
-    sessions: LiveSessionSummaryItem[];
-  }> => {
-    const res = await api.get('/dashboard/collaborator/live-sessions-summary', {
       headers: fresh ? { 'x-skip-cache': 'true' } : undefined,
     });
     return (res.data as any)?.data || res.data;

@@ -362,16 +362,22 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   };
 
   const handleReviewSampleVideo = async (sample: SampleRequestItem, status: 'APPROVED' | 'REJECTED') => {
-    const asset = sample.videoAssets?.find((item) => item.status === 'PENDING');
     const rejectionReason = status === 'REJECTED'
-      ? window.prompt('Nhập lý do cần chỉnh sửa video:')?.trim()
+      ? window.prompt('Nhập lý do cần chỉnh sửa video (tối thiểu 15 ký tự):')?.trim()
       : undefined;
-    if (status === 'REJECTED' && !rejectionReason) return;
+    if (status === 'REJECTED') {
+      if (!rejectionReason) return;
+      if (rejectionReason.length < 15) {
+        toast.error('Lý do yêu cầu chỉnh sửa phải có ít nhất 15 ký tự.');
+        return;
+      }
+    }
 
     try {
-      if (asset?.id) {
-        await api.patch(`/media/${asset.id}/review`, { status, rejectionReason });
-      }
+      await api.patch(`/sample-requests/${sample.id}/review-video`, {
+        approve: status === 'APPROVED',
+        ...(rejectionReason ? { rejectionReason } : {}),
+      });
       toast.success(status === 'APPROVED' ? 'Đã nghiệm thu video và hoàn tất yêu cầu mẫu.' : 'Đã gửi yêu cầu chỉnh sửa video cho KOL.');
       await loadData();
     } catch (err: any) {
@@ -655,7 +661,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                 <colgroup><col className="w-[5%]" /><col className="w-[17%]" /><col className="w-[23%]" /><col className="w-[19%]" /><col className="w-[18%]" /><col className="w-[18%]" /></colgroup>
                 <thead>
                   <tr className="border-b border-[#EAE4D7] bg-[#FBF5EB]/40 font-bold text-[#7D715E]">
-                    <th className="w-10" aria-label="Ch?n y?u c?u" />
+                    <th className="w-10" aria-label="Chọn yêu cầu" />
                     <th className="py-3 px-3 font-medium">Nhà sáng tạo</th>
                     <th className="py-3 px-3 font-medium">Sản phẩm mẫu</th>
                     <th className="py-3 px-3 font-medium">Tiến độ & hạn video</th>

@@ -105,7 +105,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
     setLoading(true);
     setLoadError('');
     try {
-      const data = unwrap(await api.get('/products/reviews/moderation', { headers: { 'x-skip-cache': 'true' } }));
+      const data = unwrap(await api.get('/products/reviews/moderation'));
       if (!Array.isArray(data)) throw new Error('Không đọc được danh sách đánh giá.');
       setReviews(data);
     } catch (error: any) {

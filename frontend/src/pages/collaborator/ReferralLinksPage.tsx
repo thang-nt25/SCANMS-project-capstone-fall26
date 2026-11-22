@@ -1296,18 +1296,18 @@ export default function ReferralLinksPage({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] table-fixed text-left border-collapse">
+            <table className="w-full min-w-[820px] table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-white border-b border-[#EAE4D7] text-xs font-semibold text-[#7D715E]">
-                  <th className="w-[24%] py-3 px-3">
+                  <th className="w-[26%] py-3 px-2.5">
                     Sản phẩm &amp; Cửa hàng
                   </th>
-                  <th className="w-[20%] py-3 px-3">Link &amp; Kênh</th>
-                  <th className="py-3 px-2 text-center whitespace-nowrap">Ngày tạo</th>
-                  <th className="w-[13%] py-3 px-2 text-center whitespace-nowrap">Trạng thái</th>
-                  <th className="w-[10%] py-3 px-2 text-center whitespace-nowrap">Lượt nhấp</th>
-                  <th className="w-[7%] py-3 px-2 text-center whitespace-nowrap">Đơn hàng</th>
-                  <th className="w-[16%] py-3 px-3 text-center whitespace-nowrap">Thao tác</th>
+                  <th className="w-[18%] py-3 px-2">Link &amp; Kênh</th>
+                  <th className="w-[10%] py-3 px-1.5 text-center whitespace-nowrap">Ngày tạo</th>
+                  <th className="w-[13%] py-3 px-1.5 text-center whitespace-nowrap">Trạng thái</th>
+                  <th className="w-[9%] py-3 px-1.5 text-center whitespace-nowrap">Lượt nhấp</th>
+                  <th className="w-[8%] py-3 px-1.5 text-center whitespace-nowrap">Đơn hàng</th>
+                  <th className="w-[16%] py-3 px-2 text-center whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]/60 text-sm">

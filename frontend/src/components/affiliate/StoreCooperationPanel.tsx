@@ -16,7 +16,7 @@ export function StoreCooperationPanel({ mode, storeId, collaboratorId, onChanged
   const refresh = useCallback(async () => {
     const requestVersion = ++version.current;
     try {
-      const response: any = await api.get(mode === 'shop' ? '/store-collaborators/shop' : '/store-collaborators/my-invitations', { params: mode === 'shop' && storeId ? { storeId } : undefined, headers: { 'x-skip-cache': '1' } });
+      const response: any = await api.get(mode === 'shop' ? '/store-collaborators/shop' : '/store-collaborators/my-invitations', { params: mode === 'shop' && storeId ? { storeId } : undefined });
       const body = response?.data || response;
       if (requestVersion !== version.current) return;
       setItems(mode === 'shop' ? body.members || [] : Array.isArray(body) ? body : []);
