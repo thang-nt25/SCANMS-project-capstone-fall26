@@ -29,7 +29,7 @@ export class SetFloorPriceDto {
   @Min(0.01)
   @Max(1000000000000)
   floorPrice!: number;
-  @IsString() @MinLength(10) @MaxLength(1000) reason!: string;
+  @IsString() @MinLength(5) @MaxLength(1000) reason!: string;
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(200)
@@ -51,7 +51,7 @@ export class CreatePricePromotionDto {
   budgetTotal?: number;
   @Type(() => Date) @IsDate() startsAt!: Date;
   @Type(() => Date) @IsDate() endsAt!: Date;
-  @IsString() @MinLength(10) @MaxLength(1000) reason!: string;
+  @IsString() @MinLength(5) @MaxLength(1000) reason!: string;
 }
 export class ReviewPricePromotionDto {
   @IsBoolean() approve!: boolean;

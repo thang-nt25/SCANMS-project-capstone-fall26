@@ -69,10 +69,10 @@ export async function createDealProposal(
       const violations = (
         collaborator.collaboratorProfile.socialLinksJson as any
       )?.dealViolations;
-      if (
-        violations?.cooldownUntil &&
-        new Date(violations.cooldownUntil) > new Date()
-      )
+      const cooldownUntil =
+        collaborator.collaboratorProfile.dealCooldownUntil ??
+        (violations?.cooldownUntil ? new Date(violations.cooldownUntil) : null);
+      if (cooldownUntil && cooldownUntil > new Date())
         throw new BadRequestException(
           'KOC đang trong thời gian tạm khóa quyền đề xuất Deal.',
         );
