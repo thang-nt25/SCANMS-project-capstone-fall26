@@ -2012,9 +2012,9 @@ return true;
                               <div className="flex items-center gap-1 min-w-0 flex-1">
                                 {isEmail ? (
                                   <Mail className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                                ) : (
+                                ) : !kol.lastMessage && pendingSamples === 0 && Boolean(kol.handle) ? (
                                   <span className="text-[11px] font-bold text-[#B88E4F] leading-none shrink-0">@</span>
-                                )}
+                                ) : null}
                                 <span
                                   className="truncate text-[11px] font-medium text-[#7D715E] group-hover:text-[#1A1612] transition-colors"
                                   title={isEmail ? kol.email : subText}

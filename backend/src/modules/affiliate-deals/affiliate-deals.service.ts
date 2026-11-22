@@ -102,6 +102,7 @@ export class AffiliateDealsService {
       deal = { ...deal, tierBonus };
     }
     if (
+      !deal.targetOrders &&
       deal.targetRevenue &&
       (!deal.commitmentStartedAt ||
         !deal.commitmentEndsAt ||
@@ -109,6 +110,7 @@ export class AffiliateDealsService {
     )
       return evaluateRevenueKpi(deal, 0, 0);
     if (
+      !deal.targetOrders &&
       deal.targetRevenue &&
       deal.commitmentStartedAt &&
       deal.commitmentEndsAt &&
@@ -750,6 +752,7 @@ export class AffiliateDealsService {
     return products.map((product) => {
       const deal = activeDeals.find(
         (d) =>
+          d.scopeType === 'STORE_WIDE' ||
           d.productId === product.id ||
           d.scopeProducts.some((sp) => sp.productId === product.id),
       );
@@ -893,6 +896,7 @@ export class AffiliateDealsService {
             closedAt: null,
             status: { in: ['APPROVED', 'PENDING', 'PENDING_ADMIN_APPROVAL'] },
             OR: [
+              { scopeType: 'STORE_WIDE' },
               { productId: { in: targetProductIds } },
               {
                 scopeProducts: {
@@ -1230,6 +1234,7 @@ export class AffiliateDealsService {
             ],
           },
           select: {
+            targetOrders: true,
             targetRevenue: true,
             proposedCommissionRate: true,
             approvedCommissionRate: true,
@@ -1237,6 +1242,10 @@ export class AffiliateDealsService {
         }),
       ]);
 
+    const totalTargetOrders = escalatedProposals.reduce(
+      (sum, p) => sum + Number(p.targetOrders || 0),
+      0,
+    );
     const totalTargetRevenue = escalatedProposals.reduce(
       (sum, p) => sum + Number(p.targetRevenue || 0),
       0,
@@ -1260,6 +1269,7 @@ export class AffiliateDealsService {
         pendingCount,
         approvedCount,
         rejectedCount,
+        totalTargetOrders,
         totalTargetRevenue,
         avgRate: Math.round(avgRate * 10) / 10,
       },

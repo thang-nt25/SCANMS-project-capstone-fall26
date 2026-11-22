@@ -900,10 +900,6 @@ export class OrdersService {
         }
       }
       rawSubtotalAmount += itemPrice * item.quantity;
-
-      if (prod.originalPrice && Number(prod.originalPrice) > itemPrice) {
-        anyProductHasDirectDiscount = true;
-      }
     }
 
     // 3. Pre-validate Coupon nếu client có gửi mã (Backend tự tính toán cờ, không tin client)
@@ -2531,9 +2527,6 @@ export class OrdersService {
           }
         }
         rawSubtotalAmount += itemPrice * item.quantity;
-        if (prod.originalPrice && Number(prod.originalPrice) > itemPrice) {
-          anyProductHasDirectDiscount = true;
-        }
       }
 
       const storeCoupon =

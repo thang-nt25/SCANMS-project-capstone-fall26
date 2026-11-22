@@ -584,7 +584,7 @@ export default function KycApprovalPage() {
                             u.avatar
                           )}
                         </span>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <div className="flex items-center gap-1.5 text-xs font-bold leading-5 text-[#1A1612]">
                             <span className="truncate" title={u.fullName}>
                               {u.fullName}
@@ -593,10 +593,10 @@ export default function KycApprovalPage() {
                               <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#059669]" />
                             )}
                           </div>
-                          <div className="flex items-center gap-1 text-[10px] text-[#7D715E]">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] text-[#7D715E]">
                             <span className="font-medium">{u.role}</span>
-                            <span>·</span>
-                            <span className="tabular-nums">{u.createdAt}</span>
+                            <span aria-hidden="true">·</span>
+                            <span className="tabular-nums break-words">{u.createdAt}</span>
                           </div>
                         </div>
                       </div>

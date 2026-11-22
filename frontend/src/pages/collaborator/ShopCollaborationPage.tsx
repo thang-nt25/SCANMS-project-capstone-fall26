@@ -1690,11 +1690,6 @@ setActiveTab('samples');
                                         <span>
                                           {Number(prod.price).toLocaleString('vi-VN')} ₫
                                         </span>
-                                        {Number(prod.originalPrice) > Number(prod.price) && (
-                                          <span className="text-[11px] text-[#7D715E] line-through font-normal">
-                                            {Number(prod.originalPrice).toLocaleString('vi-VN')} ₫
-                                          </span>
-                                        )}
                                       </div>
                                     </div>
                                   </div>

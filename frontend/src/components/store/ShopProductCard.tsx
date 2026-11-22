@@ -36,12 +36,6 @@ export function ShopProductCard({
           <p className="whitespace-nowrap text-sm font-bold text-[#B88E4F] sm:text-lg">
             {money(product.price)}
           </p>
-          {product.originalPrice &&
-            Number(product.originalPrice) > Number(product.price) && (
-              <p className="text-xs text-[#7D715E] line-through">
-                {money(product.originalPrice)}
-              </p>
-            )}
         </div>
         <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-3 text-[11px] text-[#7D715E]">
           {Number(product.reviewCount) > 0 &&

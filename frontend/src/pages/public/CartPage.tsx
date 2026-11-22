@@ -272,11 +272,6 @@ export default function CartPage() {
                                   <strong className="text-sm font-semibold text-[#1A1612] tabular-nums">
                                     {formatMoney(item.price)}
                                   </strong>
-                                  {!!item.originalPrice && item.originalPrice > item.price && (
-                                    <del className="block text-[11px] text-[#7D715E] mt-0.5">
-                                      {formatMoney(item.originalPrice)}
-                                    </del>
-                                  )}
                                 </div>
                               </div>
 

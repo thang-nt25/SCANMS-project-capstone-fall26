@@ -65,7 +65,7 @@ export function ExclusiveOfferModal({
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [rate, setRate] = useState<number | ''>(14);
-  const [targetRevenue, setTargetRevenue] = useState<number | ''>(10000000);
+  const [targetOrders, setTargetOrders] = useState<number | ''>(30);
   const [days, setDays] = useState<number | ''>(14);
   const [plan, setPlan] = useState<string>(
     'Thực hiện video review chuyên sâu giới thiệu sản phẩm và hướng dẫn khách mua qua link tiếp thị độc quyền.'
@@ -106,16 +106,16 @@ export function ExclusiveOfferModal({
 
         setProducts(storeItems);
 
-        // Giữ lại các ID hợp lệ thuộc cửa hàng này
+        // Giữ lại các ID hợp lệ thuộc cửa hàng này và CHƯA bị khóa Deal
         const validSelectedIds = selectedProductIds.filter((id) =>
-          storeItems.some((p) => p.id === id)
+          storeItems.some((p) => p.id === id && !p.activeDeal?.isLocked)
         );
 
         if (validSelectedIds.length > 0) {
           setSelectedProductIds(validSelectedIds);
         } else if (storeItems.length > 0) {
-          const firstUnlocked = storeItems.find((p) => !p.activeDeal?.isLocked) || storeItems[0];
-          setSelectedProductIds([firstUnlocked.id]);
+          const firstUnlocked = storeItems.find((p) => !p.activeDeal?.isLocked);
+          setSelectedProductIds(firstUnlocked ? [firstUnlocked.id] : []);
         }
       })
       .catch(() => {
@@ -192,16 +192,22 @@ export function ExclusiveOfferModal({
     setError(null);
 
     const numRate = Number(rate) || 14;
-    const numTargetRev = Number(targetRevenue) || 10000000;
+    const numTargetOrders = Math.max(1, Math.min(10000, Math.round(Number(targetOrders) || 30)));
     const numDays = Number(days) || 14;
 
     try {
       const storeScopeId = primaryProduct.storeId || targetStoreId;
       const validProductIds = selectedProductIds.filter((id) => {
         const item = products.find((p) => p.id === id);
-        return item && (!storeScopeId || item.storeId === storeScopeId);
+        return item && !item.activeDeal?.isLocked && (!storeScopeId || item.storeId === storeScopeId);
       });
-      const finalProductIds = validProductIds.length > 0 ? validProductIds : [primaryProduct.id];
+      if (validProductIds.length === 0) {
+        setError('Sản phẩm đã chọn đang có thỏa thuận độc quyền. Vui lòng chọn sản phẩm khác.');
+        lock.current = false;
+        setBusy(false);
+        return;
+      }
+      const finalProductIds = validProductIds;
       const isMulti = finalProductIds.length > 1;
       const scopeType = isMulti ? 'SELECTED_PRODUCTS' : 'SINGLE_PRODUCT';
 
@@ -209,11 +215,11 @@ export function ExclusiveOfferModal({
         mode === 'proposal' ? '/affiliate-deals/proposals' : '/affiliate-deals/offers',
         {
           ...(mode === 'offer' ? { collaboratorId } : {}),
-          productId: primaryProduct.id,
+          productId: finalProductIds[0],
           proposedCommissionRate: numRate,
           scopeType,
           ...(isMulti ? { productIds: finalProductIds } : {}),
-          targetRevenue: numTargetRev,
+          targetOrders: numTargetOrders,
           commitmentDays: numDays,
           videoReviewCommitment: true,
           salesCommitment: plan.trim(),
@@ -266,7 +272,7 @@ export function ExclusiveOfferModal({
               {Number(rate) > 16 && <p className="exclusive-deal-admin-note">Cần Admin phê duyệt</p>}
             </div>
             <div className="exclusive-deal-targets">
-              <div className="exclusive-deal-field"><label htmlFor="deal-revenue">Mục tiêu doanh số *</label><div className="exclusive-deal-unit"><input id="deal-revenue" type="number" min="1000000" step="500000" value={targetRevenue} onChange={e => setTargetRevenue(e.target.value === '' ? '' : Number(e.target.value))} onBlur={() => setTargetRevenue(prev => prev === '' ? 10000000 : Math.max(1000000, Number(prev)))} required /><span>đ</span></div></div>
+              <div className="exclusive-deal-field"><label htmlFor="deal-orders">KPI đơn hàng *</label><div className="exclusive-deal-unit"><input id="deal-orders" type="number" min="1" max="10000" step="1" value={targetOrders} onChange={e => setTargetOrders(e.target.value === '' ? '' : Math.max(1, Math.min(10000, Math.round(Number(e.target.value)))))} onBlur={() => setTargetOrders(prev => prev === '' ? 30 : Math.max(1, Math.min(10000, Math.round(Number(prev)))))} required /><span>đơn</span></div></div>
               <div className="exclusive-deal-field"><label htmlFor="deal-days">Thời hạn *</label><div className="exclusive-deal-unit"><input id="deal-days" type="number" min="7" max="90" value={days} onChange={e => setDays(e.target.value === '' ? '' : Number(e.target.value))} onBlur={() => setDays(prev => prev === '' ? 14 : Math.max(7, Math.min(90, Number(prev))))} required /><span>ngày</span></div></div>
             </div>
             <div className="exclusive-deal-field"><label htmlFor="deal-plan">Kế hoạch nội dung *</label><textarea id="deal-plan" value={plan} onChange={e => setPlan(e.target.value)} placeholder="Nội dung review và kênh chia sẻ (tối thiểu 5 ký tự)…" rows={3} minLength={5} maxLength={1000} required /></div>
