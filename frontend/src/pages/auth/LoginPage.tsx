@@ -18,7 +18,7 @@ import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ShoppingScene } from '../../components/auth/ShoppingScene';
 import { AnimatedPasswordField, type PasswordAuthState } from '../../components/auth/AnimatedPasswordField';
-import { getRememberedIdentifier, getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
+import { getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
 import { safeLoginReturn } from '../../utils/login-return';
 
 type RoleType = 'customer' | 'kol' | 'shop' | 'manager' | 'admin';
@@ -28,15 +28,16 @@ interface RoleOption {
   label: string;
   icon: any;
   email: string;
+  defaultPassword: string;
   badge: string;
 }
 
 const ROLES: RoleOption[] = [
-  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer.an@scanms.vn', badge: 'Trần An (Ví 2.5Tr)' },
-  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol.bronze@scanms.vn', badge: 'Lê Hoàng Yến Nhi (TikTok 25K, Đồng)' },
-  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'manager.sora@scanms.vn', badge: 'Nguyễn Văn Minh (Sora Skin Tân Bình)' },
-  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', badge: 'Lê Thu Trang (Vận Hành & Tuân Thủ)' },
-  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', badge: 'Nguyễn Thành Thắng (Super Admin)' },
+  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer.an@scanms.vn', defaultPassword: 'Customer@123456', badge: 'Trần An (Ví 2.5Tr)' },
+  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol.bronze@scanms.vn', defaultPassword: 'Kol@123456', badge: 'Lê Hoàng Yến Nhi (TikTok 25K, Đồng)' },
+  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'manager.sora@scanms.vn', defaultPassword: 'Shop@123456', badge: 'Nguyễn Văn Minh (Sora Skin Tân Bình)' },
+  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', defaultPassword: 'Manager@123456', badge: 'Lê Thu Trang (Vận Hành & Tuân Thủ)' },
+  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', defaultPassword: 'Admin@123456', badge: 'Nguyễn Thành Thắng (Super Admin)' },
 ];
 
 export default function LoginPage() {
@@ -60,9 +61,14 @@ export default function LoginPage() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [identifier, setIdentifier] = useState(() => {
     if (registeredEmail) return registeredEmail;
-    return getRememberedIdentifier(role) || '';
+    const initialOption = ROLES.find((x) => x.id === role);
+    return initialOption?.email || '';
   });
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(() => {
+    if (registeredEmail) return '';
+    const initialOption = ROLES.find((x) => x.id === role);
+    return initialOption?.defaultPassword || '';
+  });
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -82,12 +88,13 @@ export default function LoginPage() {
 
   const handleRoleSelect = (selectedRole: RoleType) => {
     if (loading || passwordAuthState === 'success') return;
-    if (selectedRole === role) {
+    const nextOption = ROLES.find((x) => x.id === selectedRole);
+    if (selectedRole === role && identifier === nextOption?.email && password === nextOption?.defaultPassword) {
       setIsRoleDropdownOpen(false);
       return;
     }
-    setIdentifier(getRememberedIdentifier(selectedRole) || '');
-    setPassword('');
+    setIdentifier(nextOption?.email || '');
+    setPassword(nextOption?.defaultPassword || '');
     setPasswordAuthState('idle');
     setRole(selectedRole);
     setError(null);
@@ -124,11 +131,19 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (loading || passwordAuthState === 'success') return;
+    const submittedIdentifier = identifier.trim();
+    const submittedPassword = password;
+    if (!submittedIdentifier) {
+      setError('Vui lòng nhập email hoặc số điện thoại đã đăng ký.');
+      return;
+    }
+    if (!submittedPassword) {
+      setError('Vui lòng nhập mật khẩu.');
+      return;
+    }
     setError(null);
     setLoading(true);
     setPasswordAuthState('checking');
-    const submittedIdentifier = identifier.trim();
-    const submittedPassword = password;
 
     try {
       const res: any = await authService.login(submittedIdentifier, submittedPassword);
@@ -316,7 +331,7 @@ export default function LoginPage() {
                 Tài khoản đã được thay đổi ở tab khác. Đăng nhập tài khoản {activeRole.label} để tiếp tục trang vừa mở.
               </p>
             )}
-            <form id="scanms-auth-form" name="scanms-auth-form" autoComplete="off" onSubmit={handleSubmit} className="space-y-3">
+            <form id="scanms-auth-form" name="scanms-auth-form" autoComplete="off" noValidate onSubmit={handleSubmit} className="space-y-3">
               {/* Trap decoy inputs for Chrome autofill */}
               <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none', overflow: 'hidden' }} aria-hidden="true">
                 <input type="text" name="chrome_autofill_decoy_user" tabIndex={-1} autoComplete="username" />
