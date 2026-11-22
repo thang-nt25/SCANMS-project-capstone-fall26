@@ -269,7 +269,7 @@ export function ExclusiveOfferModal({
               <div className="exclusive-deal-field"><label htmlFor="deal-revenue">Mục tiêu doanh số *</label><div className="exclusive-deal-unit"><input id="deal-revenue" type="number" min="1000000" step="500000" value={targetRevenue} onChange={e => setTargetRevenue(e.target.value === '' ? '' : Number(e.target.value))} onBlur={() => setTargetRevenue(prev => prev === '' ? 10000000 : Math.max(1000000, Number(prev)))} required /><span>đ</span></div></div>
               <div className="exclusive-deal-field"><label htmlFor="deal-days">Thời hạn *</label><div className="exclusive-deal-unit"><input id="deal-days" type="number" min="7" max="90" value={days} onChange={e => setDays(e.target.value === '' ? '' : Number(e.target.value))} onBlur={() => setDays(prev => prev === '' ? 14 : Math.max(7, Math.min(90, Number(prev))))} required /><span>ngày</span></div></div>
             </div>
-            <div className="exclusive-deal-field"><label htmlFor="deal-plan">Kế hoạch nội dung</label><textarea id="deal-plan" value={plan} onChange={e => setPlan(e.target.value)} placeholder="Nội dung review và kênh chia sẻ…" rows={3} /></div>
+            <div className="exclusive-deal-field"><label htmlFor="deal-plan">Kế hoạch nội dung *</label><textarea id="deal-plan" value={plan} onChange={e => setPlan(e.target.value)} placeholder="Nội dung review và kênh chia sẻ (tối thiểu 5 ký tự)…" rows={3} minLength={5} maxLength={1000} required /></div>
             {error && <p className="exclusive-deal-error" role="alert"><AlertCircle size={16} />{error}</p>}
           </section>
         </div>
