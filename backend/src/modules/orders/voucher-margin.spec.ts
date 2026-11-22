@@ -95,12 +95,4 @@ describe('Word section 6 checkout margin protection', () => {
     }
     expect(priceVoucherLines([250000, 250000], [true, false], 50000, 0).map(row => row.netGoods)).toEqual([200000, 250000]);
   });
-
-  it('denies an ended time window even while a delayed status update still says LIVE', () => {
-    const now = new Date('2026-10-16T12:00:00Z');
-    const live = { status: 'LIVE', inviteStatus: 'ACCEPTED', startsAt: new Date('2026-10-16T11:00:00Z'), endsAt: now };
-    expect(liveVoucherActive(live, now)).toBe(false);
-    expect(liveVoucherActive({ ...live, endsAt: new Date(now.getTime() + 1000) }, now)).toBe(true);
-    expect(liveVoucherActive({ ...live, startsAt: new Date(now.getTime() + 1000), endsAt: new Date(now.getTime() + 2000) }, now)).toBe(false);
-  });
 });

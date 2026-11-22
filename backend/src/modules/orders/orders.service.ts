@@ -27,7 +27,6 @@ import { selfReferralReason } from './self-referral';
 import {
   precedenceCommissionRate,
   campaignBonusRate,
-  liveBonusRate,
   tierBonusByName,
 } from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -87,10 +86,7 @@ import { notifyCustomerOrderEvent } from './customer-order-notifications';
 import { ConfigService } from '@nestjs/config';
 import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
-import {
-  liveVoucherActive,
-  priceVoucherLines,
-} from '../coupons/voucher-pricing';
+import { priceVoucherLines } from '../coupons/voucher-pricing';
 import {
   assertNoRetailVoucherSelection,
   isKolExclusiveCoupon,
@@ -1077,52 +1073,6 @@ export class OrdersService {
     );
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
     let shopFundedAmount = 0;
-    const requestedLiveIds = [
-      ...new Set(
-        dto.items
-          .map((item) => item.liveSessionId)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
-    // Use the same session -> coupon lock order as an emergency stop. An order
-    // already being placed is committed before the session evidence is captured.
-    for (const liveId of [...requestedLiveIds].sort()) {
-      await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${liveId}::uuid AND store_id = ${store.id}::uuid FOR UPDATE`;
-    }
-    const liveSources = requestedLiveIds.length
-      ? await tx.liveShoppingSession.findMany({
-          where: {
-            id: { in: requestedLiveIds },
-            storeId: store.id,
-            platform: 'SCANMS',
-            inviteStatus: 'ACCEPTED',
-            status: 'LIVE',
-            startsAt: { lte: new Date() },
-            endsAt: { gt: new Date() },
-          },
-          select: {
-            id: true,
-            status: true,
-            startsAt: true,
-            endsAt: true,
-            commissionRate: true,
-            products: { select: { productId: true, variantId: true } },
-          },
-        })
-      : [];
-    const liveSessionIds = liveSources
-      .filter((session) =>
-        dto.items.some(
-          (item) =>
-            item.liveSessionId === session.id &&
-            session.products.some(
-              (product) =>
-                product.productId === item.productId &&
-                (!product.variantId || product.variantId === item.variantId),
-            ),
-        ),
-      )
-      .map((session) => session.id);
     let platformFundedAmount = 0;
     let appliedDiscountAmount = 0;
     const couponEligibleLines = dto.items.map(() => false);
@@ -1250,15 +1200,6 @@ export class OrdersService {
           couponProducts: true,
           couponCategories: true,
           collaborator: { select: { role: true } },
-          liveSession: {
-            select: {
-              status: true,
-              inviteStatus: true,
-              startsAt: true,
-              endsAt: true,
-              products: { select: { productId: true, variantId: true } },
-            },
-          },
         },
       });
 
@@ -1287,11 +1228,6 @@ export class OrdersService {
       }
       if (lockedCoupon.expiresAt && now >= lockedCoupon.expiresAt) {
         throw new ConflictException('Mã giảm giá đã hết hạn sử dụng');
-      }
-      if (!liveVoucherActive(lockedCoupon.liveSession, now)) {
-        throw new ConflictException(
-          'Voucher livestream chưa được mở hoặc đã tạm dừng/kết thúc',
-        );
       }
 
       // Creator codes are attribution identifiers and remain usable when a
@@ -1365,15 +1301,6 @@ export class OrdersService {
             campaignProductIds.size > 0
               ? campaignProductIds.has(prod.id)
               : true;
-        }
-
-        if (isItemEligible && lockedCoupon.liveSession) {
-          isItemEligible = lockedCoupon.liveSession.products.some(
-            (liveProduct) =>
-              liveProduct.productId === prod.id &&
-              (!liveProduct.variantId ||
-                liveProduct.variantId === item.variantId),
-          );
         }
 
         if (isItemEligible) {
@@ -1899,8 +1826,6 @@ export class OrdersService {
       unitPrice: number;
       appliedCommissionRate: number;
       calculatedCommissionAmount: number;
-      regularCommissionRate?: number | null;
-      regularCommissionAmount?: number | null;
     }> = [];
 
     const attributedReferralLink = referralLinkId
@@ -1964,20 +1889,6 @@ export class OrdersService {
         campaignId: fundedCampaignBonus && campaign ? campaign.id : null,
         campaignBonusRate: fundedCampaignBonus,
       };
-      const liveSession =
-        item.liveSessionId && liveSessionIds.includes(item.liveSessionId)
-          ? liveSources.find(
-              (session) =>
-                session.id === item.liveSessionId &&
-                session.products.some(
-                  (product) =>
-                    product.productId === prod.id &&
-                    (!product.variantId ||
-                      product.variantId === item.variantId),
-                ),
-            )
-          : null;
-      const liveBonus = liveBonusRate(liveSession);
       const isBlockedSelfReferral = Boolean(
         selfReferral || selfReferralDetected,
       );
@@ -1987,15 +1898,6 @@ export class OrdersService {
             tierBonus,
             10 + dealBonus,
             10 + campaignBonus,
-            liveBonus,
-          );
-      const regularCommissionRate = isBlockedSelfReferral
-        ? 0
-        : precedenceCommissionRate(
-            tierBonus,
-            10 + dealBonus,
-            10 + campaignBonus,
-            0,
           );
       if (
         !isBlockedSelfReferral &&
@@ -2024,10 +1926,6 @@ export class OrdersService {
         unitPrice,
         appliedCommissionRate: finalCommissionRate,
         calculatedCommissionAmount: calculatedCommission,
-        regularCommissionRate: liveBonus ? regularCommissionRate : null,
-        regularCommissionAmount: liveBonus
-          ? remunerationBase * (regularCommissionRate / 100)
-          : null,
       });
     }
 
@@ -2128,7 +2026,6 @@ export class OrdersService {
           selfReferralDetected,
           selfReferralRiskSignals,
           selfReferralReviewRequired: selfReferralRiskSignals.length > 0,
-          liveSessionIds,
           campaignBonusReservations: Object.fromEntries(
             campaignBonusReservations,
           ),
@@ -2216,8 +2113,6 @@ export class OrdersService {
             unitPrice: item.unitPrice,
             appliedCommissionRate: item.appliedCommissionRate,
             calculatedCommissionAmount: item.calculatedCommissionAmount,
-            regularCommissionRate: item.regularCommissionRate,
-            regularCommissionAmount: item.regularCommissionAmount,
             commissionSnapshotAt: new Date(),
           })),
         },
@@ -2532,15 +2427,19 @@ export class OrdersService {
       this.logger.warn(
         `[MultiStoreCheckout] Phát hiện ${existingSubOrders.length}/${distinctStoreIds.length} đơn con dở dang từ phiên trước (${baseIdempotencyKey}). Đang kích hoạt cơ chế khôi phục hủy bỏ đơn dở dang...`,
       );
-      await this.prisma.order.updateMany({
-        where: {
-          id: { in: existingSubOrders.map((o) => o.id) },
-          status: OrderStatus.PENDING,
-        },
-        data: {
-          status: OrderStatus.CANCELLED,
-        },
-      });
+      for (const sub of existingSubOrders) {
+        if (sub.status === OrderStatus.PENDING) {
+          await this.executeOrderCancellation(
+            sub.id,
+            'Khôi phục phiên đặt hàng đa gian hàng bị gián đoạn',
+            dto.customerId || undefined,
+          ).catch((err) => {
+            this.logger.warn(
+              `[MultiStoreCheckout] Không thể hoàn hủy đơn con ${sub.id}: ${err?.message}`,
+            );
+          });
+        }
+      }
     }
 
     // 1. Phân nhóm items theo storeId & Pre-validate toàn bộ gian hàng
@@ -3655,14 +3554,18 @@ export class OrdersService {
         message: 'Đã hủy đơn hàng và hoàn trả ưu đãi thành công',
         publicOrderCode: order.externalOrderSn,
         status: OrderStatus.CANCELLED,
+        _storeId: order.storeId,
       };
     });
     try {
-      await this.cacheService?.delPrefix('orders:store:');
+      await this.cacheService?.delPrefix(
+        result._storeId ? `orders:store:${result._storeId}:` : 'orders:store:',
+      );
     } catch {
       this.logger.warn('Đã hủy đơn; cache danh sách sẽ cập nhật khi hết hạn.');
     }
-    return result;
+    const { _storeId: _, ...publicResult } = result;
+    return publicResult;
   }
 
   /**
@@ -5007,7 +4910,9 @@ export class OrdersService {
     });
 
     try {
-      await this.cacheService?.delPrefix('orders:store:');
+      await this.cacheService?.delPrefix(
+        updated.storeId ? `orders:store:${updated.storeId}:` : 'orders:store:',
+      );
     } catch {
       this.logger.warn('Đã lưu vận đơn; chưa xóa được cache danh sách đơn.');
     }
