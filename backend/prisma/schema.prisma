@@ -76,6 +76,7 @@ enum SampleRequestStatus {
   OVERDUE
   CANCELLED
   DELIVERY_ISSUE
+  APPEALED
 }
 
 enum AttributionMethod {
@@ -250,6 +251,8 @@ enum DealBonusStatus {
 
 enum CouponStatus {
   PENDING_APPROVAL
+  PENDING_ADMIN_APPROVAL
+  PENDING_BLOCK_APPROVAL
   ACTIVE
   PAUSED
   REJECTED
@@ -287,29 +290,6 @@ enum CouponRedemptionStatus {
   CANCELLED
   PARTIALLY_REFUNDED
   REFUNDED
-}
-
-enum LiveSessionStatus {
-  PENDING_CREATOR
-  SCHEDULED
-  LIVE
-  PAUSED
-  ENDED
-  CANCELLED
-}
-
-enum LiveSessionPlatform {
-  SCANMS
-  TIKTOK
-  YOUTUBE
-  FACEBOOK
-  OTHER
-}
-
-enum LiveSessionInviteStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
 }
 
 // ==========================================
@@ -381,9 +361,6 @@ model User {
   resolvedReturnDisputes    Dispute[]                   @relation("ReturnDisputeResolver")
   customerConversations     Conversation[]              @relation("CustomerConversations")
   storeFollows              StoreFollow[]
-  liveSessionsCreated       LiveShoppingSession[] @relation("LiveSessionCreator")
-  liveSessionsOwned         LiveShoppingSession[] @relation("LiveSessionOwner")
-  liveSessionClaims         LiveSessionClaim[]
   reviewedShopOnboardings   Store[]                 @relation("ShopOnboardingReviewer")
 
   requestedSponsoredPlacements SponsoredPlacement[] @relation("SponsorshipRequester")
@@ -409,8 +386,6 @@ model CustomerIdentity {
 }
 
 model Store {
-  liveRestrictionUntil DateTime? @map("live_restriction_until") @db.Timestamptz(6)
-  liveCooperationBlocked Boolean @default(false) @map("live_cooperation_blocked")
   id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerId               String    @map("owner_id") @db.Uuid
   name                  String    @db.VarChar(200)
@@ -464,7 +439,6 @@ model Store {
   payoutBatches          PayoutBatch[]
   exclusiveDealProposals ExclusiveDealProposal[]
   pricePromotions ProductPricePromotion[]
-  liveSessions          LiveShoppingSession[]
   sponsoredPlacements    SponsoredPlacement[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
@@ -579,6 +553,8 @@ model CollaboratorProfile {
   kycStatus                 KycStatus @default(UNVERIFIED) @map("kyc_status")
   sampleRequestsBlockedAt   DateTime? @map("sample_requests_blocked_at") @db.Timestamptz(6)
   sampleRequestsBlockReason String?   @map("sample_requests_block_reason") @db.VarChar(500)
+  dealViolationCount        Int       @default(0) @map("deal_violation_count")
+  dealCooldownUntil         DateTime? @map("deal_cooldown_until") @db.Timestamptz(6)
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                 DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -587,6 +563,7 @@ model CollaboratorProfile {
   tier CollaboratorTier? @relation(fields: [tierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([tierId], map: "idx_fk_collab_profiles_tier")
+  @@index([kycStatus], map: "idx_collab_profiles_kyc_status")
   @@map("collaborator_profiles")
 }
 
@@ -668,7 +645,6 @@ model Product {
   exclusiveDealProposals ExclusiveDealProposal[]
   dealResources          ExclusiveDealProduct[]
   pricePromotions        ProductPricePromotion[]
-  liveSessionProducts   LiveSessionProduct[]
 
   @@index([storeId], map: "idx_fk_products_store")
   @@index([moderationStatus, createdAt], map: "idx_products_moderation_status_created")
@@ -732,7 +708,6 @@ model ProductVariant {
   @@index([barcode], map: "idx_variants_barcode")
   customerCartItems CustomerCartItem[]
   sampleRequests    SampleProductRequest[]
-  liveSessionProducts LiveSessionProduct[]
   pricePromotions ProductPricePromotion[]
 
   @@index([productId], map: "idx_fk_product_variants_product")
@@ -907,6 +882,9 @@ model SampleProductRequest {
   videoTitle                 String?             @map("video_title") @db.VarChar(255)
   videoSubmittedAt           DateTime?           @map("video_submitted_at") @db.Timestamptz(6)
   videoRejectionReason       String?             @map("video_rejection_reason") @db.VarChar(500)
+  revisionCount              Int                 @default(0) @map("revision_count")
+  appealReason               String?             @map("appeal_reason") @db.VarChar(1000)
+  appealedAt                 DateTime?           @map("appealed_at") @db.Timestamptz(6)
   status                     SampleRequestStatus @default(PENDING)
   createdAt                  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                  DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1276,7 +1254,6 @@ model Coupon {
   collaboratorId               String              @map("collaborator_id") @db.Uuid
   storeId                      String              @map("store_id") @db.Uuid
   campaignId                   String?             @map("campaign_id") @db.Uuid
-  liveSessionId                String?             @unique @map("live_session_id") @db.Uuid
   status                       CouponStatus        @default(PENDING_APPROVAL)
   discountType                 DiscountType        @default(PERCENTAGE) @map("discount_type")
   discountValue                Decimal             @default(0.00) @map("discount_value") @db.Decimal(15, 2)
@@ -1312,7 +1289,6 @@ model Coupon {
   collaborator     User               @relation("CollaboratorCoupons", fields: [collaboratorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   store            Store              @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   campaign         Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  liveSession      LiveShoppingSession? @relation(fields: [liveSessionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   approver         User?              @relation("CouponApprover", fields: [approvedBy], references: [id], onDelete: SetNull, onUpdate: NoAction)
   couponProducts   CouponProduct[]
   couponCategories CouponCategory[]
@@ -1325,86 +1301,6 @@ model Coupon {
   @@index([storeId], map: "idx_fk_coupons_store")
   @@index([status, expiresAt], map: "idx_coupons_status_expires")
   @@map("coupons")
-}
-
-model LiveShoppingSession {
-  governance Json @default("{}") @db.JsonB
-  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storeId               String                 @map("store_id") @db.Uuid
-  creatorId             String                 @map("creator_id") @db.Uuid
-  createdBy             String                 @map("created_by") @db.Uuid
-  title                 String                 @db.VarChar(200)
-  coverImageUrl         String?                @map("cover_image_url")
-  description           String?                @db.Text
-  platform              LiveSessionPlatform
-  liveUrl               String                 @map("live_url") @db.VarChar(1000)
-  externalChannels      Json                   @default("[]") @map("external_channels")
-  startsAt              DateTime               @map("starts_at") @db.Timestamptz(6)
-  endsAt                DateTime               @map("ends_at") @db.Timestamptz(6)
-  status                LiveSessionStatus     @default(PENDING_CREATOR)
-  inviteStatus          LiveSessionInviteStatus @default(PENDING) @map("invite_status")
-  respondedAt           DateTime?              @map("responded_at") @db.Timestamptz(6)
-  commissionRate        Decimal                @default(0.00) @map("commission_rate") @db.Decimal(5, 2)
-  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  store    Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  creator  User                @relation("LiveSessionCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  owner    User                @relation("LiveSessionOwner", fields: [createdBy], references: [id], onDelete: Cascade)
-  coupon   Coupon?
-  products LiveSessionProduct[]
-  claims   LiveSessionClaim[]
-  viewers  LiveSessionViewer[]
-
-  @@index([storeId, status, startsAt])
-  @@index([creatorId, inviteStatus, startsAt])
-  @@index([status, endsAt])
-  @@map("live_shopping_sessions")
-}
-
-model LiveSessionProduct {
-  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sessionId String          @map("session_id") @db.Uuid
-  productId String          @map("product_id") @db.Uuid
-  variantId String?         @map("variant_id") @db.Uuid
-  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  session LiveShoppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  product Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variant ProductVariant?     @relation(fields: [variantId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId, productId])
-  @@index([productId, variantId])
-  @@map("live_session_products")
-}
-
-model LiveSessionClaim {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sessionId String   @map("session_id") @db.Uuid
-  claimKey  String   @map("claim_key") @db.VarChar(100)
-  userId    String?  @map("user_id") @db.Uuid
-  claimedAt DateTime @default(now()) @map("claimed_at") @db.Timestamptz(6)
-
-  session LiveShoppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user    User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@unique([sessionId, claimKey])
-  @@index([sessionId, claimedAt])
-  @@map("live_session_claims")
-}
-
-model LiveSessionViewer {
-  sessionId   String    @map("session_id") @db.Uuid
-  clientId    String    @map("client_id") @db.VarChar(100)
-  firstSeenAt DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(6)
-  lastSeenAt  DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
-  leftAt      DateTime? @map("left_at") @db.Timestamptz(6)
-
-  session LiveShoppingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@id([sessionId, clientId])
-  @@index([sessionId, lastSeenAt])
-  @@map("live_session_viewers")
 }
 
 model CouponProduct {
@@ -1572,6 +1468,9 @@ model Order {
   @@index([couponId], map: "idx_fk_orders_coupon")
   @@index([status, completedAt], map: "idx_orders_status_completed")
   @@index([status, createdAt], map: "idx_orders_status_created")
+  @@index([storeId, createdAt(sort: Desc)], map: "idx_orders_store_created_desc")
+  @@index([storeId, status, createdAt(sort: Desc)], map: "idx_orders_store_status_created_desc")
+  @@index([customerId, createdAt(sort: Desc)], map: "idx_orders_customer_created_desc")
   @@map("orders")
 }
 
@@ -1666,8 +1565,6 @@ model OrderItem {
   unitPrice                  Decimal   @map("unit_price") @db.Decimal(15, 2)
   appliedCommissionRate      Decimal   @map("applied_commission_rate") @db.Decimal(5, 2)
   calculatedCommissionAmount Decimal   @map("calculated_commission_amount") @db.Decimal(15, 2)
-  regularCommissionRate      Decimal?  @map("regular_commission_rate") @db.Decimal(5, 2)
-  regularCommissionAmount    Decimal?  @map("regular_commission_amount") @db.Decimal(15, 2)
   commissionSnapshotAt       DateTime? @map("commission_snapshot_at") @db.Timestamptz(6)
   createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -1714,6 +1611,7 @@ model Commission {
   @@index([orderId], map: "idx_fk_commissions_order")
   @@index([collaboratorId, status], map: "idx_commissions_collab_status")
   @@index([status, availableAt], map: "idx_commissions_status_available")
+  @@index([dealProposalId, dealBonusStatus], map: "idx_commissions_deal_bonus")
   @@map("commissions")
 }
 
@@ -1948,6 +1846,7 @@ model ChatMessage {
   reactions    ChatMessageReaction[]
 
   @@index([conversationId], map: "idx_fk_chat_messages_conv")
+  @@index([conversationId, createdAt(sort: Desc)], map: "idx_chat_messages_conv_created_desc")
   @@index([senderId], map: "idx_fk_chat_messages_sender")
   @@index([replyToId], map: "idx_fk_chat_messages_reply")
   @@map("chat_messages")
@@ -1979,6 +1878,7 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([userId], map: "idx_fk_audit_logs_user")
+  @@index([action, createdAt], map: "idx_audit_logs_action_created")
   @@map("audit_logs")
 }
 
