@@ -98,7 +98,7 @@ export class CreateStoreDto {
   warehouseAddress?: string;
 
   @ApiPropertyOptional({
-    example: 1442,
+    example: '1442',
     description: 'Mã quận/huyện GHN của kho xuất hàng (ghnDistrictId)',
   })
   @IsOptional()
@@ -112,6 +112,62 @@ export class CreateStoreDto {
   @IsOptional()
   @IsString()
   ghnWardCode?: string;
+
+  @ApiPropertyOptional({
+    example: '79',
+    description: 'Mã tỉnh/thành phố',
+  })
+  @IsOptional()
+  @IsString()
+  provinceCode?: string;
+
+  @ApiPropertyOptional({
+    example: 'Thành phố Hồ Chí Minh',
+    description: 'Tên tỉnh/thành phố',
+  })
+  @IsOptional()
+  @IsString()
+  provinceName?: string;
+
+  @ApiPropertyOptional({
+    example: '1442',
+    description: 'Mã quận/huyện',
+  })
+  @IsOptional()
+  @IsString()
+  districtCode?: string;
+
+  @ApiPropertyOptional({
+    example: 'Thành phố Thủ Đức',
+    description: 'Tên quận/huyện',
+  })
+  @IsOptional()
+  @IsString()
+  districtName?: string;
+
+  @ApiPropertyOptional({
+    example: '20109',
+    description: 'Mã phường/xã',
+  })
+  @IsOptional()
+  @IsString()
+  wardCode?: string;
+
+  @ApiPropertyOptional({
+    example: 'Phường Linh Chiểu',
+    description: 'Tên phường/xã',
+  })
+  @IsOptional()
+  @IsString()
+  wardName?: string;
+
+  @ApiPropertyOptional({
+    example: 'Số 123 Đường Số 7, KCN Cao',
+    description: 'Địa chỉ chi tiết kho xuất hàng',
+  })
+  @IsOptional()
+  @IsString()
+  detailAddress?: string;
 
   @ApiPropertyOptional({
     example: '4aa15e5b-8741-5190-b01f-102c902f4d69',

@@ -2,7 +2,7 @@ import type { ReturnStatus } from '../services/return.service';
 
 const labels: Record<ReturnStatus, string> = {
   REQUESTED: 'Chờ Shop phản hồi',
-  SHOP_APPROVED: 'Shop đã duyệt · chờ đặt lấy hàng',
+  SHOP_APPROVED: 'Chờ khách gửi hàng trả',
   PICKUP_BOOKED: 'Đã đặt shipper lấy hàng',
   SHOP_REJECTED: 'Shop từ chối',
   EXPIRED: 'Quá hạn gửi hàng',
@@ -14,7 +14,7 @@ const labels: Record<ReturnStatus, string> = {
   REFUND_PROCESSING: 'Đang xử lý hoàn tiền',
   REFUND_FAILED: 'Hoàn tiền gặp lỗi',
   EXCHANGE_PENDING: 'Shop chuẩn bị hàng đổi',
-  EXCHANGE_SHIPPED: 'Shop đã gửi hàng đổi',
+  EXCHANGE_SHIPPED: 'Đã tạo vận đơn hàng đổi',
   AWAITING_CUSTOMER_CONFIRMATION: 'Chờ khách xác nhận',
   COMPLETED: 'Đã hoàn tất',
   DISPUTED: 'Đang khiếu nại',
@@ -59,5 +59,12 @@ const carrierLabels: Record<string, string> = {
   scrap: 'GHN báo kiện hàng đã xử lý tiêu hủy',
 };
 
-export const carrierStatusLabel = (status?: string | null) =>
-  status ? carrierLabels[status] ?? status : '';
+export const carrierStatusLabel = (status?: string | null, destination: 'shop' | 'customer' = 'shop') => {
+  if (!status) return '';
+  if (destination === 'customer') {
+    if (status === 'delivered') return 'Đã giao đến khách';
+    if (['delivering', 'money_collect_delivering'].includes(status)) return 'Đang giao đến khách';
+    if (status === 'delivery_fail') return 'Giao đến khách chưa thành công';
+  }
+  return carrierLabels[status] ?? status;
+};

@@ -55,7 +55,7 @@ export class ProductsController {
 
   @Get('landing/:idOrSlug')
   @ApiOperation({
-    summary: 'Lấy dữ liệu Landing Page công khai cho khách mua hàng (FR-15)',
+    summary: 'Lấy dữ liệu Landing Page công khai cho khách mua hàng',
   })
   @ApiParam({
     name: 'idOrSlug',
@@ -74,7 +74,7 @@ export class ProductsController {
   @Get(':idOrSlug/landing')
   @ApiOperation({
     summary:
-      'Lấy dữ liệu Landing Page công khai cho khách mua hàng (FR-15 chuẩn REST)',
+      'Lấy dữ liệu Landing Page công khai cho khách mua hàng chuẩn REST',
   })
   @ApiParam({
     name: 'idOrSlug',

@@ -62,26 +62,10 @@ export class MonthlyBonusScheduler {
       }
       for (const yearMonth of [...months].sort()) {
         try {
+          const monthlyPolicy = await this.prisma.storeMonthlyRewardPolicy.findUnique({ where: { storeId_yearMonth: { storeId: store.id, yearMonth } } });
+          if (monthlyPolicy) continue;
+          // Legacy periods can be calculated automatically, but always require a human review.
           await this.rules.settleAllEligible(store.id, yearMonth);
-          // Resume independently after a crash between calculate/approve/credit.
-          const pending = await this.prisma.monthlyBonusResult.findMany({
-            where: {
-              storeId: store.id,
-              yearMonth,
-              status: { in: ['PENDING', 'APPROVED'] },
-              bonusAmount: { gte: 0 },
-            },
-            select: { id: true, status: true },
-          });
-          for (const result of pending) {
-            try {
-              if (result.status === 'PENDING')
-                await this.rules.approveSettlement(store.id, result.id);
-              await this.rules.payoutSettlement(store.id, result.id);
-            } catch {
-              this.logger.warn(`Monthly bonus awaiting retry: ${result.id}`);
-            }
-          }
         } catch {
           this.logger.error(
             `Monthly settlement failed: store=${store.id}, period=${yearMonth}`,

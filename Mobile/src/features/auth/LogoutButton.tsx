@@ -8,9 +8,11 @@ import { IconButton } from "../../components/commerce";
 export function LogoutButton({
   disabled = false,
   compact = false,
+  title = "Đăng xuất / Đổi tài khoản",
 }: {
   disabled?: boolean;
   compact?: boolean;
+  title?: string;
 }) {
   const { logout } = useAuth();
   const operation = useOperation();
@@ -33,7 +35,7 @@ export function LogoutButton({
     <>
       <ErrorNotice error={operation.error} />
       <Button
-        title="Đăng xuất / Đổi tài khoản"
+        title={title}
         secondary
         loading={operation.busy}
         disabled={disabled}

@@ -1,7 +1,10 @@
+import { ProductRowActions } from '../../components/product/ProductRowActions';
 import { ProductAiMatchDrawer } from '../../components/product/ProductAiMatchDrawer';
+import { productGroupsForCategory } from '../../utils/product-groups';
 import { ProductIdentityWarning, type SimilarProduct } from '../../components/product/ProductIdentityWarning';
 import { ReviewManagementDialog } from '../../components/product/ReviewManagementPanel';
 import { ProposePromotionModal } from '../../components/promotions/ProposePromotionModal';
+import { calculateMinSafePrice } from '../../utils/pricing-math';
 import { useState, useEffect, useRef, useMemo, Fragment, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -11,7 +14,6 @@ import {
   Search,
   Link2,
   Package,
-  Pencil,
   Trash2,
   CheckCircle2,
   ImagePlus,
@@ -30,7 +32,6 @@ import {
   Clock3,
   ShieldCheck,
   Ban,
-  Sparkles,
   RefreshCw,
   Truck,
   ChevronLeft,
@@ -38,7 +39,6 @@ import {
   Check,
   Loader2,
   FileText,
-  SlidersHorizontal,
   Zap,
   Layers,
 } from 'lucide-react';
@@ -82,7 +82,7 @@ type ProductVariantItem = {
   labelInfo?: string;
   attributes: VariantAttributes;
   price: number | '';
-  basePrice?: number | '';
+  floorPrice?: number | '';
   stockQuantity: number | '';
   imageUrl: string;
   tier1Value?: string;
@@ -342,71 +342,6 @@ const inferCategoryFromTitle = (title: string) => {
   return '';
 };
 
-interface ProductSpecificationItem {
-  id: string;
-  key: string;
-  value: string;
-}
-
-const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => {
-  if (!cat) return [
-    { id: 'spec-1', key: 'Đặc tính / Đối tượng phù hợp', value: '' },
-    { id: 'spec-2', key: 'Chất liệu / Cấu hình kỹ thuật', value: '' },
-    { id: 'spec-3', key: 'Hướng dẫn bảo quản & Sử dụng', value: '' },
-  ];
-  const lower = cat.toLowerCase();
-  if (lower.includes('thời trang') || lower.includes('may mặc') || lower.includes('thể thao') || lower.includes('activewear') || lower.includes('áo') || lower.includes('quần') || lower.includes('apparel')) {
-    return [
-      { id: 'spec-1', key: 'Chất liệu vải chính', value: '' },
-      { id: 'spec-2', key: 'Độ co giãn & Form dáng', value: '' },
-      { id: 'spec-3', key: 'Xuất xứ nguồn vải', value: '' },
-      { id: 'spec-4', key: 'Hướng dẫn giặt ủi', value: '' },
-    ];
-  }
-  if (lower.includes('mỹ phẩm') || lower.includes('skincare') || lower.includes('da') || lower.includes('serum') || lower.includes('cosmetic')) {
-    return [
-      { id: 'spec-1', key: 'Loại da / Đối tượng phù hợp', value: '' },
-      { id: 'spec-2', key: 'Chỉ số chống nắng (SPF/PA)', value: '' },
-      { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp (PAO)', value: '' },
-      { id: 'spec-4', key: 'Đặc tính / Công dụng chính', value: '' },
-    ];
-  }
-  if (lower.includes('trang điểm') || lower.includes('làm đẹp') || lower.includes('makeup') || lower.includes('son')) {
-    return [
-      { id: 'spec-1', key: 'Tone màu / Loại da phù hợp', value: '' },
-      { id: 'spec-2', key: 'Độ che phủ / Chống thấm nước', value: '' },
-      { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp (PAO)', value: '' },
-      { id: 'spec-4', key: 'Đặc tính / Hiệu quả nổi bật', value: '' },
-    ];
-  }
-  if (lower.includes('cơ thể') || lower.includes('tóc') || lower.includes('body') || lower.includes('tắm') || lower.includes('gội')) {
-    return [
-      { id: 'spec-1', key: 'Đối tượng / Tình trạng da & tóc', value: '' },
-      { id: 'spec-2', key: 'Hạn sử dụng sau mở nắp', value: '' },
-      { id: 'spec-3', key: 'Công dụng dưỡng ẩm / Làm sạch', value: '' },
-    ];
-  }
-  if (lower.includes('thực phẩm') || lower.includes('dinh dưỡng') || lower.includes('sức khỏe') || lower.includes('thảo mộc') || lower.includes('nutrition') || lower.includes('health')) {
-    return [
-      { id: 'spec-1', key: 'Đối tượng sử dụng phù hợp', value: '' },
-      { id: 'spec-2', key: 'Hướng dẫn bảo quản', value: '' },
-      { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp', value: '' },
-    ];
-  }
-  if (lower.includes('thiết bị') || lower.includes('điện tử') || lower.includes('gia dụng') || lower.includes('đồ bếp') || lower.includes('smart') || lower.includes('living')) {
-    return [
-      { id: 'spec-1', key: 'Cổng kết nối / Nguồn điện', value: '' },
-      { id: 'spec-2', key: 'Công suất / Dung lượng pin', value: '' },
-      { id: 'spec-3', key: 'Thời gian bảo hành chính hãng', value: '' },
-    ];
-  }
-  return [
-    { id: 'spec-1', key: 'Đặc tính / Đối tượng phù hợp', value: '' },
-    { id: 'spec-2', key: 'Chất liệu / Cấu hình kỹ thuật', value: '' },
-    { id: 'spec-3', key: 'Hướng dẫn bảo quản & Sử dụng', value: '' },
-  ];
-};
-
 interface CategoryContextInfo {
   titlePlaceholder: string;
   descriptionPlaceholder: string;
@@ -566,7 +501,6 @@ export default function ProductManagementPage() {
     return cachedProductsMap.get(key) || [];
   });
   const [storeCategory, setStoreCategory] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -660,8 +594,14 @@ export default function ProductManagementPage() {
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
   const [productVideos, setProductVideos] = useState<any[]>([]);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-  useEffect(() => { setActiveVideoId(null); }, [selectedVideoProduct?.id]);
-  const activeReviewVideo = productVideos.find(video => video.id === activeVideoId) || productVideos[0];
+  const [videoFilter,setVideoFilter] = useState('ALL');
+  const [videoSearch,setVideoSearch] = useState('');
+  const [videoProductFilter,setVideoProductFilter] = useState('ALL');
+  const [videoLoadError,setVideoLoadError] = useState('');
+  useEffect(() => { setActiveVideoId(null);setVideoFilter('ALL');setVideoSearch('');setVideoProductFilter('ALL'); }, [selectedVideoProduct?.id]);
+  const shownVideos = productVideos.filter(video => (videoFilter === 'ALL' || video.status === videoFilter) && (videoProductFilter === 'ALL' || (video.productId || video.product?.id) === videoProductFilter) && `${video.title || ''} ${video.collaborator?.fullName || ''} ${video.product?.title || ''}`.toLocaleLowerCase('vi-VN').includes(videoSearch.toLocaleLowerCase('vi-VN')));
+  const videoProducts = Array.from(new Map(productVideos.filter(video => video.productId || video.product?.id).map(video => [video.productId || video.product.id,{id:video.productId || video.product.id,title:video.product?.title || 'Sản phẩm'}])).values());
+  const activeReviewVideo = shownVideos.find(video => video.id === activeVideoId) || shownVideos[0];
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [reviewingMediaId, setReviewingMediaId] = useState<string | null>(null);
   const [rejectionModalMedia, setRejectionModalMedia] = useState<any | null>(null);
@@ -696,18 +636,16 @@ export default function ProductManagementPage() {
   ];
 
   const [formSku, setFormSku] = useState('');
-  const [formBarcode, setFormBarcode] = useState('');
   const [formTitle, setFormTitle] = useState('');
-  const [formBrand, setFormBrand] = useState('');
-  const [formTags, setFormTags] = useState('');
   const [formCategory, setFormCategory] = useState('');
+  const [formProductGroup, setFormProductGroup] = useState('');
+  const [customProductGroup, setCustomProductGroup] = useState(false);
+  const productGroupOptions = productGroupsForCategory(storeCategory || formCategory);
   const [formCustomCategory, setFormCustomCategory] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formIngredients, setFormIngredients] = useState('');
   const [formKeyActives, setFormKeyActives] = useState('');
   const [formShelfLife, setFormShelfLife] = useState('');
-  const [formPao, setFormPao] = useState('');
-  const [formResponsibleEntity, setFormResponsibleEntity] = useState('');
   const [formNotificationNumber, setFormNotificationNumber] = useState('');
   const [useCommonShipping, setUseCommonShipping] = useState<boolean>(true);
   const [formOrigin, setFormOrigin] = useState('');
@@ -717,8 +655,7 @@ export default function ProductManagementPage() {
   const [formLabelProofLinks, setFormLabelProofLinks] = useState<string[]>([]);
   const [formLabelProofImages, setFormLabelProofImages] = useState<string[]>([]);
   const [formPrice, setFormPrice] = useState<number | ''>('');
-  const [formBasePrice, setFormBasePrice] = useState<number | ''>('');
-  const [formOriginalPrice, setFormOriginalPrice] = useState<number | ''>('');
+  const [formFloorPrice, setFormFloorPrice] = useState<number | ''>('');
   const [discountModalProduct, setDiscountModalProduct] = useState<any>(null);
   const [bulkDiscountProducts, setBulkDiscountProducts] = useState<any[] | null>(null);
   const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
@@ -729,10 +666,6 @@ export default function ProductManagementPage() {
   const [formPackageHeight, setFormPackageHeight] = useState<number | ''>('');
   const [formSampleEnabled, setFormSampleEnabled] = useState(false);
   const [formSampleQuota, setFormSampleQuota] = useState<number | ''>('');
-  const [formSpecifications, setFormSpecifications] = useState<ProductSpecificationItem[]>([
-    { id: 'spec-1', key: 'Chất liệu vải', value: '' },
-    { id: 'spec-2', key: 'Kiểu dáng / Form dáng', value: '' },
-  ]);
   const [formImage, setFormImage] = useState('');
   const [formSubImages, setFormSubImages] = useState<string[]>([]);
   const [formVariants, setFormVariants] = useState<ProductVariantItem[]>([]);
@@ -751,15 +684,9 @@ export default function ProductManagementPage() {
   const [attrGroup2Input, setAttrGroup2Input] = useState('');
 
   // Batch Fill Bar States
-  const [batchBasePrice, setBatchBasePrice] = useState<string>('');
+  const [batchFloorPrice, setBatchFloorPrice] = useState<string>('');
   const [batchPrice, setBatchPrice] = useState<string>('');
   const [batchStock, setBatchStock] = useState<string>('');
-
-  const STEP_TITLES: Record<number, string> = {
-    1: 'Thông tin chung',
-    2: 'Phân loại & Thông số',
-    3: 'Tiếp thị & Gửi duyệt',
-  };
 
   const isStep1Complete = Boolean(
     formTitle.trim() &&
@@ -776,9 +703,9 @@ export default function ProductManagementPage() {
       (v) =>
         v.name.trim() &&
         v.sku.trim() &&
-        (!v.barcode?.trim() || /^\d{8,14}$/.test(v.barcode.trim())) &&
-        Number(v.basePrice) > 0 &&
+        Number(v.floorPrice) > 0 &&
         Number(v.price) > 0 &&
+        Number(v.price) >= Number(v.floorPrice) &&
         v.stockQuantity !== '' &&
         Number(v.stockQuantity) >= 0 &&
         (useCommonShipping || (
@@ -789,7 +716,7 @@ export default function ProductManagementPage() {
         ))
     ) &&
     formOrigin.trim() &&
-    (formKeyActives.trim() || formIngredients.trim()) &&
+    (formIngredients.trim() || formKeyActives.trim() || formLabelInfo.trim()) &&
     (useCommonShipping
       ? Number(formPackageWeight) > 0 &&
         Number(formPackageLength) > 0 &&
@@ -806,7 +733,10 @@ export default function ProductManagementPage() {
     const errors: string[] = [];
     if (!formTitle.trim()) errors.push('Vui lòng nhập tên sản phẩm.');
     if (!formSku.trim()) errors.push('Vui lòng nhập mã SKU sản phẩm.');
-    if (!formCategory.trim()) errors.push('Vui lòng chọn ngành hàng kinh doanh.');
+    if (!formCategory.trim()) {
+      const fallbackCat = storeCategory || STANDARD_CATEGORIES[0].name;
+      setFormCategory(fallbackCat);
+    }
     if (formCategory === 'Danh mục khác (Tự nhập)' && !formCustomCategory.trim()) {
       errors.push('Vui lòng nhập tên danh mục tùy chỉnh.');
     }
@@ -825,14 +755,17 @@ export default function ProductManagementPage() {
       const vLabel = formVariants.length === 1 ? 'Phân loại hàng' : `Phân loại #${idx + 1} (${v.name || 'chưa đặt tên'})`;
       if (!v.name.trim()) errors.push(`${vLabel}: Vui lòng nhập tên phân loại.`);
       if (!v.sku.trim()) errors.push(`${vLabel}: Vui lòng nhập mã SKU.`);
-      if (v.barcode?.trim() && !/^\d{8,14}$/.test(v.barcode.trim())) {
-        errors.push(`${vLabel}: Mã vạch phải gồm các chữ số (hoặc để trống nếu chưa có).`);
-      }
-      if (v.basePrice === '' || v.basePrice === undefined || Number(v.basePrice) <= 0) {
-        errors.push(`${vLabel}: Nhập giá kho cơ bản (giá sàn bảo vệ) > 0.`);
+      if (v.floorPrice === '' || v.floorPrice === undefined || Number(v.floorPrice) <= 0) {
+        errors.push(`${vLabel}: Nhập giá sàn bảo vệ biên lợi nhuận > 0.`);
       }
       if (v.price === '' || v.price === undefined || Number(v.price) <= 0) {
         errors.push(`${vLabel}: Nhập giá niêm yết bán lẻ > 0.`);
+      }
+      if (Number(v.floorPrice) > 0 && Number(v.price) > 0) {
+        const minSafe = calculateMinSafePrice(Number(v.floorPrice));
+        if (Number(v.price) < minSafe) {
+          errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) phải >= ${minSafe.toLocaleString('vi-VN')}₫ (đã gánh Voucher 10% + KOL 25%).`);
+        }
       }
       if (v.stockQuantity === '' || v.stockQuantity === undefined || Number(v.stockQuantity) < 0 || !Number.isInteger(Number(v.stockQuantity))) {
         errors.push(`${vLabel}: Nhập tồn kho mở bán là số nguyên >= 0.`);
@@ -851,17 +784,13 @@ export default function ProductManagementPage() {
     if (new Set(skus).size !== skus.length) {
       errors.push('Mã SKU giữa các phân loại không được trùng nhau.');
     }
-    const barcodes = formVariants.map((v) => v.barcode?.trim()).filter(Boolean);
-    if (new Set(barcodes).size !== barcodes.length) {
-      errors.push('Mã vạch giữa các phân loại không được trùng nhau.');
-    }
 
     // Thông số kỹ thuật sản phẩm (cấp sản phẩm)
     if (!formOrigin.trim()) {
       errors.push('Thông số sản phẩm: Vui lòng nhập nguồn gốc xuất xứ.');
     }
-    if (!formKeyActives.trim() && !formIngredients.trim()) {
-      errors.push('Thông số sản phẩm: Vui lòng nhập hoạt chất chính hoặc công dụng nổi bật.');
+    if (!formIngredients.trim() && !formKeyActives.trim() && !formLabelInfo.trim()) {
+      errors.push('Thông số sản phẩm: Vui lòng nhập thành phần, cấu tạo hoặc hoạt chất.');
     }
 
     // Quy cách đóng gói & vận chuyển GHN (khi dùng chung)
@@ -894,7 +823,8 @@ export default function ProductManagementPage() {
     if (modalStep === 1) {
       const v1 = validateStep1();
       if (!v1.valid) {
-        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 1 trước khi chuyển bước.');
+        setSaveError(v1.errors.join('\n'));
+        showToast(v1.errors[0]);
         return;
       }
       // Đảm bảo Phân loại 1 có SKU từ formSku nếu chưa có
@@ -905,7 +835,8 @@ export default function ProductManagementPage() {
     } else if (modalStep === 2) {
       const v2 = validateStep2();
       if (!v2.valid) {
-        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 2 trước khi chuyển bước.');
+        setSaveError(v2.errors.join('\n'));
+        showToast(v2.errors[0]);
         return;
       }
       // Tự động gán fallback nếu trống để đồng bộ
@@ -918,8 +849,7 @@ export default function ProductManagementPage() {
       const primary = formVariants[0];
       if (primary) {
         setFormPrice(primary.price);
-        setFormBasePrice(primary.basePrice || Math.round((Number(primary.price) || 0) * 0.6));
-        setFormBarcode(primary.barcode || '');
+        setFormFloorPrice(primary.floorPrice || Math.round((Number(primary.price) || 0) * 0.7));
       }
       // Đồng bộ thông số sản phẩm và kiện GHN
       if (useCommonShipping) {
@@ -1030,12 +960,16 @@ export default function ProductManagementPage() {
       title: 'Tất cả sản phẩm trong gian hàng',
     } as Product);
     setLoadingVideos(true);
+    setVideoLoadError('');
 
     try {
       const res = await api.get('/media', {
         params: { assetType: 'VIDEO', limit: 100 },
+        headers: { 'x-skip-cache': 'true' },
       });
-      const merged = [...(res.data?.items || [])];
+      const body = res.data?.data ?? res.data ?? res;
+      if (!Array.isArray(body.items)) throw new Error('Không đọc được danh sách video.');
+      const merged = [...body.items];
       merged.sort((a: any, b: any) => {
         if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
         if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
@@ -1043,8 +977,7 @@ export default function ProductManagementPage() {
       });
       setProductVideos(merged);
     } catch (err) {
-      console.error('Lỗi khi tải toàn bộ video KOL:', err);
-      setProductVideos([]);
+      setVideoLoadError(err instanceof Error ? err.message : 'Không tải được video KOL.');
     } finally {
       setLoadingVideos(false);
     }
@@ -1170,33 +1103,34 @@ export default function ProductManagementPage() {
 
   useEffect(() => {
     if (!isKol) {
-      if (currentStoreId) {
-        api.get(`/stores/public/id/${currentStoreId}`)
-          .then((res: any) => {
-            const s = res?.data || res;
-            if (s?.categoryName) setStoreCategory(s.categoryName);
-            if (s?.name) setStoreName(s.name);
-          })
-          .catch(() => {
-            if (!isAdminOrManager) {
-              storeService.getMyStore().then((s) => {
-                if (s?.categoryName) setStoreCategory(s.categoryName);
-                if (s?.name) setStoreName(s.name);
-              }).catch(() => {});
-            }
-          });
-      } else if (!isAdminOrManager) {
+      if (!isAdminOrManager) {
+        // SHOP_MANAGER: dùng getMyStore() làm nguồn chính — trả về categoryName chính xác nhất
         storeService
           .getMyStore()
           .then((s) => {
-            if (s?.categoryName) {
-              setStoreCategory(s.categoryName);
-            }
-            if (s?.name) {
-              setStoreName(s.name);
-            }
+            if (s?.categoryName) setStoreCategory(s.categoryName);
           })
-          .catch((err) => console.warn('Không thể tải ngành hàng của shop:', err));
+          .catch(() => {
+            // fallback: thử public API nếu getMyStore lỗi
+            if (currentStoreId) {
+              api
+                .get(`/stores/public/id/${currentStoreId}`)
+                .then((res: any) => {
+                  const s = res?.data || res;
+                  if (s?.categoryName) setStoreCategory(s.categoryName);
+                })
+                .catch(() => {});
+            }
+          });
+      } else if (currentStoreId) {
+        // ADMIN / SYSTEM_MANAGER: dùng public API
+        api
+          .get(`/stores/public/id/${currentStoreId}`)
+          .then((res: any) => {
+            const s = res?.data || res;
+            if (s?.categoryName) setStoreCategory(s.categoryName);
+          })
+          .catch(() => {});
       }
     }
   }, [isAdminOrManager, isKol, currentStoreId]);
@@ -1224,7 +1158,6 @@ export default function ProductManagementPage() {
 
   const handleCategoryChange = (categoryName: string) => {
     setFormCategory(categoryName);
-        setFormSpecifications(getDefaultSpecsForCategory(categoryName));
     const nextFields = getVariantFields(categoryName);
     setFormVariants((current) => current.map((variant) => {
       const attributes = Object.fromEntries(nextFields
@@ -1256,9 +1189,8 @@ export default function ProductManagementPage() {
         {
           sku: uniqueSku,
           name: `Phân loại ${count}`,
-          barcode: '',
           price: primary?.price || Number(formPrice) || 0,
-          basePrice: primary?.basePrice || Number(formBasePrice) || 0,
+          floorPrice: primary?.floorPrice || Number(formFloorPrice) || Math.round((Number(primary?.price || formPrice || 0)) * 0.7),
           stockQuantity: 50,
           imageUrl: '',
           // Kế thừa thông minh từ Loại 1 để không phải gõ lại
@@ -1269,7 +1201,7 @@ export default function ProductManagementPage() {
           packageLength: primary?.packageLength || formPackageLength || 15,
           packageWidth: primary?.packageWidth || formPackageWidth || 10,
           packageHeight: primary?.packageHeight || formPackageHeight || 5,
-          attributes: {},
+          attributes: { type: `Phân loại ${count}` },
         },
       ];
     });
@@ -1300,7 +1232,6 @@ export default function ProductManagementPage() {
       id: undefined,
       sku: uniqueSku,
       name: `${target.name || 'Phân loại'} (Bản sao)`,
-      barcode: '', // Cần nhập mã vạch mới
       attributes: { ...target.attributes },
     };
     setFormVariants((current) => {
@@ -1337,18 +1268,19 @@ export default function ProductManagementPage() {
     existingVariants: ProductVariantItem[],
     baseSku: string,
   ): ProductVariantItem[] => {
+    const fields = getVariantFields(formCategory);
+    const primaryAttrKey = fields[0]?.key || 'type';
+    const secondaryAttrKey = fields[1]?.key || 'specification';
     const cleanG1 = g1Values.map((v) => v.trim()).filter(Boolean);
     const cleanG2 = g2Values.map((v) => v.trim()).filter(Boolean);
 
     if (cleanG1.length === 0) {
       return [{
-        id: `var-${Date.now()}-def`,
         name: 'Phân loại tiêu chuẩn',
         tier1Value: 'Phân loại tiêu chuẩn',
         sku: baseSku || 'SKU-01',
-        barcode: '',
         price: 0,
-        basePrice: 0,
+        floorPrice: 0,
         stockQuantity: 100,
         imageUrl: '',
         attributes: { type: 'Phân loại tiêu chuẩn' },
@@ -1365,16 +1297,14 @@ export default function ProductManagementPage() {
         }
         const cleanSlug = v1.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
         return {
-          id: `var-${Date.now()}-${idx}-${cleanSlug}`,
           name: v1,
           tier1Value: v1,
           sku: `${baseSku || 'SKU'}-${cleanSlug || String(idx + 1).padStart(2, '0')}`,
-          barcode: '',
           price: 0,
-          basePrice: 0,
+          floorPrice: 0,
           stockQuantity: 100,
           imageUrl: '',
-          attributes: { type: v1 },
+          attributes: { [primaryAttrKey]: v1 },
         };
       });
     }
@@ -1392,18 +1322,17 @@ export default function ProductManagementPage() {
         } else {
           const s1 = v1.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || `V${i1 + 1}`;
           const s2 = v2.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || `S${i2 + 1}`;
+          const secKey = secondaryAttrKey && secondaryAttrKey !== primaryAttrKey ? secondaryAttrKey : 'specification';
           result.push({
-            id: `var-${Date.now()}-${i1}-${i2}`,
             name: combinedName,
             tier1Value: v1,
             tier2Value: v2,
             sku: `${baseSku || 'SKU'}-${s1}-${s2}`,
-            barcode: '',
             price: 0,
-            basePrice: 0,
+            floorPrice: 0,
             stockQuantity: 100,
             imageUrl: '',
-            attributes: { color: v1, size: v2, type: combinedName },
+            attributes: { [primaryAttrKey]: v1, [secKey]: v2 },
           });
         }
       });
@@ -1478,17 +1407,17 @@ export default function ProductManagementPage() {
 
   const applyBatchValues = () => {
     const bPrice = batchPrice === '' ? null : Math.max(0, Number(batchPrice));
-    const bBasePrice = batchBasePrice === '' ? null : Math.max(0, Number(batchBasePrice));
+    const bFloorPrice = batchFloorPrice === '' ? null : Math.max(0, Number(batchFloorPrice));
     const bStock = batchStock === '' ? null : Math.max(0, Number(batchStock));
 
-    if (bPrice === null && bBasePrice === null && bStock === null) {
+    if (bPrice === null && bFloorPrice === null && bStock === null) {
       showToast('Vui lòng nhập ít nhất một chỉ số (Giá sàn, Giá bán hoặc Tồn kho) để áp dụng.');
       return;
     }
     setFormVariants((curr) =>
       curr.map((v) => ({
         ...v,
-        ...(bBasePrice !== null ? { basePrice: bBasePrice } : {}),
+        ...(bFloorPrice !== null ? { floorPrice: bFloorPrice } : {}),
         ...(bPrice !== null ? { price: bPrice } : {}),
         ...(bStock !== null ? { stockQuantity: bStock } : {}),
       }))
@@ -1501,8 +1430,10 @@ export default function ProductManagementPage() {
     setModalStep(1);
 
     setEditingProduct(null);
-    const initialCategory = storeCategory || products[0]?.categoryName || (products[0] as any)?.category || '';
+    const initialCategory = storeCategory || STANDARD_CATEGORIES[0].name;
     setFormCategory(initialCategory);
+    setFormProductGroup('');
+    setCustomProductGroup(false);
     setFormCustomCategory('');
     let defaultSku = '';
     if (initialCategory) {
@@ -1515,15 +1446,10 @@ export default function ProductManagementPage() {
     }
     setFormSku(defaultSku);
     setFormTitle('');
-    setFormBrand(storeName || '');
-    setFormTags('');
-    setFormBarcode('');
     setFormDescription('');
     setFormIngredients('');
     setFormKeyActives('');
     setFormShelfLife('');
-    setFormPao('');
-    setFormResponsibleEntity('');
     setFormNotificationNumber('');
     setUseCommonShipping(true);
     setFormOrigin('Việt Nam');
@@ -1533,8 +1459,10 @@ export default function ProductManagementPage() {
     setFormLabelProofLinks([]);
     setFormLabelProofImages([]);
     setFormPrice('');
-    setFormBasePrice('');
-    setFormOriginalPrice('');
+    setFormFloorPrice('');
+    setBatchFloorPrice('');
+    setBatchPrice('');
+    setBatchStock('');
     setFormAffiliateEnabled(true);
     setFormStock('');
     setFormPackageWeight(250);
@@ -1543,26 +1471,24 @@ export default function ProductManagementPage() {
     setFormPackageHeight(5);
     setFormSampleEnabled(false);
     setFormSampleQuota('');
-    setFormSpecifications(getDefaultSpecsForCategory(initialCategory));
     setFormImage('');
     setFormSubImages([]);
 
     const catInfo = getCategoryContextPlaceholders(initialCategory);
-    const g1Name = catInfo.group1Name || 'Màu sắc';
-    const g1Presets = catInfo.group1Presets.slice(0, 2);
+    const g1Name = catInfo.group1Name || 'Phân loại';
+    const g1Presets = catInfo.group1Presets.slice(0, 1);
     const g2Name = catInfo.group2Name || 'Kích cỡ (Size)';
-    const g2Presets = catInfo.group2Presets.slice(0, 2);
 
     setAttrGroup1Name(g1Name);
     setAttrGroup1Values(g1Presets.length ? g1Presets : ['Mặc định']);
-    setHasTier2(g2Presets.length > 0);
+    setHasTier2(false);
     setAttrGroup2Name(g2Name);
-    setAttrGroup2Values(g2Presets);
+    setAttrGroup2Values([]);
 
     const initialVariants = generateCartesianVariants(
       g1Presets.length ? g1Presets : ['Mặc định'],
-      g2Presets,
-      g2Presets.length > 0,
+      [],
+      false,
       [],
       defaultSku,
     );
@@ -1603,13 +1529,12 @@ export default function ProductManagementPage() {
     setSaveError(null);
     setModalStep(1);
     setEditingProduct(p);
+    setFormProductGroup(p.productGroup || '');
+    setCustomProductGroup(Boolean(p.productGroup && !productGroupsForCategory(storeCategory || p.categoryName || '').includes(p.productGroup)));
     setFormSku(p.sku || '');
-    setFormBarcode(p.barcode || '');
     setFormTitle(p.title || p.name);
     const pAttrs = p.attributes && typeof p.attributes === 'object' && !Array.isArray(p.attributes) ? p.attributes : {};
-    setFormBrand(p.brand || pAttrs.brand || storeName || '');
-    setFormTags(p.tags || pAttrs.tags || '');
-                    const matchedCat = STANDARD_CATEGORIES.find((c) => c.name === (p.categoryName || p.category));
+    const matchedCat = STANDARD_CATEGORIES.find((c) => c.name === (p.categoryName || p.category));
     if (matchedCat) {
       setFormCategory(matchedCat.name);
       setFormCustomCategory('');
@@ -1620,34 +1545,12 @@ export default function ProductManagementPage() {
     let initialDesc = p.description || '';
     const specsMatch = initialDesc.match(/📌 THÔNG SỐ KỸ THUẬT(?: SẢN PHẨM)?:\n([\s\S]*?)(?:\n\n|$)/);
     if (specsMatch) {
-      const specsRaw = specsMatch[1];
-      const parsedSpecs: ProductSpecificationItem[] = [];
-      const lines = specsRaw.split('\n');
-      for (const line of lines) {
-        const bulletMatch = line.match(/^•\s*([^:]+):\s*(.*)$/);
-        if (bulletMatch) {
-          parsedSpecs.push({
-            id: `spec-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-            key: bulletMatch[1].trim(),
-            value: bulletMatch[2].trim(),
-          });
-        }
-      }
-      if (parsedSpecs.length > 0) {
-        setFormSpecifications(parsedSpecs);
-        initialDesc = initialDesc.replace(specsMatch[0], '').trim();
-      } else {
-        setFormSpecifications(getDefaultSpecsForCategory(matchedCat ? matchedCat.name : ''));
-      }
-    } else {
-      setFormSpecifications(getDefaultSpecsForCategory(matchedCat ? matchedCat.name : ''));
+      initialDesc = initialDesc.replace(specsMatch[0], '').trim();
     }
     setFormDescription(initialDesc);
     setFormIngredients(p.ingredients || '');
     setFormKeyActives(pAttrs.keyActives || p.keyActives || '');
     setFormShelfLife(pAttrs.shelfLife || p.shelfLife || '');
-    setFormPao(pAttrs.pao || p.pao || '');
-    setFormResponsibleEntity(pAttrs.responsibleEntity || p.responsibleEntity || '');
     setFormNotificationNumber(pAttrs.notificationNumber || p.notificationNumber || '');
     setFormOrigin(p.origin || '');
     setFormLabelInfo(p.labelInfo || '');
@@ -1657,7 +1560,6 @@ export default function ProductManagementPage() {
     setFormLabelProofImages(Array.isArray(p.labelProofImages) ? p.labelProofImages : []);
     const currentPrice = Number(p.price) || 0;
     setFormPrice(currentPrice);
-    setFormOriginalPrice(p.originalPrice ? Number(p.originalPrice) : '');
     setFormAffiliateEnabled(p.isAffiliateEnabled !== false);
     setFormStock(p.stockQuantity ?? p.stock ?? 0);
     setFormPackageWeight(p.packageWeight ?? '');
@@ -1671,7 +1573,6 @@ export default function ProductManagementPage() {
     const mappedVariants: ProductVariantItem[] = existingVariants.map((variant: any) => ({
       id: variant.id,
       sku: variant.sku || '',
-      barcode: variant.barcode || p.barcode || '',
       packageWeight: variant.packageWeight ?? (variant.attributes?.packageWeight ? Number(variant.attributes.packageWeight) : (p.packageWeight ?? 250)),
       packageLength: variant.packageLength ?? (variant.attributes?.packageLength ? Number(variant.attributes.packageLength) : (p.packageLength ?? 15)),
       packageWidth: variant.packageWidth ?? (variant.attributes?.packageWidth ? Number(variant.attributes.packageWidth) : (p.packageWidth ?? 10)),
@@ -1682,7 +1583,7 @@ export default function ProductManagementPage() {
       name: variant.name || 'Phân loại tiêu chuẩn',
       attributes: variant.attributes && typeof variant.attributes === 'object' && !Array.isArray(variant.attributes) ? variant.attributes : {},
       price: Number(variant.price ?? p.price) || 0,
-      basePrice: Number(variant.basePrice ?? p.basePrice ?? Math.round((Number(variant.price ?? p.price) || 0) * 0.6)) || 0,
+      floorPrice: Number(variant.floorPrice ?? (p as any).floorPrice ?? Math.round((Number(variant.price ?? p.price) || 0) * 0.7)) || 0,
       stockQuantity: Number(variant.stockQuantity ?? p.stockQuantity ?? 0),
       imageUrl: variant.imageUrl || '',
     }));
@@ -1691,10 +1592,9 @@ export default function ProductManagementPage() {
       mappedVariants.push({
         name: 'Phân loại tiêu chuẩn',
         sku: p.sku || '',
-        barcode: p.barcode || '',
         imageUrl: p.imageUrl || '',
         price: Number(p.price) || 0,
-        basePrice: Number(p.basePrice ?? Math.round((Number(p.price) || 0) * 0.6)) || 0,
+        floorPrice: Number((p as any).floorPrice ?? Math.round((Number(p.price) || 0) * 0.7)) || 0,
         stockQuantity: Number(p.stockQuantity ?? 0),
         origin: p.origin || 'Việt Nam',
         ingredients: p.ingredients || '',
@@ -1706,6 +1606,9 @@ export default function ProductManagementPage() {
         attributes: {},
       });
     }
+
+    setFormFloorPrice(mappedVariants[0]?.floorPrice ?? (p as any).floorPrice ?? Math.round(currentPrice * 0.7));
+    setBatchFloorPrice('');
 
     const catInfo = getCategoryContextPlaceholders(p.category || storeCategory || '');
     const hasComma = mappedVariants.some((v) => v.name.includes(','));
@@ -1974,10 +1877,6 @@ export default function ProductManagementPage() {
 
     // Đồng bộ thông số từ Phân loại 1 (Loại chính) ra cấp sản phẩm
     const primary = formVariants[0];
-    const effectiveBarcode = primary?.barcode || formBarcode || '';
-    const effectiveOrigin = primary?.origin || formOrigin || 'Việt Nam';
-    const effectiveIngredients = primary?.ingredients || formIngredients || '';
-    const effectiveLabelInfo = primary?.labelInfo || formLabelInfo || '';
     const effectivePackageWeight = Number(
       useCommonShipping
         ? (formPackageWeight || primary?.packageWeight || 250)
@@ -2004,46 +1903,38 @@ export default function ProductManagementPage() {
     // Chuẩn hóa danh sách phân loại gửi lên API
     const fields = getVariantFields(formCategory);
     const primaryAttrKey = fields[0]?.key || 'type';
+    const secondaryAttrKey = fields[1]?.key || 'specification';
     const normalizedVariants = formVariants.map((v) => {
-      const vWeight = useCommonShipping ? effectivePackageWeight : Number(v.packageWeight || effectivePackageWeight);
-      const vLength = useCommonShipping ? effectivePackageLength : Number(v.packageLength || effectivePackageLength);
-      const vWidth = useCommonShipping ? effectivePackageWidth : Number(v.packageWidth || effectivePackageWidth);
-      const vHeight = useCommonShipping ? effectivePackageHeight : Number(v.packageHeight || effectivePackageHeight);
+      const cleanAttrs: Record<string, string> = {};
+      if (v.tier1Value?.trim()) {
+        cleanAttrs[primaryAttrKey] = v.tier1Value.trim();
+      } else if (v.attributes?.[primaryAttrKey]?.trim()) {
+        cleanAttrs[primaryAttrKey] = v.attributes[primaryAttrKey].trim();
+      } else {
+        cleanAttrs[primaryAttrKey] = v.name.trim();
+      }
+      if (v.tier2Value?.trim()) {
+        const secKey = secondaryAttrKey && secondaryAttrKey !== primaryAttrKey ? secondaryAttrKey : 'specification';
+        cleanAttrs[secKey] = v.tier2Value.trim();
+      }
+
+      const vFloorPrice = Number(v.floorPrice || formFloorPrice || 0) || Math.round((Number(v.price) || effectivePrice) * 0.7);
 
       return {
-        id: v.id,
-        sku: v.sku.trim().toUpperCase(),
+        ...(editingProduct && v.id && !v.id.startsWith('var-') ? { id: v.id } : {}),
+        sku: v.sku.trim().toUpperCase() || formSku.trim().toUpperCase(),
         name: v.name.trim(),
-        barcode: v.barcode?.trim() || effectiveBarcode,
         imageUrl: v.imageUrl?.trim() || formImage,
         price: Number(v.price) || effectivePrice,
-        basePrice: Number(v.basePrice) || Math.round((Number(v.price) || effectivePrice) * 0.6),
+        floorPrice: vFloorPrice,
         stockQuantity: Number(v.stockQuantity) || 0,
-        attributes: {
-          [primaryAttrKey]: v.attributes?.[primaryAttrKey] || v.name.trim(),
-          origin: v.origin?.trim() || effectiveOrigin,
-          ingredients: v.ingredients?.trim() || effectiveIngredients,
-          labelInfo: v.labelInfo?.trim() || effectiveLabelInfo,
-          packageWeight: String(vWeight),
-          packageLength: String(vLength),
-          packageWidth: String(vWidth),
-          packageHeight: String(vHeight),
-          ...(formBrand.trim() ? { brand: formBrand.trim() } : {}),
-          ...(formTags.trim() ? { tags: formTags.trim() } : {}),
-          ...(formKeyActives.trim() ? { keyActives: formKeyActives.trim() } : {}),
-          ...(formShelfLife.trim() ? { shelfLife: formShelfLife.trim() } : {}),
-          ...(formPao.trim() ? { pao: formPao.trim() } : {}),
-          ...(formResponsibleEntity.trim() ? { responsibleEntity: formResponsibleEntity.trim() } : {}),
-          ...(formNotificationNumber.trim() ? { notificationNumber: formNotificationNumber.trim() } : {}),
-          ...v.attributes,
-        },
+        attributes: cleanAttrs,
       };
     });
 
     let packageData: ReturnType<typeof productPackageInput>;
     try {
       packageData = productPackageInput({
-        barcode: effectiveBarcode,
         packageWeight: effectivePackageWeight,
         packageLength: effectivePackageLength,
         packageWidth: effectivePackageWidth,
@@ -2061,17 +1952,11 @@ export default function ProductManagementPage() {
       const allErrors = [...v1.errors, ...v2.errors, ...v3.errors];
 
       if (allErrors.length) {
-        if (!v1.valid) {
-          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 1 trước khi gửi duyệt.');
-          setModalStep(1);
-        } else if (!v2.valid) {
-          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 2 trước khi gửi duyệt.');
-          setModalStep(2);
-        } else {
-          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 3 trước khi gửi duyệt.');
-          setModalStep(3);
-        }
-        showToast('Chưa gửi sản phẩm. Vui lòng kiểm tra các thông tin còn thiếu.');
+        const stepToFocus = !v1.valid ? 1 : (!v2.valid ? 2 : 3);
+        const stepErrors = !v1.valid ? v1.errors : (!v2.valid ? v2.errors : v3.errors);
+        setSaveError(stepErrors.join('\n'));
+        setModalStep(stepToFocus);
+        showToast(stepErrors[0]);
         return;
       }
     }
@@ -2161,45 +2046,32 @@ export default function ProductManagementPage() {
         ? formCustomCategory.trim() || 'Khác'
         : formCategory;
 
-    const validSpecs = [...formSpecifications.filter((s) => s.key.trim() && s.value.trim())];
-    let combinedDescription = formDescription.trim();
-    const descriptionInputsChanged = !editingProduct ||
-      combinedDescription !== (editingProduct.description || '').trim() ||
-      formSpecifications.some(spec => spec.key.trim() && spec.value.trim());
-    // Changing sample policy must not silently rewrite approved product content.
-    if (descriptionInputsChanged && validSpecs.length > 0 && !/📌 THÔNG SỐ KỸ THUẬT(?: SẢN PHẨM)?:/.test(combinedDescription)) {
-      const specsBlock = `📌 THÔNG SỐ KỸ THUẬT SẢN PHẨM:\n` +
-        validSpecs.map((s) => `• ${s.key.trim()}: ${s.value.trim()}`).join('\n') +
-        `\n\n`;
-      combinedDescription = specsBlock + combinedDescription;
-    }
-
-    const extraDetails: string[] = [];
-    if (formKeyActives.trim()) extraDetails.push(`• Hoạt chất / Đặc tính nổi bật: ${formKeyActives.trim()}`);
-    if (formShelfLife.trim()) extraDetails.push(`• Hạn sử dụng: ${formShelfLife.trim()}`);
-    if (formPao.trim()) extraDetails.push(`• Hạn sau mở nắp (PAO): ${formPao.trim()}`);
-    if (formResponsibleEntity.trim()) extraDetails.push(`• Đơn vị chịu trách nhiệm: ${formResponsibleEntity.trim()}`);
-    if (formNotificationNumber.trim()) extraDetails.push(`• Số công bố / Giấy phép lưu hành: ${formNotificationNumber.trim()}`);
-    if (extraDetails.length > 0 && !combinedDescription.includes('📌 QUY CHUẨN & PHÁP LÝ SẢN PHẨM:')) {
-      const extraBlock = `\n\n📌 QUY CHUẨN & PHÁP LÝ SẢN PHẨM:\n` + extraDetails.join('\n') + `\n`;
-      combinedDescription = combinedDescription + extraBlock;
-    }
+    const combinedDescription = formDescription.trim();
 
     saveLocked.current = true;
     setSavingProduct(true);
     try {
-      const fingerprint = JSON.stringify([editingProduct?.id, currentStoreId, formTitle.trim(), formSku.trim(), formBarcode.trim()]);
+      const fingerprint = JSON.stringify([editingProduct?.id, currentStoreId, formTitle.trim(), formSku.trim()]);
       if ((!editingProduct || editingProduct.title !== formTitle.trim()) && confirmedIdentity.current !== fingerprint) {
-        const response: any = await api.get('/products/identity-check', { timeout: 120000, params: { title: formTitle.trim(), storeId: currentStoreId, productId: editingProduct?.id }, headers: { 'x-skip-cache': '1' } });
-        const body = response?.data?.data || response?.data || response;
-        if (!Array.isArray(body?.items)) throw new Error('Không kiểm tra được danh mục trùng. Vui lòng thử lại.');
-        if (body.items.length) { setIdentityWarning({ items: body.items, fingerprint }); return; }
+        try {
+          const response: any = await api.get('/products/identity-check', { timeout: 15000, params: { title: formTitle.trim(), storeId: currentStoreId, productId: editingProduct?.id }, headers: { 'x-skip-cache': '1' } });
+          const body = response?.data?.data || response?.data || response;
+          if (Array.isArray(body?.items) && body.items.length) {
+            setIdentityWarning({ items: body.items, fingerprint });
+            setSavingProduct(false);
+            saveLocked.current = false;
+            return;
+          }
+        } catch (identErr) {
+          console.warn('Bỏ qua pre-check do timeout hoặc model local đang khởi động:', identErr);
+        }
       }
       if (editingProduct) {
         const productUpdate = await productService.updateProduct(editingProduct.id, {
           ...packageData,
           title: formTitle.trim(),
           categoryName: effectiveCategory,
+          productGroup: formProductGroup.trim(),
           description: combinedDescription || undefined,
           ingredients: formIngredients.trim() || undefined,
           origin: formOrigin.trim() || undefined,
@@ -2209,7 +2081,7 @@ export default function ProductManagementPage() {
           labelProofLinks: formLabelProofLinks.map((url) => url.trim()).filter(Boolean),
           labelProofImages: formLabelProofImages,
           price: effectivePrice,
-          originalPrice: formBasePrice !== '' ? Number(formBasePrice) : (formOriginalPrice !== '' ? Number(formOriginalPrice) : undefined),
+          floorPrice: Number(formFloorPrice || formVariants[0]?.floorPrice || 0) || Math.round(effectivePrice * 0.7),
           customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
           // syncProductVariants updates the parent total from the saved SKU quantities.
@@ -2231,6 +2103,7 @@ export default function ProductManagementPage() {
           sku: formSku.trim().toUpperCase(),
           title: formTitle.trim(),
           categoryName: effectiveCategory,
+          productGroup: formProductGroup.trim(),
           description: combinedDescription || undefined,
           ingredients: formIngredients.trim() || undefined,
           origin: formOrigin.trim() || undefined,
@@ -2240,7 +2113,7 @@ export default function ProductManagementPage() {
           labelProofLinks: formLabelProofLinks.map((url) => url.trim()).filter(Boolean),
           labelProofImages: formLabelProofImages,
           price: effectivePrice,
-          originalPrice: formOriginalPrice !== '' ? Number(formOriginalPrice) : undefined,
+          floorPrice: Number(formFloorPrice || formVariants[0]?.floorPrice || 0) || Math.round(effectivePrice * 0.7),
           customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
           stockQuantity: effectiveStock,
@@ -2303,7 +2176,7 @@ export default function ProductManagementPage() {
       )}
 
       {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
+      {(isKol || isAdminOrManager) ? <PageHeader
         title={isKol ? "Sản phẩm Tiếp thị Liên kết" : "Sản phẩm"}
         icon={<Boxes className="w-5 h-5" />}
         actions={
@@ -2328,7 +2201,7 @@ export default function ProductManagementPage() {
             )}
           </div>
         }
-      />
+      /> : <h1 className="sr-only">Sản phẩm</h1>}
 
       {/* ────── BANNER CẢNH BÁO TỒN KHO THẤP ────── */}
       {(() => {
@@ -2419,6 +2292,7 @@ export default function ProductManagementPage() {
           <div className="product-toolbar-actions grid grid-flow-col auto-cols-[minmax(0,1fr)] @max-[900px]/product-management:w-full items-stretch min-w-0 gap-2" role="group" aria-label="Thao tác quản lý sản phẩm">
             {!isKol ? (
               <>
+                {!isAdminOrManager && <button type="button" onClick={openCreateModal} className="flex items-center justify-center w-full min-w-0 min-h-10 p-2 border border-[#B88E4F] rounded-lg bg-[#C59B58] text-[#231D15] text-xs font-semibold gap-1.5 hover:bg-[#B88E4F]"><Plus className="w-3.5 h-3.5 shrink-0"/><span>Thêm sản phẩm</span></button>}
                 {isAdminOrManager && (
                   <button
                     type="button"
@@ -2443,7 +2317,7 @@ export default function ProductManagementPage() {
                   title="Duyệt video nghiệm thu từ KOL"
                 >
                   <Video className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                  <span>Duyệt video</span>
+                  <span>Video KOL</span>
                   {pendingKolVideoCount > 0 && (
                     <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#B88E4F] text-[10px] font-extrabold inline-flex items-center justify-center shrink-0">
                       {pendingKolVideoCount}
@@ -2458,7 +2332,7 @@ export default function ProductManagementPage() {
                   title="Duyệt đánh giá từ khách hàng"
                 >
                   <MessageSquareText className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                  <span>Đánh giá khách hàng</span>
+                  <span>Đánh giá</span>
                 </button>
               </>
             ) : (
@@ -2581,6 +2455,7 @@ export default function ProductManagementPage() {
                         <span className="text-[11px] text-slate-500 font-mono block mt-0.5">
                           {sku}
                         </span>
+                        {Array.isArray(p.variants) && p.variants.length > 0 && <span className="block mt-1 text-[11px] text-[#7D715E]">{p.variants.length} phân loại</span>}
                       </div>
                     </div>
                   </TableCell>
@@ -2590,12 +2465,12 @@ export default function ProductManagementPage() {
                     </div>
                     {p.floorPrice && Number(p.floorPrice) > 0 ? (
                       <div className="text-[10px] text-[#7D715E] flex items-center gap-1 mt-0.5">
-                        <span className="text-[#8C6226] font-medium">Sàn MAP:</span>
+                        <span className="text-[#8C6226] font-medium">Giá sàn:</span>
                         <span className="font-mono">{Number(p.floorPrice).toLocaleString('vi-VN')} ₫</span>
                       </div>
                     ) : (
                       <div className="text-[10px] text-[#A79B89] mt-0.5">
-                        Chưa đặt sàn MAP
+                        Chưa có giá sàn
                       </div>
                     )}
                   </TableCell>
@@ -2731,55 +2606,7 @@ export default function ProductManagementPage() {
                           </>
                         )}
 
-                        {moderationStatus === 'APPROVED' && (
-                          <button
-                            type="button"
-                            onClick={() => setAiDrawerProduct(p)}
-                            className="h-8 px-2.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
-                            title="Tìm KOC phù hợp cho sản phẩm này qua AI Radar Matchmaker"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                            <span className="hidden sm:inline">Gợi ý KOC</span>
-                          </button>
-                        )}
-
-                        {moderationStatus === 'APPROVED' && (
-                          <button
-                            type="button"
-                            onClick={() => setDiscountModalProduct(p)}
-                            className="h-8 px-2.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
-                            title="Đề xuất chiến dịch giảm giá sản phẩm (tuân thủ giá sàn MAP)"
-                          >
-                            <Percent className="w-3.5 h-3.5 text-[#B88E4F]" />
-                            <span className="hidden xl:inline">Giảm giá</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => openProductLanding(p)}
-                          className="w-8 h-8 rounded-lg border border-[#EAE4D7] text-[#B88E4F] hover:bg-[#FBF5EB] flex items-center justify-center transition cursor-pointer"
-                          title="Xem Landing Page công khai của sản phẩm"
-                          aria-label={`Xem trang mua hàng của ${p.title}`}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(p)}
-                          className="w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer"
-                          title="Chỉnh sửa sản phẩm"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirmProduct(p)}
-                          className="w-8 h-8 rounded-lg border border-slate-200 text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
-                          title="Tạm dừng / Xóa"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <ProductRowActions name={title} approved={moderationStatus === 'APPROVED'} onEdit={() => openEditModal(p)} onSuggest={() => setAiDrawerProduct(p)} onDiscount={() => setDiscountModalProduct(p)} onView={() => openProductLanding(p)} onDelete={() => setDeleteConfirmProduct(p)} />
                       </div>
                     )}
                   </TableCell>
@@ -2797,7 +2624,7 @@ export default function ProductManagementPage() {
         icon={<Package className="h-4 w-4" />}
         title={(
           <span className="inline-flex items-center gap-3 flex-wrap align-middle">
-            <span>{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</span>
+            <span>{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm'}</span>
             {saveError && (
               <span
                 id="product-save-error"
@@ -2824,21 +2651,22 @@ export default function ProductManagementPage() {
         )}
         maxWidth="full"
         stickyHeader
-        className="!w-[min(94vw,1160px)] !max-w-[min(94vw,1160px)] !min-w-[min(94vw,1160px)] !h-[min(90dvh,780px)] !min-h-[min(90dvh,780px)] !max-h-[min(90dvh,780px)] transition-none rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        className="!w-[min(94vw,1240px)] !max-w-[min(94vw,1240px)] !min-w-[min(94vw,1240px)] !h-[min(88dvh,780px)] !min-h-[min(88dvh,780px)] !max-h-[min(88dvh,780px)] transition-none rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
         bodyClassName="!p-4 sm:!p-5 [scrollbar-gutter:stable] flex-1 flex flex-col"
         belowHeader={(
           <div className="product-editor-stepper bg-[#FAF8F5] border-b border-[#EAE4D7] px-4 py-2 sm:px-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {[
-                { step: 1, title: '1. Thông tin chung & Ảnh', sub: 'Tên, danh mục, mô tả & hình ảnh', isDone: isStep1Complete },
-                { step: 2, title: '2. Phân loại & Thông số', sub: 'Biến thể SKU, thông số & đóng gói GHN', isDone: isStep2Complete },
-                { step: 3, title: '3. Tiếp thị & Gửi duyệt', sub: 'Thù lao, mẫu thử & hồ sơ pháp lý', isDone: isStep3Complete },
+                { step: 1, title: 'Thông tin & Ảnh', isDone: isStep1Complete },
+                { step: 2, title: 'Phân loại & Giao hàng', isDone: isStep2Complete },
+                { step: 3, title: 'Tiếp thị & Gửi duyệt', isDone: isStep3Complete },
               ].map((s) => {
                 const isActive = modalStep === s.step;
                 return (
                   <button
                     key={s.step}
                     type="button"
+                    aria-current={isActive ? 'step' : undefined}
                     onClick={() => handleStepClick(s.step as 1 | 2 | 3)}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition cursor-pointer border ${
                       isActive
@@ -2863,9 +2691,6 @@ export default function ProductManagementPage() {
                       <span className={`block text-xs truncate ${isActive ? 'font-bold text-[#1A1612]' : 'font-semibold text-[#574C3D]'}`}>
                         {s.title}
                       </span>
-                      <span className="block text-[10.5px] text-[#7D715E] truncate">
-                        {s.sub}
-                      </span>
                     </div>
                   </button>
                 );
@@ -2882,7 +2707,7 @@ export default function ProductManagementPage() {
                   onClick={goToPreviousStep}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-[#574C3D] bg-white border border-[#EAE4D7] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
                 >
-                  <ChevronLeft size={14} /> Quay lại: {STEP_TITLES[modalStep - 1]}
+                  <ChevronLeft size={14} /> Quay lại
                 </button>
               )}
             </div>
@@ -2900,7 +2725,7 @@ export default function ProductManagementPage() {
                   onClick={goToNextStep}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#C59B58] hover:bg-[#B88E4F] transition cursor-pointer shadow-xs"
                 >
-                  <span>Tiếp tục: {STEP_TITLES[modalStep + 1]}</span>
+                  <span>Tiếp tục</span>
                   <ChevronRight size={14} />
                 </button>
               ) : (
@@ -2933,6 +2758,32 @@ export default function ProductManagementPage() {
         )}
       >
         <form id="product-editor-form" noValidate onSubmit={handleSave} className="product-editor-form w-full flex-1 flex flex-col min-h-0">
+          {saveError && (
+            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs text-rose-800 shadow-xs animate-in fade-in duration-150">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-rose-900 mb-1">Cần hoàn thiện thông tin trước khi tiếp tục:</div>
+                  <div className="whitespace-pre-line text-[11.5px] leading-relaxed space-y-0.5">
+                    {saveError.split('\n').map((err, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className="text-rose-500">•</span>
+                        <span>{err}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSaveError(null)}
+                  className="text-rose-400 hover:text-rose-700 hover:bg-rose-100 rounded-lg p-1 transition cursor-pointer"
+                  title="Đóng thông báo"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
           {editingProduct?.moderationStatus === 'REJECTED' && (
             <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
               <strong className="block">Sản phẩm chưa được duyệt</strong>
@@ -2953,26 +2804,15 @@ export default function ProductManagementPage() {
                       <FolderTree className="h-4 w-4 text-[#B88E4F]" />
                     </span>
                     <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center shrink-0">
-                      1. Thông tin cơ bản
-                      <InfoTooltip text="Tên gọi, mã SKU và mô tả chi tiết công dụng sản phẩm." />
+                      Thông tin sản phẩm
                     </h4>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] text-xs font-bold text-[#8C6226] shrink-0">
-                      <ShieldCheck size={13} className="text-[#B88E4F]" />
-                      <span>{storeCategory || formCategory || (activeCategory || 'Thời trang & Phụ kiện')}</span>
-                      <span className="text-[9.5px] font-semibold text-[#8C6226] bg-[#FBF5EB] px-1 py-0.2 rounded border border-[#EEDFC6]">
-                        Cố định
-                      </span>
-                    </span>
                   </div>
-                  <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-0.5 rounded-full border border-[#EEDFC6] shrink-0">
-                    Bước 1/3
-                  </span>
                 </div>
 
                 <div className="flex flex-col space-y-3 pt-3.5">
                   {/* Hàng 1: Tên sản phẩm (col-span-8) + Mã SKU chính (col-span-4) */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 shrink-0">
-                    <div className="sm:col-span-8">
+                    <div className="sm:col-span-12">
                       <label className="text-xs font-bold text-[#1A1612] block mb-1">
                         Tên sản phẩm <span className="text-[#DC2626]">*</span>
                       </label>
@@ -2987,13 +2827,13 @@ export default function ProductManagementPage() {
                             if (suggestedCategory) handleCategoryChange(suggestedCategory);
                           }
                         }}
-                        placeholder={contextPlaceholders.titlePlaceholder}
+                        placeholder="Nhập tên sản phẩm"
                         required
                         className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-semibold focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition"
                       />
                     </div>
 
-                    <div className="sm:col-span-4">
+                    <div className="sm:col-span-6">
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-bold text-[#1A1612]">
                           Mã SKU chính <span className="text-[#DC2626]">*</span>
@@ -3005,23 +2845,52 @@ export default function ProductManagementPage() {
                               const cat = STANDARD_CATEGORIES.find((c) => c.name === (storeCategory || formCategory));
                               const prefix = cat?.prefix || 'SP';
                               const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-                              setFormSku(`${prefix}-${randomCode}`);
+                              const newSku = `${prefix}-${randomCode}`;
+                              setFormSku(newSku);
+                              if (formVariants.length === 1) {
+                                setFormVariants((curr) => curr.map((v, i) => (i === 0 ? { ...v, sku: newSku } : v)));
+                              }
                             }}
                             className="text-[10.5px] font-bold text-[#B88E4F] hover:underline cursor-pointer"
                             title="Tạo mã SKU ngẫu nhiên"
                           >
-                            + Ngẫu nhiên
+                            Tạo mã
                           </button>
                         )}
                       </div>
                       <input
                         type="text"
                         value={formSku}
-                        onChange={(e) => setFormSku(e.target.value.toUpperCase())}
+                        onChange={(e) => {
+                          const sku = e.target.value.toUpperCase();
+                          setFormSku(sku);
+                          if (formVariants.length === 1) {
+                            setFormVariants((curr) => curr.map((v, i) => (i === 0 ? { ...v, sku } : v)));
+                          }
+                        }}
                         placeholder="SP-SKIN-01"
                         required
                         className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-mono font-bold focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition uppercase"
                       />
+                    </div>
+                    <div className="sm:col-span-6">
+                      <label htmlFor="product-fixed-category" className="text-xs font-bold text-[#1A1612] block mb-1">Ngành hàng của cửa hàng · Cố định</label>
+                      <input id="product-fixed-category" readOnly value={storeCategory || formCategory || activeCategory || 'Thời trang & Phụ kiện'} className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#7D715E]" />
+                    </div>
+                    <div className="sm:col-span-12">
+                      <label htmlFor="product-group" className="text-xs font-bold text-[#1A1612] block mb-1">Nhóm sản phẩm</label>
+                      <div className="product-group-picker">
+                      <Select id="product-group" searchable={false} placement="bottom" value={customProductGroup ? '__custom__' : formProductGroup} onChange={(event) => {
+                        const custom = event.target.value === '__custom__';
+                        setCustomProductGroup(custom);
+                        setFormProductGroup(custom ? '' : event.target.value);
+                      }} className="w-full h-11 rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58]">
+                        <option value="">Chọn nhóm sản phẩm</option>
+                        {productGroupOptions.map(group => <option key={group} value={group}>{group}</option>)}
+                        <option value="__custom__">Nhóm khác — tự nhập</option>
+                      </Select>
+                      </div>
+                      {customProductGroup && <input aria-label="Tên nhóm sản phẩm khác" value={formProductGroup} onChange={event => setFormProductGroup(event.target.value)} maxLength={100} placeholder="Nhập tên nhóm sản phẩm" className="mt-2 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm outline-none focus:border-[#C59B58]" />}
                     </div>
                   </div>
 
@@ -3029,8 +2898,7 @@ export default function ProductManagementPage() {
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between mb-1.5 shrink-0">
                       <label className="text-xs font-bold text-[#1A1612] flex items-center">
-                        Mô tả chi tiết sản phẩm <span className="text-[#DC2626]">*</span>
-                        <InfoTooltip text="Mô tả công dụng nổi bật, giải pháp mang lại cho khách hàng, hướng dẫn sử dụng và cách bảo quản..." />
+                        Mô tả sản phẩm <span className="text-[#DC2626]">*</span>
                       </label>
                       <span className="text-[10.5px] text-[#7D715E] font-mono">
                         {formDescription.length} ký tự
@@ -3039,7 +2907,7 @@ export default function ProductManagementPage() {
                     <textarea
                       value={formDescription}
                       onChange={(e) => setFormDescription(e.target.value)}
-                      placeholder={contextPlaceholders.descriptionPlaceholder}
+                      placeholder="Thành phần, công dụng và cách sử dụng…"
                       className="w-full h-[220px] resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs leading-relaxed text-[#1A1612] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
                     />
                   </div>
@@ -3055,8 +2923,7 @@ export default function ProductManagementPage() {
                       <Camera className="h-4 w-4 text-[#B88E4F]" />
                     </span>
                     <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center">
-                      2. Hình ảnh sản phẩm
-                      <InfoTooltip text="Gồm 1 ảnh bìa chính (tối đa 5MB) và tối đa 4 ảnh phụ góc chụp, tem nhãn..." />
+                      Hình ảnh
                     </h4>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -3086,8 +2953,7 @@ export default function ProductManagementPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5 shrink-0">
                       <label className="text-xs font-bold text-[#1A1612] flex items-center">
-                        Ảnh bìa chính đại diện <span className="text-[#DC2626]">*</span>
-                        <InfoTooltip text="Ảnh bìa chính hiển thị nổi bật trên gian hàng và công cụ của KOL. Định dạng JPG, PNG, WEBP, tối đa 5MB." />
+                        Ảnh bìa <span className="text-[#DC2626]">*</span>
                       </label>
                     </div>
 
@@ -3138,20 +3004,20 @@ export default function ProductManagementPage() {
                           </div>
                           <div className="text-center">
                             <span className="text-xs font-bold text-[#1A1612] block">
-                              {uploadingSlot === 'main' ? 'Đang tải lên…' : 'Bấm để tải Ảnh bìa chính'}
+                              {uploadingSlot === 'main' ? 'Đang tải lên…' : 'Chọn ảnh bìa'}
                             </span>
                           </div>
                         </button>
                       )}
                     </div>
+                    <p className="mt-2 text-xs text-[#7D715E] text-center">JPG, PNG, WEBP · Tối đa 5 MB/ảnh</p>
                   </div>
 
                   {/* Thư viện 4 ảnh phụ dạng 4 Slot Grid - Tách biệt rõ ràng phía dưới */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5 shrink-0">
                       <label className="text-xs font-bold text-[#1A1612] flex items-center">
-                        Thư viện ảnh góc chụp ({formSubImages.length}/4)
-                        <InfoTooltip text="Ảnh góc nghiêng, nhãn phụ tiếng Việt, tem chống hàng giả, bảng thành phần (tối đa 4 ảnh)." />
+                        Ảnh bổ sung · {formSubImages.length}/4
                       </label>
                     </div>
 
@@ -3474,11 +3340,11 @@ export default function ProductManagementPage() {
                     <input
                       type="number"
                       min={1}
-                      value={batchBasePrice}
-                      onChange={(e) => setBatchBasePrice(e.target.value)}
+                      value={batchFloorPrice}
+                      onChange={(e) => setBatchFloorPrice(e.target.value)}
                       placeholder="Giá sàn (₫)..."
                       className="h-8 w-28 rounded-lg border border-[#EEDFC6] bg-white px-2.5 text-xs font-bold tabular-nums text-[#8C6226] outline-none focus:border-[#C59B58] transition"
-                      title="Nhập giá sàn cơ bản bảo vệ để áp dụng cho mọi phân loại"
+                      title="Nhập giá sàn tối thiểu bảo vệ để áp dụng cho mọi phân loại"
                     />
                     <input
                       type="number"
@@ -3506,6 +3372,34 @@ export default function ProductManagementPage() {
                       <Zap size={13} />
                       <span>Áp dụng tất cả</span>
                     </button>
+                    <div className="flex items-center gap-1 pl-1 border-l border-[#EEDFC6]">
+                      {[0, 0.2, 0.3].map((reserve) => (
+                        <button
+                          key={reserve}
+                          type="button"
+                          onClick={() => {
+                            const refFloor = Number(batchFloorPrice || formVariants[0]?.floorPrice || formFloorPrice || 0);
+                            if (refFloor <= 0) return;
+                            const suggested = calculateMinSafePrice(refFloor, 0.1, 0.25, reserve);
+                            setBatchPrice(String(suggested));
+                            setFormVariants((curr) =>
+                              curr.map((v) => {
+                                const f = Number(batchFloorPrice || v.floorPrice || refFloor);
+                                return {
+                                  ...v,
+                                  floorPrice: f,
+                                  price: calculateMinSafePrice(f, 0.1, 0.25, reserve),
+                                };
+                              }),
+                            );
+                          }}
+                          title={`Tính tự động giá bán an toàn từ Giá sàn (gánh Voucher 10% + KOL 25% + dự phòng giảm giá ${Math.round(reserve * 100)}%)`}
+                          className="h-8 px-2 rounded-lg border border-[#C59B58]/50 bg-white hover:bg-[#FBF5EB] text-[11px] font-bold text-[#8C6226] transition cursor-pointer tabular-nums"
+                        >
+                          +{Math.round(reserve * 100)}%
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -3524,9 +3418,28 @@ export default function ProductManagementPage() {
                           <th className="py-2.5 px-2.5 min-w-[150px]">Tên phân loại <span className="text-rose-500">*</span></th>
                         )}
                         <th className="py-2.5 px-2.5 min-w-[110px]">Mã SKU <span className="text-rose-500">*</span></th>
-                        <th className="py-2.5 px-2.5 min-w-[115px]">Mã vạch EAN-13</th>
-                        <th className="py-2.5 px-2.5 min-w-[115px]">Giá sàn (₫) <span className="text-rose-500">*</span></th>
-                        <th className="py-2.5 px-2.5 min-w-[115px]">Giá niêm yết (₫) <span className="text-rose-500">*</span></th>
+                        <th className="py-2.5 px-2.5 min-w-[115px]">
+                          <span className="inline-flex items-center gap-1">
+                            Giá sàn (₫) <span className="text-rose-500">*</span>
+                            <span
+                              title="Ngưỡng thực thu tối thiểu công ty giữ lại sau Khuyến mãi + Voucher KOL (10%) + Hoa hồng KOL (25%)."
+                              className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
+                            >
+                              ?
+                            </span>
+                          </span>
+                        </th>
+                        <th className="py-2.5 px-2.5 min-w-[115px]">
+                          <span className="inline-flex items-center gap-1">
+                            Giá niêm yết (₫) <span className="text-rose-500">*</span>
+                            <span
+                              title="Bắt buộc >= Giá sàn / 0.675 để đảm bảo không lỗ khi áp tối đa Voucher 10% + Hoa hồng 25%."
+                              className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
+                            >
+                              !
+                            </span>
+                          </span>
+                        </th>
                         <th className="py-2.5 px-2.5 w-20">Tồn kho <span className="text-rose-500">*</span></th>
                         <th className="py-2.5 px-2 text-center w-16">Thao tác</th>
                       </tr>
@@ -3534,8 +3447,8 @@ export default function ProductManagementPage() {
                     <tbody className="divide-y divide-[#EAE4D7]">
                       {formVariants.map((variant, index) => {
                         const isPrimary = index === 0;
-                        const isBelowFloor = Number(variant.basePrice) > 0 && Number(variant.price) < Number(variant.basePrice);
-                        const isBarcodeInvalid = Boolean(variant.barcode && variant.barcode.length !== 13);
+                        const minSafePrice = Number(variant.floorPrice) > 0 ? calculateMinSafePrice(Number(variant.floorPrice)) : 0;
+                        const isBelowFloor = minSafePrice > 0 && Number(variant.price) > 0 && Number(variant.price) < minSafePrice;
 
                         return (
                           <Fragment key={variant.id || `variant-${index}`}>
@@ -3649,40 +3562,19 @@ export default function ProductManagementPage() {
                                 />
                               </td>
 
-                              {/* 4. Mã vạch EAN-13 */}
-                              <td className="py-2 px-2.5 align-middle">
-                                <input
-                                  type="text"
-                                  value={variant.barcode || ''}
-                                  inputMode="numeric"
-                                  maxLength={13}
-                                  onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, '');
-                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, barcode: val } : v)));
-                                  }}
-                                  placeholder="13 số (tùy chọn)"
-                                  className={`h-8.5 w-full rounded-lg border px-2 text-xs font-mono font-medium outline-none transition focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 ${
-                                    isBarcodeInvalid
-                                      ? 'border-rose-400 bg-rose-50/60 text-rose-700 ring-1 ring-rose-200'
-                                      : 'border-[#EAE4D7] bg-white text-[#1A1612]'
-                                  }`}
-                                  title={isBarcodeInvalid ? `Đã nhập ${variant.barcode?.length}/13 chữ số` : undefined}
-                                />
-                              </td>
-
-                              {/* 5. Giá sàn (₫) */}
+                              {/* 4. Giá sàn (₫) */}
                               <td className="py-2 px-2.5 align-middle">
                                 <input
                                   type="number"
                                   min={1}
-                                  value={variant.basePrice === 0 ? '' : (variant.basePrice ?? '')}
+                                  value={variant.floorPrice === 0 ? '' : (variant.floorPrice ?? '')}
                                   onChange={(e) => {
                                     const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
-                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, basePrice: val as number } : v)));
+                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, floorPrice: val as number } : v)));
                                   }}
                                   placeholder="100.000"
                                   className="h-8.5 w-full rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] px-2 text-xs font-bold tabular-nums text-[#8C6226] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
-                                  title="Giá sàn tối thiểu bảo vệ, không thể giảm thấp hơn"
+                                  title="Giá sàn tối thiểu bảo vệ biên lợi nhuận của Shop (bắt buộc > 0 và <= Giá bán)"
                                 />
                               </td>
 
@@ -3880,7 +3772,7 @@ export default function ProductManagementPage() {
                   </div>
                 </div>
 
-                {/* 3 Thông số cốt lõi tinh gọn */}
+                {/* 3 Thông số cốt lõi tinh gọn phục vụ kiểm duyệt & chi tiết sản phẩm */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-[#1A1612] block mb-1">
@@ -3897,174 +3789,30 @@ export default function ProductManagementPage() {
 
                   <div>
                     <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                      Hoạt chất chính & Công dụng nổi bật <span className="text-rose-500">*</span>
+                      Thành phần / Chất liệu / Cấu tạo <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={formKeyActives}
-                      onChange={(e) => {
-                        setFormKeyActives(e.target.value);
-                        if (!formIngredients) setFormIngredients(e.target.value);
-                      }}
-                      placeholder={contextPlaceholders.keyActivesPlaceholder || 'VD: Niacinamide 10%, B5 2% - Mờ thâm sáng da'}
+                      value={formIngredients}
+                      onChange={(e) => setFormIngredients(e.target.value)}
+                      placeholder={contextPlaceholders.ingredientsPlaceholder || 'VD: Niacinamide 10%, Cotton 100%, Inox 304...'}
                       className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
                     />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                      Hạn sử dụng <span className="text-rose-500">*</span>
+                      Nhãn mác, Cảnh báo & HDSD <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={formShelfLife}
-                      onChange={(e) => {
-                        setFormShelfLife(e.target.value);
-                        if (!formLabelInfo) setFormLabelInfo(`Bảo quản nơi khô ráo, HSD: ${e.target.value}`);
-                      }}
-                      placeholder={contextPlaceholders.shelfLifePlaceholder || 'VD: 36 tháng kể từ NSX'}
+                      value={formLabelInfo}
+                      onChange={(e) => setFormLabelInfo(e.target.value)}
+                      placeholder="VD: Bảo quản khô ráo, tem phụ tiếng Việt..."
                       className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
                     />
                   </div>
                 </div>
-
-                {/* Tùy chọn nâng cao (Collapsible) cho catalog chuyên sâu */}
-                <details className="group rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/80 overflow-hidden">
-                  <summary className="flex items-center justify-between p-3 text-xs font-bold text-[#8C6226] cursor-pointer hover:bg-[#FBF5EB] select-none transition">
-                    <span className="flex items-center gap-1.5">
-                      <SlidersHorizontal size={13} className="text-[#8C6226]" />
-                      <span>Thông số chuyên sâu bổ sung (INCI, Tem nhãn, PAO & Đơn vị chịu trách nhiệm)</span>
-                    </span>
-                    <span className="text-[10px] text-[#7D715E] font-normal group-open:hidden">Bấm để mở rộng</span>
-                  </summary>
-
-                  <div className="p-3 border-t border-[#EAE4D7] space-y-3 bg-white">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          {contextPlaceholders.ingredientsLabel || 'Bảng thành phần đầy đủ'}
-                        </label>
-                        <input
-                          type="text"
-                          value={formIngredients}
-                          onChange={(e) => setFormIngredients(e.target.value)}
-                          placeholder={contextPlaceholders.ingredientsPlaceholder}
-                          className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          Đơn vị chịu trách nhiệm đưa SP ra thị trường
-                        </label>
-                        <input
-                          type="text"
-                          value={formResponsibleEntity}
-                          onChange={(e) => setFormResponsibleEntity(e.target.value)}
-                          placeholder={contextPlaceholders.responsibleEntityPlaceholder}
-                          className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          Hạn sau mở nắp (PAO)
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={formPao}
-                            onChange={(e) => setFormPao(e.target.value)}
-                            placeholder="PAO (VD: 12M)"
-                            className="h-8 flex-1 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                          />
-                          {['6M', '12M', '24M'].map((p) => (
-                            <button
-                              key={p}
-                              type="button"
-                              onClick={() => setFormPao(p)}
-                              className={`px-1.5 py-1 rounded text-[9.5px] font-bold border transition cursor-pointer ${
-                                formPao === p
-                                  ? 'bg-[#C59B58] text-white border-[#C59B58]'
-                                  : 'bg-[#FAF8F5] text-[#8C6226] border-[#EEDFC6] hover:bg-[#FBF5EB]'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                        Nhãn mác, Cảnh báo & Hướng dẫn bảo quản
-                      </label>
-                      <input
-                        type="text"
-                        value={formLabelInfo}
-                        onChange={(e) => setFormLabelInfo(e.target.value)}
-                        placeholder="VD: Tem phụ tiếng Việt, bảo quản nhiệt độ phòng, tránh ánh nắng..."
-                        className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                      />
-                    </div>
-
-                    {/* Thuộc tính mở rộng ngành hàng (formSpecifications) */}
-                    <div className="pt-2 border-t border-[#EAE4D7]/70 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11.5px] font-bold text-[#1A1612] flex items-center gap-1">
-                          Thuộc tính chi tiết theo ngành hàng:
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newId = `spec-${Date.now()}`;
-                            setFormSpecifications((prev) => [...prev, { id: newId, key: '', value: '' }]);
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-bold text-[#8C6226] bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] transition cursor-pointer"
-                        >
-                          <Plus size={11} />
-                          <span>Thêm thuộc tính</span>
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {formSpecifications.map((spec, specIdx) => (
-                          <div key={spec.id || `spec-${specIdx}`} className="flex items-center gap-1.5 p-1.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
-                            <input
-                              type="text"
-                              value={spec.key}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setFormSpecifications((prev) => prev.map((s, idx) => idx === specIdx ? { ...s, key: val } : s));
-                              }}
-                              placeholder="Tên thuộc tính"
-                              className="h-7 w-2/5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                            />
-                            <input
-                              type="text"
-                              value={spec.value}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setFormSpecifications((prev) => prev.map((s, idx) => idx === specIdx ? { ...s, value: val } : s));
-                              }}
-                              placeholder="Giá trị"
-                              className="h-7 w-3/5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setFormSpecifications((prev) => prev.filter((_, idx) => idx !== specIdx))}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer shrink-0"
-                              title="Xóa thuộc tính này"
-                            >
-                              <X size={13} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </details>
               </div>
 
               {/* KHỐI 2.3: QUY CÁCH ĐÓNG GÓI & VẬN CHUYỂN GHN */}
@@ -4753,7 +4501,7 @@ export default function ProductManagementPage() {
           onClick={() => setSelectedVideoProduct(null)}
         >
           <div
-            className="kol-video-review-modal bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[900px] max-h-[calc(100dvh-32px)] text-left animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col"
+            data-empty={!loadingVideos && productVideos.length === 0} className="kol-video-review-modal kol-video-review-refined bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[900px] max-h-[calc(100dvh-32px)] text-left animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col"
             role="dialog"
             aria-modal="true"
             aria-labelledby="kol-video-review-title"
@@ -4766,14 +4514,10 @@ export default function ProductManagementPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 id="kol-video-review-title" className="text-base font-semibold text-[#1A1612] m-0 flex flex-wrap items-center gap-2">
-                    Duyệt video KOL
+                    Video KOL
                     <span className="kol-video-scope border border-[#EAE4D7] rounded-md px-1.5 py-0.5 text-[#7D715E] bg-white text-[10px] font-medium tracking-normal">{selectedVideoProduct.id === '__ALL__' ? 'Tất cả sản phẩm' : selectedVideoProduct.sku}</span>
                   </h3>
-                  <p className="text-xs text-[#7D715E] m-0 mt-0.5">
-                    {selectedVideoProduct.id === '__ALL__'
-                      ? 'Xem video và phản hồi cho nhà sáng tạo.'
-                      : `Sản phẩm: ${selectedVideoProduct.title || (selectedVideoProduct as any).name}`}
-                  </p>
+
                 </div>
               </div>
               <button
@@ -4786,26 +4530,19 @@ export default function ProductManagementPage() {
               </button>
             </div>
 
+            {productVideos.length > 0 && <div className="kol-video-review-tools"><nav className="kol-video-status-filters" aria-label="Lọc video KOL">{[['ALL','Tất cả'],['PENDING','Chờ duyệt'],['APPROVED','Đã duyệt'],['REJECTED','Đã từ chối'],['HIDDEN','Đã ẩn']].map(([value,label])=><button type="button" key={value} aria-pressed={videoFilter===value} onClick={()=>setVideoFilter(value)}>{label} <span>{value==='ALL'?productVideos.length:productVideos.filter(video=>video.status===value).length}</span></button>)}</nav><div className="kol-video-search-row"><input value={videoSearch} onChange={event=>setVideoSearch(event.target.value)} placeholder="Tìm KOL, sản phẩm…" aria-label="Tìm video KOL"/><select value={videoProductFilter} onChange={event=>setVideoProductFilter(event.target.value)} aria-label="Lọc video theo sản phẩm"><option value="ALL">Tất cả sản phẩm</option>{videoProducts.map(product=><option key={product.id} value={product.id}>{product.title}</option>)}</select></div></div>}
             <div className="kol-video-review-list flex-1 overflow-y-auto p-3 sm:p-[14px_16px] space-y-3 overscroll-contain [scrollbar-color:#EEDFC6_#FFFFFF]">
               {loadingVideos ? (
                 <div className="text-center py-10 text-xs text-[#7D715E]">
                   Đang tải danh sách video review từ máy chủ...
                 </div>
-              ) : productVideos.length === 0 ? (
-                <div className="text-center py-10 bg-[#FAF8F5] rounded-xl border border-dashed border-[#EAE4D7] p-6">
-                  <Video className="w-8 h-8 text-[#7D715E]/40 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-[#1A1612] m-0">Chưa có video review nào</p>
-                  <p className="text-[11px] text-[#7D715E] mt-1 m-0">
-                    {selectedVideoProduct.id === '__ALL__'
-                      ? 'Hiện chưa có video KOL nào được gửi đến gian hàng.'
-                      : 'Khi KOL/CTV nộp video review cho sản phẩm này qua Media Hub, video sẽ xuất hiện tại đây để bạn kiểm duyệt.'}
-                  </p>
-                </div>
+              ) : videoLoadError ? <div role="alert" className="kol-video-empty"><strong>Không tải được video KOL.</strong><button type="button" onClick={()=>void openAllVideoModeration()}>Thử lại</button></div> : shownVideos.length === 0 ? (
+                <div className="kol-video-empty"><Video size={28} aria-hidden="true"/><strong>Chưa có video trong mục này</strong></div>
               ) : (
                 <div className="kol-video-workspace">
                   <nav className="kol-video-picker" aria-label="Danh sách video cần xem">
-                    <p className="kol-video-picker-count"><span>Danh sách video</span><strong>{productVideos.length}</strong></p>
-                    {productVideos.map((video: any, index: number) => (
+                    <p className="kol-video-picker-count"><span>Danh sách video</span><strong>{shownVideos.length}</strong></p>
+                    {shownVideos.map((video: any, index: number) => (
                       <button key={video.id} type="button" className="kol-video-picker-item" data-status={video.status} aria-pressed={activeReviewVideo?.id === video.id} onClick={() => setActiveVideoId(video.id)}>
                         <span className="kol-video-picker-thumb">{video.posterUrl ? <img src={video.posterUrl} alt="" /> : <Video size={18} />}<span>{index + 1}</span></span>
                         <span className="kol-video-picker-text"><strong>{video.title || 'Video review sản phẩm'}</strong><span>{video.collaborator?.fullName || 'Nhà sáng tạo'}</span><small>{({ PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối', HIDDEN: 'Đã ẩn' } as Record<string, string>)[video.status] || video.status}{video.isFeatured ? ' · Đã ghim' : ''}</small></span>
@@ -4856,7 +4593,7 @@ export default function ProductManagementPage() {
                           )}
                         </div>
 
-                        <details className="kol-video-details"><summary>Thông tin video & sản phẩm</summary>
+                        <details open className="kol-video-details"><summary>Thông tin video & sản phẩm</summary>
                         <div className="kol-video-metadata text-[11px] text-[#7D715E]">
                           <p>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></p>
                           <p>
@@ -4965,15 +4702,7 @@ export default function ProductManagementPage() {
               )}
             </div>
 
-            <div className="kol-video-review-footer bg-white border-t border-[#EAE4D7] flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedVideoProduct(null)}
-              >
-                Đóng
-              </Button>
-            </div>
+
           </div>
         </div>
       )}

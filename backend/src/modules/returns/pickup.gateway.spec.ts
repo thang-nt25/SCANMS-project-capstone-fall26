@@ -56,6 +56,29 @@ describe('GHN pickup adapter', () => {
     expect(result.trackingNumber).toMatch(/^SIM/);
   });
 
+  it('keeps the original return and replacement tracking codes distinct for the same case', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.RETURN_PICKUP_PROVIDER = 'mock';
+    const gateway = new PickupGateway();
+    const returned = await gateway.book({ clientOrderCode: 'SC-R-12345678901234567890123456789012', pickup, warehouse, content: 'Hàng trả' });
+    const replacement = await gateway.book({ clientOrderCode: 'SC-X-12345678901234567890123456789012', pickup: { ...warehouse, weight: pickup.weight, length: pickup.length, width: pickup.width, height: pickup.height }, warehouse: pickup, content: 'Hàng đổi' });
+    expect(replacement.trackingNumber).not.toBe(returned.trackingNumber);
+    expect(replacement.trackingNumber).toMatch(/^SIMX/);
+  });
+
+  it.each([[400, 'GHN_CREATE_REJECTED'], [500, 'GHN_CREATE_UNCERTAIN']])('classifies carrier code %s without treating a timeout as rejection', async (code, expected) => {
+    process.env.RETURN_PICKUP_PROVIDER = 'staging';
+    process.env.GHN_STAGING_TOKEN = 'test-token';
+    process.env.GHN_STAGING_SHOP_ID = '92837';
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, json: async () => ({ code, message: 'Không tạo được vận đơn' }) } as Response);
+    try {
+      await new PickupGateway().book({ clientOrderCode: 'SC-X-1', pickup, warehouse, content: 'Hàng đổi' });
+      throw new Error('Expected carrier rejection');
+    } catch (error) {
+      expect((error as { getResponse(): unknown }).getResponse()).toMatchObject({ code: expected });
+    }
+  });
+
   it.each([undefined, '', 'disabled', 'invalid-provider'])(
     'never falls back to mock for provider %p in development',
     async (provider) => {

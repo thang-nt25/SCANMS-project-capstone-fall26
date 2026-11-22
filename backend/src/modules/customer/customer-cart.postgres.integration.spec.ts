@@ -185,6 +185,19 @@ const connectionString = process.env.CART_TEST_DATABASE_URL;
       });
     });
 
+    it('serializes simultaneous replacements without unique constraint failures', async () => {
+      await Promise.all(Array.from({ length: 4 }, () =>
+        request(app.getHttpServer())
+          .put('/api/customer/cart')
+          .auth(token, { type: 'bearer' })
+          .send({ items: [{ productId, variantId, quantity: 2 }] })
+          .expect(200),
+      ));
+      expect(await prisma.customerCartItem.count({
+        where: { userId: customerId, productId, variantId },
+      })).toBe(1);
+    });
+
     it('updates quantity without duplicating the saved product', async () => {
       await request(app.getHttpServer())
         .put('/api/customer/cart')

@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Scale,
@@ -470,7 +471,7 @@ export const ShopReturnRequestsPage: React.FC = () => {
                     {selected.orderItems?.slice(0, 3).map((item) => (
                       <div key={item.id} className="flex items-center gap-1.5">
                         {item.product.imageUrl && (
-                          <img src={item.product.imageUrl} alt="" className="w-6 h-6 rounded object-cover border border-[#EAE4D7]" />
+                          <img src={item.product.imageUrl} onError={handleProductImageError} alt="" className="w-6 h-6 rounded object-cover border border-[#EAE4D7]" />
                         )}
                         <span className="text-[#1A1612] truncate max-w-[140px]">{item.product.title} <span className="text-[#7D715E]">×{item.quantity}</span></span>
                       </div>

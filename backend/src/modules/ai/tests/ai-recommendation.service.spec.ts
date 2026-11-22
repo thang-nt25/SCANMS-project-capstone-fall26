@@ -326,7 +326,7 @@ describe('KOL recommendations from real attribution records', () => {
     );
     // The cold-start radar exposes the same deduplicated social score used in the total.
     expect(result.recommendedKols[0].scoreBreakdown.tierAndSocialScore).toBe(
-      Math.round(Math.log10(1 + 60000) / 6 * 100),
+      Math.round((Math.log10(60000 / 200) / Math.log10(500000 / 200)) * 100),
     );
   });
 

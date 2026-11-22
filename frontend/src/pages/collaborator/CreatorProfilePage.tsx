@@ -33,7 +33,7 @@ export default function CreatorProfilePage() {
   const tabs: HubTabItem[] = [
     {
       id: 'profile',
-      label: 'Hồ sơ của tôi',
+      label: 'Hồ sơ',
       icon: User,
     },
     {
@@ -48,7 +48,7 @@ export default function CreatorProfilePage() {
     },
     {
       id: 'tiers',
-      label: 'Cấp bậc & Vinh danh',
+      label: 'Cấp bậc',
       icon: Award,
     },
   ];

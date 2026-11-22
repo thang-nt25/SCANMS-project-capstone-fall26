@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Tag,
   Plus,
-  RefreshCw,
   Clock3,
   CheckCircle2,
   ShieldCheck,
@@ -25,14 +24,12 @@ export function ShopPricePromotionsTab() {
   const [promotions, setPromotions] = useState<any[]>(() => lastPricePromotionsSnapshot?.promotions || []);
   const [catalog, setCatalog] = useState<any[]>(() => lastPricePromotionsSnapshot?.catalog || []);
   const [loading, setLoading] = useState<boolean>(() => !lastPricePromotionsSnapshot);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'ACTIVE' | 'FINISHED'>('ALL');
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  const loadData = useCallback(async (showIndicator = false) => {
-    if (showIndicator) setIsRefreshing(true);
+  const loadData = useCallback(async () => {
     setError(null);
     try {
       const [promotionsRes, catalogRes] = await Promise.all([
@@ -46,12 +43,11 @@ export function ShopPricePromotionsTab() {
       setError(requestError(err));
     } finally {
       setLoading(false);
-      setIsRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadData(false);
+    void loadData();
   }, [loadData]);
 
   const handleCancelPromotion = async (id: string) => {
@@ -62,7 +58,7 @@ export function ShopPricePromotionsTab() {
     try {
       await pricingApi.cancel(id);
       toast.success('Đã hủy chương trình giảm giá.');
-      await loadData(false);
+      await loadData();
     } catch (err) {
       toast.error(requestError(err));
     } finally {
@@ -159,8 +155,8 @@ export function ShopPricePromotionsTab() {
       </div>
 
       {/* Toolbar: Filter tabs + CTA */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="grid grid-cols-1 items-stretch gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid grid-cols-2 items-stretch gap-2 sm:grid-cols-5" role="group" aria-label="Lọc đề xuất giảm giá">
           {[
             { id: 'ALL', label: `Tất cả (${totalCount})` },
             { id: 'PENDING', label: `Chờ duyệt (${pendingCount})` },
@@ -170,11 +166,13 @@ export function ShopPricePromotionsTab() {
           ].map((tab) => (
             <button
               key={tab.id}
+              type="button"
+              aria-pressed={activeFilter === tab.id}
               onClick={() => setActiveFilter(tab.id as any)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+              className={`min-h-11 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
                 activeFilter === tab.id
-                  ? 'bg-[#231D15] text-[#FAF8F5] shadow-xs'
-                  : 'bg-[#FAF8F5] text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612]'
+                  ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
+                  : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
               }`}
             >
               {tab.label}
@@ -182,18 +180,11 @@ export function ShopPricePromotionsTab() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-stretch">
           <button
-            onClick={() => void loadData(true)}
-            disabled={isRefreshing}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#EAE4D7] text-[#7D715E] transition hover:bg-[#FAF8F5] hover:text-[#1A1612]"
-            title="Làm mới dữ liệu"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
-          <button
+            type="button"
             onClick={() => setIsCreateOpen(true)}
-            className="flex h-9 items-center gap-1.5 rounded-xl bg-[#C59B58] px-4 text-xs font-bold text-[#1A1612] shadow-2xs transition hover:bg-[#B88E4F]"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-5 py-2.5 text-sm font-semibold text-[#715126] transition-colors hover:bg-[#F3EFE6]"
           >
             <Plus className="h-4 w-4" />
             <span>Tạo đề xuất giảm giá</span>
@@ -377,7 +368,7 @@ export function ShopPricePromotionsTab() {
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
           catalog={catalog}
-          onSuccess={() => void loadData(false)}
+          onSuccess={() => void loadData()}
         />
       )}
     </div>

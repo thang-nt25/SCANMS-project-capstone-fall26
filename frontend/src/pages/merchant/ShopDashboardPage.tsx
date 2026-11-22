@@ -8,7 +8,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import {
@@ -17,9 +16,7 @@ import {
   ShoppingCart,
   CheckCircle2,
   Calendar,
-  RefreshCw,
   Download,
-  Store,
   ChevronDown,
   Check,
   ArrowRight,
@@ -39,33 +36,6 @@ import {
 import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
 import { downloadReport, vietnamDateRange } from '../../utils/report-export';
-
-// Ambient Golden Smooth Sparkline for KPI Cards
-const Sparkline = ({ stroke = '#C59B58', id = 'spark' }: { stroke?: string; id?: string }) => (
-  <svg
-    className="absolute right-0 bottom-0 w-36 h-16 pointer-events-none opacity-30 overflow-hidden"
-    viewBox="0 0 140 50"
-    preserveAspectRatio="none"
-  >
-    <defs>
-      <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor={stroke} stopOpacity={0.4} />
-        <stop offset="100%" stopColor={stroke} stopOpacity={0.0} />
-      </linearGradient>
-    </defs>
-    <path
-      d="M0 42 C 35 46, 60 28, 95 24 C 115 22, 128 12, 140 8"
-      fill="none"
-      stroke={stroke}
-      strokeWidth="2.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M0 42 C 35 46, 60 28, 95 24 C 115 22, 128 12, 140 8 L 140 50 L 0 50 Z"
-      fill={`url(#${id})`}
-    />
-  </svg>
-);
 
 function KOCAvatar({ src, name }: { src?: string; name: string }) {
   const [hasError, setHasError] = useState(false);
@@ -185,7 +155,7 @@ let lastDashboardSnapshot: {
   topProducts: Product[];
   recentOrders: StoreOrderRecord[];
   storeKols: any[];
-  pendingOrdersCount: number;
+  pendingOrdersCount: number | null;
   pendingSamplesCount: number;
   pendingDealsCount: number;
   pendingReturnsCount: number;
@@ -199,6 +169,7 @@ export default function ShopDashboardPage() {
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [isCustomOpen, setIsCustomOpen] = useState<boolean>(false);
   const [appliedDates, setAppliedDates] = useState<{ startDate: string; endDate: string } | null>(null);
+  const [detailTab, setDetailTab] = useState<'orders' | 'products' | 'kols'>('orders');
   const [activeChartTab, setActiveChartTab] = useState<'revenue' | 'commission'>('revenue');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const requestSequence = useRef(0);
@@ -212,7 +183,7 @@ export default function ShopDashboardPage() {
   const [storeKols, setStoreKols] = useState<any[]>(() => lastDashboardSnapshot?.storeKols || []);
 
   // Actionable to-do counts
-  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(() => lastDashboardSnapshot?.pendingOrdersCount || 0);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(() => lastDashboardSnapshot?.pendingOrdersCount ?? null);
   const [pendingSamplesCount, setPendingSamplesCount] = useState<number>(() => lastDashboardSnapshot?.pendingSamplesCount || 0);
   const [pendingDealsCount, setPendingDealsCount] = useState<number>(() => lastDashboardSnapshot?.pendingDealsCount || 0);
   const [pendingReturnsCount, setPendingReturnsCount] = useState<number>(() => lastDashboardSnapshot?.pendingReturnsCount || 0);
@@ -271,6 +242,7 @@ export default function ShopDashboardPage() {
         samplesRes,
         dealsRes,
         returnsRes,
+        pendingOrdersData,
       ] = await Promise.all([
         analyticsService.getRealtimeOverview(params, showIndicator),
         analyticsService.getTimeSeries(params, showIndicator),
@@ -280,6 +252,7 @@ export default function ShopDashboardPage() {
         samplesPromise,
         dealsPromise,
         returnsPromise,
+        orderService.getMyStoreOrders({storeId:store.id,status:"PENDING",page:1,limit:1},showIndicator).catch(() => null),
       ]);
 
       if (request !== requestSequence.current) return;
@@ -297,7 +270,7 @@ export default function ShopDashboardPage() {
       setStoreKols(sortedKols);
 
       // Operational pending counts
-      const pendingOrdersTotal = ordersData?.pagination?.total ?? (ordersData?.items?.filter((o: any) => o.status === 'PENDING')?.length || 0);
+      const pendingOrdersTotal = pendingOrdersData?.pagination?.total ?? null;
       setPendingOrdersCount(pendingOrdersTotal);
 
       const samplesList = (samplesRes as any)?.data || samplesRes || [];
@@ -351,6 +324,21 @@ export default function ShopDashboardPage() {
     return () => { requestSequence.current += 1; };
   }, [loadData]);
 
+  useEffect(() => {
+    let lastRefresh = Date.now();
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastRefresh < 30000) return;
+      lastRefresh = Date.now();
+      void loadData(true);
+    };
+    window.addEventListener('focus', refreshOnReturn);
+    document.addEventListener('visibilitychange', refreshOnReturn);
+    return () => {
+      window.removeEventListener('focus', refreshOnReturn);
+      document.removeEventListener('visibilitychange', refreshOnReturn);
+    };
+  }, [loadData]);
+
   const handleApplyCustomRange = () => {
     try {
       setAppliedDates(vietnamDateRange(customStartDate, customEndDate));
@@ -395,48 +383,12 @@ export default function ShopDashboardPage() {
         </p>
       )}
 
-      {/* 1. Unified Clean Header Row: Breadcrumbs, Store Badge + Date Range + Refresh + Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1 pb-1">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-[#7D715E] font-medium mb-1">
-            <span>Trang chủ</span>
-            <span>/</span>
-            <span className="text-[#1A1612] font-semibold">Tổng quan</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-black text-[#1A1612] tracking-tight">
-              Tổng quan
-            </h1>
-            {currentStore && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] shadow-2xs">
-                <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>{currentStore.name}</span>
-                {currentStore.categoryName && (
-                  <span className="text-[#7D715E] font-normal">• {currentStore.categoryName}</span>
-                )}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-[#7D715E] mt-0.5">
-            Theo dõi doanh số tiếp thị, chi phí hoa hồng và tình trạng vận hành nhãn hàng
-          </p>
-        </div>
-
-        {/* Right Action Controls */}
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+      <div className="shop-dashboard-toolbar">
           <DateRangeDropdown
             range={range}
             setRange={(r) => { setRange(r); setIsCustomOpen(false); }}
             onOpenCustom={() => setIsCustomOpen(true)}
           />
-          <button
-            onClick={() => loadData(true)}
-            disabled={isRefreshing}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] transition-all hover:bg-[#F3EFE6] active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
-            title="Làm mới dữ liệu nhãn hàng"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#B88E4F]' : ''}`} />
-          </button>
           <button
             onClick={handleExportCsv}
             disabled={loading || !timeSeries.length}
@@ -446,7 +398,6 @@ export default function ShopDashboardPage() {
             <Download className="w-3.5 h-3.5 text-[#B88E4F]" />
             <span>Xuất báo cáo</span>
           </button>
-        </div>
       </div>
 
       {/* Custom Date Range Popover */}
@@ -488,15 +439,14 @@ export default function ShopDashboardPage() {
       )}
 
       <div className={`space-y-4 ${!overview ? 'hidden' : ''}`} aria-busy={isRefreshing}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {/* Card 1: Doanh thu liên kết (GMV) */}
+        <div className="shop-dashboard-kpis">
+          {/* Card 1: Doanh số đã giao (GMV) */}
           <div className="relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4.5 shadow-xs hover:border-[#C59B58]/60 transition-colors">
-            <Sparkline stroke="#C59B58" id="spark-shop-rev" />
             <div className="flex items-center gap-2 mb-2 relative z-10">
               <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
                 <TrendingUp className="w-4 h-4" />
               </div>
-              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">Doanh thu liên kết (GMV)</span>
+              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">Doanh số đã giao (GMV)</span>
             </div>
             <div className="relative z-10">
               <p className="text-2xl font-black text-[#1A1612] tracking-tight" title={formatCurrency(grossRevenue)}>
@@ -504,7 +454,7 @@ export default function ShopDashboardPage() {
               </p>
               <div className="mt-2 flex items-center gap-1.5">
                 <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  ↗ {metrics?.growthRevenue ? `+${metrics.growthRevenue}%` : '+12,4%'}
+                  ↗ {Number.isFinite(metrics?.growthRevenue) ? `${Number(metrics?.growthRevenue) > 0 ? '+' : ''}${Number(metrics?.growthRevenue).toLocaleString('vi-VN')}%` : '—'}
                 </span>
                 <span className="text-[11px] text-[#7D715E]">({completedOrders} đơn giao xong)</span>
               </div>
@@ -513,12 +463,11 @@ export default function ShopDashboardPage() {
 
           {/* Card 2: Thù lao KOC đã cam kết */}
           <div className="relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4.5 shadow-xs hover:border-[#C59B58]/60 transition-colors">
-            <Sparkline stroke="#D97706" id="spark-shop-com" />
             <div className="flex items-center gap-2 mb-2 relative z-10">
               <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
                 <Coins className="w-4 h-4" />
               </div>
-              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">Thù lao KOC chi trả</span>
+              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">Thù lao ghi nhận</span>
             </div>
             <div className="relative z-10">
               <p className="text-2xl font-black text-[#1A1612] tracking-tight" title={formatCurrency(totalCommission)}>
@@ -526,21 +475,20 @@ export default function ShopDashboardPage() {
               </p>
               <div className="mt-2 flex items-center gap-1.5">
                 <span className="inline-flex items-center text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] px-2 py-0.5 rounded-md">
-                  ▲ {commissionRatio}% doanh thu
+                  {commissionRatio}% doanh số
                 </span>
-                <span className="text-[11px] text-[#7D715E]">(Chi phí tiếp thị)</span>
+                <span className="text-[11px] text-[#7D715E]"></span>
               </div>
             </div>
           </div>
 
           {/* Card 3: Doanh thu thuần */}
           <div className="relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4.5 shadow-xs hover:border-[#C59B58]/60 transition-colors">
-            <Sparkline stroke="#C59B58" id="spark-shop-net" />
             <div className="flex items-center gap-2 mb-2 relative z-10">
               <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
                 <ShoppingCart className="w-4 h-4" />
               </div>
-              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">Doanh thu thuần nhãn hàng</span>
+              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">Sau thù lao</span>
             </div>
             <div className="relative z-10">
               <p className="text-2xl font-black text-[#1A1612] tracking-tight" title={formatCurrency(netRevenue)}>
@@ -548,7 +496,7 @@ export default function ShopDashboardPage() {
               </p>
               <div className="mt-2 flex items-center gap-1.5">
                 <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  ↗ {netRatio}% sau trừ thù lao
+                  {netRatio}% sau trừ thù lao
                 </span>
               </div>
             </div>
@@ -556,7 +504,6 @@ export default function ShopDashboardPage() {
 
           {/* Card 4: Tỷ lệ hoàn tất đơn hàng */}
           <div className="relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4.5 shadow-xs hover:border-[#C59B58]/60 transition-colors">
-            <Sparkline stroke="#C59B58" id="spark-shop-ord" />
             <div className="flex items-center gap-2 mb-2 relative z-10">
               <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4" />
@@ -569,7 +516,7 @@ export default function ShopDashboardPage() {
               </p>
               <div className="mt-2 flex items-center gap-1.5">
                 <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  ↗ {completionRate}% tỷ lệ hoàn tất
+                  {completionRate}% tỷ lệ hoàn tất
                 </span>
               </div>
             </div>
@@ -577,7 +524,7 @@ export default function ShopDashboardPage() {
         </div>
 
         {/* 3. Middle Section: Revenue Chart (Left 65%) & Operations To-Do Sentinel (Right 35%) */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="shop-dashboard-middle">
           {/* Revenue & Remuneration Curve */}
           <div className="space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs lg:col-span-2">
             <div className="flex items-center justify-between">
@@ -585,12 +532,12 @@ export default function ShopDashboardPage() {
                 {activeChartTab === 'revenue' ? (
                   <>
                     <TrendingUp className="w-4 h-4 text-[#B88E4F]" />
-                    <h3 className="text-base font-bold text-[#1A1612]">Tăng trưởng doanh thu nhãn hàng</h3>
+                    <h3 className="text-base font-bold text-[#1A1612]">Doanh số & thù lao</h3>
                   </>
                 ) : (
                   <>
                     <Coins className="w-4 h-4 text-[#D97706]" />
-                    <h3 className="text-base font-bold text-[#1A1612]">Biến động thù lao KOC chi trả</h3>
+                    <h3 className="text-base font-bold text-[#1A1612]">Doanh số & thù lao</h3>
                   </>
                 )}
               </div>
@@ -625,7 +572,7 @@ export default function ShopDashboardPage() {
             </div>
 
             {/* Chart Canvas */}
-            <div className="h-64 w-full sm:h-72">
+            <div className="shop-dashboard-chart">
               {loading ? (
                 <div className="h-full flex items-center justify-center text-[#7D715E] text-xs animate-pulse">
                   Đang nạp dữ liệu biểu đồ...
@@ -672,7 +619,6 @@ export default function ShopDashboardPage() {
                         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
                       }}
                     />
-                    <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                     {activeChartTab === 'revenue' ? (
                       <Area
                         key="area-shop-rev"
@@ -711,21 +657,21 @@ export default function ShopDashboardPage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-amber-500 font-bold">⚡</span>
-                <h3 className="text-base font-bold text-[#1A1612]">Tác vụ cần xử lý ngay</h3>
+                <h3 className="text-base font-bold text-[#1A1612]">Cần xử lý</h3>
               </div>
 
               <div className="space-y-3 text-xs">
                 {/* 1. Đơn chờ gửi kho GHN */}
                 <Link
-                  to="/merchant/orders"
+                  to="/merchant/orders?status=PENDING"
                   className="flex items-center justify-between p-2.5 rounded-xl border border-[#EAE4D7]/70 bg-[#FAF8F5] hover:bg-[#F3EFE6] transition-colors cursor-pointer group"
                 >
                   <span className="flex items-center gap-2 text-[#4A3F33] font-medium">
                     <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    <span>Đơn chờ chuẩn bị giao GHN</span>
+                    <span>Đơn chờ xử lý</span>
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#1A1612] group-hover:text-[#B88E4F]">
-                    <span>{pendingOrdersCount} đơn</span>
+                    <span>{pendingOrdersCount === null ? '—' : `${pendingOrdersCount} đơn`}</span>
                     <ArrowRight className="w-3.5 h-3.5 text-[#7D715E] group-hover:text-[#B88E4F]" />
                   </span>
                 </Link>
@@ -737,7 +683,7 @@ export default function ShopDashboardPage() {
                 >
                   <span className="flex items-center gap-2 text-[#4A3F33] font-medium">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span>Mẫu 0đ KOC chờ duyệt (SLA 14d)</span>
+                    <span>Hàng mẫu chờ duyệt</span>
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#1A1612] group-hover:text-[#B88E4F]">
                     <span>{pendingSamplesCount} yêu cầu</span>
@@ -745,14 +691,14 @@ export default function ShopDashboardPage() {
                   </span>
                 </Link>
 
-                {/* 3. Đề xuất Thỏa thuận độc quyền */}
+                {/* 3. Đề xuất Deal */}
                 <Link
                   to="/merchant/kol-hub?tab=deals"
                   className="flex items-center justify-between p-2.5 rounded-xl border border-[#EAE4D7]/70 bg-[#FAF8F5] hover:bg-[#F3EFE6] transition-colors cursor-pointer group"
                 >
                   <span className="flex items-center gap-2 text-[#4A3F33] font-medium">
                     <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                    <span>Đề xuất Thỏa thuận độc quyền</span>
+                    <span>Đề xuất Deal</span>
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#1A1612] group-hover:text-[#B88E4F]">
                     <span>{pendingDealsCount} đề xuất</span>
@@ -767,7 +713,7 @@ export default function ShopDashboardPage() {
                 >
                   <span className="flex items-center gap-2 text-[#4A3F33] font-medium">
                     <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                    <span>Khiếu nại đổi trả bù hàng 1-1</span>
+                    <span>Yêu cầu đổi trả</span>
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#1A1612] group-hover:text-[#B88E4F]">
                     <span>{pendingReturnsCount} khiếu nại</span>
@@ -777,28 +723,108 @@ export default function ShopDashboardPage() {
               </div>
             </div>
 
-            <div className="pt-4 mt-2">
-              <Link
-                to="/merchant/orders"
-                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#8C6226] transition-all cursor-pointer shadow-2xs"
-              >
-                <span>Xem danh sách đơn hàng cần xử lý</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+
           </div>
         </div>
 
-        {/* 4. Bottom Section: Top Products (60%) & Top KOCs (40%) */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          {/* Top Selling Products */}
-          <div className="lg:col-span-7 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs flex flex-col justify-between">
+        <section className="shop-dashboard-details" aria-label="Chi tiết hoạt động cửa hàng">
+          <div className="shop-dashboard-detail-tabs" role="tablist" aria-label="Danh sách tổng quan">
+            {([{id:'orders',label:'Đơn gần đây',icon:ShoppingCart},{id:'products',label:'Sản phẩm',icon:Box},{id:'kols',label:'KOL hợp tác',icon:Users}] as const).map(tab => <button type="button" role="tab" key={tab.id} id={`shop-detail-tab-${tab.id}`} aria-controls={`shop-detail-panel-${tab.id}`} aria-selected={detailTab===tab.id} onClick={()=>setDetailTab(tab.id)}><tab.icon size={16}/>{tab.label}</button>)}
+          </div>
+          {detailTab === 'orders' && <div role="tabpanel" id="shop-detail-panel-orders" aria-labelledby="shop-detail-tab-orders"><div className="shop-dashboard-detail-content border border-[#EAE4D7] bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-[#1A1612]">Đơn gần đây</h3>
+            </div>
+            <Link
+              to="/merchant/orders"
+              className="text-xs font-bold text-[#B88E4F] hover:text-[#B88E4F] inline-flex items-center gap-1"
+            >
+              <span>Xem tất cả đơn hàng</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {recentOrders.length === 0 ? (
+            <div className="p-8 text-center text-xs text-[#7D715E]">
+              Chưa có đơn hàng nào phát sinh gần đây.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-[#EAE4D7] text-[11px] font-bold text-[#7D715E]">
+                  <tr>
+                    <th className="pb-3 font-semibold">Mã / Thời gian</th>
+                    <th className="pb-3 font-semibold">Khách hàng</th>
+                    <th className="pb-3 font-semibold">Số lượng</th>
+                    <th className="pb-3 font-semibold text-right">Tổng tiền</th>
+                    <th className="pb-3 font-semibold text-center">Trạng thái GHN</th>
+                    <th className="pb-3 font-semibold text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EAE4D7]/50">
+                  {recentOrders.slice(0, 5).map((order) => (
+                    <tr key={order.id} className="hover:bg-[#FAF8F5] transition-colors group">
+                      <td className="py-3 font-mono font-bold text-[#1A1612]">
+                        #{order.externalOrderSn}<time className="shop-order-time" dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'})}</time>
+                      </td>
+                      <td className="py-3 font-medium text-[#1A1612]">
+                        {order.customerName}
+                      </td>
+                      <td className="py-3 text-[#7D715E]">
+                        {order.items.length} sản phẩm
+                      </td>
+                      <td className="py-3 text-right font-mono font-bold text-[#1A1612]">
+                        {Number(order.finalAmount).toLocaleString('vi-VN')} ₫
+                      </td>
+                      <td className="py-3 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${
+                            order.status === 'COMPLETED' || order.status === 'DELIVERED'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : order.status === 'SHIPPING'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : order.status === 'CANCELLED' || order.status === 'RETURNED'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {order.status === 'COMPLETED'
+                            ? 'Hoàn tất'
+                            : order.status === 'DELIVERED'
+                              ? 'Đã giao'
+                              : order.status === 'SHIPPING'
+                                ? 'Đang giao'
+                                : order.status === 'CANCELLED'
+                                  ? 'Đã hủy'
+                                  : order.status === 'RETURNED'
+                                    ? 'Đã hoàn hàng'
+                                    : 'Chờ xử lý'}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right">
+                        <Link
+                          to={`/merchant/orders?orderId=${encodeURIComponent(order.id)}`}
+                          className="text-xs font-bold text-[#8C6226] hover:underline"
+                        >
+                          Chi tiết
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div></div>}
+          {detailTab === 'products' && <div role="tabpanel" id="shop-detail-panel-products" aria-labelledby="shop-detail-tab-products"><div className="shop-dashboard-detail-content rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-[#B88E4F]" />
-                  <h3 className="text-base font-bold text-[#1A1612]">Top sản phẩm nổi bật</h3>
+                  <h3 className="text-base font-bold text-[#1A1612]">Sản phẩm gần đây</h3>
                 </div>
+                <div className="flex items-center justify-end gap-3 flex-wrap">
                 <Link
                   to="/merchant/products"
                   className="text-xs font-bold text-[#B88E4F] hover:text-[#B88E4F] inline-flex items-center gap-1"
@@ -806,6 +832,14 @@ export default function ShopDashboardPage() {
                   <span>Xem tất cả sản phẩm</span>
                   <ArrowRight className="w-3 h-3" />
                 </Link>
+                <Link
+                  to="/merchant/products?create=1"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm sản phẩm mới</span>
+                </Link>
+                </div>
               </div>
 
               {topProducts.length === 0 ? (
@@ -820,7 +854,6 @@ export default function ShopDashboardPage() {
                         <th className="pb-3 font-semibold">Sản phẩm</th>
                         <th className="pb-3 font-semibold text-right">Giá bán</th>
                         <th className="pb-3 font-semibold text-center">Tồn kho</th>
-                        <th className="pb-3 font-semibold text-center">Thù lao</th>
                         <th className="pb-3 font-semibold text-center">Trạng thái</th>
                       </tr>
                     </thead>
@@ -856,11 +889,7 @@ export default function ShopDashboardPage() {
                           <td className="py-3 text-center font-semibold text-[#1A1612]">
                             {p.stockQuantity}
                           </td>
-                          <td className="py-3 text-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#B88E4F] font-bold text-[11px] border border-[#EEDFC6] shadow-2xs">
-                              {p.customCommissionRate ?? currentStore?.defaultCommissionRate ?? 10}%
-                            </span>
-                          </td>
+
                           <td className="py-3 text-center">
                             <span
                               className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs whitespace-nowrap ${
@@ -885,24 +914,16 @@ export default function ShopDashboardPage() {
               <span className="text-[11px] text-[#7D715E]">
                 Hiển thị {topProducts.length} sản phẩm trọng tâm
               </span>
-              <Link
-                to="/merchant/products?create=1"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Thêm sản phẩm mới</span>
-              </Link>
             </div>
-          </div>
-
-          {/* Top Contributing KOCs for this Store */}
-          <div className="lg:col-span-5 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs flex flex-col justify-between">
+          </div></div>}
+          {detailTab === 'kols' && <div role="tabpanel" id="shop-detail-panel-kols" aria-labelledby="shop-detail-tab-kols"><div className="shop-dashboard-detail-content rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-[#B88E4F]" />
-                  <h3 className="text-base font-bold text-[#1A1612]">Đối tác KOC chiến thần</h3>
+                  <h3 className="text-base font-bold text-[#1A1612]">KOL hợp tác</h3>
                 </div>
+                <div className="flex items-center justify-end gap-3 flex-wrap">
                 <Link
                   to="/merchant/kol-hub"
                   className="text-xs font-bold text-[#B88E4F] hover:text-[#B88E4F] inline-flex items-center gap-1"
@@ -910,6 +931,14 @@ export default function ShopDashboardPage() {
                   <span>Xem mạng lưới</span>
                   <ArrowRight className="w-3 h-3" />
                 </Link>
+                <Link
+                  to="/merchant/kol-hub?mode=ai-matching"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] transition-colors"
+                >
+                  <span>Tìm KOC bằng AI Radar</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                </div>
               </div>
 
               {storeKols.length === 0 ? (
@@ -918,7 +947,7 @@ export default function ShopDashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {storeKols.slice(0, 4).map((member: any) => {
+                  {storeKols.slice(0, 5).map((member: any) => {
                     const collab = member.collaborator;
                     const tierInfo = getTierLabel(collab?.collaboratorProfile?.tier?.name);
                     const revenue = member.stats?.totalRevenue || 0;
@@ -982,105 +1011,9 @@ export default function ShopDashboardPage() {
               <span className="text-[11px] text-[#7D715E]">
                 Đội ngũ: {storeKols.length} KOC đang hợp tác
               </span>
-              <Link
-                to="/merchant/kol-hub?mode=ai-matching"
-                className="text-xs font-bold text-[#8C6226] hover:underline inline-flex items-center gap-1"
-              >
-                <span>Tìm KOC bằng AI Radar</span>
-                <ArrowRight className="w-3 h-3" />
-              </Link>
             </div>
-          </div>
-        </div>
-
-        {/* 5. Bottom Section: Recent Orders Feed */}
-        <div className="rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-bold text-[#1A1612]">Đơn hàng mới nhất của nhãn hàng</h3>
-              <p className="text-xs text-[#7D715E] mt-0.5">Cập nhật đơn đặt hàng liên kết thời gian thực</p>
-            </div>
-            <Link
-              to="/merchant/orders"
-              className="text-xs font-bold text-[#B88E4F] hover:text-[#B88E4F] inline-flex items-center gap-1"
-            >
-              <span>Xem tất cả đơn hàng</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-
-          {recentOrders.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#7D715E]">
-              Chưa có đơn hàng nào phát sinh gần đây.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-[#EAE4D7] text-[11px] font-bold text-[#7D715E]">
-                  <tr>
-                    <th className="pb-3 font-semibold">Mã đơn</th>
-                    <th className="pb-3 font-semibold">Khách hàng</th>
-                    <th className="pb-3 font-semibold">Số lượng</th>
-                    <th className="pb-3 font-semibold text-right">Tổng tiền</th>
-                    <th className="pb-3 font-semibold text-center">Trạng thái GHN</th>
-                    <th className="pb-3 font-semibold text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EAE4D7]/50">
-                  {recentOrders.slice(0, 5).map((order) => (
-                    <tr key={order.id} className="hover:bg-[#FAF8F5] transition-colors group">
-                      <td className="py-3 font-mono font-bold text-[#1A1612]">
-                        #{order.externalOrderSn}
-                      </td>
-                      <td className="py-3 font-medium text-[#1A1612]">
-                        {order.customerName}
-                      </td>
-                      <td className="py-3 text-[#7D715E]">
-                        {order.items.length} sản phẩm
-                      </td>
-                      <td className="py-3 text-right font-mono font-bold text-[#1A1612]">
-                        {Number(order.finalAmount).toLocaleString('vi-VN')} ₫
-                      </td>
-                      <td className="py-3 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${
-                            order.status === 'COMPLETED' || order.status === 'DELIVERED'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : order.status === 'SHIPPING'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : order.status === 'CANCELLED' || order.status === 'RETURNED'
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}
-                        >
-                          {order.status === 'COMPLETED'
-                            ? 'Hoàn tất'
-                            : order.status === 'DELIVERED'
-                              ? 'Đã giao'
-                              : order.status === 'SHIPPING'
-                                ? 'Đang giao'
-                                : order.status === 'CANCELLED'
-                                  ? 'Đã hủy'
-                                  : order.status === 'RETURNED'
-                                    ? 'Đã hoàn hàng'
-                                    : 'Chờ xử lý'}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        <Link
-                          to={`/merchant/orders`}
-                          className="text-xs font-bold text-[#8C6226] hover:underline"
-                        >
-                          Chi tiết
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          </div></div>}
+        </section>
       </div>
     </div>
   );

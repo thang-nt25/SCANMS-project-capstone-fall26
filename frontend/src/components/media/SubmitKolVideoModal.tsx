@@ -4,7 +4,6 @@ import {
   Video,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   Package,
   Loader2,
   Upload,
@@ -14,6 +13,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { mediaService } from '../../services/media.service';
 import { referralLinksService, type EligibleProduct } from '../../services/referral-links.service';
 import api from '../../services/api';
@@ -425,27 +425,36 @@ export function SubmitKolVideoModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-xl max-h-[90vh] flex flex-col p-6 text-left animate-in zoom-in-95 duration-150">
-        <button type="button" onClick={onClose} className="absolute z-20 top-3 sm:top-3.5 right-3.5 sm:right-4.5 grid place-items-center w-8 h-8 border border-[#eae4d7] rounded-lg bg-white text-[#7d715e] cursor-pointer hover:bg-[#fbf5eb] focus-visible:outline-2 focus-visible:outline-[#c59b58] focus-visible:outline-offset-2" aria-label="Đóng">
-          <X className="w-5 h-5" />
-        </button>
-        <div className="min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#eedfc6_transparent]">
-        <header className="flex items-start justify-between gap-4 border-b border-[#EAE4D7] pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-xs">
-              <Video className="w-5 h-5" />
+    <Modal isOpen={isOpen} onClose={onClose} stickyHeader
+      title={sandboxOrderCode ? 'Nộp video kiểm thử' : 'Nộp video review'} icon={<Video size={20} />}
+      maxWidth="2xl" className="kol-review-dialog" bodyClassName="kol-review-body"
+      footer={<div className="kol-review-footer">
+            <span className="text-[11px] text-[#7D715E]">
+              {sandboxOrderCode ? 'Video kiểm thử, không công khai.' : 'Công khai sau khi cửa hàng duyệt.'}
+            </span>
+            <div className="flex items-center gap-2.5">
+              <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={submitting || isUploadingPoster || isUploadingVideo}>
+                Hủy bỏ
+              </Button>
+              <Button
+                type="submit"
+                form="kol-review-form"
+                variant="amber"
+                size="sm"
+                loading={submitting}
+                disabled={submitting || isUploadingPoster || isUploadingVideo || !title.trim() || !videoUrl.trim()}
+              >
+                {isUploadingPoster
+                  ? 'Đang tải ảnh...'
+                  : isUploadingVideo
+                  ? 'Đang tải video...'
+                  : !videoUrl.trim()
+                  ? 'Gửi duyệt'
+                  : sandboxOrderCode ? 'Lưu video kiểm thử' : 'Gửi duyệt'}
+              </Button>
             </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-extrabold text-[#1A1612] m-0">
-                {sandboxOrderCode ? 'Nộp video kiểm thử' : 'Nộp video review sản phẩm'}
-              </h2>
-            </div>
-          </div>
-        </header>
-
-
-        <form onSubmit={handleSubmit} className="flex-none overflow-visible p-3.5 sm:px-4.5 sm:py-4 space-y-3.5 flex-1 min-h-0 [scrollbar-width:thin] [scrollbar-color:#eedfc6_transparent]">
+          </div>}>
+        <form id="kol-review-form" onSubmit={handleSubmit} className="kol-review-form">
 
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
@@ -624,7 +633,6 @@ export function SubmitKolVideoModal({
               </p>
             ) : (
               <p className="text-[11px] text-[#7D715E] mt-1 m-0">
-                Chỉ hiển thị các sản phẩm thuộc Gian hàng đối tác bạn đã được phê duyệt liên kết tiếp thị.
               </p>
             )}
           </div>
@@ -632,13 +640,13 @@ export function SubmitKolVideoModal({
 
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1">
-              Tiêu đề video review <span className="text-rose-500">*</span>
+              Tiêu đề video <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ví dụ: Trải nghiệm thực tế Serum sau 14 ngày dùng - da căng bóng mờ thâm"
+              placeholder="Ví dụ: Trải nghiệm serum sau 14 ngày"
               className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#C59B58] transition"
               required
             />
@@ -648,7 +656,7 @@ export function SubmitKolVideoModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-[#1A1612]">
-                Video Review Sản Phẩm <span className="text-rose-500">*</span>
+                Video <span className="text-rose-500">*</span>
               </label>
               {videoPreview && (
                 <button
@@ -662,9 +670,10 @@ export function SubmitKolVideoModal({
             </div>
 
             {/* Chuyển đổi phương thức: Dán link vs Tải file */}
-            <div className="flex items-center gap-2 mb-2 p-1 bg-[#F3EFE6] rounded-xl border border-[#EAE4D7]">
+            <div className="kol-review-modes" role="group" aria-label="C?ch n?p video">
               <button
                 type="button"
+                aria-pressed={videoInputMode === 'link'}
                 onClick={() => setVideoInputMode('link')}
                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   videoInputMode === 'link'
@@ -672,10 +681,11 @@ export function SubmitKolVideoModal({
                     : 'text-[#7D715E] hover:text-[#1A1612]'
                 }`}
               >
-                🔗 Dán link (TikTok / Reels / YouTube)
+                Dán liên kết
               </button>
               <button
                 type="button"
+                aria-pressed={videoInputMode === 'file'}
                 onClick={() => setVideoInputMode('file')}
                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   videoInputMode === 'file'
@@ -683,7 +693,7 @@ export function SubmitKolVideoModal({
                     : 'text-[#7D715E] hover:text-[#1A1612]'
                 }`}
               >
-                📁 Tải file video trực tiếp (MP4 / MOV)
+                Tải video
               </button>
             </div>
 
@@ -693,14 +703,10 @@ export function SubmitKolVideoModal({
                   type="url"
                   value={videoUrl.startsWith('blob:') ? '' : videoUrl}
                   onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="https://www.tiktok.com/@kenh/video/... hoặc https://youtube.com/shorts/..."
+                  placeholder="Dán liên kết TikTok, YouTube hoặc Reels"
                   className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#C59B58] transition"
                   required={videoInputMode === 'link'}
                 />
-                <p className="text-[11px] text-[#7D715E] flex items-center gap-1">
-                  <span>Hỗ trợ:</span>
-                  <strong className="text-[#1A1612]">TikTok, YouTube, Facebook Reels, Instagram Reels</strong>
-                </p>
               </div>
             ) : (
               <>
@@ -716,7 +722,9 @@ export function SubmitKolVideoModal({
                 />
 
                 {!videoPreview && !videoUrl.startsWith('blob:') ? (
-                  <div
+                  <button
+                    type="button"
+                    aria-label="Chọn video từ máy tính"
                     onClick={() => videoFileInputRef.current?.click()}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -732,22 +740,16 @@ export function SubmitKolVideoModal({
                       const f = e.dataTransfer.files?.[0];
                       if (f) processSelectedVideoFile(f);
                     }}
-                    className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 ${
+                    className={`kol-review-video-upload ${
                       isDraggingVideo
                         ? 'border-[#B88E4F] bg-[#F3EFE6] scale-[0.99]'
                         : 'border-[#DEBE85] bg-[#FBF5EB]/70 hover:border-[#B88E4F] hover:bg-[#FBF5EB]'
                     }`}
                   >
-                    <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] shadow-sm">
-                      <Video className="w-6 h-6" />
-                    </div>
-                    <p className="text-xs font-bold text-[#1A1612] m-0">
-                      Bấm để tải video từ máy tính <span className="text-[#7D715E] font-normal">hoặc kéo thả file vào đây</span>
-                    </p>
-                    <p className="text-[11px] text-[#7D715E] mt-1 m-0">
-                      Hỗ trợ: <strong>MP4, WEBM, MOV</strong> (tối đa 100 MB). Khuyên dùng khung hình dọc 9:16.
-                    </p>
-                  </div>
+                    <Upload size={17} aria-hidden="true" />
+                    <span>Chọn video</span>
+                    <span className="kol-review-upload-hint">MP4, WEBM, MOV · ≤ 100 MB</span>
+                  </button>
                 ) : (
                   <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 flex items-center gap-3.5">
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-black/10 border border-[#EAE4D7] shrink-0 flex items-center justify-center">
@@ -808,7 +810,7 @@ export function SubmitKolVideoModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-[#1A1612]">
-                Ảnh bìa Poster
+                Ảnh bìa
               </label>
               {posterPreview && (
                 <button
@@ -911,12 +913,12 @@ export function SubmitKolVideoModal({
 
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1">
-              Mô tả hoặc kịch bản review
+              Mô tả ngắn
             </label>
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="Ví dụ: Tóm tắt cảm nhận thực tế, điểm nổi bật của sản phẩm để gian hàng tham khảo khi kiểm duyệt..."
+              placeholder="Cảm nhận hoặc nội dung chính của video…"
               rows={3}
               className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#B88E4F] transition resize-none"
             />
@@ -956,50 +958,9 @@ export function SubmitKolVideoModal({
           </div>}
 
 
-          <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl text-xs text-[#7D715E] flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0 mt-0.5" />
-            <span>
-              {sandboxOrderCode ? 'Đây là thao tác kiểm thử. Video không được gửi kiểm duyệt hoặc đăng công khai.' : <>Video sau khi nộp sẽ ở trạng thái <strong>Chờ duyệt (PENDING)</strong>. Khi được Shop chấp thuận, video sẽ tự động hiển thị trên Landing Page công khai của sản phẩm và ưu tiên hiển thị cho khách mua hàng qua link tiếp thị của bạn!</>}
-            </span>
-          </div>
 
 
-          <div className="flex items-center justify-between pt-3 border-t border-[#EAE4D7]">
-            <span className="text-[11px] text-[#7D715E]">
-              {!videoUrl.trim() ? (
-                <span className="text-rose-600 font-semibold flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> Vui lòng dán link hoặc tải file video để gửi Shop duyệt
-                </span>
-              ) : (
-                <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {sandboxOrderCode ? 'Đã có video kiểm thử' : 'Đã có video - Có thể gửi duyệt'}
-                </span>
-              )}
-            </span>
-            <div className="flex items-center gap-2.5">
-              <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={submitting || isUploadingPoster || isUploadingVideo}>
-                Hủy bỏ
-              </Button>
-              <Button
-                type="submit"
-                variant="amber"
-                size="sm"
-                loading={submitting}
-                disabled={submitting || isUploadingPoster || isUploadingVideo || !title.trim() || !videoUrl.trim()}
-              >
-                {isUploadingPoster
-                  ? 'Đang tải ảnh...'
-                  : isUploadingVideo
-                  ? 'Đang tải video...'
-                  : !videoUrl.trim()
-                  ? 'Cần video để gửi'
-                  : sandboxOrderCode ? 'Lưu video kiểm thử' : sampleRequestId ? 'Gửi link video cho Shop duyệt' : 'Gửi video cho Shop duyệt'}
-              </Button>
-            </div>
-          </div>
         </form>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

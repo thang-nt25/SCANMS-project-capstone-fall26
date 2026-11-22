@@ -41,7 +41,6 @@ export function PublicHeader({
   layout,
   sticky = true,
   cartCount,
-  onOpenCart,
   defaultSearchQuery = '',
   onSearchSubmit,
   onOpenFilter,
@@ -49,10 +48,10 @@ export function PublicHeader({
   const navigate = useNavigate();
   const location = useLocation();
   const loginUrl = productLoginUrl(`${location.pathname}${location.search}${location.hash}`);
-  const { totalCount, openCart } = useCart();
+  const { totalCount } = useCart();
 
   const effectiveCartCount = cartCount !== undefined ? cartCount : totalCount;
-  const handleCartClick = onOpenCart || openCart;
+  const handleCartClick = () => navigate('/cart');
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const [searchQuery, setSearchQuery] = useState(defaultSearchQuery);
@@ -349,7 +348,7 @@ export function PublicHeader({
 
       {/* TẦNG 2: MAIN HEADER */}
       <div className="bg-[#fffaf3]/96 border-b border-[#eadbc5] py-4 sm:py-[18px] px-4 sm:px-10 shadow-[0_4px_16px_rgba(80,50,20,0.04)] relative z-40">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_180px] items-center gap-4 lg:gap-7 max-w-[1600px] mx-auto">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[280px_1fr_180px] items-center gap-2 lg:gap-7 max-w-[1600px] mx-auto">
           {/* Col 1 (280px): Logo */}
           <div className="flex items-center gap-3">
             <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Hệ Thống SCANMS">
@@ -392,6 +391,7 @@ export function PublicHeader({
                   menuId="public-account-menu-mobile"
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
                 />
+                {isUserMenuOpen && <AccountMenu id="public-account-menu-mobile" user={currentUser} role={currentUser.role} onClose={() => setIsUserMenuOpen(false)} onLogout={handleLogout} inputRef={avatarInputRef} onAvatarUpload={handleAvatarUpload} uploading={uploadingAvatar} />}
               </div>
             ) : (
               <Link to={loginUrl} className="p-2 text-[#302317]" aria-label="Đăng nhập">

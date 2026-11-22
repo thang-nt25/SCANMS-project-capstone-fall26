@@ -192,6 +192,21 @@ describe('return pickup booking', () => {
     expect(present.present(detail).returnWarehouse).toEqual(warehouse);
   });
 
+  it('presents the addresses and parcel actually booked for a replacement shipment', () => {
+    const detail = fixture();
+    const recipient = { ...pickup, address: 'Địa chỉ nhận hàng đổi đã xác nhận', weight: 750 };
+    const bookedWarehouse = { ...warehouse, address: 'Kho gửi tại thời điểm tạo vận đơn' };
+    const record = {
+      ...detail,
+      order: { ...detail.order, refundedAmount: { greaterThanOrEqualTo: () => false } },
+      shipments: [{ direction: ReturnShipmentDirection.SHOP_TO_CUSTOMER, providerStatus: 'ready_to_pick' }],
+      events: [{ type: 'EXCHANGE_BOOKING_REQUESTED', data: { recipient, warehouse: bookedWarehouse } }],
+    };
+    const present = service as unknown as { present: (value: unknown, financial: boolean) => { exchangeDelivery: unknown } };
+    expect(present.present(record, true).exchangeDelivery).toEqual({ recipient, warehouse: bookedWarehouse });
+    expect(present.present({ ...record, shipments: [{ direction: ReturnShipmentDirection.SHOP_TO_CUSTOMER, providerStatus: 'booking_retry' }] }, true).exchangeDelivery).toBeNull();
+  });
+
   it('uses the existing Shop Settings warehouse without rewriting its GHN metadata', async () => {
     const legacy = {
       warehouseName: 'Kho Sora', contactName: 'Nguyễn Văn Minh', contactPhone: '0901234001',

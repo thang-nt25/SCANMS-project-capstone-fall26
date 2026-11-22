@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import {
   AlertCircle,
@@ -13,6 +14,10 @@ import {
 } from '../../services/enterprise-pricing.service';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
+import {
+  calculateMinSafePrice,
+  estimateMaxLossPerUnit,
+} from '../../utils/pricing-math';
 
 interface ProposePromotionModalProps {
   isOpen: boolean;
@@ -151,9 +156,14 @@ export function ProposePromotionModal({
     }
   }, [isManualPriceOverride, customProposedPrice, discountType, discountPercent, fixedDiscountAmount, listPrice]);
 
-  const singleBelowFloor = floorPrice != null && computedProposedPrice < floorPrice;
+  const minSafePrice = floorPrice != null ? calculateMinSafePrice(floorPrice) : null;
+  const singleBelowFloor = minSafePrice != null && computedProposedPrice < minSafePrice;
+  const singleMaxLoss =
+    floorPrice != null && singleBelowFloor
+      ? estimateMaxLossPerUnit(computedProposedPrice, floorPrice)
+      : 0;
   const singleAboveOrEqualList = listPrice > 0 && computedProposedPrice >= listPrice;
-  const singlePriceValid = computedProposedPrice > 0 && !singleBelowFloor && !singleAboveOrEqualList;
+  const singlePriceValid = computedProposedPrice > 0 && !singleAboveOrEqualList;
   const singleSavings = Math.max(0, listPrice - computedProposedPrice);
   const singleEffectivePercent = listPrice > 0 ? Math.round((singleSavings / listPrice) * 100) : 0;
 
@@ -244,11 +254,6 @@ export function ProposePromotionModal({
           setSubmitting(false);
           return;
         }
-        if (singleBelowFloor) {
-          setErrorMessage(`Mức giá đề xuất (${money(computedProposedPrice)}) không được thấp hơn giá sàn MAP (${money(floorPrice)}).`);
-          setSubmitting(false);
-          return;
-        }
         if (singleAboveOrEqualList) {
           setErrorMessage(`Mức giá đề xuất phải thấp hơn giá niêm yết hiện tại (${money(listPrice)}).`);
           setSubmitting(false);
@@ -309,12 +314,12 @@ export function ProposePromotionModal({
       aria-labelledby="promo-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#1A1612]/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
-      <div className="w-full max-w-5xl h-[92vh] max-h-[730px] flex flex-col rounded-2xl bg-[#FFFFFF] border border-[#EAE4D7] shadow-2xl overflow-hidden text-[#1A1612]">
+      <div className="promotion-light-dialog">
         {/* HEADER: LUXURY VÀNG CAM NÂU GRADIENT (LIKE KOL HEADER) */}
-        <header className="flex items-center justify-between px-6 py-3.5 border-b border-[#D4AF70]/30 bg-gradient-to-r from-[#2A1E11] via-[#4A3418] to-[#2A1E11] text-[#FFF8ED] shrink-0">
+        <header className="promotion-light-header">
           <div className="flex items-center gap-3">
-            <h2 id="promo-modal-title" className="text-base font-bold !text-[#FFFDF9] tracking-tight flex items-center gap-2.5">
-              <span className="!text-[#FFFDF9]">Đề Xuất Chương Trình Giảm Giá</span>
+            <h2 id="promo-modal-title" className="text-lg font-semibold tracking-tight">
+              <span>Đề xuất giảm giá</span>
             </h2>
 
             {/* Maker-Checker Popover Pill */}
@@ -322,19 +327,19 @@ export function ProposePromotionModal({
               <button
                 type="button"
                 onClick={() => setShowMakerCheckerInfo((prev) => !prev)}
-                className="px-2.5 py-1 rounded-full bg-[#D4AF70]/20 hover:bg-[#D4AF70]/30 text-[#D4AF70] text-[11px] font-semibold border border-[#D4AF70]/40 inline-flex items-center gap-1 cursor-pointer transition"
+                className="inline-flex size-8 items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FBF5EB]"
                 title="Xem quy chế thẩm duyệt Maker-Checker"
               >
-                <span>Cơ chế duyệt</span>
+                <span className="sr-only">Cơ chế duyệt</span>
                 <HelpCircle className="w-3.5 h-3.5" />
               </button>
 
               {showMakerCheckerInfo && (
-                <div className="absolute left-0 top-full mt-2 w-80 p-3.5 rounded-2xl bg-[#231A10] border border-[#D4AF70]/40 text-[#FAF5EB] shadow-2xl z-50 text-xs animate-in fade-in zoom-in-95 space-y-1">
-                  <div className="font-bold text-[#D4AF70] flex items-center gap-1.5 text-xs">
-                    Quy chế Thẩm Duyệt Maker-Checker
+                <div className="absolute left-0 top-full mt-2 w-80 p-3.5 rounded-2xl bg-white border border-[#EAE4D7] text-[#1A1612] shadow-2xl z-50 text-xs animate-in fade-in zoom-in-95 space-y-1">
+                  <div className="font-bold text-[#8C6226] flex items-center gap-1.5 text-xs">
+                    Phê duyệt đề xuất
                   </div>
-                  <p className="text-[11px] text-[#EEDFC6] leading-relaxed">
+                  <p className="text-[11px] text-[#7D715E] leading-relaxed">
                     Đề xuất sẽ được gửi tới <strong>Chuyên viên Vận hành / Ban Quản Trị</strong> phê duyệt. Khi duyệt thành công, mức giá ưu đãi sẽ tự động kích hoạt đồng bộ trên toàn sàn đúng thời gian đã thiết lập.
                   </p>
                 </div>
@@ -345,28 +350,28 @@ export function ProposePromotionModal({
           <div className="flex items-center gap-3">
             {/* Mode Switcher Tabs */}
             {!initialProduct && availableCatalog.length > 1 && (
-              <div className="flex items-center p-1 rounded-xl bg-black/25 border border-[#D4AF70]/30">
+              <div className="promotion-mode-switch">
                 <button
                   type="button"
                   onClick={() => setMode('single')}
                   className={`py-1 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
                     mode === 'single'
-                      ? 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs'
-                      : 'text-[#FFF8ED]/75 hover:text-white'
+                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
+                      : 'border-transparent bg-white text-[#7D715E]'
                   }`}
                 >
-                  Đơn lẻ (1 SP)
+                  Một sản phẩm
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode('batch')}
                   className={`py-1 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
                     mode === 'batch'
-                      ? 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs'
-                      : 'text-[#FFF8ED]/75 hover:text-white'
+                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
+                      : 'border-transparent bg-white text-[#7D715E]'
                   }`}
                 >
-                  Hàng loạt (${availableCatalog.length} SP)
+                  Nhiều sản phẩm
                 </button>
               </div>
             )}
@@ -375,7 +380,7 @@ export function ProposePromotionModal({
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="p-1.5 rounded-xl text-[#FFF8ED]/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-[#7D715E] hover:bg-[#FBF5EB]"
               title="Đóng cửa sổ"
               aria-label="Đóng cửa sổ"
             >
@@ -385,12 +390,12 @@ export function ProposePromotionModal({
         </header>
 
         {/* 2-COLUMN BODY */}
-        <form onSubmit={handleSubmit} className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 overflow-hidden">
+        <form onSubmit={handleSubmit} className="promotion-light-body">
           {/* LEFT COLUMN: Products & MAP Compliance Visualizer (5 Cols) */}
-          <section className="md:col-span-5 border-r border-[#EAE4D7] bg-[#FAF8F5] flex flex-col min-h-0">
+          <section className="promotion-light-products">
             {mode === 'single' ? (
               /* SINGLE MODE LEFT PANE */
-              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="space-y-3">
                 <div className="text-xs font-bold text-[#7D715E] uppercase tracking-wider">
                   Sản phẩm áp dụng
                 </div>
@@ -421,10 +426,10 @@ export function ProposePromotionModal({
 
                 {/* Product Detail Card */}
                 {activeProduct && (
-                  <div className="p-4 rounded-2xl bg-white border border-[#EAE4D7] shadow-xs space-y-3">
+                  <div className="rounded-xl border border-[#EAE4D7] bg-white p-3.5 space-y-3">
                     <div className="flex items-start gap-3">
                       <img
-                        src={getSafeProductImageUrl(activeProduct.imageUrl, activeProduct.title, '')}
+                        src={getSafeProductImageUrl(activeProduct.imageUrl, activeProduct.title, '')} onError={handleProductImageError}
                         alt={activeProduct.title}
                         className="w-16 h-16 rounded-xl object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
                       />
@@ -462,25 +467,33 @@ export function ProposePromotionModal({
                 )}
 
                 {/* 3-Tier Price Breakdown Box */}
-                <div className="p-4 rounded-2xl bg-white border border-[#EAE4D7] shadow-xs space-y-3">
+                <div className="rounded-xl border border-[#EAE4D7] bg-white p-3.5 space-y-3">
                   <div className="text-xs font-bold text-[#1A1612] flex items-center justify-between">
-                    <span>Cấu trúc giá & Giá sàn</span>
+                    <span>Giá xem trước</span>
                     <span className="text-[11px] text-[#7D715E]">Đơn vị: VNĐ</span>
                   </div>
 
                   <div className="space-y-1.5 text-xs">
                     <div className="flex items-center justify-between py-1 border-b border-[#FAF8F5]">
-                      <span className="text-[#7D715E]">1. Giá niêm yết (Gốc):</span>
+                      <span className="text-[#7D715E]">Giá niêm yết</span>
                       <strong className="text-[#1A1612] font-mono text-sm">{money(listPrice)}</strong>
                     </div>
 
-                    <div className="flex items-center justify-between py-1 border-b border-[#FAF8F5]">
-                      <span className="text-[#8C6226] font-semibold">2. Giá sàn bảo vệ (MAP):</span>
-                      <strong className="text-[#8C6226] font-mono text-sm">{money(floorPrice)}</strong>
+                    <div className="flex items-center justify-between gap-2 py-1 border-b border-[#FAF8F5]">
+                      <span className="text-[#8C6226] font-semibold inline-flex items-center gap-1 whitespace-nowrap">
+                        2. Ngưỡng an toàn:
+                        <span
+                          title={`Giá sàn MAP gốc: ${money(floorPrice)}. Mức giá >= ${money(minSafePrice)} bảo toàn không lỗ khi áp tối đa Voucher 10% + Hoa hồng 25%.`}
+                          className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
+                        >
+                          ?
+                        </span>
+                      </span>
+                      <strong className="text-[#8C6226] font-mono text-sm whitespace-nowrap">{money(minSafePrice)}</strong>
                     </div>
 
-                    <div className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-gradient-to-r from-[#FBF5EB] to-[#F5ECE0] border border-[#C59B58]/50 shadow-xs">
-                      <span className="font-bold text-[#2A1E11]">3. Giá sau giảm đề xuất:</span>
+                    <div className="promotion-proposed-price">
+                      <span className="font-bold text-[#2A1E11]">Giá sau giảm</span>
                       <strong className={`font-mono text-base font-bold ${singleBelowFloor ? 'text-[#DC2626]' : 'text-[#8C6226]'}`}>
                         {money(computedProposedPrice)}
                       </strong>
@@ -497,30 +510,40 @@ export function ProposePromotionModal({
 
                   {/* Realtime Compliance Alert & KOL Commission Buffer Note */}
                   {singleBelowFloor ? (
-                    <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#DC2626] flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div className="leading-relaxed">
-                        <strong className="block font-bold">Thấp hơn Giá Sàn MAP ({money(floorPrice)})!</strong>
-                        Mức giá đề xuất vi phạm biên độ bảo vệ vốn. Vui lòng giảm ít hơn để không bán dưới giá vốn.
+                    <div className="p-2.5 rounded-xl bg-[#FFFBEB] border-2 border-[#D97706] text-xs text-[#92400E] space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 font-bold">
+                        <span className="inline-flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-[#D97706] shrink-0" />
+                          <span>Xả hàng dưới sàn · Chuyển SYSTEM_ADMIN</span>
+                        </span>
+                        <span
+                          title={`Thấp hơn ngưỡng an toàn ${money(minSafePrice)}. Lỗ tối đa ước tính ${money(singleMaxLoss)}/sp nếu dính đủ Voucher 10% + Deal 25%.`}
+                          className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FEF3C7] border border-[#D97706] text-[10px] font-bold text-[#92400E] cursor-help shrink-0"
+                        >
+                          !
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#FDE68A]">
+                        <span className="font-semibold text-[#92400E]">Lỗ tối đa ước tính:</span>
+                        <span className="font-mono font-extrabold text-[#DC2626]">
+                          {money(singleMaxLoss)} / sản phẩm
+                        </span>
                       </div>
                     </div>
                   ) : singleAboveOrEqualList ? (
-                    <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#DC2626] flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div className="leading-relaxed">
-                        <strong className="block font-bold">Giá sau giảm không hợp lệ!</strong>
-                        Mức giá đề xuất phải thấp hơn giá niêm yết hiện tại ({money(listPrice)}).
-                      </div>
+                    <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#DC2626] flex items-center gap-2 font-bold">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Giá đề xuất phải thấp hơn {money(listPrice)}</span>
                     </div>
                   ) : (
-                    <div className="p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#6B4B1B] space-y-1">
+                    <div className="p-2.5 rounded-xl bg-[#FBF5EB] border border-[#C59B58]/50 text-xs text-[#6B4B1B] flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 font-bold text-[#8C6226]">
-                        <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
-                        <span>Hợp lệ · Cao hơn sàn MAP <strong>{money(computedProposedPrice - (floorPrice || 0))}</strong></span>
+                        <CheckCircle2 className="w-4 h-4 text-[#B88E4F] shrink-0" />
+                        <span>An toàn · Gửi SYSTEM_MANAGER duyệt</span>
                       </div>
-                      <p className="text-[10px] text-[#7D715E] leading-normal pl-5">
-                        Giá sàn MAP đã bao gồm dự phòng tối đa 16% thù lao KOC tự trị. Doanh nghiệp bảo toàn biên lợi nhuận ròng.
-                      </p>
+                      <span className="font-mono font-bold text-[#8C6226] whitespace-nowrap">
+                        +{money(computedProposedPrice - (minSafePrice || 0))}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -591,7 +614,7 @@ export function ProposePromotionModal({
                             className="rounded text-[#C59B58] pointer-events-none accent-[#C59B58]"
                           />
                           <img
-                            src={getSafeProductImageUrl(p.imageUrl, p.title, '')}
+                            src={getSafeProductImageUrl(p.imageUrl, p.title, '')} onError={handleProductImageError}
                             alt={p.title}
                             className="w-9 h-9 rounded-lg object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
                           />
@@ -629,7 +652,7 @@ export function ProposePromotionModal({
           </section>
 
           {/* RIGHT COLUMN: Configuration & Dual Discount Controls (7 Cols) */}
-          <section className="md:col-span-7 bg-[#FFFDF9] p-5 overflow-y-auto flex flex-col justify-between min-h-0 space-y-3">
+          <section className="promotion-light-settings">
             <div className="space-y-3">
               {/* SECTION 1: DISCOUNT MECHANISM SWITCHER */}
               <div>
@@ -647,11 +670,11 @@ export function ProposePromotionModal({
                     }}
                     className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center cursor-pointer ${
                       discountType === 'PERCENTAGE'
-                        ? 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs'
+                        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
                         : 'text-[#7D715E] hover:text-[#1A1612]'
                     }`}
                   >
-                    <span>Giảm theo phần trăm (%)</span>
+                    <span>Theo phần trăm</span>
                   </button>
                   <button
                     type="button"
@@ -661,11 +684,11 @@ export function ProposePromotionModal({
                     }}
                     className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center cursor-pointer ${
                       discountType === 'FIXED_AMOUNT'
-                        ? 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs'
+                        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
                         : 'text-[#7D715E] hover:text-[#1A1612]'
                     }`}
                   >
-                    <span>Giảm số tiền cố định (₫)</span>
+                    <span>Theo số tiền</span>
                   </button>
                 </div>
               </div>
@@ -674,8 +697,8 @@ export function ProposePromotionModal({
               {discountType === 'PERCENTAGE' ? (
                 <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#1A1612]">Tỷ lệ chiết khấu (%)</span>
-                    <span className="text-[11px] text-[#7D715E]">Áp dụng tự động tính giá sau giảm</span>
+                    <span className="text-xs font-bold text-[#1A1612]">Mức giảm (%)</span>
+
                   </div>
 
                   {/* Quick Preset Pills */}
@@ -689,7 +712,7 @@ export function ProposePromotionModal({
                           onClick={() => handlePresetPercent(pct)}
                           className={`px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
                             discountPercent === pct && !isManualPriceOverride
-                              ? 'border-[#B88E4F] bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs'
+                              ? 'border-[#D7BD94] bg-[#FBF5EB] text-[#715126]'
                               : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#F3EFE6]'
                           }`}
                         >
@@ -721,7 +744,7 @@ export function ProposePromotionModal({
                       />
                       <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">%</span>
                     </div>
-                    <span className="text-xs text-[#7D715E]">Tự do điều chỉnh (1% – 90%)</span>
+
                   </div>
                 </div>
               ) : (
@@ -745,7 +768,7 @@ export function ProposePromotionModal({
                           }}
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
                             fixedDiscountAmount === amt && !isManualPriceOverride
-                              ? 'border-[#B88E4F] bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs'
+                              ? 'border-[#D7BD94] bg-[#FBF5EB] text-[#715126]'
                               : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#F3EFE6]'
                           }`}
                         >
@@ -782,7 +805,7 @@ export function ProposePromotionModal({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-bold text-[#1A1612]">
-                    Thời gian áp dụng chiến dịch
+                    Thời gian áp dụng
                   </label>
                   <div className="flex items-center gap-1 text-[11px]">
                     <span className="text-[#7D715E]">Gợi ý:</span>
@@ -803,7 +826,7 @@ export function ProposePromotionModal({
                   <div>
                     <label className="text-[10px] text-[#7D715E] block mb-0.5">Bắt đầu từ</label>
                     <input
-                      type="datetime-local"
+                      type="datetime-local" lang="vi-VN"
                       value={startsAt}
                       onChange={(e) => setStartsAt(e.target.value)}
                       className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
@@ -813,7 +836,7 @@ export function ProposePromotionModal({
                   <div>
                     <label className="text-[10px] text-[#7D715E] block mb-0.5">Kết thúc vào</label>
                     <input
-                      type="datetime-local"
+                      type="datetime-local" lang="vi-VN"
                       value={endsAt}
                       min={startsAt}
                       onChange={(e) => setEndsAt(e.target.value)}
@@ -827,7 +850,7 @@ export function ProposePromotionModal({
               {/* SECTION 4: COMMERCIAL BASIS & PURPOSE */}
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-0.5">
-                  Căn cứ thương mại & Lý do đề xuất <span className="text-[#DC2626]">*</span>
+                  Lý do đề xuất <span className="text-[#DC2626]">*</span>
                 </label>
                 <textarea
                   rows={2}
@@ -850,11 +873,11 @@ export function ProposePromotionModal({
         </form>
 
         {/* FIXED FOOTER */}
-        <footer className="flex items-center justify-between px-6 py-3 border-t border-[#EAE4D7] bg-[#FAF8F5] shrink-0">
+        <footer className="promotion-light-footer">
           <div className="text-xs text-[#7D715E]">
             {mode === 'single' ? (
               <span>
-                Áp dụng cho <strong className="text-[#1A1612] font-bold">1 sản phẩm</strong> ({activeProduct?.title || ''})
+                Áp dụng cho <strong className="text-[#1A1612] font-bold">1 sản phẩm</strong>
               </span>
             ) : (
               <span>
@@ -870,7 +893,7 @@ export function ProposePromotionModal({
               disabled={submitting}
               className="px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
             >
-              Hủy bỏ
+              Hủy
             </button>
             <button
               type="button"
@@ -879,7 +902,7 @@ export function ProposePromotionModal({
                 submitting ||
                 (mode === 'single' ? !singlePriceValid : totalBatchSelected === 0 || anyBatchViolating)
               }
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#A47C3B] hover:brightness-105 text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-40 active:scale-[0.98]"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-5 py-2 text-sm font-semibold text-[#715126] hover:bg-[#F3EFE6] disabled:opacity-40"
             >
               {submitting ? (
                 <>
@@ -889,8 +912,8 @@ export function ProposePromotionModal({
               ) : (
                 <span>
                   {mode === 'single'
-                    ? 'Gửi Đề Xuất Giảm Giá'
-                    : `Gửi Đề Xuất Hàng Loạt (${totalBatchSelected} SP)`}
+                    ? 'Gửi đề xuất'
+                    : `Gửi đề xuất (${totalBatchSelected} SP)`}
                 </span>
               )}
             </button>

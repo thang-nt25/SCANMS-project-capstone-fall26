@@ -23,6 +23,7 @@ export interface DateTimePickerProps {
   id?: string;
   label?: string;
   popoverAlign?: 'start' | 'end';
+  smallCalendar?: boolean;
   compact?: boolean;
   popoverTitle?: string;
   inlinePopoverRef?: RefObject<HTMLDivElement | null>;
@@ -84,6 +85,7 @@ export function DateTimePicker({
   id,
   label,
   popoverAlign = 'start',
+  smallCalendar = false,
   compact = false,
   popoverTitle,
   inlinePopoverRef,
@@ -102,16 +104,16 @@ export function DateTimePicker({
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return null;
 
-    const width = Math.min(mode === 'datetime' ? 480 : 310, window.innerWidth - 16);
-    const estimatedHeight = mode === 'datetime' ? 450 : 360;
+    const width = Math.min(smallCalendar ? 280 : mode === 'datetime' ? 480 : 310, window.innerWidth - 16);
+    const estimatedHeight = smallCalendar ? 338 : mode === 'datetime' ? 450 : 360;
     const spaceBelow = window.innerHeight - rect.bottom;
     const top = spaceBelow >= estimatedHeight + 8
-      ? rect.bottom + 8
+      ? rect.bottom + (smallCalendar ? 4 : 8)
       : Math.max(8, rect.top - estimatedHeight - 8);
     const requestedLeft = popoverAlign === 'end' ? rect.right - width : rect.left;
     const left = Math.max(8, Math.min(requestedLeft, window.innerWidth - width - 8));
     return { top, left, width };
-  }, [mode, popoverAlign]);
+  }, [mode, popoverAlign, smallCalendar]);
 
   const togglePicker = () => {
     if (disabled) return;
@@ -465,7 +467,7 @@ export function DateTimePicker({
           role="group"
           aria-label={popoverTitle || 'Chọn ngày giờ'}
           onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setIsOpen(false); triggerRef.current?.focus(); } }}
-          className={`${
+          className={`${smallCalendar ? 'scanms-small-calendar' : ''} ${
             inlinePopoverRef ? 'relative inset-auto w-full max-w-full mt-2.5 shadow-none' : popoverPortalRef ? 'fixed' : 'absolute top-[calc(100%+6px)]'
           } ${!inlinePopoverRef && !popoverPortalRef ? (popoverAlign === 'end' ? 'right-0' : 'left-0') : ''} ${popoverPortalRef ? 'z-[100]' : 'z-50'} ${
             compact ? 'p-3.5 rounded-[14px] border border-[#EEDFC6] shadow-none' : 'rounded-2xl border border-[#EEDFC6] p-4 shadow-2xl shadow-[#C59B58]/10'

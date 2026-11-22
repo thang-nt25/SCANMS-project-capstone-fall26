@@ -96,6 +96,30 @@ describe('SamplesService', () => {
     );
   });
 
+  it('sample catalog counts shared SKU quota once and hides exhausted or already requested products', async () => {
+    const sku = { id: 'sku-1', name: 'Red', sku: 'RED', price: 100, stockQuantity: 5, imageUrl: null, sampleEnabled: null, sampleQuota: null, sampleGrantedCount: 0 };
+    prisma.product.findMany = jest.fn().mockResolvedValue([
+      { ...product, price: 100, variants: [sku, { ...sku, id: 'sku-2', name: 'Brown' }] },
+      { ...product, id: 'exhausted', price: 100, sampleGrantedCount: 10, variants: [] },
+      { ...product, id: 'duplicate', price: 100, variants: [] },
+      { ...product, id: 'completed', price: 100, variants: [] },
+      { ...product, id: 'sku-only', price: 100, sampleEnabled: false, variants: [{ ...sku, sampleEnabled: true, sampleQuota: 3, sampleGrantedCount: 1 }] },
+    ]);
+    prisma.sampleProductRequest.findMany.mockResolvedValue([{ productId: 'duplicate' }, { productId: 'completed' }]);
+    const result = await service.getMySampleCatalog('kol-1');
+    expect(result.items.map(item => item.id)).toEqual(['product-1', 'sku-only']);
+    expect(result.items[0].sampleQuotaRemaining).toBe(10);
+    expect(result.items[0].variants).toHaveLength(2);
+    expect(result.items[1].sampleQuotaRemaining).toBe(2);
+    expect(prisma.sampleProductRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { collaboratorId: 'kol-1', status: { in: expect.arrayContaining(['PENDING', 'COMPLETED']) } } }));
+    expect(prisma.product.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ isActive: true, isDeleted: false, moderationStatus: 'APPROVED', store: { isActive: true, isDeleted: false } }) }));
+  });
+
+  it('sample catalog does not offer inherited variants after the shared product pool is exhausted', async () => {
+    prisma.product.findMany = jest.fn().mockResolvedValue([{ ...product, price: 100, sampleGrantedCount: 10, variants: [{ id: 'sku', name: 'SKU', sku: 'SKU', price: null, stockQuantity: 5, sampleEnabled: null, sampleQuota: null, sampleGrantedCount: 0 }] }]);
+    expect((await service.getMySampleCatalog('kol-1')).items).toEqual([]);
+  });
+
   const editDetails = {
     recipientName: 'Người nhận mới', recipientPhone: '0912345678', recipientPhoneConfirmed: true,
     shippingAddress: '12 đường mới, Phường A, Quận B, Tỉnh C',

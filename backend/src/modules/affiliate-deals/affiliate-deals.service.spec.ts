@@ -280,19 +280,8 @@ describe('AffiliateDealsService', () => {
       tx,
     );
     expect(result.approvedCommissionRate).toBe(13);
-    expect(result.vipVoucherCode).toMatch(/^MAIANH7/);
-    expect(tx.coupon.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          discountValue: 7,
-          minimumOrderAmount: 250000,
-          maximumDiscountAmount: 60000,
-          usageLimitTotal: 30,
-          budgetTotal: 1500000,
-          fundingSource: 'SHOP_FUNDED',
-        }),
-      }),
-    );
+    expect(result.vipVoucherCode).toBeNull();
+    expect(tx.coupon.create).not.toHaveBeenCalled();
     const decisionCard = JSON.parse(
       tx.chatMessage.create.mock.calls[0][0].data.messageText,
     );
@@ -561,6 +550,17 @@ describe('AffiliateDealsService', () => {
     expect(state.initiatorRole).toBe('SHOP_MANAGER');
     expect(state.couponTerms).toMatchObject({ discountPercent: 5, usageLimitTotal: 20 });
     expect(couponTerms({})).toMatchObject({ discountPercent: 5, usageLimitTotal: 20 });
+  });
+  it('returns current product imagery and KPI terms for old chat cards', async () => {
+    const product = { id: productId, title: 'Product', imageUrl: '/uploads/product.png', price: 390000 };
+    prisma.exclusiveDealProposal.findUnique.mockResolvedValue({
+      id: proposalId, collaboratorId, storeId, status: 'APPROVED',
+      targetOrders: 30, targetRevenue: 20000000, commitmentDays: 14,
+      salesCommitment: 'Review plan', store: { isDeleted: false, name: 'Store' },
+      product, scopeProducts: [], referralLink: null,
+    });
+    const result = await service.getProposalState(proposalId, collaboratorId, 'COLLABORATOR' as any);
+    expect(result).toMatchObject({ product, products: [product], targetOrders: 30, targetRevenue: 20000000, commitmentDays: 14, publicCommissionRate: 10 });
   });
 
   describe('store staff access', () => {

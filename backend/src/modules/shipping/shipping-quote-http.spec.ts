@@ -76,6 +76,21 @@ describe('Checkout shipping quote HTTP regression', () => {
     await app?.close();
   });
 
+  it('quotes the selected variant measurements instead of the parent defaults', async () => {
+    const variantId = '22222222-2222-4222-8222-222222222222';
+    prisma.product.findMany.mockResolvedValueOnce([{ ...product, variants: [{
+      id: variantId, price: 400000,
+      attributes: { packageWeight: 750, packageLength: 25, packageWidth: 18, packageHeight: 12 },
+    }] }]);
+    const response = await request(app.getHttpServer())
+      .post('/api/shipping/ghn/quote-address')
+      .send({ ...payload, items: [{ productId, variantId, quantity: 2 }] })
+      .expect(200);
+    expect(carrierQuote).toHaveBeenCalledWith(payload.address, 1500, 800000,
+      payload.storeId, { weight: 1500, length: 25, width: 18, height: 24 });
+    expect(JSON.stringify(response.body)).toContain('1500');
+  });
+
   it('returns the quoted fee and measured parcel despite an invalid historical barcode', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/shipping/ghn/quote-address')

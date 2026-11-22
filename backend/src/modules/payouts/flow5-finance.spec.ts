@@ -379,11 +379,16 @@ describe('Flow 5 accounting and access', () => {
       Reflect.getMetadata('roles', FinanceReportController.prototype.executive),
     ).toEqual(['SYSTEM_ADMIN']);
     expect(
-      Reflect.getMetadata('roles', FinanceReportController.prototype.transfer),
-    ).toEqual(['SYSTEM_ADMIN', 'SYSTEM_MANAGER']);
+      Reflect.getMetadata('roles', FinanceReportController.prototype.attachCertificate),
+    ).toEqual(['SYSTEM_MANAGER', 'SYSTEM_ADMIN']);
     expect(
       Reflect.getMetadata('roles', FinanceReportController.prototype.receipt),
     ).toEqual(['COLLABORATOR']);
+  });
+  it('does not expose gateway approval or inquiry through the finance controller', () => {
+    expect(FinanceReportController.prototype).not.toHaveProperty('transfer');
+    expect(FinanceReportController.prototype).not.toHaveProperty('reconcile');
+    expect(FinanceReportController.prototype).not.toHaveProperty('gateway');
   });
   it('never exposes another creator receipt', async () => {
     const prisma: any = {
@@ -424,7 +429,7 @@ describe('Flow 5 accounting and access', () => {
     request.user.id = '6e9eb89c-f544-4f87-b724-1fe7aace2edc';
     await expect(guard.canActivate(context)).rejects.toThrow();
   });
-  it('settles the last CLOSED Vietnam month and resumes approved unpaid bonuses', async () => {
+  it('calculates closed months but never approves or credits without a human review', async () => {
     const old = process.env.DISABLE_SCHEDULED_JOBS;
     delete process.env.DISABLE_SCHEDULED_JOBS;
     try {
@@ -437,6 +442,7 @@ describe('Flow 5 accounting and access', () => {
             }),
         },
         store: { findMany: jest.fn().mockResolvedValue([{ id: 'store' }]) },
+        storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
         monthlyBonusResult: {
           findMany: jest.fn().mockResolvedValue([
             { id: 'pending', status: 'PENDING', yearMonth: '2026-09' },
@@ -450,11 +456,15 @@ describe('Flow 5 accounting and access', () => {
         payoutSettlement: jest.fn(),
       };
       await new MonthlyBonusScheduler(prisma, rules).settleClosedMonth(
-        new Date('2026-10-01T00:10:00+07:00'),
+        new Date('2026-10-15T00:10:00+07:00'),
       );
       expect(rules.settleAllEligible).toHaveBeenCalledWith('store', '2026-09');
-      expect(rules.approveSettlement).toHaveBeenCalledTimes(1);
-      expect(rules.payoutSettlement).toHaveBeenCalledTimes(2);
+      expect(rules.approveSettlement).not.toHaveBeenCalled();
+      expect(rules.payoutSettlement).not.toHaveBeenCalled();
+      rules.settleAllEligible.mockClear();
+      prisma.storeMonthlyRewardPolicy.findUnique.mockResolvedValue({ id: 'shop-policy' });
+      await new MonthlyBonusScheduler(prisma, rules).settleClosedMonth(new Date('2026-10-15T00:10:00+07:00'));
+      expect(rules.settleAllEligible).not.toHaveBeenCalled();
     } finally {
       if (old === undefined) delete process.env.DISABLE_SCHEDULED_JOBS;
       else process.env.DISABLE_SCHEDULED_JOBS = old;

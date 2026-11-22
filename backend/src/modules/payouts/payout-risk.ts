@@ -7,6 +7,7 @@ type Balance = { availableBalance: Money; pendingBalance: Money };
 export type PayoutRiskInput = {
   amount: Money;
   taxAmount: Money;
+  taxContext?: Prisma.JsonValue | null;
   netAmount: Money;
   status: string;
   bankName: string | null;
@@ -38,8 +39,10 @@ export function evaluatePayoutRisk(request: PayoutRiskInput) {
   });
   let taxMatches = request.amount.gt(0) && request.taxAmount.gte(0) && request.netAmount.gt(0) && request.taxAmount.plus(request.netAmount).eq(request.amount);
   if (taxMatches && request.status === 'PENDING') {
-    const expected = new PayoutTaxService().calculateTax(request.amount);
-    taxMatches = expected.taxAmount.eq(request.taxAmount) && expected.netAmount.eq(request.netAmount);
+    try {
+      const expected = new PayoutTaxService().calculateSnapshot(request.amount, request.taxContext);
+      taxMatches = expected.taxAmount.eq(request.taxAmount) && expected.netAmount.eq(request.netAmount);
+    } catch { taxMatches = false; }
   }
   const checks = [
     { code: 'ACTIVE_COLLABORATOR', label: 'Tài khoản KOL hoạt động', passed: request.collaborator.role === 'COLLABORATOR' && request.collaborator.isActive && !request.collaborator.isDeleted, blocking: true },
@@ -48,7 +51,7 @@ export function evaluatePayoutRisk(request: PayoutRiskInput) {
     { code: 'WALLET_CONSISTENCY', label: 'Ví không có khoản chờ đối soát', passed: Boolean(wallet && !wallet.earningsReviewRequired && !wallet.availableBalance.isNegative() && !wallet.pendingBalance.isNegative() && !walletBalanceConsistency(wallet, wallet.storeWallets).requiresReview), blocking: true },
     { code: 'FUNDED_PAYOUT', label: 'Có đủ bút toán giữ tiền', passed: Boolean(request.fundedAmount?.eq(request.amount.negated())), blocking: true },
     { code: 'TAX_SNAPSHOT', label: 'Số tiền và thuế hợp lệ', passed: taxMatches, blocking: true },
-    { code: 'TAX_ID', label: 'Mã số thuế cho khoản khấu trừ', passed: request.taxAmount.isZero() || Boolean(profile?.taxCode?.trim()), blocking: false },
+    { code: 'TAX_ID', label: 'Mã số thuế đã khai báo', passed: request.taxAmount.isZero() || Boolean(profile?.taxCode?.trim()), blocking: false },
   ];
   return {
     status: checks.some(check => !check.passed && check.blocking) ? 'BLOCKED' as const : checks.some(check => !check.passed) ? 'REVIEW' as const : 'CLEAR' as const,

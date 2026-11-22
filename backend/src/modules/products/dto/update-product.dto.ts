@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   IsUrl,
   ArrayMaxSize,
   IsInt,
@@ -38,6 +39,12 @@ export class UpdateProductDto extends ProductPackageDto {
   @IsOptional()
   @IsString()
   categoryName?: string;
+
+  @ApiPropertyOptional({ description: 'Nhóm sản phẩm trong ngành hàng của cửa hàng' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  productGroup?: string;
 
   @ApiPropertyOptional({
     example: 'Chống ồn chủ động Hybrid ANC 45dB, Pin 40 giờ liên tục',
@@ -161,6 +168,15 @@ export class UpdateProductDto extends ProductPackageDto {
   @IsNumber({}, { message: 'Giá bán phải là một số' })
   @Min(1, { message: 'Giá bán phải lớn hơn 0' })
   price?: number;
+
+  @ApiPropertyOptional({
+    example: 350000,
+    description: 'Giá sàn tối thiểu bảo vệ biên lợi nhuận của Shop (VNĐ)',
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Giá sàn phải là một số' })
+  @Min(0, { message: 'Giá sàn không được âm' })
+  floorPrice?: number;
 
   @ApiPropertyOptional({
     example: 650000,

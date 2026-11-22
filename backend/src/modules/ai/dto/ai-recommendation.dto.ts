@@ -19,6 +19,12 @@ export enum PriceRangeFilter {
   OVER_1M = 'OVER_1M',
 }
 
+export enum KolRecommendationMode {
+  ALL = 'ALL',
+  PERFORMANCE = 'PERFORMANCE',
+  COLD_START = 'COLD_START',
+}
+
 export class RecommendKolsQueryDto {
   @ApiPropertyOptional({
     description: 'ID sản phẩm của Shop cần tìm KOLs phù hợp nhất',
@@ -79,6 +85,15 @@ export class RecommendKolsQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 5;
+
+  @ApiPropertyOptional({
+    description: 'Chế độ lọc theo nhóm KOL (ALL, PERFORMANCE, COLD_START)',
+    enum: KolRecommendationMode,
+    default: KolRecommendationMode.ALL,
+  })
+  @IsOptional()
+  @IsEnum(KolRecommendationMode)
+  mode?: KolRecommendationMode = KolRecommendationMode.ALL;
 }
 
 export class ScoreBreakdownDto {
@@ -148,6 +163,12 @@ export class KolLifetimeStatsSummaryDto {
 
   @ApiProperty({ description: 'Tỷ lệ chuyển đổi CR% thực tế', example: 6.8 })
   conversionRate: number;
+
+  @ApiPropertyOptional({
+    description: 'Giá bán trung bình mỗi sản phẩm mà KOL đã chốt đơn (VNĐ)',
+    example: 385000,
+  })
+  avgSellingPrice?: number;
 
   @ApiProperty({
     description: 'Ngành hàng thế mạnh nhất',
@@ -300,6 +321,14 @@ export class AiRecommendationResponseDto {
     type: [KolMatchResultDto],
   })
   recommendedKols: KolMatchResultDto[];
+
+  @ApiPropertyOptional({
+    description: 'Số lượng KOL theo từng nhóm chế độ chấm điểm (Hiệu suất vs Cold Start)',
+  })
+  summaryCounts?: {
+    performanceCount: number;
+    coldStartCount: number;
+  };
 }
 
 export class MatchAnalysisRequestDto {

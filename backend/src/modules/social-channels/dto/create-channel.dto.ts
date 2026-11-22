@@ -6,6 +6,9 @@ import {
   IsOptional,
   IsString,
   Min,
+  Max,
+  MaxLength,
+  IsUrl,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SocialPlatform } from '@prisma/client';
@@ -27,6 +30,7 @@ export class CreateChannelDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(150)
   channelName?: string;
 
   @ApiProperty({
@@ -34,6 +38,8 @@ export class CreateChannelDto {
     description: 'URL liên kết đến kênh',
   })
   @IsString({ message: 'Đường dẫn liên kết kênh không hợp lệ' })
+  @IsUrl({ protocols: ['https'], require_protocol: true }, { message: 'Nhập liên kết kênh HTTPS hợp lệ' })
+  @MaxLength(2000)
   @IsNotEmpty({ message: 'Vui lòng nhập đường dẫn kênh mạng xã hội' })
   channelUrl: string;
 
@@ -44,7 +50,8 @@ export class CreateChannelDto {
   @IsOptional()
   @IsInt({ message: 'Số lượng follower phải là số nguyên' })
   @Min(0, { message: 'Số lượng follower không được âm' })
-  followerCount?: number = 0;
+  @Max(2147483647)
+  followerCount?: number;
 
   @ApiPropertyOptional({
     example: true,
@@ -52,5 +59,5 @@ export class CreateChannelDto {
   })
   @IsOptional()
   @IsBoolean()
-  isPrimary?: boolean = false;
+  isPrimary?: boolean;
 }

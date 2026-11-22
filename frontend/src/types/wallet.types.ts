@@ -10,6 +10,7 @@ export interface WalletSummary {
     availableBalance: string;
     pendingBalance: string;
     hasWallet: boolean;
+    conditionalDealEscrowBalance?: string;
   }[];
   stores: {
     storeId: string;
@@ -17,6 +18,7 @@ export interface WalletSummary {
     pendingBalance: string;
     availableBalance: string;
     isActive: boolean;
+    conditionalDealEscrowBalance?: string;
   }[];
   unallocatedAvailableBalance: string;
   unallocatedPendingBalance: string;
@@ -24,6 +26,7 @@ export interface WalletSummary {
   availableBalance: string;
   shoppingBalance?: string;
   conditionalDealEscrowBalance?: string;
+  dealBalanceConsistency?: { allocatedBalance: string; requiresReview: boolean };
   lockedPayoutBalance?: string;
   earningsReviewRequired?: boolean;
   activeDeals?: {
@@ -47,7 +50,7 @@ export interface WalletSummary {
     unallocatedPendingBalance: string;
   };
   minimumWithdrawalAmount: string;
-  withdrawalTaxPolicy: { threshold: string; rate: string };
+  withdrawalTaxPolicy: { threshold: string; rate: string; policy?: string; month?: string; monthlyGross?: string; brackets?: { ceiling: string | null; rate: string }[] };
   kycStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED";
   canWithdraw: boolean;
   bankAccount: {
@@ -58,6 +61,7 @@ export interface WalletSummary {
 }
 
 export interface WithdrawalRequest {
+  bankRefCode?: string | null;
   transferProvider?: string | null;
   storeId: string | null;
   store: { name: string } | null;
@@ -70,6 +74,8 @@ export interface WithdrawalRequest {
   status: PayoutStatus;
   createdAt: string;
   processedAt: string | null;
+  rejectedReason?: string | null;
+  refundedAmount?: string | null;
 }
 
 export interface WithdrawalHistory {
@@ -110,6 +116,9 @@ export interface LedgerEntry {
   referenceId: string | null;
   referenceType: string | null;
   referenceDetails?: {
+    withdrawalStatus?: 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
+    processedAt?: string | null;
+      topUpCode?: string;
     storeName: string | null;
     orderId: string | null;
     orderCode: string | null;

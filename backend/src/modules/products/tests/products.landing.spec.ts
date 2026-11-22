@@ -31,6 +31,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
       findMany: jest.fn(),
     },
     productReview: {
+      findFirst: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
       groupBy: jest.fn().mockImplementation(async () => {
         const rows = await mockPrismaService.productReview.findMany();
@@ -93,6 +94,18 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
     await expect(service.getLandingPageData('')).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it.each([true, false])('loads an older target only through public review and product scope: %s', async (exists) => {
+    const reviewId = 'e8b7c91a-1111-4444-8888-111122223333';
+    mockPrismaService.product.findFirst.mockResolvedValue({id:'target-product',sku:'TARGET',title:'Product',price:100000,stockQuantity:10,isActive:true,isDeleted:false,
+      store:{id:'store',name:'Store',isDeleted:false,isActive:true,isVerified:true,onboardingStatus:'VERIFIED',owner:{id:'owner',isActive:true}}});
+    mockPrismaService.mediaAsset.findMany.mockResolvedValue([]);
+    mockPrismaService.productReview.findMany.mockResolvedValue([]);
+    mockPrismaService.productReview.findFirst.mockResolvedValue(exists ? {id:reviewId,customerName:'Customer',rating:5,comment:'Older review',createdAt:new Date(),images:[],reviewImageUrl:null} : null);
+    const result = await service.getLandingPageData('TARGET',undefined,reviewId);
+    expect(mockPrismaService.productReview.findFirst).toHaveBeenCalledWith(expect.objectContaining({where:{id:reviewId,productId:'target-product',isApproved:true}}));
+    expect(result.reviews.items.some(review=>review.id===reviewId)).toBe(exists);
   });
 
   it('nên throw NotFoundException khi sản phẩm không tồn tại trong database', async () => {

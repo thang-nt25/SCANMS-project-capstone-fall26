@@ -190,6 +190,46 @@ export class ReturnController {
     return this.returns.submitExchangeShipment(userId, role, id, body);
   }
 
+  @Post(':id/exchange-booking')
+  bookExchangeShipment(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(bookPickupSchema)) body: BookPickupInput,
+  ) {
+    return this.returns.bookExchangeShipment(userId, role, id, body);
+  }
+
+  @Post(':id/exchange-quote')
+  quoteExchangeShipment(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(bookPickupSchema)) body: BookPickupInput,
+  ) {
+    return this.returns.quoteExchangeShipment(userId, role, id, body);
+  }
+
+  @Post(':id/exchange-booking/sync')
+  syncExchangeShipment(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.returns.syncExchangeShipment(userId, role, id);
+  }
+
+  @Patch(':id/exchange-booking/simulate')
+  simulateExchangeShipment(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(simulatePickupSchema))
+    body: { status: 'picked' | 'delivered' },
+  ) {
+    return this.returns.simulateExchangeShipment(userId, role, id, body.status);
+  }
+
   @Post(':id/confirmation')
   async confirmCompletion(
     @CurrentUser('id') userId: string,
@@ -256,22 +296,37 @@ export class ReturnDisputeAdminController {
     @CurrentUser('role') role: UserRole,
     @Query('kind') kind: string,
     @Query('page') rawPage?: string,
+    @Query('query') query = '',
+    @Query('storeId') storeId?: string,
   ) {
-    const allowed = ['active', 'rejected', 'ghn', 'stalled', 'disputes'] as const;
-    if (!allowed.includes(kind as typeof allowed[number]))
+    const allowed = [
+      'active',
+      'rejected',
+      'ghn',
+      'stalled',
+      'disputes',
+    ] as const;
+    if (!allowed.includes(kind as (typeof allowed)[number]))
       throw new BadRequestException('Nhóm hồ sơ không hợp lệ');
     const page = rawPage === undefined ? 1 : Number(rawPage);
     if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
       throw new BadRequestException('Trang không hợp lệ');
-    return this.returns.listOversightQueue(role, kind as typeof allowed[number], page);
+    return this.returns.listOversightQueue(
+      role,
+      kind as (typeof allowed)[number],
+      page,
+      query,
+      storeId,
+    );
   }
 
   @Get('history')
   listHistory(
     @CurrentUser('role') role: UserRole,
-    @Query(new ReturnZodPipe(returnHistoryQuerySchema)) query: ReturnHistoryQuery,
+    @Query(new ReturnZodPipe(returnHistoryQuerySchema))
+    query: ReturnHistoryQuery,
   ) {
-    return this.returns.listHistory(role, query.page, query.query);
+    return this.returns.listHistory(role, query.page, query.query, query.storeId);
   }
 
   @Get('active-returns')
@@ -313,7 +368,8 @@ export class ReturnDisputeAdminController {
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: UserRole,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ReturnZodPipe(liabilityAssessmentSchema)) body: LiabilityAssessmentInput,
+    @Body(new ReturnZodPipe(liabilityAssessmentSchema))
+    body: LiabilityAssessmentInput,
   ) {
     return this.returns.assessLiability(userId, role, id, body);
   }

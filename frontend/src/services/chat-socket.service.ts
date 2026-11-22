@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
+import { backendUrls } from '@/utils/backend-url';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = backendUrls.socket;
 
 let socket: Socket | null = null;
 const authenticatedUsers = new WeakMap<Socket, string>();

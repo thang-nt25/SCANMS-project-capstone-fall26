@@ -1,4 +1,5 @@
 import { assertCataloguePriceEdit, assertFloor, lockPricingProducts } from '../pricing/pricing-policy';
+import { calculateMinSafePrice } from '../pricing/pricing-math';
 import {
   Injectable,
   NotFoundException,
@@ -31,7 +32,7 @@ import {
 } from '@prisma/client';
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
-import { validateProductPackage } from './product-package';
+import { assertProductPackageComplete, PACKAGE_FIELDS, validateProductPackage } from './product-package';
 import { productVariantFields } from './product-variant-fields';
 import * as crypto from 'crypto';
 import { catalogRankingQuery, type CatalogRankingRow } from './utils/catalog-ranking.query';
@@ -180,6 +181,29 @@ export class ProductsService {
       );
   }
 
+  private isCategoryVerticalCompatible(cat1: string, cat2: string): boolean {
+    const c1 = cat1.trim().toLowerCase();
+    const c2 = cat2.trim().toLowerCase();
+    if (c1 === c2) return true;
+    if (c1.includes(c2) || c2.includes(c1)) return true;
+
+    const verticalKeywords = [
+      ['mỹ phẩm', 'skincare', 'chăm sóc da', 'làm đẹp', 'son', 'serum', 'cosmetic'],
+      ['thời trang', 'may mặc', 'quần', 'áo', 'apparel', 'activewear', 'thể thao'],
+      ['thực phẩm', 'dinh dưỡng', 'sức khỏe', 'thảo mộc', 'nutrition', 'health'],
+      ['gia dụng', 'đồ bếp', 'thiết bị', 'living', 'smart'],
+      ['điện tử', 'công nghệ', 'phụ kiện', 'tech'],
+    ];
+
+    for (const group of verticalKeywords) {
+      const m1 = group.some((k) => c1.includes(k));
+      const m2 = group.some((k) => c2.includes(k));
+      if (m1 && m2) return true;
+    }
+
+    return false;
+  }
+
   private assertProductSubmissionComplete(dto: CreateProductDto): void {
     assertProductGalleryLimit(dto.subImages);
     validateProductPackage(dto);
@@ -215,19 +239,14 @@ export class ProductsService {
       );
     }
 
-    const hasOriginEvidence = [
+    const hasAnyEvidence = [
       ...(dto.originProofLinks || []),
       ...(dto.originProofImages || []),
-    ].some((item) => typeof item === 'string' && item.trim());
-    if (!hasOriginEvidence)
-      issues.push('Minh chứng nguồn gốc: thêm ít nhất một link hoặc ảnh');
-
-    const hasLabelEvidence = [
       ...(dto.labelProofLinks || []),
       ...(dto.labelProofImages || []),
     ].some((item) => typeof item === 'string' && item.trim());
-    if (!hasLabelEvidence)
-      issues.push('Minh chứng nhãn mác: thêm ít nhất một link hoặc ảnh');
+    if (!hasAnyEvidence)
+      issues.push('Minh chứng sản phẩm: thêm ít nhất một link hoặc ảnh (hóa đơn VAT, giấy công bố hoặc nhãn mác)');
 
     const variants = dto.variants || [];
 
@@ -1064,6 +1083,7 @@ export class ProductsService {
         );
       }
 
+      if (dto.status === 'APPROVED') assertProductPackageComplete(product);
       const reviewedAt = new Date();
       const result = await tx.product.update({
         where: { id: productId },
@@ -1206,7 +1226,7 @@ export class ProductsService {
       }
       if (
         dto.categoryName &&
-        dto.categoryName.trim().toLowerCase() !== store.categoryName.trim().toLowerCase()
+        !this.isCategoryVerticalCompatible(dto.categoryName, store.categoryName)
       ) {
         throw new BadRequestException(
           `Gian hàng "${store.name}" thuộc ngành hàng chuyên biệt "${store.categoryName}". Không được đăng sản phẩm sai ngành hàng đã cấp phép.`,
@@ -1273,7 +1293,7 @@ export class ProductsService {
         Object.keys(raw).length > 4 ||
         Object.entries(raw).some(
           ([key, value]) =>
-            !/^[a-z][a-z0-9_]{0,29}$/.test(key) ||
+            !/^[\p{L}a-zA-Z][\p{L}a-zA-Z0-9_ /().-]{0,59}$/u.test(key) ||
             typeof value !== 'string' ||
             value.trim().length > 80,
         )
@@ -1292,12 +1312,35 @@ export class ProductsService {
         imageUrl: variant.imageUrl!.trim(),
         price: variant.price ?? dto.price,
         listPrice: variant.price ?? dto.price,
+        floorPrice: variant.floorPrice ?? dto.floorPrice ?? null,
         stockQuantity: variant.stockQuantity,
       };
     });
     this.assertDistinctVariantAttributes(
       preparedVariants.map((variant) => variant.attributes),
     );
+    const effectiveProductFloor = Number(
+      dto.floorPrice ?? preparedVariants[0]?.floorPrice ?? 0,
+    );
+    if (effectiveProductFloor > 0) {
+      const minSafe = calculateMinSafePrice(effectiveProductFloor);
+      if (Number(dto.price) < minSafe) {
+        throw new BadRequestException(
+          `Giá bán (${Number(dto.price).toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
+        );
+      }
+    }
+    for (const v of preparedVariants) {
+      const vFloor = Number(v.floorPrice ?? 0);
+      if (vFloor > 0) {
+        const minSafe = calculateMinSafePrice(vFloor);
+        if (Number(v.price) < minSafe) {
+          throw new BadRequestException(
+            `SKU ${v.sku}: Giá bán (${Number(v.price).toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
+          );
+        }
+      }
+    }
 
     const product = await this.prisma.$transaction(async (tx) => {
       await assertProductIdentity(tx, { storeId: store.id, sku: dto.sku, barcode: dto.barcode });
@@ -1309,10 +1352,12 @@ export class ProductsService {
           sku: dto.sku.trim().toUpperCase(),
           title: dto.title.trim(),
           categoryName: dto.categoryName?.trim() || null,
+          productGroup: dto.productGroup?.trim() || null,
           description: dto.description?.trim() || null,
           imageUrl: dto.imageUrl?.trim() || null,
           price: dto.price,
           listPrice: dto.price,
+          floorPrice: dto.floorPrice ?? (preparedVariants[0]?.floorPrice ?? null),
           originalPrice: dto.originalPrice || null,
           customCommissionRate: 10,
           stockQuantity: preparedVariants.length
@@ -1445,8 +1490,10 @@ export class ProductsService {
       }
       if (
         dto.categoryName &&
-        dto.categoryName.trim().toLowerCase() !==
-          product.store.categoryName.trim().toLowerCase()
+        !this.isCategoryVerticalCompatible(
+          dto.categoryName,
+          product.store.categoryName,
+        )
       ) {
         throw new BadRequestException(
           `Gian hàng "${product.store.name}" thuộc ngành hàng chuyên biệt "${product.store.categoryName}". Không thể thay đổi sang ngành hàng khác.`,
@@ -1508,6 +1555,7 @@ export class ProductsService {
         textChanged(dto.barcode, product.barcode) ||
         textChanged(dto.title, product.title) ||
         textChanged(dto.categoryName, product.categoryName) ||
+        textChanged(dto.productGroup, product.productGroup) ||
         textChanged(dto.description, product.description) ||
         textChanged(dto.ingredients, product.ingredients) ||
         textChanged(dto.origin, product.origin) ||
@@ -1535,6 +1583,12 @@ export class ProductsService {
     const approvedShopContentChanged = product.moderationStatus === ProductModerationStatus.APPROVED && materialContentChanged;
     // Pending edits explicitly write DRAFT, so a concurrent approval cannot publish later edits.
     const requiresModeration = isResubmission || materialContentChanged;
+    // Do not let a live product lose measurements, or activate an incomplete legacy product.
+    if (product.moderationStatus === ProductModerationStatus.APPROVED &&
+        !requiresModeration && dto.isActive !== false &&
+        (dto.isActive === true || (product.isActive && PACKAGE_FIELDS.some((field) => dto[field] !== undefined)))) {
+      assertProductPackageComplete({ ...product, ...dto });
+    }
     const evidenceKindsToReplace = [
       dto.originProofLinks !== undefined ? 'ORIGIN_LINK' : null,
       dto.originProofImages !== undefined ? 'ORIGIN_IMAGE' : null,
@@ -1572,6 +1626,18 @@ export class ProductsService {
         `Hạn mức mẫu không thể thấp hơn số mẫu Shop đã duyệt (${product.sampleGrantedCount}).`,
       );
     }
+    if (dto.price !== undefined || dto.floorPrice !== undefined) {
+      const nextFloor = Number(dto.floorPrice ?? product.floorPrice ?? 0);
+      const nextPrice = Number(dto.price ?? product.price ?? 0);
+      if (nextFloor > 0) {
+        const minSafe = calculateMinSafePrice(nextFloor);
+        if (nextPrice < minSafe) {
+          throw new BadRequestException(
+            `Giá bán (${nextPrice.toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
+          );
+        }
+      }
+    }
 
 
     // A parent-only zero-stock edit also clears every active SKU atomically.
@@ -1583,6 +1649,9 @@ export class ProductsService {
         ...(dto.title && { title: dto.title.trim() }),
         ...(dto.categoryName !== undefined && {
           categoryName: dto.categoryName?.trim() || null,
+        }),
+        ...(dto.productGroup !== undefined && {
+          productGroup: dto.productGroup?.trim() || null,
         }),
         ...(dto.description !== undefined && {
           description: dto.description?.trim() || null,
@@ -1605,6 +1674,7 @@ export class ProductsService {
           imageUrl: dto.imageUrl?.trim() || null,
         }),
         ...(dto.price !== undefined && { price: dto.price, ...(Number(dto.price) !== Number(product.price) ? { listPrice: dto.price } : {}) }),
+        ...(dto.floorPrice !== undefined && { floorPrice: dto.floorPrice }),
         ...(dto.originalPrice !== undefined && {
           originalPrice: dto.originalPrice,
         }),
@@ -1978,6 +2048,7 @@ export class ProductsService {
           attributes: normalizedAttributes[index],
           price,
           listPrice: previous && Number(previous.price) === Number(price) ? previous.listPrice ?? price : price,
+          floorPrice: variant.floorPrice !== undefined ? variant.floorPrice : (previous?.floorPrice ?? product.floorPrice ?? null),
           stockQuantity: variant.stockQuantity,
           imageUrl: variant.imageUrl?.trim() || null,
           isActive: true,
@@ -2156,6 +2227,7 @@ export class ProductsService {
   async getLandingPageData(
     idOrSlug: string,
     attributionCookie?: string,
+    targetReviewId?: string,
   ): Promise<ProductLandingResponseDto> {
     if (!idOrSlug || !idOrSlug.trim()) {
       throw new NotFoundException('Vui lòng cung cấp mã hoặc slug sản phẩm');
@@ -2513,6 +2585,15 @@ export class ProductsService {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+
+    // A direct link can reference an older public review outside the latest 50.
+    if (targetReviewId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetReviewId) && !reviews.some(review => review.id === targetReviewId)) {
+      const target = await this.prisma.productReview.findFirst({
+        where: { id: targetReviewId, productId: product.id, isApproved: true },
+        include: { order: { select: { id: true, status: true } } },
+      });
+      if (target) reviews.push(target);
+    }
 
     const visibleWhere = { productId: product.id, isApproved: true };
     const [reviewStats, replyEvents, photoReviewCount] = await Promise.all([

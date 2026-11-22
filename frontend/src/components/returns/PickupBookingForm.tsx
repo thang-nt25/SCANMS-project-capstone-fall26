@@ -1,68 +1,98 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { Info, Pencil, Truck } from 'lucide-react';
+import { Modal } from '../ui/Modal';
+import { VietnamAddressSelects } from './VietnamAddressSelects';
 import { useReturnAction } from '../../hooks/useReturnDetail';
-import { returnService, type PickupBookingInput, type ReturnDetail } from '../../services/return.service';
+import { customerService, type CustomerAddress } from '../../services/customer.service';
+import { returnService, type PickupBookingInput, type ReturnAddress, type ReturnDetail } from '../../services/return.service';
+import { ReturnPickupShipmentCard } from './ReturnPickupShipmentCard';
 
-const inputClass = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm text-[#1A1612] outline-none focus:border-[#C59B58]';
+const street = (value: ReturnAddress) => value.address.split(',').map(part => part.trim()).filter(part => ![value.wardName, value.districtName, value.provinceName].some(region => region?.trim().toLowerCase() === part.toLowerCase())).join(', ');
+const fullAddress = (value: ReturnAddress) => [street(value), value.wardName, value.districtName, value.provinceName].filter(Boolean).join(', ');
+const fromSaved = (value: CustomerAddress): ReturnAddress => ({ name: value.fullName, phone: value.phoneNumber, address: value.detailAddress, provinceName: value.provinceName, districtName: value.districtName, wardName: value.wardName });
+const complete = (value: ReturnAddress) => Boolean(value.name.trim() && value.phone.trim() && value.address.trim() && value.provinceName.trim() && value.wardName.trim());
+const date = (value: string) => new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hourCycle: 'h23' });
 
 export function PickupBookingForm({ request }: { request: ReturnDetail }) {
-  const [form, setForm] = useState<PickupBookingInput>({
-    name: request.order.customerName || '',
-    phone: request.order.customerPhone || '',
-    address: request.order.shippingAddress || '',
-    wardName: '',
-    provinceName: '',
-    districtName: '',
-    weight: 0,
-    length: 0,
-    width: 0,
-    height: 0,
-  });
+  const initial = request.pickupContact || { name: request.order.customerName || '', phone: request.order.customerPhone || '', address: request.order.shippingAddress || '', wardName: '', provinceName: '', districtName: '' };
+  const [address, setAddress] = useState<ReturnAddress>(initial);
+  const [draft, setDraft] = useState<ReturnAddress>(initial);
+  const [parcel, setParcel] = useState({ weight: 0, length: 0, width: 0, height: 0 });
+  const [editing, setEditing] = useState(false);
+  const [draftValid, setDraftValid] = useState(false);
+  const [editorVersion, setEditorVersion] = useState(0);
+  const [booked, setBooked] = useState<ReturnDetail | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const initialized = useRef(Boolean(request.pickupContact));
+  const saving = useRef(false);
+  const addresses = useQuery({ queryKey: ['customer-addresses'], queryFn: () => customerService.getAddresses(), staleTime: 60000, enabled: request.status === 'SHOP_APPROVED' });
   const booking = useReturnAction(request.id, returnService.bookPickup);
-  const update = (field: keyof PickupBookingInput, value: string | number) =>
-    setForm((current) => ({ ...current, [field]: value }));
-  const overdue = Boolean(request.shipByAt && new Date(request.shipByAt).getTime() <= Date.now());
-
+  const editorId = `pickup-address-${request.id}`;
+  useEffect(() => {
+    if (initialized.current || !addresses.data) return;
+    const saved = addresses.data.find(value => value.isDefault) || addresses.data[0];
+    if (saved) setAddress(fromSaved(saved));
+    initialized.current = true;
+  }, [addresses.data]);
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+  const overdue = Boolean(request.shipByAt && Date.parse(request.shipByAt) <= now);
+  const unavailable = request.pickupProviderMode === 'disabled';
+  const waiting = !request.returnWarehouse || !request.shipByAt;
+  const confirmed = request.customerShipment ? request : booked;
+  const edit = () => { initialized.current = true; setDraft({ ...address, address: street(address) }); setDraftValid(false); setEditorVersion(value => value + 1); setEditing(true); };
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving.current || confirmed || !complete(address) || overdue || unavailable || waiting || addresses.isPending) return;
+    saving.current = true;
     try {
-      await booking.mutateAsync({
-        ...form,
-        name: form.name.trim(), phone: form.phone.trim(), address: form.address.trim(),
-        wardName: form.wardName.trim(), provinceName: form.provinceName.trim(),
-        districtName: form.districtName?.trim() || undefined,
-      });
-    } catch { /* Keep the form values; show the API error below. */ }
+      const value: PickupBookingInput = { ...parcel, name: address.name.trim(), phone: address.phone.trim(), address: fullAddress(address), provinceName: address.provinceName.trim(), wardName: address.wardName.trim(), districtName: address.districtName?.trim() || undefined };
+      const result = await booking.mutateAsync(value) as ReturnDetail;
+      if (result?.customerShipment) setBooked(result);
+    } catch { /* Preserve the address and parcel for retry. */ }
+    finally { saving.current = false; }
   }
-
-  return <form onSubmit={(event) => void submit(event)} className="space-y-4 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5">
-    <div>
-      <h3 className="font-bold text-[#1A1612]">Đặt shipper đến lấy hàng trả</h3>
-      <p className="mt-1 text-sm text-[#7D715E]">Xác nhận nơi lấy hàng. Shipper sẽ lấy tại địa chỉ này và chuyển về Shop.</p>
-      {request.pickupProviderMode === 'mock' && <p className="mt-2 text-xs text-[#8A6736]">Chế độ demo: tạo vận đơn mô phỏng, không có shipper thật.</p>}
-      {request.pickupProviderMode === 'staging' && <p className="mt-2 text-xs text-[#8A6736]">GHN Staging chỉ dùng để thử tích hợp; vận đơn này không điều phối shipper thật.</p>}
-      {request.pickupProviderMode === 'disabled' && <p role="alert" className="mt-2 text-xs text-[#DC2626]">Dịch vụ lấy hàng chưa được cấu hình. Vui lòng liên hệ hỗ trợ.</p>}
-      {request.shipByAt && <p className="mt-2 text-xs font-semibold text-[#8A6736]">Hạn đặt lấy hàng: {new Date(request.shipByAt).toLocaleString('vi-VN')}</p>}
-    </div>
-    <div className="grid gap-3 sm:grid-cols-2">
-      <label className="text-sm">Tên người giao hàng cho shipper<input required minLength={2} maxLength={150} value={form.name} onChange={(e) => update('name', e.target.value)} className={inputClass} /></label>
-      <label className="text-sm">Số điện thoại<input required pattern="\+?[0-9]{9,15}" value={form.phone} onChange={(e) => update('phone', e.target.value)} className={inputClass} /></label>
-      <label className="text-sm sm:col-span-2">Địa chỉ lấy hàng<input required minLength={10} maxLength={500} value={form.address} onChange={(e) => update('address', e.target.value)} className={inputClass} /></label>
-      <label className="text-sm">Tỉnh / thành phố<input required minLength={2} maxLength={100} value={form.provinceName} onChange={(e) => update('provinceName', e.target.value)} className={inputClass} /></label>
-      <label className="text-sm">Phường / xã<input required minLength={2} maxLength={100} value={form.wardName} onChange={(e) => update('wardName', e.target.value)} className={inputClass} /></label>
-      <label className="text-sm sm:col-span-2">Quận / huyện (nếu địa chỉ cũ)<input maxLength={100} value={form.districtName || ''} onChange={(e) => update('districtName', e.target.value)} className={inputClass} /></label>
-    </div>
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {(['weight', 'length', 'width', 'height'] as const).map((key) => <label key={key} className="text-sm">
-        {{ weight: 'Khối lượng (g)', length: 'Dài (cm)', width: 'Rộng (cm)', height: 'Cao (cm)' }[key]}
-        <input type="number" required min={1} max={key === 'weight' ? 19999 : 200} value={form[key] || ''}
-          onChange={(e) => update(key, Number(e.target.value))} className={inputClass} />
-      </label>)}
-    </div>
-    <p className="text-xs text-[#7D715E]">Đóng gói hàng trước khi shipper đến. Khối lượng và kích thước cần đúng với kiện thực tế.</p>
-    {overdue && <p role="alert" className="text-sm text-[#DC2626]">Đã quá hạn đặt lấy hàng. Vui lòng liên hệ hỗ trợ.</p>}
-    {booking.error && <p role="alert" className="text-sm text-[#DC2626]">{booking.error instanceof Error ? booking.error.message : 'Không đặt được lấy hàng. Vui lòng thử lại.'}</p>}
-    <button type="submit" disabled={booking.isPending || overdue || request.pickupProviderMode === 'disabled'} className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50">
-      {booking.isPending ? 'Đang tạo vận đơn…' : 'Xác nhận đặt lấy hàng'}
-    </button>
-  </form>;
+  if (confirmed?.customerShipment) return <ReturnPickupShipmentCard request={confirmed} />;
+  return <section className="pickup-card" aria-label={confirmed ? 'Đã đặt lấy hàng' : 'Đặt lấy hàng trả'}>
+    <header className="pickup-header"><div className="pickup-heading"><h3><Truck size={19} />Đặt lấy hàng trả</h3></div>
+      {!confirmed && request.shipByAt && <span className={overdue ? 'pickup-overdue' : ''}>Hạn đặt: <time dateTime={request.shipByAt}>{date(request.shipByAt)}</time></span>}
+      {!confirmed && ['mock', 'staging'].includes(request.pickupProviderMode || '') && <span className="pickup-test-badge">Vận đơn thử nghiệm</span>}
+    </header>
+    <form onSubmit={event => void submit(event)}>
+      <div className="pickup-columns">
+        <section className="pickup-address"><h4>Địa chỉ lấy hàng</h4>
+          {addresses.isPending ? <p role="status" className="pickup-muted">Đang tải địa chỉ đã lưu…</p> : <>
+            <p className="pickup-contact">{address.name || 'Chưa có người gửi'} · {address.phone || 'Chưa có số điện thoại'}</p>
+            <p className="pickup-address-text">{fullAddress(address) || 'Chưa có địa chỉ lấy hàng'}</p>
+            <button type="button" className="pickup-secondary" onClick={edit} disabled={booking.isPending}><Pencil size={14} />Chỉnh sửa địa chỉ</button>
+            {!complete(address) && <p className="pickup-note">Bổ sung địa phương trong Chỉnh sửa địa chỉ.</p>}
+          </>}
+          {addresses.isError && <p className="pickup-note">Chưa tải được sổ địa chỉ. <button type="button" onClick={() => void addresses.refetch()}>Thử lại</button></p>}
+        </section>
+        <fieldset className="pickup-parcel" disabled={booking.isPending}><legend>Kiện hàng</legend>
+          <label>Khối lượng (g)<input required type="number" min={1} max={19999} step={1} value={parcel.weight || ''} onChange={event => setParcel(current => ({ ...current, weight: Number(event.target.value) }))} className="pickup-input" /></label>
+          <p className="pickup-dimensions-label">Dài × Rộng × Cao (cm)</p>
+          <div className="pickup-dimensions">{(['length', 'width', 'height'] as const).map((key, index) => <label key={key}><span className="sr-only">{['Dài', 'Rộng', 'Cao'][index]} (cm)</span><input required type="number" min={1} max={200} step={1} aria-label={`${['Dài', 'Rộng', 'Cao'][index]} (cm)`} value={parcel[key] || ''} onChange={event => setParcel(current => ({ ...current, [key]: Number(event.target.value) }))} className="pickup-input" /></label>)}</div>
+          <p className="pickup-note">Đo sau khi đóng gói.</p>
+        </fieldset>
+      </div>
+      {(unavailable || waiting || overdue) && <p role="status" className="pickup-notice"><Info size={16} />{overdue ? 'Đã quá hạn đặt lấy hàng.' : waiting ? 'Chờ Shop bổ sung kho nhận hàng và hạn đặt.' : 'Chưa thể đặt lấy hàng lúc này.'} <Link to="/chat">Liên hệ hỗ trợ</Link></p>}
+      {booking.error && <p role="alert" className="pickup-error">{booking.error instanceof Error ? booking.error.message : 'Không đặt được lấy hàng. Vui lòng thử lại.'}</p>}
+      <footer className="pickup-footer"><div className="pickup-destination"><span>Gửi về: {request.returnWarehouse ? `Kho Shop tại ${request.returnWarehouse.provinceName}` : 'Chờ Shop cập nhật'}</span>{request.returnWarehouse && <div className="pickup-warehouse"><strong>{request.returnWarehouse.name} · {request.returnWarehouse.phone}</strong><p>{fullAddress(request.returnWarehouse)}</p></div>}</div>
+        <button type="submit" disabled={booking.isPending || !complete(address) || overdue || unavailable || waiting || addresses.isPending} className="pickup-primary">{booking.isPending ? 'Đang đặt…' : 'Xác nhận đặt lấy hàng'}</button>
+      </footer>
+    </form>
+    {editing && createPortal(<Modal isOpen title="Địa chỉ lấy hàng" stickyHeader maxWidth="2xl" className="max-w-[640px]" onClose={() => setEditing(false)}
+      footer={<div className="flex justify-end gap-2"><button type="button" className="pickup-secondary" onClick={() => setEditing(false)}>Hủy</button><button form={editorId} type="submit" disabled={!draftValid} className="pickup-primary">Dùng địa chỉ này</button></div>}>
+      <form id={editorId} onSubmit={event => { event.preventDefault(); if (!draftValid) return; setAddress({ ...draft, name: draft.name.trim(), phone: draft.phone.trim(), address: street(draft) }); setEditing(false); }} className="grid min-w-0 gap-4 sm:grid-cols-2">
+        {Boolean(addresses.data?.length) && <label className="text-sm sm:col-span-2">Địa chỉ đã lưu<select className="pickup-input" defaultValue="" onChange={event => { const saved = addresses.data?.find(value => value.id === event.target.value); if (saved) { setDraft(fromSaved(saved)); setDraftValid(false); setEditorVersion(value => value + 1); } }}><option value="" disabled>Chọn địa chỉ trong tài khoản</option>{addresses.data?.map(value => <option key={value.id} value={value.id}>{value.fullName} · {value.detailAddress}{value.isDefault ? ' · Mặc định' : ''}</option>)}</select></label>}
+        <label className="text-sm">Người gửi<input className="pickup-input" required minLength={2} maxLength={150} autoComplete="name" value={draft.name} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} /></label>
+        <label className="text-sm">Số điện thoại<input className="pickup-input" required type="tel" pattern="\+?[0-9]{9,15}" autoComplete="tel" value={draft.phone} onChange={event => setDraft(current => ({ ...current, phone: event.target.value }))} /></label>
+        <label className="text-sm sm:col-span-2">Số nhà, tên đường<input className="pickup-input" required minLength={2} maxLength={350} autoComplete="street-address" value={draft.address} onChange={event => setDraft(current => ({ ...current, address: event.target.value }))} /></label>
+        <VietnamAddressSelects key={editorVersion} value={draft} onChange={value => setDraft(current => ({ ...current, ...value }))} onValidityChange={setDraftValid} />
+      </form>
+    </Modal>, document.querySelector('dialog[open]') || document.body)}
+  </section>;
 }

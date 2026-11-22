@@ -13,6 +13,7 @@ export const moduleIcons: Record<BusinessFeature, IconName> = {
   "referral-oversight": "link-2",
   wallet: "credit-card",
   payouts: "dollar-sign",
+  "finance-reports": "file-text",
   pricing: "tag",
   kyc: "shield",
   reviews: "star",

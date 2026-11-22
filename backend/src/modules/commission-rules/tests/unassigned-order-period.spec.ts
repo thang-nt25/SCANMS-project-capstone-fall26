@@ -1,6 +1,34 @@
 import { CommissionRulesService } from '../commission-rules.service';
 
 describe('legacy orders without a completion period', () => {
+  it('loads team progress with bounded concurrency and preserves totals, order and individual errors', async () => {
+    const service: any = Object.create(CommissionRulesService.prototype);
+    service.verifyStoreExists = jest.fn();
+    service.cache = { get: jest.fn().mockResolvedValue(null), set: jest.fn() };
+    service.prisma = {
+      store: { findUnique: jest.fn().mockResolvedValue({ name: 'Sora' }) },
+      storeCollaborator: { findMany: jest.fn().mockResolvedValue(
+        Array.from({ length: 7 }, (_, index) => ({ collaborator: { id: String(index), fullName: `Creator ${index}` } })),
+      ) },
+      order: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    let running = 0;
+    let peak = 0;
+    service.getKolProgress = jest.fn(async (_store, id) => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise(resolve => setImmediate(resolve));
+      running--;
+      if (id === '2') throw new Error('Unavailable creator');
+      return { validRevenue: '100.25', validOrdersCount: 1, estimatedTotalBonus: '10.05', settlement: id === '0' ? { status: 'PAID' } : null };
+    });
+    const result = await service.getTeamProgress('store', '2026-10');
+    expect(peak).toBe(3);
+    expect(service.getKolProgress).toHaveBeenCalledTimes(7);
+    expect(result.members.map(member => member.collaboratorId)).toEqual(['0', '1', '3', '4', '5', '6']);
+    expect(result.summary).toMatchObject({ totalRevenue: '601.50', totalEstimatedBonus: '60.30', eligibleCount: 6, settledCount: 1 });
+    expect(result.errors).toEqual([{ collaboratorId: '2', message: 'Unavailable creator' }]);
+  });
   it('exposes recorded legacy order values without treating them as monthly revenue', async () => {
     const service: any = Object.create(CommissionRulesService.prototype);
     const tx = { $queryRaw: jest.fn(), commissionRule: { findMany: jest.fn().mockResolvedValue([]) } };
@@ -11,6 +39,7 @@ describe('legacy orders without a completion period', () => {
       ]) },
       $transaction: jest.fn(fn => fn(tx)),
       store: { findUnique: jest.fn().mockResolvedValue({ name: 'Sora' }) },
+      storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
       monthlyBonusResult: { findUnique: jest.fn().mockResolvedValue(null) },
       bonusAdjustment: { findMany: jest.fn().mockResolvedValue([]) },
     };

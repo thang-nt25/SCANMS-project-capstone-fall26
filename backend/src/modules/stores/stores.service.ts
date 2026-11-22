@@ -89,6 +89,7 @@ export class StoresService {
         id: true,
         name: true,
         slug: true,
+        categoryName: true,
         logoUrl: true,
         description: true,
         isActive: true,
@@ -286,7 +287,14 @@ export class StoresService {
       throw new BadRequestException('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành, ngăn cách bằng dấu phẩy.');
     }
 
+    for (const location of [dto.warehouseLocation, dto.returnWarehouseLocation]) {
+      if (location && ((location.latitude == null) !== (location.longitude == null))) {
+        throw new BadRequestException('Vị trí kho cần đủ vĩ độ và kinh độ.');
+      }
+    }
     const ownerProfileUpdates = {
+      ...(dto.warehouseLocation !== undefined && { warehouseLocation: { ...dto.warehouseLocation } }),
+      ...(dto.returnWarehouseLocation !== undefined && { returnWarehouseLocation: { ...dto.returnWarehouseLocation } }),
       ...(dto.companyName !== undefined && {
         companyName: dto.companyName?.trim() || null,
       }),
@@ -710,6 +718,7 @@ export class StoresService {
             id: true,
             fullName: true,
             email: true,
+            role: true,
           },
         },
         _count: {
@@ -793,6 +802,7 @@ export class StoresService {
             id: true,
             fullName: true,
             email: true,
+            role: true,
           },
         },
         _count: {
@@ -872,7 +882,7 @@ export class StoresService {
         ...(dto.ownerId ? { ownerId: dto.ownerId } : {}),
       },
       include: {
-        owner: { select: { id: true, fullName: true, email: true } },
+        owner: { select: { id: true, fullName: true, email: true, role: true } },
         _count: { select: { products: { where: { isDeleted: false } } } },
       },
     });

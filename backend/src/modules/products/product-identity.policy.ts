@@ -10,7 +10,7 @@ export async function assertProductIdentity(
   const barcode = input.barcode?.trim() || null;
   const keys = [
     `sku:${input.storeId}:${sku}`,
-    ...(barcode ? [`barcode:${barcode}`] : []),
+    ...(barcode ? [`barcode:${input.storeId}:${barcode}`] : []),
   ].sort();
   for (const key of keys)
     await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${`product-identity:${key}`}, 0))`;
@@ -21,7 +21,7 @@ export async function assertProductIdentity(
       ...(input.id ? { id: { not: input.id } } : {}),
       OR: [
         { storeId: input.storeId, sku: { equals: sku, mode: 'insensitive' } },
-        ...(barcode ? [{ barcode }] : []),
+        ...(barcode ? [{ storeId: input.storeId, barcode }] : []),
       ],
     },
     select: { sku: true, barcode: true },

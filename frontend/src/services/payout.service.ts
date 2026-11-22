@@ -81,9 +81,10 @@ export const payoutService = {
   async approve(
     payoutId: string,
     bill: File,
-    options: { bankRefCode?: string; note?: string } = {},
+    options: { bankRefCode?: string; note?: string; expectedNetAmount?: string } = {},
   ) {
     const body = new FormData();
+    if (options.expectedNetAmount) body.append("expectedNetAmount", options.expectedNetAmount);
     if (options.bankRefCode) body.append("bankRefCode", options.bankRefCode);
     if (options.note) body.append("note", options.note);
     body.append("bill", bill);

@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Loader2, Star, X } from 'lucide-react';
 import { customerService, type CustomerOrder } from '../../services/customer.service';
@@ -78,9 +79,9 @@ export function VerifiedReviewModal({ order, onClose, onSubmitted }: Props) {
   return (
     <div className="fixed inset-0 z-[70] bg-[#231D15]/60 backdrop-blur-sm flex items-center justify-center p-4">
       <form ref={dialog} role="dialog" aria-modal="true" aria-labelledby="verified-review-title" aria-busy={submitting} tabIndex={-1} onSubmit={submit} className="w-full max-w-lg max-h-[92dvh] overflow-y-auto rounded-3xl bg-white border border-[#EAE4D7] shadow-2xl p-5 sm:p-6 text-left">
-        <div className="flex justify-between gap-4 pb-4 border-b border-[#EAE4D7]">
+        <div className="sticky -top-5 z-10 -mx-5 -mt-5 flex items-start justify-between gap-4 border-b border-[#EAE4D7] bg-white px-5 pb-4 pt-5 sm:-top-6 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6">
           <div><h2 id="verified-review-title" className="text-lg font-black text-[#1A1612]">Đánh giá sản phẩm</h2><p className="text-xs text-[#7D715E] mt-1">Đã mua và nhận hàng · #{order.externalOrderSn}</p></div>
-          <button type="button" disabled={submitting} aria-label="Đóng đánh giá" onClick={onClose} className="p-2 rounded-full bg-[#F3EFE6] text-[#7D715E]"><X className="w-4 h-4" /></button>
+          <button type="button" disabled={submitting} aria-label="Đóng đánh giá" onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#7D715E] hover:bg-[#F3EFE6] disabled:opacity-50"><X className="w-4 h-4" /></button>
         </div>
         {products.length === 0 ? <p className="py-8 text-center text-sm text-[#7D715E]">Bạn đã đánh giá tất cả sản phẩm trong đơn này.</p> : <div className="space-y-4 mt-5">
           <label className="block text-xs font-bold">Sản phẩm
@@ -91,7 +92,7 @@ export function VerifiedReviewModal({ order, onClose, onSubmitted }: Props) {
             </div>
           </label>
           <div className="flex items-center gap-3 rounded-xl border border-[#EAE4D7] p-3" data-review-product>
-            <img src={getSafeProductImageUrl(selected?.product?.imageUrl, selected?.product?.title)} alt={selected?.product?.title || 'Sản phẩm'} className="h-14 w-14 shrink-0 rounded-lg border border-[#EAE4D7] object-contain" />
+            <img src={getSafeProductImageUrl(selected?.product?.imageUrl, selected?.product?.title)} onError={handleProductImageError} alt={selected?.product?.title || 'Sản phẩm'} className="h-14 w-14 shrink-0 rounded-lg border border-[#EAE4D7] object-contain" />
             <div className="min-w-0"><p className="text-sm font-semibold leading-snug">{selected?.product?.title}</p><p className="mt-1 text-xs text-[#7D715E]">{selected?.variant?.name || 'Phân loại tiêu chuẩn'} · Đã mua hàng</p></div>
           </div>
           <div className="rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] p-4 text-center"><span className="text-xs font-bold">Chất lượng sản phẩm</span><div role="group" aria-label="Chọn số sao" className="flex justify-center gap-1 mt-2">{[1,2,3,4,5].map((value) => <button type="button" disabled={submitting} key={value} className="p-1.5 rounded-lg focus-visible:outline-2 focus-visible:outline-[#C59B58]" onClick={() => setRating(value)} aria-pressed={rating === value} aria-label={`${value} sao`}><Star className={`w-8 h-8 ${value <= rating ? 'fill-[#C59B58] text-[#C59B58]' : 'text-[#C59B58]/40'}`} /></button>)}</div><p aria-live="polite" className="mt-1 text-xs text-[#8C6B32]">{rating === 0 ? 'Chọn số sao để đánh giá' : <>{rating}/5 · {['Rất không hài lòng', 'Không hài lòng', 'Bình thường', 'Hài lòng', 'Rất hài lòng'][rating - 1]}</>}</p></div>

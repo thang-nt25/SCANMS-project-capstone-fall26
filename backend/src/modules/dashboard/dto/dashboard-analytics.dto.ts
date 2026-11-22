@@ -101,7 +101,7 @@ export class DashboardAnalyticsQueryDto {
   channel?: string;
 
   @ApiPropertyOptional({
-    description: 'Lọc theo ID chiến dịch tiếp thị độc quyền cụ thể (FR-27)',
+    description: 'Lọc theo ID thỏa thuận độc quyền cụ thể',
     example: '22222222-2828-4000-8000-000000000002',
   })
   @IsOptional()

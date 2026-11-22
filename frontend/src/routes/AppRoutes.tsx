@@ -22,6 +22,7 @@ function lazyRetry<T extends ComponentType<any>>(
 import MainLayout from '../components/layout/MainLayout';
 const DashboardDispatcher = lazyRetry(() => import('@/pages/DashboardDispatcher'));
 const KolDashboardPage = lazyRetry(() => import('@/pages/collaborator/KolDashboardPage'));
+const KolMarketingReportsPage = lazyRetry(() => import('@/pages/collaborator/KolMarketingReportsPage'));
 
 const LoginPage = lazyRetry(() => import('@/pages/auth/LoginPage'));
 const RegisterPage = lazyRetry(() => import('@/pages/auth/RegisterPage'));
@@ -29,6 +30,7 @@ const RegisterPage = lazyRetry(() => import('@/pages/auth/RegisterPage'));
 const ProductDetailPage = lazyRetry(() => import('@/pages/public/ProductDetailPage'));
 const RedirectHandlerPage = lazyRetry(() => import('@/pages/public/RedirectHandlerPage'));
 const MarketplacePage = lazyRetry(() => import('../pages/public/MarketplacePage'));
+const ShoppingDiscoverPage = lazyRetry(() => import('../pages/public/ShoppingDiscoverPage'));
 const ShopPage = lazyRetry(() => import('../pages/public/ShopPage'));
 const SearchPage = lazyRetry(() => import('../pages/public/SearchPage'));
 const PayosReturnPage = lazyRetry(() => import('../pages/public/PayosReturnPage'));
@@ -45,6 +47,7 @@ const ShopRevenueWalletPage = lazyRetry(() => import('../pages/merchant/ShopReve
 const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingPage'));
 const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPortalPage'));
+const ShoppingAccountPage = lazyRetry(() => import('../pages/customer/ShoppingAccountPage'));
 const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
 const RealtimeAnalyticsPage = lazyRetry(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
@@ -82,6 +85,7 @@ import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../components/layout/PublicHeader';
 import { authService } from '../services/auth.service';
 import { StorePresenceHeartbeat } from '../components/store/StorePresenceHeartbeat';
+import { ShoppingMobileNavigation } from '../components/layout/ShoppingMobileNavigation';
 
 function GlobalCheckoutModal() {
   const { isCheckoutOpen, closeCheckout, checkoutItems, checkoutCouponCode } = useCart();
@@ -128,6 +132,8 @@ function AppRoutes() {
               <Route path="/privacy" element={<PlatformInfoPage kind="privacy" />} />
               <Route path="*" element={<NotFoundPage />} />
               <Route path="/marketplace" element={<MarketplacePage />} />
+              <Route path="/stores" element={<ShoppingDiscoverPage />} />
+              <Route path="/discover/live" element={<ShoppingDiscoverPage />} />
               <Route path="/shops/:shopId" element={<ShopPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/marketplace/search" element={<SearchPage />} />
@@ -154,6 +160,7 @@ function AppRoutes() {
 
         {/* Customer Portal & Buyer Center (SCANMS E-Commerce) */}
         <Route path="/customer" element={<CustomerPortalPage />} />
+        <Route path="/customer/account" element={<ShoppingAccountPage />} />
         <Route path="/customer/portal" element={<CustomerPortalPage />} />
         <Route path="/customer/orders" element={<CustomerPortalPage />} />
         <Route path="/customer/orders/:orderId" element={<CustomerPortalPage />} />
@@ -211,6 +218,7 @@ function AppRoutes() {
               <Route path="merchant/return-requests" element={<ShopReturnsQueuePage />} />
 
               {/* Merchant Backward Compatibility Redirects */}
+              <Route path="merchant/commissions" element={<Navigate to="/merchant/promotions?tab=creator-incentives&section=milestones" replace />} />
               <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
               <Route path="stores/:storeId/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
               <Route path="merchant/referral-links" element={<Navigate to="/merchant/kol-hub?tab=performance" replace />} />
@@ -237,6 +245,7 @@ function AppRoutes() {
           <Route element={<RoleGuard requiredWorkspace="kol" />}>
             <Route element={<RouteContent />}>
               <Route path="collaborator/dashboard" element={<KolDashboardPage />} />
+              <Route path="collaborator/reports" element={<KolMarketingReportsPage />} />
               <Route path="collaborator/wallet" element={<WalletPage />} />
 
               {/* Collaborator Consolidated Hubs */}
@@ -297,7 +306,7 @@ function AppRoutes() {
               <Route path="admin/fraud-sentinel" element={<Navigate to="/admin/security-audit?tab=fraud" replace />} />
               <Route path="admin/audit-logs" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
               <Route path="admin/audit" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
-              <Route path="admin/internal-traffic-test" element={<Navigate to="/admin/security-audit?tab=sandbox" replace />} />
+              <Route path="admin/internal-traffic-test" element={<Navigate to="/admin/security-audit?tab=fraud" replace />} />
 
               <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
               <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
@@ -320,6 +329,7 @@ function AppRoutes() {
           <CartDrawer />
           <GlobalCheckoutModal />
           <ScanmsFloatingChatWidget />
+          <ShoppingMobileNavigation />
         </ScanmsChatProvider>
       </CartProvider>
     </Router>

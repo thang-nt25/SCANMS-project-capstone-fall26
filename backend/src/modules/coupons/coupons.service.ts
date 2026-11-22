@@ -1158,7 +1158,16 @@ export class CouponsService {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
 
-    return coupon;
+    const [usageHistory, usageHistoryTotal] = await Promise.all([
+      this.prisma.couponRedemption.findMany({
+        where: { couponId: coupon.id },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 10,
+        select: { id: true, status: true, discountAmount: true, createdAt: true },
+      }),
+      this.prisma.couponRedemption.count({ where: { couponId: coupon.id } }),
+    ]);
+    return { ...coupon, usageHistory, usageHistoryTotal };
   }
 
   /**
@@ -1483,13 +1492,26 @@ export class CouponsService {
         dto.campaignId ?? coupon.campaignId,
       );
 
-    // Validate percentage
+    // Only the Shop owner approves a proposal and accepts its entire cost.
+    if (
+      dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
+      dto.fundingSource === CouponFundingSource.CO_FUNDED ||
+      (dto.shopFundingRate !== undefined &&
+        Number(dto.shopFundingRate) !== 100) ||
+      Number(dto.platformFundingRate || 0) > 0
+    ) {
+      throw new ForbiddenException(
+        'Voucher Shop phải do Shop tài trợ 100%. Voucher Sàn được phát hành riêng bởi quản trị viên.',
+      );
+    }
+
+    // Validate percentage (default KOL voucher cap <= 10% to preserve minSafePrice margin)
     if (
       dto.discountType === DiscountType.PERCENTAGE &&
-      (dto.discountValue <= 0 || dto.discountValue > 100)
+      (dto.discountValue <= 0 || dto.discountValue > 10)
     ) {
       throw new BadRequestException(
-        'Tỷ lệ giảm giá theo phần trăm phải nằm trong khoảng từ 1% đến 100%',
+        'Voucher KOL mặc định tối đa 10% để bảo vệ ngưỡng giá sàn an toàn.',
       );
     }
 
@@ -1503,19 +1525,6 @@ export class CouponsService {
     if (startsAt && expiresAt && startsAt > expiresAt) {
       throw new BadRequestException(
         'Thời điểm bắt đầu không được lớn hơn thời điểm kết thúc',
-      );
-    }
-
-    // Only the Shop owner approves a proposal and accepts its entire cost.
-    if (
-      dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
-      dto.fundingSource === CouponFundingSource.CO_FUNDED ||
-      (dto.shopFundingRate !== undefined &&
-        Number(dto.shopFundingRate) !== 100) ||
-      Number(dto.platformFundingRate || 0) > 0
-    ) {
-      throw new ForbiddenException(
-        'Voucher Shop phải do Shop tài trợ 100%. Voucher Sàn được phát hành riêng bởi quản trị viên.',
       );
     }
     const shopFundingRate = 100;
@@ -2229,6 +2238,43 @@ export class CouponsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async couponOversight(id: string, userId: string, role: UserRole, storeId?: string, page = 1) {
+    if (!Number.isInteger(page) || page < 1) throw new BadRequestException('Trang lịch sử không hợp lệ');
+    if (![UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER].includes(role as any)) throw new ForbiddenException();
+    if (role === UserRole.SHOP_MANAGER && !storeId) throw new ForbiddenException('Cần xác định cửa hàng phụ trách');
+    if (storeId) await this.verifyStoreAccess(storeId, userId, role);
+    const coupon = await this.prisma.coupon.findFirst({
+      where: { id, ...(storeId ? { storeId } : {}), benefitType: 'GOODS', fundingSource: 'SHOP_FUNDED', collaborator: { role: UserRole.COLLABORATOR } },
+      include: {
+        collaborator: { select: { id: true, fullName: true, email: true } },
+        store: { select: { id: true, name: true } },
+        approver: { select: { id: true, fullName: true } },
+        couponProducts: { include: { product: { select: { id: true, title: true } } } },
+        couponCategories: true,
+      },
+    });
+    if (!coupon) throw new NotFoundException('Không tìm thấy mã KOL trong phạm vi được phép');
+    // A primary redemption may also have a stacked row: count the order once.
+    const union = Prisma.sql`
+      SELECT r.order_id, r.status::text AS status, r.discount_amount, r.created_at
+      FROM coupon_redemptions r WHERE r.coupon_id = ${id}::uuid
+      UNION ALL
+      SELECT s.order_id, s.status::text AS status, s.discount_amount, s.created_at
+      FROM stacked_voucher_redemptions s WHERE s.coupon_id = ${id}::uuid
+        AND NOT EXISTS (SELECT 1 FROM coupon_redemptions r WHERE r.coupon_id = s.coupon_id AND r.order_id = s.order_id)`;
+    const [count, history] = await this.prisma.$transaction([
+      this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`WITH uses AS (${union}) SELECT count(*)::int AS total FROM uses`),
+      this.prisma.$queryRaw<{ orderId: string; orderCode: string; orderStatus: string; status: string; discountAmount: string; createdAt: Date }[]>(Prisma.sql`
+        WITH uses AS (${union})
+        SELECT u.order_id AS "orderId", o.external_order_sn AS "orderCode", o.status::text AS "orderStatus",
+          u.status, u.discount_amount::text AS "discountAmount", u.created_at AS "createdAt"
+        FROM uses u JOIN orders o ON o.id = u.order_id
+        ORDER BY u.created_at DESC, u.order_id DESC LIMIT 20 OFFSET ${(page - 1) * 20}`),
+    ]);
+    const total = count[0]?.total ?? 0;
+    return { coupon, history, meta: { page, total, totalPages: Math.max(1, Math.ceil(total / 20)) } };
   }
 
   async adminBlockCoupon(

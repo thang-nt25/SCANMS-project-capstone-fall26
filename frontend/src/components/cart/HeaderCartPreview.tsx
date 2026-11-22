@@ -25,7 +25,10 @@ export function HeaderCartPreview({ count, onOpenCart }: { count: number; onOpen
       if (!panel.current?.contains(document.activeElement) && document.activeElement !== trigger.current) setOpen(false);
     }, 150);
   };
-  const show = () => { cancelClose(); if (!isCartOpen && !isCheckoutOpen) setOpen(true); };
+  const show = () => {
+    cancelClose();
+    if (window.matchMedia('(min-width: 768px) and (hover: hover)').matches && !isCartOpen && !isCheckoutOpen) setOpen(true);
+  };
   const hide = () => { cancelClose(); setOpen(false); };
   useEffect(() => { setOpen(false); }, [location.key, isCartOpen, isCheckoutOpen]);
   useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
@@ -92,7 +95,7 @@ export function HeaderCartPreview({ count, onOpenCart }: { count: number; onOpen
         <h2 className="shrink-0 m-0 px-4 pt-3.5 pb-2.5 text-[#7d715e] text-xs font-medium">Sản phẩm trong giỏ hàng</h2>
         {cart.length ? (
           <div className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d9c5a3_#faf8f5]" tabIndex={0} role="region" aria-label="Danh sách sản phẩm trong giỏ hàng">
-            {[...cart].reverse().map(item => (
+            {[...cart].reverse().slice(0, 5).map(item => (
               <Link key={item.cartItemId} to={`/products/${encodeURIComponent(item.productId)}`} className="flex min-w-0 items-center gap-3 py-2.5 px-4 text-[#1a1612] no-underline hover:bg-[#faf8f5] focus-visible:outline-2 focus-visible:outline-[#b88e4f] focus-visible:-outline-offset-2" onClick={hide}>
                 <img src={getSafeProductImageUrl(item.imageUrl, item.title)} alt="" className="shrink-0 w-12 h-12 border border-[#eae4d7] rounded-[5px] object-contain" onError={event => {
                   if (!event.currentTarget.dataset.fallback) {

@@ -12,7 +12,13 @@ const output = ts.transpileModule(source, { compilerOptions: {
   module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022,
 } }).outputText;
 const module = { exports: {} };
-vm.runInNewContext(output, { module, exports: module.exports, require });
+const imageSource = readFileSync(new URL('../src/utils/image-fallback.utils.ts', import.meta.url), 'utf8');
+const imageModule = { exports: {} };
+vm.runInNewContext(ts.transpileModule(imageSource, { compilerOptions: {
+  module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
+} }).outputText, { module: imageModule, exports: imageModule.exports, URL });
+vm.runInNewContext(output, { module, exports: module.exports, require: id =>
+  id === '@/utils/image-fallback.utils' ? imageModule.exports : require(id) });
 const { HostStudioProducts } = module.exports;
 const products = [
   { id: 'first', title: 'Serum', price: 250000 },

@@ -2,6 +2,8 @@ import { ConfigService } from '@nestjs/config';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { PayoutBillService } from './payout-bill.service';
 import { PayoutSettingsService } from './payout-settings.service';
+import { PrismaService } from '../../core/database/prisma.service';
+import { v2 as cloudinary } from 'cloudinary';
 import {
   ApprovePayoutDto,
   ExportPayoutBatchDto,
@@ -61,6 +63,24 @@ describe('Payout bill validation', () => {
     testBill(Buffer.alloc(5242881)),
   ])('rejects missing, empty, spoofed or oversized bill %#', (file) => {
     expect(() => bills.validateBill(file)).toThrow(BadRequestException);
+  });
+});
+
+describe('Reuse committed private manual evidence', () => {
+  afterEach(() => jest.restoreAllMocks());
+  it('reuses identical validated evidence without uploading it again', async () => {
+    const prisma = { $queryRaw: jest.fn().mockResolvedValue([{ publicId: 'private-proof', format: 'png', secureUrl: 'https://example.invalid/proof.png' }]) };
+    const service = new PayoutBillService(new PayoutSettingsService(new ConfigService()), prisma as unknown as PrismaService);
+    const upload = jest.spyOn(cloudinary.uploader, 'upload_stream');
+    await expect(service.uploadBill(testBill(), true)).resolves.toMatchObject({ publicId: 'private-proof', reused: true, sha256: service.validateBill(testBill()) });
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(upload).not.toHaveBeenCalled();
+  });
+  it('still rejects invalid bytes before looking for reusable evidence', async () => {
+    const prisma = { $queryRaw: jest.fn() };
+    const service = new PayoutBillService(new PayoutSettingsService(new ConfigService()), prisma as unknown as PrismaService);
+    await expect(service.uploadBill(testBill(Buffer.from('invalid')), true)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
   });
 });
 

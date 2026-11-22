@@ -23,8 +23,10 @@ import {
 } from './merchant-payout-query';
 import { postFinance, postPayoutCompletion } from './finance-posting';
 import { assertPayoutFunding } from './payout-funding';
+import { assertPayoutNetSnapshot, lockPayoutTaxForRequest, refreshPendingMonthlyTax } from './payout-monthly-tax';
 import { assertPayoutBeneficiary } from './payout-beneficiary';
 import { managedStoreWhere } from '../../common/store-access';
+import { isTestPayout } from './payout-environment';
 
 @Injectable()
 export class MerchantPayoutsService {
@@ -89,7 +91,8 @@ export class MerchantPayoutsService {
           query.page ?? 1,
           Math.max(1, Math.ceil(total / limit)),
         );
-        const [requests, pending, approvedToday, tax, kycPendingCount] =
+        const sandbox: Prisma.PayoutRequestWhereInput = { OR: [{ transferProvider: 'BIDV_SANDBOX' }, { bankRefCode: { startsWith: 'SBX-' } }] };
+        const [requests, pending, approvedToday, tax, kycPendingCount, sandboxToday, sandboxTax] =
           await Promise.all([
             tx.payoutRequest.findMany({
               where,
@@ -129,6 +132,14 @@ export class MerchantPayoutsService {
               _sum: { taxAmount: true },
             }),
             tx.payoutRequest.count({ where: scopes.kyc }),
+            tx.payoutRequest.aggregate({
+              where: { AND: [scopes.approvedToday, sandbox] },
+              _sum: { netAmount: true },
+            }),
+            tx.payoutRequest.aggregate({
+              where: { AND: [scopes.tax, sandbox] },
+              _sum: { taxAmount: true },
+            }),
           ]);
         return {
           requests,
@@ -152,6 +163,12 @@ export class MerchantPayoutsService {
               amount: tax._sum.taxAmount?.toFixed(2) ?? '0.00',
             },
             kycPendingCount,
+            breakdown: {
+              approvedOutsideSandboxToday: (approvedToday._sum.netAmount ?? new Prisma.Decimal(0)).minus(sandboxToday._sum.netAmount ?? 0).toFixed(2),
+              approvedSandboxToday: sandboxToday._sum.netAmount?.toFixed(2) ?? '0.00',
+              withheldTaxOutsideSandbox: (tax._sum.taxAmount ?? new Prisma.Decimal(0)).minus(sandboxTax._sum.taxAmount ?? 0).toFixed(2),
+              withheldTaxSandbox: sandboxTax._sum.taxAmount?.toFixed(2) ?? '0.00',
+            },
           },
         };
       },
@@ -160,7 +177,7 @@ export class MerchantPayoutsService {
     const { requests, total, page, summary } = result;
     return {
       requests: requests.map((request) => ({
-        ...this.serializePayout(request),
+        ...this.serializeStorePayout(request),
         collaboratorName: request.collaborator.fullName,
         collaboratorEmail: request.collaborator.email,
         collaboratorPhone: request.collaborator.phoneNumber,
@@ -207,6 +224,7 @@ export class MerchantPayoutsService {
         const request = await this.lockPayout(tx, storeId, payoutId);
         this.assertApprovable(request);
         await this.assertFundedPayout(tx, request);
+        assertPayoutNetSnapshot(request, dto.expectedNetAmount);
         if (request.transferLeaseUntil && request.transferLeaseUntil > new Date())
           throw new ConflictException('Đang đối soát giao dịch ngân hàng');
         if (request.status === PayoutStatus.PENDING) await assertPayoutBeneficiary(tx, request);
@@ -228,6 +246,7 @@ export class MerchantPayoutsService {
             proofImageSha256: bill.sha256,
             approvedById: userId,
             processedAt: new Date(),
+              transferProvider: 'MANUAL',
           },
         });
         await tx.auditLog.create({
@@ -311,6 +330,7 @@ export class MerchantPayoutsService {
           processedAt: new Date(),
         },
       });
+      await refreshPendingMonthlyTax(tx, request.collaboratorId, request.createdAt);
       await postFinance(
         tx,
         request.id,
@@ -354,6 +374,7 @@ export class MerchantPayoutsService {
     storeId: string,
     payoutId: string,
   ) {
+    await lockPayoutTaxForRequest(tx, payoutId);
     await tx.$queryRaw(
       Prisma.sql`SELECT id FROM payout_requests WHERE id = ${payoutId}::uuid AND store_id = ${storeId}::uuid FOR UPDATE`,
     );
@@ -367,6 +388,12 @@ export class MerchantPayoutsService {
     return assertPayoutFunding(tx, request);
   }
 
+  serializeStorePayout(request: PayoutRequest) {
+    const { taxContext, ...storePayout } = this.serializePayout(request);
+    void taxContext;
+    return storePayout;
+  }
+
   serializePayout(request: PayoutRequest) {
     return {
       id: request.id,
@@ -375,6 +402,7 @@ export class MerchantPayoutsService {
       amount: request.amount.toFixed(2),
       taxAmount: request.taxAmount.toFixed(2),
       netAmount: request.netAmount.toFixed(2),
+      taxContext: request.taxContext,
       status: request.status,
       bankName: request.bankName,
       bankAccountNumber: request.bankAccountNumber,
@@ -404,8 +432,8 @@ export class MerchantPayoutsService {
   }
 
   private assertApprovable(request: PayoutRequest) {
-    if (request.transferProvider === 'BIDV_SANDBOX')
-      throw new ConflictException('Lệnh BIDV Sandbox cần đối soát qua API Sandbox, không xác nhận bằng chứng từ chuyển tiền thật.');
+    if (isTestPayout(request))
+      throw new ConflictException('Yêu cầu thử nghiệm cũ không thể xác nhận thành chuyển khoản thực tế.');
     if (
       request.status !== PayoutStatus.PENDING &&
       request.status !== PayoutStatus.PROCESSING

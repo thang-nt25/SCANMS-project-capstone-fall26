@@ -15,6 +15,16 @@ export const PACKAGE_FIELDS = [
   'packageHeight',
 ] as const;
 
+/** Drafts may be incomplete; products offered for sale must have a measurable parcel. */
+export function assertProductPackageComplete(input: ProductPackageFields): void {
+  validateProductPackageDimensions(input);
+  if (PACKAGE_FIELDS.some((field) => input[field] == null)) {
+    throw new BadRequestException(
+      'Cần bổ sung đủ khối lượng (g), chiều dài, rộng và cao đóng gói (cm) trước khi duyệt hoặc bật bán sản phẩm.',
+    );
+  }
+}
+
 export function isValidEan13(value: string): boolean {
   if (!/^\d{13}$/.test(value)) return false;
   const sum = [...value.slice(0, 12)].reduce(
@@ -25,7 +35,7 @@ export function isValidEan13(value: string): boolean {
 }
 
 export function validateProductPackage(input: ProductPackageFields): void {
-  if (input.barcode != null && !isValidEan13(input.barcode)) {
+  if (input.barcode && input.barcode.trim() !== '' && !isValidEan13(input.barcode.trim())) {
     throw new BadRequestException(
       'Barcode EAN-13 phải có 13 chữ số và đúng số kiểm tra.',
     );

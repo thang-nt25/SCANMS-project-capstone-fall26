@@ -28,7 +28,7 @@ export function PrivacyConsentToast() {
   return (
     <aside
       aria-label="Thông báo Cookie & Bảo mật Tiếp thị"
-      className="fixed bottom-4 right-4 z-50 max-w-sm sm:max-w-md w-[calc(100vw-32px)] p-4 rounded-2xl border border-[#DFD6C5] bg-[#FBF5EB] text-[#1A1612] shadow-[0_12px_32px_rgba(35,29,21,0.12)] backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300"
+      className="fixed bottom-[calc(80px+env(safe-area-inset-bottom,0px))] sm:bottom-4 right-4 z-50 max-w-sm sm:max-w-md w-[calc(100vw-32px)] p-4 rounded-2xl border border-[#DFD6C5] bg-[#FBF5EB] text-[#1A1612] shadow-[0_12px_32px_rgba(35,29,21,0.12)] backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300"
     >
       <div className="flex items-start gap-3">
         <div className="w-8 h-8 rounded-xl bg-white border border-[#DFD6C5] flex items-center justify-center text-[#A87D38] shrink-0">

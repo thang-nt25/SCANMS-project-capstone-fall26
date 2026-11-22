@@ -18,6 +18,8 @@ export interface StoreReturnRequest {
   shopResponse: string | null;
   shopRespondedAt: string | null;
   resolution?: 'REFUND' | 'EXCHANGE' | null;
+  preferredResolution?: 'REFUND' | 'EXCHANGE' | null;
+  exchangeShipment?: import('./return.service').ReturnShipment | null;
   refund?: { amount: number | string; method: string; status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED'; processedAt?: string | null } | null;
   dispute?: { status: 'OPEN' | 'RESOLVED'; ruling?: 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP' | null; resolutionNotes?: string | null } | null;
 }
@@ -147,6 +149,7 @@ export interface StoreOrderRecord {
 }
 
 export interface StoreOrdersResponse {
+  metrics: { total: number; pending: number; shipping: number; delivered: number };
   items: StoreOrderRecord[];
   pagination: {
     total: number;
@@ -158,7 +161,11 @@ export interface StoreOrdersResponse {
 
 export const orderService = {
   async confirmOrder(id: string) {
-    return api.post(`/orders/${id}/confirm`);
+    const response = await api.post(`/orders/${id}/confirm`) as unknown as ApiEnvelope<{ success: boolean; shopConfirmedAt: string }>;
+    if (!response.data?.success || !response.data.shopConfirmedAt) {
+      throw new Error('Máy chủ chưa trả về xác nhận đơn hợp lệ. Vui lòng tải lại để kiểm tra.');
+    }
+    return response.data;
   },
   async getMyStoreOrders(params?: {
     customerId?: string;

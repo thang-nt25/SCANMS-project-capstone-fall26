@@ -8,6 +8,7 @@ export interface Product {
   sku: string;
   title: string;
   categoryName?: string;
+  productGroup?: string | null;
   description?: string;
   ingredients?: string | null;
   origin?: string | null;
@@ -25,6 +26,7 @@ export interface Product {
   subImages?: string[];
   mediaAssets?: { id: string; urlOrContent: string }[];
   price: number;
+  floorPrice?: number | null;
   originalPrice?: number | null;
   customCommissionRate?: number;
   stockQuantity: number;
@@ -43,6 +45,7 @@ export interface Product {
     attributes?: Record<string, string>;
     imageUrl?: string | null;
     price?: number | null;
+    floorPrice?: number | null;
     stockQuantity?: number;
     isActive: boolean;
     sampleEnabled: boolean | null;
@@ -62,6 +65,7 @@ type ProductVariantDraft = {
   name: string;
   attributes?: Record<string, string>;
   price: number;
+  floorPrice?: number;
   stockQuantity: number;
   imageUrl: string;
 };

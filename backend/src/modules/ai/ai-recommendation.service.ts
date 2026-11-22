@@ -16,6 +16,7 @@ import {
   KolMatchResultDto,
   AiRecommendationResponseDto,
   PriceRangeFilter,
+  KolRecommendationMode,
   ScoreBreakdownDto,
   MatchAnalysisRequestDto,
 } from './dto/ai-recommendation.dto';
@@ -92,9 +93,10 @@ export class AiRecommendationService {
       targetPrice = Number(targetProduct.price || 0);
     }
 
+    const mode = query.mode ?? KolRecommendationMode.ALL;
     // Authorization and product eligibility must run even when the result is cached.
     // Include every filter and the caller to prevent cross-shop/filter cache reuse.
-    const cacheKey = `ai:recommend:kols:v4:${JSON.stringify([
+    const cacheKey = `ai:recommend:kols:v5:${JSON.stringify([
       currentUserId,
       currentUserRole,
       query.productId ?? null,
@@ -103,6 +105,7 @@ export class AiRecommendationService {
       query.priceRange ?? PriceRangeFilter.ALL,
       query.minConversionRate ?? null,
       query.limit ?? 5,
+      mode,
       onlyCollaboratorId ?? null,
     ])}`;
     const cached =
@@ -328,8 +331,9 @@ export class AiRecommendationService {
         conversionRateScore * Math.min(1, stats.totalClicks / 30),
       );
 
-      // Lọc điều kiện minConversionRate nếu có
+      // Lọc điều kiện minConversionRate nếu có (bỏ qua khi đang quét riêng chế độ Cold Start)
       if (
+        mode !== KolRecommendationMode.COLD_START &&
         query.minConversionRate !== undefined &&
         conversionRate < query.minConversionRate
       ) {
@@ -399,8 +403,12 @@ export class AiRecommendationService {
         priceFitScore = Math.round(60 + ratio * 38);
       }
 
-      // Lọc điều kiện PriceRangeFilter
-      if (query.priceRange && query.priceRange !== PriceRangeFilter.ALL) {
+      // Lọc điều kiện PriceRangeFilter (bỏ qua khi đang quét riêng chế độ Cold Start)
+      if (
+        mode !== KolRecommendationMode.COLD_START &&
+        query.priceRange &&
+        query.priceRange !== PriceRangeFilter.ALL
+      ) {
         const evalPrice = avgOrderValue;
         if (evalPrice <= 0) continue;
         if (
@@ -501,6 +509,7 @@ export class AiRecommendationService {
           totalOrders: stats.totalOrders,
           grossRevenue: stats.grossRevenue,
           conversionRate,
+          avgSellingPrice: Math.round(avgOrderValue),
           primaryCategory,
         },
       });
@@ -513,8 +522,22 @@ export class AiRecommendationService {
         b.lifetimeStats.conversionRate - a.lifetimeStats.conversionRate,
     );
 
+    const performanceCount = matchResults.filter(
+      (k) => k.scoringMode === 'PERFORMANCE',
+    ).length;
+    const coldStartCount = matchResults.filter(
+      (k) => k.scoringMode === 'COLD_START',
+    ).length;
+
+    const modeFilteredResults =
+      mode === KolRecommendationMode.PERFORMANCE
+        ? matchResults.filter((k) => k.scoringMode === 'PERFORMANCE')
+        : mode === KolRecommendationMode.COLD_START
+          ? matchResults.filter((k) => k.scoringMode === 'COLD_START')
+          : matchResults;
+
     const limit = query.limit || 5;
-    const topRecommended = matchResults.slice(0, limit);
+    const topRecommended = modeFilteredResults.slice(0, limit);
 
     const recommendationResult: AiRecommendationResponseDto = {
       calculatedAt: new Date().toISOString(),
@@ -534,6 +557,10 @@ export class AiRecommendationService {
         : undefined,
       totalKolsScanned: collaborators.length,
       recommendedKols: topRecommended,
+      summaryCounts: {
+        performanceCount,
+        coldStartCount,
+      },
     };
     await this.cacheService.set(cacheKey, recommendationResult, 120);
     return recommendationResult;
@@ -568,8 +595,8 @@ export class AiRecommendationService {
       kolAnalysis: found,
       recommendationAction:
         found.matchScore >= 80
-          ? 'Khuyến nghị gửi ngay Thẻ Mời Chiến Dịch VIP (FR-27) với mức thưởng hoa hồng cao.'
-          : 'Có thể gửi sản phẩm mẫu (FR-25) để KOL trải nghiệm trước khi ký hợp tác độc quyền.',
+          ? 'Khuyến nghị gửi ngay Thẻ Mời Thỏa thuận Độc quyền với mức thù lao ưu đãi.'
+          : 'Có thể gửi sản phẩm mẫu để KOL trải nghiệm trước khi ký hợp tác độc quyền.',
     };
   }
 

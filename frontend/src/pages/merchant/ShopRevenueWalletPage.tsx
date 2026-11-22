@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Clock3, FileText, RefreshCw, Search, ShieldCheck, Wallet } from 'lucide-react';
 import api from '../../services/api';
@@ -29,7 +29,8 @@ function unwrap<T>(response: unknown): T {
 }
 
 const payoutStatus: Record<string, string> = {
-  PENDING: 'Chờ Shop xử lý',
+  PENDING: 'Chờ kế toán duyệt',
+  PROCESSING: 'Đang xử lý / đối soát',
   APPROVED: 'Đã xác nhận chi trả',
   REJECTED: 'Đã từ chối',
 };
@@ -48,7 +49,10 @@ export default function ShopRevenueWalletPage() {
   const [dashboardError, setDashboardError] = useState(false);
   const [payoutError, setPayoutError] = useState(false);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('ALL');
+  const [status, setStatus] = useState<MerchantPayout['status'] | 'ALL'>('ALL');
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300); return () => clearTimeout(timer); }, [search]);
   const requestSequence = useRef(0);
 
   const load = useCallback(async (refresh = false) => {
@@ -63,7 +67,7 @@ export default function ShopRevenueWalletPage() {
 
       const [dashboardResult, payoutResult] = await Promise.allSettled([
         api.get('/dashboard/shop', { params: { days }, headers: refresh ? { 'x-skip-cache': 'true' } : undefined }),
-        storeResult?.id ? payoutService.list(storeResult.id, 1, '', { fresh: refresh }) : Promise.resolve(null),
+        storeResult?.id ? payoutService.list(storeResult.id, page, status === 'ALL' ? '' : status, { fresh: refresh, search: query }) : Promise.resolve(null),
       ]);
       if (sequence !== requestSequence.current) return;
       if (dashboardResult.status === 'fulfilled') {
@@ -91,7 +95,7 @@ export default function ShopRevenueWalletPage() {
         setRefreshing(false);
       }
     }
-  }, [days]);
+  }, [days, page, status, query]);
 
   useEffect(() => {
     void load();
@@ -100,12 +104,7 @@ export default function ShopRevenueWalletPage() {
 
   const points = dashboard?.charts.revenueByDay ?? [];
   const maxRevenue = Math.max(1, ...points.map((point) => Number(point.revenue) || 0));
-  const visiblePayouts = useMemo(() => (payouts?.requests ?? []).filter((item) => {
-    if (status !== 'ALL' && item.status !== status) return false;
-    const query = search.trim().toLocaleLowerCase('vi-VN');
-    return !query || [item.collaboratorName, item.collaboratorEmail, item.id]
-      .some((value) => value?.toLocaleLowerCase('vi-VN').includes(query));
-  }), [payouts, search, status]);
+  const visiblePayouts = payouts?.requests ?? [];
 
   const changeTab = (next: FinanceTab) => {
     setSearchParams(next === 'overview' ? {} : { tab: next });
@@ -117,7 +116,7 @@ export default function ShopRevenueWalletPage() {
         <div>
           <div className="mb-2 flex items-center gap-2 text-[#B88E4F]"><Wallet size={20} /><span className="text-xs font-bold uppercase tracking-wider">Tài chính gian hàng</span></div>
           <h1 className="m-0 text-2xl font-black">{store?.name || 'Tổng quan tài chính Shop'}</h1>
-          <p className="mb-0 mt-2 text-sm text-[#7D715E]">Theo dõi doanh số và các yêu cầu chi trả hoa hồng KOL từ dữ liệu của gian hàng.</p>
+          <p className="mb-0 mt-2 text-sm text-[#7D715E]">Doanh số và thù lao thuộc cửa hàng đang quản lý. Kế toán hệ thống thực hiện giải ngân.</p>
         </div>
         <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm font-semibold text-[#B88E4F] hover:bg-[#F3EFE6] disabled:opacity-50">
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> Làm mới
@@ -155,7 +154,7 @@ export default function ShopRevenueWalletPage() {
               {points.map((point, index) => <div key={`${point.date}-${index}`} className="group relative flex h-full min-w-2 flex-1 items-end" title={`${point.date}: ${money(point.revenue)}`}><div className="w-full rounded-t bg-[#C59B58] transition-colors group-hover:bg-[#B88E4F]" style={{ height: `${Math.max(3, (Number(point.revenue) || 0) / maxRevenue * 100)}%` }} /></div>)}
             </div> : <p className="rounded-xl bg-[#FAF8F5] p-6 text-center text-sm text-[#7D715E]">{loading ? 'Đang tải dữ liệu...' : 'Chưa có doanh thu trong kỳ.'}</p>}
           </div>
-          <div className="flex flex-wrap gap-2"><Link to="/merchant/orders" className="inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm font-semibold text-[#B88E4F]">Xem đơn hàng <ArrowRight size={15} /></Link><Link to="/merchant/payouts" className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm font-semibold text-[#1A1612]">Quản lý chi trả KOL <ArrowRight size={15} /></Link></div>
+          <div className="flex flex-wrap gap-2"><Link to="/merchant/orders" className="inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm font-semibold text-[#B88E4F]">Xem đơn hàng <ArrowRight size={15} /></Link><button type="button" onClick={() => changeTab('commissions')} className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm font-semibold text-[#1A1612]">Theo dõi chi trả KOL <ArrowRight size={15} /></button></div>
           <p className="text-xs text-[#7D715E]">Doanh thu ghi nhận không phải số dư có thể rút. Số dư rút doanh thu Shop chỉ hiển thị khi có đối soát và API xác nhận.</p>
         </section>
       ) : (
@@ -169,10 +168,11 @@ export default function ShopRevenueWalletPage() {
           </div>
           {payoutError && <p role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">Chưa tải được yêu cầu chi trả. Bấm Làm mới để thử lại.</p>}
           <div className="rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] p-4"><div><h2 className="m-0 text-base font-black">Yêu cầu chi trả gần đây</h2><p className="mb-0 mt-1 text-xs text-[#7D715E]">Hiển thị tối đa 10 yêu cầu mới nhất. Mở trang chi trả để xem đầy đủ và xử lý.</p></div><Link to="/merchant/payouts" className="inline-flex items-center gap-1 text-sm font-bold text-[#B88E4F]">Mở trang chi trả <ArrowRight size={15} /></Link></div>
-            <div className="flex flex-wrap gap-2 p-4"><label className="flex min-w-40 flex-1 items-center gap-2 rounded-xl border border-[#EAE4D7] px-3"><Search size={15} className="text-[#7D715E]" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm KOL hoặc mã yêu cầu" className="min-h-10 w-full outline-none" /></label><select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Trạng thái chi trả" className="min-h-10 rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm"><option value="ALL">Tất cả trạng thái</option><option value="PENDING">Chờ xử lý</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Đã từ chối</option></select></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] p-4"><div><h2 className="m-0 text-base font-black">Lịch sử chi trả thuộc cửa hàng</h2><p className="mb-0 mt-1 text-xs text-[#7D715E]">Chỉ gồm các lệnh gắn với cửa hàng này. Không bao gồm tổng rút của KOL tại cửa hàng khác.</p></div><span className="text-xs text-[#7D715E]">Kế toán / Admin duyệt chi</span></div>
+            <div className="flex flex-wrap gap-2 p-4"><label className="flex min-w-40 flex-1 items-center gap-2 rounded-xl border border-[#EAE4D7] px-3"><Search size={15} className="text-[#7D715E]" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm KOL hoặc mã yêu cầu" className="min-h-10 w-full outline-none" /></label><select value={status} onChange={(event) => { setStatus(event.target.value as MerchantPayout['status'] | 'ALL'); setPage(1); }} aria-label="Trạng thái chi trả" className="min-h-10 rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm"><option value="ALL">Tất cả trạng thái</option><option value="PENDING">Chờ kế toán duyệt</option><option value="PROCESSING">Đang xử lý / đối soát</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Đã từ chối</option></select></div>
             <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead className="bg-[#FAF8F5] text-xs uppercase text-[#7D715E]"><tr><th className="p-3">KOL</th><th className="p-3">Yêu cầu</th><th className="p-3">Thuế</th><th className="p-3">Thực nhận</th><th className="p-3">Trạng thái</th></tr></thead><tbody>{visiblePayouts.map((item: MerchantPayout) => <tr key={item.id} className="border-t border-[#EAE4D7]"><td className="p-3 font-semibold">{item.collaboratorName}</td><td className="p-3">{money(item.amount)}</td><td className="p-3">{money(item.taxAmount)}</td><td className="p-3 font-semibold text-[#B88E4F]">{money(item.netAmount)}</td><td className="p-3">{payoutStatus[item.status] || item.status}</td></tr>)}</tbody></table>{!loading && visiblePayouts.length === 0 && <p className="p-6 text-center text-sm text-[#7D715E]">{payoutError ? 'Không thể tải danh sách.' : 'Không có yêu cầu phù hợp.'}</p>}</div>
           </div>
+          {payouts && !payoutError && <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[#7D715E]"><span>{payouts.total} yêu cầu thuộc cửa hàng</span><div className="flex items-center gap-3"><button type="button" disabled={loading || payouts.page <= 1} onClick={() => setPage(payouts.page - 1)} className="rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 disabled:opacity-40">Trước</button><span>Trang {payouts.page} / {Math.max(1, Math.ceil(payouts.total / payouts.limit))}</span><button type="button" disabled={loading || payouts.page * payouts.limit >= payouts.total} onClick={() => setPage(payouts.page + 1)} className="rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 disabled:opacity-40">Sau</button></div></div>}
         </section>
       )}
     </div>

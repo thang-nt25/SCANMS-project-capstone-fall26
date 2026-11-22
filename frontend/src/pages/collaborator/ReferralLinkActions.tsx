@@ -1,18 +1,19 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ExternalLink, MoreHorizontal, PauseCircle, PlayCircle, QrCode, Trash2, TrendingUp, Video } from 'lucide-react';
+import { ExternalLink, FileText, MoreHorizontal, PauseCircle, PlayCircle, QrCode, Trash2, TrendingUp, Video } from 'lucide-react';
 import type { ReferralLinkItem } from '../../services/referral-links.service';
 
 interface ReferralLinkActionsProps {
   link: ReferralLinkItem;
   onQr: () => void;
+  onDetails: () => void;
   onAnalytics: () => void;
   onVideo: () => void;
   onToggle: () => void;
   onDelete: () => void;
 }
 
-export function ReferralLinkActions({ link, onQr, onAnalytics, onVideo, onToggle, onDelete }: ReferralLinkActionsProps) {
+export function ReferralLinkActions({ link, onQr, onDetails, onAnalytics, onVideo, onToggle, onDelete }: ReferralLinkActionsProps) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -74,17 +75,7 @@ export function ReferralLinkActions({ link, onQr, onAnalytics, onVideo, onToggle
   };
 
   return (
-    <div className="flex items-center justify-end gap-1.5">
-      <a
-        href={`/r/${link.shortCode}`}
-        target="_blank"
-        rel="noreferrer"
-        title="Mở thử link rút gọn"
-        aria-label={`Mở link ${link.shortCode}`}
-        className="w-8 h-8 rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center justify-center transition shadow-2xs cursor-pointer"
-      >
-        <ExternalLink className="w-3.5 h-3.5 text-[#B88E4F]" />
-      </a>
+    <div className="kol-link-actions">
       <button
         type="button"
         onClick={onQr}
@@ -93,6 +84,7 @@ export function ReferralLinkActions({ link, onQr, onAnalytics, onVideo, onToggle
         className="w-8 h-8 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] hover:bg-[#F3EFE6] hover:border-[#C59B58] flex items-center justify-center transition shadow-2xs cursor-pointer"
       >
         <QrCode className="w-3.5 h-3.5 text-[#B88E4F]" />
+        <span>QR</span>
       </button>
       <button
         type="button"
@@ -102,6 +94,7 @@ export function ReferralLinkActions({ link, onQr, onAnalytics, onVideo, onToggle
         className="w-8 h-8 rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center justify-center transition shadow-2xs cursor-pointer"
       >
         <TrendingUp className="w-3.5 h-3.5" />
+        <span>Thống kê</span>
       </button>
       <button
         type="button"
@@ -128,6 +121,11 @@ export function ReferralLinkActions({ link, onQr, onAnalytics, onVideo, onToggle
           <button
             role="menuitem"
             type="button"
+            onClick={() => run(onDetails)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-lg hover:bg-[#FAF8F5]"
+          ><FileText size={14} /> Chi tiết liên kết</button>
+          <button role="menuitem" type="button" onClick={() => run(() => window.open(`/r/${link.shortCode}`, '_blank', 'noopener,noreferrer'))} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-lg hover:bg-[#FAF8F5]"><ExternalLink size={14} /> Mở liên kết</button>
+          <button role="menuitem" type="button"
             onClick={() => run(onVideo)}
             className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-lg hover:bg-[#FAF8F5] transition cursor-pointer"
           >

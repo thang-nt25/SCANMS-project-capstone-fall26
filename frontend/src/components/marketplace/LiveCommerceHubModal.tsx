@@ -1,3 +1,5 @@
+import { publicWebsiteUrl } from '@/utils/public-url';
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
@@ -166,7 +168,7 @@ export function LiveCommerceHubModal({ isOpen, onClose }: LiveCommerceHubModalPr
   };
 
   const handleShare = (session: any) => {
-    const url = `${window.location.origin}/live/${session.id}`;
+    const url = publicWebsiteUrl(`/live/${session.id}`);
     if (navigator.clipboard) {
       void navigator.clipboard.writeText(url);
       toast.success('Đã sao chép liên kết phiên live!');
@@ -337,7 +339,7 @@ export function LiveCommerceHubModal({ isOpen, onClose }: LiveCommerceHubModalPr
                       {firstProduct && (
                         <div className="mt-auto flex items-center gap-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-2.5">
                           {productImage ? (
-                            <img src={productImage} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-white object-cover" />
+                            <img src={productImage} onError={handleProductImageError} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-white object-cover" />
                           ) : (
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F3EFE6]"><ShoppingBag className="h-5 w-5 text-[#B88E4F]" /></div>
                           )}

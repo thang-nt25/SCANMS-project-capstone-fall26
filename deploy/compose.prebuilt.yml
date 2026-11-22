@@ -1,0 +1,8 @@
+services:
+  backend:
+    build:
+      args:
+        USE_PREBUILT: "true"
+  frontend:
+    build:
+      dockerfile: Dockerfile.prebuilt

@@ -36,9 +36,10 @@ export const modules = {
     roles: ["CUSTOMER", "COLLABORATOR", "SHOP_MANAGER"],
   },
   payouts: {
-    title: "Duyệt yêu cầu rút tiền",
+    title: "Quản lý chi trả KOL",
     roles: ["SHOP_MANAGER", ...operations],
   },
+  "finance-reports": { title: "Thuế, Escrow & đối soát", roles: operations },
   pricing: {
     title: "Giá sàn & khuyến mãi",
     roles: ["SHOP_MANAGER", ...operations],

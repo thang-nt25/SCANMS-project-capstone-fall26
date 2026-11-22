@@ -48,7 +48,7 @@ import { QueryCouponsDto } from './dto/query-coupons.dto';
 // =========================================================================
 // 1. PUBLIC CHECKOUT CONTROLLER (GUEST & LOGGED IN)
 // =========================================================================
-@ApiTags('Public - Coupons (FR-12)')
+@ApiTags('Public - Coupons')
 @Controller('coupons')
 export class PublicCouponsController {
   constructor(private readonly service: CouponsService) {}
@@ -240,7 +240,7 @@ export class PublicCouponsController {
 // =========================================================================
 // 2. KOL / CTV CONTROLLER (FR-12)
 // =========================================================================
-@ApiTags('Collaborator - Coupons (FR-12)')
+@ApiTags('Collaborator - Coupons')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.COLLABORATOR)
@@ -305,7 +305,7 @@ export class CollaboratorCouponsController {
   @Get('eligible-stores')
   @ApiOperation({
     summary:
-      'Lấy danh sách các Gian hàng KOL đã được APPROVED để tạo coupon (FR-12)',
+      'Lấy danh sách các Gian hàng KOL đã được APPROVED để tạo coupon',
   })
   @ApiResponse({ status: 200, description: 'Danh sách gian hàng hợp lệ' })
   async getEligibleStores(@CurrentUser('id') collaboratorId: string) {
@@ -384,13 +384,18 @@ export class CollaboratorCouponsController {
 // =========================================================================
 // 3. SHOP CONTROLLER (FR-12)
 // =========================================================================
-@ApiTags('Store - Coupons (FR-12)')
+@ApiTags('Store - Coupons')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
 @Controller('stores/:storeId/coupons')
 export class StoreCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Get(':id/oversight')
+  getOversight(@Param('storeId', ParseUUIDPipe) storeId: string, @Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole, @Query('page') page?: string) {
+    return this.service.couponOversight(id, userId, role, storeId, page === undefined ? 1 : Number(page));
+  }
 
   @Get('subsidies')
   @ApiOperation({ summary: 'Shop xem khoản voucher sàn tài trợ và chuyển hoàn theo từng đơn' })
@@ -604,13 +609,18 @@ export class StoreCouponsController {
 // =========================================================================
 // 4. ADMIN CONTROLLER (FR-12)
 // =========================================================================
-@ApiTags('Admin - Coupons (FR-12)')
+@ApiTags('Admin - Coupons')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
 @Controller('admin/coupons')
 export class AdminCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Get(':id/oversight')
+  getOversight(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole, @Query('page') page?: string) {
+    return this.service.couponOversight(id, userId, role, undefined, page === undefined ? 1 : Number(page));
+  }
 
   @Get('subsidies')
   @ApiOperation({ summary: 'Đối soát tổng giá trị voucher do sàn tài trợ theo từng Shop' })

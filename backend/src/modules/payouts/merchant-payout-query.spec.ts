@@ -47,7 +47,9 @@ describe('merchant payout filters and store-wide aggregates', () => {
       aggregate: jest.fn()
         .mockResolvedValueOnce({ _count: { _all: 40 }, _sum: { netAmount: new Prisma.Decimal('1234567.89') } })
         .mockResolvedValueOnce({ _count: { _all: 3 }, _sum: { netAmount: new Prisma.Decimal('2700000.00') } })
-        .mockResolvedValueOnce({ _count: { _all: 9 }, _sum: { taxAmount: new Prisma.Decimal('900000.10') } }),
+        .mockResolvedValueOnce({ _count: { _all: 9 }, _sum: { taxAmount: new Prisma.Decimal('900000.10') } })
+        .mockResolvedValueOnce({ _sum: { netAmount: new Prisma.Decimal('700000') } })
+        .mockResolvedValueOnce({ _sum: { taxAmount: new Prisma.Decimal('200000') } }),
     } };
     const prisma = { $transaction: jest.fn(async callback => callback(tx)) };
     const service = Object.assign(Object.create(MerchantPayoutsService.prototype), { prisma, bills: { maxBillBytes: 5242880 } }) as MerchantPayoutsService;
@@ -64,6 +66,8 @@ describe('merchant payout filters and store-wide aggregates', () => {
     const aggregateCalls = tx.payoutRequest.aggregate.mock.calls as unknown as Array<[{ where: Prisma.PayoutRequestWhereInput }]>;
     expect(aggregateCalls[0][0].where).toEqual({ storeId, status: PayoutStatus.PENDING });
     expect(aggregateCalls[0][0].where).not.toHaveProperty('AND');
+    expect(result.summary.breakdown).toEqual({ approvedOutsideSandboxToday: '2000000.00', approvedSandboxToday: '700000.00', withheldTaxOutsideSandbox: '700000.10', withheldTaxSandbox: '200000.00' });
+    expect(aggregateCalls[3][0].where).toEqual({ AND: [aggregateCalls[1][0].where, { OR: [{ transferProvider: 'BIDV_SANDBOX' }, { bankRefCode: { startsWith: 'SBX-' } }] }] });
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: 'RepeatableRead' });
   });
   it.each([[20, 3, 2, 10], [0, 3, 1, 0], [25, 3, 3, 20]])('clamps total %i requested page %i to %i', async (total, requested, expected, skip) => {
@@ -77,5 +81,19 @@ describe('merchant payout filters and store-wide aggregates', () => {
     ownership.mockRejectedValueOnce(new Error('forbidden'));
     await expect(service.listPayouts(storeId, 'intruder', dto())).rejects.toThrow('forbidden');
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it('does not expose the KOL company-wide tax base through the store payout view', () => {
+    const { service } = createService();
+    const request = {
+      id: 'payout', collaboratorId: 'kol', storeId,
+      amount: new Prisma.Decimal(400000), taxAmount: new Prisma.Decimal(140000), netAmount: new Prisma.Decimal(260000),
+      taxContext: { policy: 'MONTHLY_PROGRESSIVE_V1', monthlyGrossBefore: '110000000', month: '2026-11' },
+      status: 'PENDING',
+    } as never;
+    const shop = service.serializeStorePayout(request);
+    expect(shop).toMatchObject({ storeId, amount: '400000.00', taxAmount: '140000.00', netAmount: '260000.00' });
+    expect(shop).not.toHaveProperty('taxContext');
+    expect(shop).not.toHaveProperty('monthlyWithdrawalSummary');
+    expect(service.serializePayout(request).taxContext).toMatchObject({ monthlyGrossBefore: '110000000' });
   });
 });

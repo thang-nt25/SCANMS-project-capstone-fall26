@@ -1,431 +1,61 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check, ShieldCheck, Clock, Sparkles, ShoppingBag } from 'lucide-react';
+import { Crown, Trophy, Award, Target, Info, Check, ArrowUpRight } from 'lucide-react';
 import { tierService, type TierStatus, type TierPolicy } from '../../services/tier.service';
-import { leaderboardService, type LeaderboardPodium } from '../../services/leaderboard.service';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
-import KolBonusProgressPage from './KolBonusProgressPage';
-import { KolTierExplanation } from '../../components/affiliate/KolTierExplanation';
+import { MonthlyRewardsPanel } from '../../components/promotions/MonthlyRewardsPanel';
+import { Modal } from '../../components/ui/Modal';
 
-const currency = (value: number) => `${value.toLocaleString('vi-VN')} ₫`;
-const samePolicy = (left: TierPolicy, right: TierPolicy) =>
-  left.id === right.id || (
-    left.name.trim().toLowerCase() === right.name.trim().toLowerCase() &&
-    Number(left.minRevenueThreshold) === Number(right.minRevenueThreshold) &&
-    Number(left.extraBonusPercentage) === Number(right.extraBonusPercentage)
-  );
-
+const money = (value: number) => `${Number(value).toLocaleString('vi-VN')} ₫`;
+const date = (value: string) => new Date(value).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' | 'leaderboard' | 'bonus' } = {}) {
-  const [tierStatus, setTierStatus] = useState<TierStatus | null>(null);
-  const [podium, setPodium] = useState<LeaderboardPodium | null>(null);
-  const [tierPolicies, setTierPolicies] = useState<TierPolicy[]>([]);
+  const [status, setStatus] = useState<TierStatus | null>(null);
+  const [policies, setPolicies] = useState<TierPolicy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusError, setStatusError] = useState(false);
+  const [error, setError] = useState('');
   const [policyError, setPolicyError] = useState(false);
-  const [podiumError, setPodiumError] = useState(false);
-  const [loadRevision, setLoadRevision] = useState(0);
-
+  const [revision, setRevision] = useState(0);
+  const [showRules, setShowRules] = useState(false);
   useEffect(() => {
     if (view !== 'tiers') return;
-    let cancelled = false;
-    const loadData = async () => {
-      setLoading(true);
-      const [status, policies, podiumData] = await Promise.allSettled([
-        tierService.getMyTierStatus(),
-        tierService.getAllTiers(),
-        leaderboardService.getPodium({ metric: 'REVENUE', timeRange: 'this_month' }),
-      ]);
-      if (cancelled) return;
-      setTierStatus(status.status === 'fulfilled' ? status.value : null);
-      setTierPolicies(policies.status === 'fulfilled' ? policies.value : []);
-      setPodium(podiumData.status === 'fulfilled' ? podiumData.value : null);
-      setStatusError(status.status === 'rejected');
-      setPolicyError(policies.status === 'rejected');
-      setPodiumError(podiumData.status === 'rejected');
-      setLoading(false);
-    };
-    void loadData();
-    return () => { cancelled = true; };
-  }, [view, loadRevision]);
-
-  const currentTier = tierStatus?.currentTier;
-  const currentRevenue = Number(tierStatus?.currentRevenue || 0);
-  const totalOrders = Number(tierStatus?.totalOrders || 0);
-  const nextTier = tierStatus?.nextTier;
-  const targetSales = Number(nextTier?.minRevenueThreshold || 0);
-  const progressPct = Number(tierStatus?.progressPercentage ?? 0);
-
-  const maintenanceThreshold = Number(
-    tierStatus?.maintenanceThreshold ?? Math.round(Number(currentTier?.minRevenueThreshold || 0) * 0.6)
-  );
-  const isMaintained = Boolean(tierStatus?.isMaintained ?? currentRevenue >= maintenanceThreshold);
-  const cycleStatus = tierStatus?.cycleStatus || (isMaintained ? 'MAINTAINED' : 'GRACE_PERIOD');
-  const daysRemaining = tierStatus?.daysRemaining ?? 30;
-
-  const podiumEntries = [
-    { slot: 2, creator: podium?.rank2 },
-    { slot: 1, creator: podium?.rank1 },
-    { slot: 3, creator: podium?.rank3 },
-  ].filter(entry => entry.creator);
-  const retry = () => setLoadRevision(revision => revision + 1);
-
-  return (
-    <div className="flex flex-col gap-3 min-w-0 text-[#1A1612] text-left">
-      <nav className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 border border-[#EAE4D7] rounded-xl bg-white" aria-label="Cấp bậc và vinh danh">
-        <Link
-          to="/collaborator/tiers"
-          aria-current={view === 'tiers' ? 'page' : undefined}
-          className={`flex items-center justify-center gap-2 min-h-[38px] px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-            view === 'tiers'
-              ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
-              : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
-          }`}
-        >
-          <Award className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
-          <span>Cấp bậc &amp; Quyền lợi</span>
-        </Link>
-        <Link
-          to="/collaborator/leaderboard"
-          aria-current={view === 'leaderboard' ? 'page' : undefined}
-          className={`flex items-center justify-center gap-2 min-h-[38px] px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-            view === 'leaderboard'
-              ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
-              : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
-          }`}
-        >
-          <Trophy className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
-          <span>Bảng vinh danh Top Creator</span>
-        </Link>
-        <Link
-          to="/collaborator/bonus-progress"
-          aria-current={view === 'bonus' ? 'page' : undefined}
-          className={`flex items-center justify-center gap-2 min-h-[38px] px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-            view === 'bonus'
-              ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
-              : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
-          }`}
-        >
-          <Target className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
-          <span>Tiến độ thưởng doanh số</span>
-        </Link>
-      </nav>
-
-      {view === 'leaderboard' ? (
-        <LeaderboardPage alignToContainer />
-      ) : view === 'bonus' ? (
-        <KolBonusProgressPage embedded />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 min-w-0">
-          {loading ? (
-            <section className="flex items-center justify-center p-6 border border-[#EAE4D7] rounded-xl bg-white text-xs text-[#7D715E]" role="status">
-              Đang tải cấp bậc và tiến độ…
-            </section>
-          ) : statusError || !currentTier || !tierStatus ? (
-            <section className="flex items-center justify-between gap-3 p-4 border border-[#EAE4D7] rounded-xl bg-white text-xs text-[#7D715E]" role="status">
-              <span>Chưa tải được cấp bậc đang áp dụng.</span>
-              <button className="px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] font-medium hover:bg-[#FAF8F5]" onClick={retry}>Thử lại</button>
-            </section>
-          ) : (
-            <section className="flex flex-col p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-current-title">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="grid place-items-center w-12 h-12 shrink-0 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                    <Crown className="w-6 h-6" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-medium text-[#7D715E]">Cấp bậc hiện tại</p>
-                    <h2 id="tier-current-title" className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] truncate">{currentTier.name}</h2>
-                    <p className="text-xs text-[#7D715E] mt-0.5">
-                      Thưởng <strong className="text-[#1A1612] font-semibold">+{Number(currentTier.extraBonusPercentage)}%</strong> thù lao cho đơn hàng đủ điều kiện
-                    </p>
-                  </div>
-                </div>
-
-                {/* Status Pill Badge - Enterprise SaaS standard */}
-                {Number(currentTier.minRevenueThreshold) > 0 && (
-                  cycleStatus === 'GRACE_PERIOD' ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#B45309] border border-[#F59E0B]/40 shrink-0">
-                      <Clock size={13} className="text-[#D97706]" />
-                      Ân hạn duy trì: Còn {daysRemaining} ngày
-                    </span>
-                  ) : isMaintained ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] shrink-0">
-                      <ShieldCheck size={13} className="text-[#15803D]" />
-                      Đã bảo toàn hạng tháng tới
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6] shrink-0">
-                      Hạng đối tác hoạt động
-                    </span>
-                  )
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 my-4">
-                <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">GMV kỳ đánh giá</span>
-                  <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{currency(currentRevenue)}</strong>
-                </div>
-                <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">Đơn thành công</span>
-                  <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{totalOrders.toLocaleString('vi-VN')} đơn</strong>
-                </div>
-                <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">Thù lao thưởng</span>
-                  <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">+{currentTier.extraBonusPercentage || 0}%</strong>
-                </div>
-              </div>
-
-              <KolTierExplanation status={tierStatus} />
-
-              {nextTier ? (
-                <div className="pt-3 border-t border-[#EAE4D7]" id="tier-promotion-progress">
-                  <div className="flex items-center justify-between gap-2.5 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[11px] text-[#7D715E]">Hạng tiếp theo:</span>
-                      <h3 className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
-                        {nextTier.name}
-                        <span className="text-[10px] font-semibold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] rounded px-1.5 py-0.5">+{nextTier.extraBonusPercentage || 0}% thưởng</span>
-                      </h3>
-                    </div>
-                    <span className="grid place-items-center min-w-[36px] h-7 px-2 border border-[#EAE4D7] rounded-md text-xs font-bold text-[#1A1612]">{progressPct}%</span>
-                  </div>
-
-                  {/* Dual-Milestone Progress Bar */}
-                  <div className="relative h-2.5 rounded-full bg-[#F3EFE6] overflow-hidden" role="progressbar" aria-label={`Tiến độ lên hạng ${nextTier.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progressPct))}>
-                    <div className="h-full bg-[#C59B58] rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }} />
-                    {maintenanceThreshold > 0 && targetSales > 0 && (
-                      <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-[#1A1612]/30 z-10"
-                        style={{ left: `${Math.min(95, Math.max(5, (maintenanceThreshold / targetSales) * 100))}%` }}
-                        title={`Ngưỡng duy trì: ${currency(maintenanceThreshold)}`}
-                      />
-                    )}
-                  </div>
-
-                  <div className="flex justify-between flex-wrap gap-1 text-[11px] text-[#7D715E] mt-1.5">
-                    <span>{currency(currentRevenue)} / {currency(targetSales)}</span>
-                    {maintenanceThreshold > 0 && (
-                      <span className="font-medium text-[#1A1612]">
-                        Ngưỡng duy trì 60%: {currency(maintenanceThreshold)} ({isMaintained ? 'Đã đạt' : `Còn thiếu ${currency(tierStatus.revenueNeededToMaintain || 0)}`})
-                      </span>
-                    )}
-                    <span>Còn {currency(tierStatus.revenueNeeded)} để thăng hạng</span>
-                  </div>
-
-                  {tierStatus.qualifiedTier && Number(tierStatus.qualifiedTier.minRevenueThreshold) > Number(currentTier.minRevenueThreshold) && (
-                    <p className="mt-2.5 p-2 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#7D715E] text-xs">
-                      Bạn đã đạt ngưỡng hạng {tierStatus.qualifiedTier.name}. Hạng mới có hiệu lực sau khi được đánh giá cấp bậc.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="flex items-center gap-2 pt-3 border-t border-[#EAE4D7] text-xs text-[#7D715E]">
-                  <Check className="w-4 h-4 text-[#059669]" aria-hidden="true" /> Bạn đang ở cấp bậc cao nhất trong hệ thống đối tác.
-                </p>
-              )}
-              <div className="flex items-center justify-between gap-2 pt-3 mt-auto text-xs border-t border-[#EAE4D7]">
-                <div className="flex items-center gap-1.5 text-[#7D715E]">
-                  <Gift className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
-                  <span>Sản phẩm mẫu:</span>
-                </div>
-                <strong className="text-[#1A1612] font-medium">Theo xét duyệt của Nhãn hàng</strong>
-              </div>
-            </section>
-          )}
-
-          {/* Policy Panel */}
-          <section className="flex flex-col p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-policy-title">
-            <header className="flex items-center justify-between gap-3 mb-3.5">
-              <div className="flex items-center gap-2.5">
-                <span className="grid place-items-center w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
-                  <Award className="w-4 h-4" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 id="tier-policy-title" className="text-sm font-semibold text-[#1A1612]">Cấp bậc &amp; quyền lợi</h2>
-                  <p className="text-[11px] text-[#7D715E]">Xét hạng theo GMV hợp lệ của kỳ đánh giá định kỳ.</p>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 border border-[#EAE4D7] rounded-md text-[11px] text-[#7D715E]">
-                {loading ? 'Đang tải…' : policyError ? 'Chưa tải được' : `${tierPolicies.length} cấp bậc`}
-              </span>
-            </header>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" aria-label="Chính sách cấp bậc">
-              {loading || policyError || !tierPolicies.length ? (
-                <p className="col-span-full py-6 text-center text-xs text-[#7D715E]">
-                  {loading ? 'Đang tải chính sách cấp bậc…' : policyError ? <>Chưa tải được chính sách. <button className="ml-2 px-2 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#1A1612]" onClick={retry}>Thử lại</button></> : 'Chưa có chính sách cấp bậc được cấu hình.'}
-                </p>
-              ) : (
-                tierPolicies.map(policy => {
-                  const isCurrent = !statusError && currentTier && samePolicy(currentTier, policy);
-                  const maintThreshold = Math.round(Number(policy.minRevenueThreshold) * 0.6);
-                  return (
-                    <article
-                      key={policy.id}
-                      className={`p-3 border rounded-lg transition-colors ${
-                        isCurrent
-                          ? 'border-[#EEDFC6] bg-[#FBF5EB]'
-                          : 'border-[#EAE4D7] bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
-                        <h3 className="text-xs font-semibold text-[#1A1612]">{policy.name}</h3>
-                        {isCurrent && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-white text-[#B88E4F] text-[9px] font-medium">
-                            <Check className="w-2.5 h-2.5" aria-hidden="true" /> Hiện tại
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-baseline gap-1 mt-1.5">
-                        <strong className="text-lg font-bold text-[#1A1612] tracking-tight">+{Number(policy.extraBonusPercentage)}%</strong>
-                        <span className="text-[10px] text-[#7D715E]">thù lao thưởng</span>
-                      </div>
-                      <div className="mt-1 space-y-0.5 text-[11px] text-[#7D715E]">
-                        <p>Thăng hạng: <strong className="text-[#1A1612] font-medium">{currency(Number(policy.minRevenueThreshold))}</strong></p>
-                        {Number(policy.minRevenueThreshold) > 0 && (
-                          <p className="text-[10px] text-[#7D715E]/90">Duy trì (60%): <strong className="text-[#8C6226] font-medium">{currency(maintThreshold)}</strong></p>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })
-              )}
-            </div>
-            <p className="mt-auto pt-3 border-t border-[#EAE4D7] text-[11px] text-[#7D715E]">
-              Hệ thống áp dụng cơ chế ân hạn 30 ngày và chuyển tiếp bậc từng bước, bảo vệ quyền lợi đối tác kinh doanh.
-            </p>
-          </section>
-
-          {/* Recommended Products for Fast GMV Maintenance */}
-          {tierStatus?.recommendedProducts && tierStatus.recommendedProducts.length > 0 && (
-            <section className="col-span-full p-4 sm:p-5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]" aria-labelledby="tier-recommended-title">
-              <header className="flex items-center justify-between flex-wrap gap-3 mb-3.5">
-                <div className="flex items-center gap-2.5">
-                  <span className="grid place-items-center w-8 h-8 rounded-lg bg-white border border-[#EEDFC6] text-[#B88E4F]">
-                    <Sparkles className="w-4 h-4 text-[#B88E4F]" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h2 id="tier-recommended-title" className="text-sm font-bold text-[#1A1612]">
-                      Sản phẩm gợi ý đẩy số nhanh để bảo toàn &amp; thăng hạng
-                    </h2>
-                    <p className="text-[11px] text-[#7D715E]">
-                      Các sản phẩm có tỷ lệ hoa hồng cao và dễ ra đơn từ các nhãn hàng đối tác.
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  to="/collaborator/marketing?tab=links"
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#8C6226] hover:text-[#1A1612] transition-colors"
-                >
-                  Tất cả sản phẩm <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </Link>
-              </header>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {tierStatus.recommendedProducts.map((prod) => (
-                  <article
-                    key={prod.id}
-                    className="p-3 border border-[#EAE4D7] rounded-xl bg-white flex flex-col justify-between hover:border-[#C59B58] transition-all shadow-2xs group"
-                  >
-                    <div>
-                      <div className="relative aspect-video w-full rounded-lg bg-[#FAF8F5] overflow-hidden mb-2.5 border border-[#EAE4D7]">
-                        {prod.imageUrl ? (
-                          <img
-                            src={prod.imageUrl}
-                            alt={prod.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        ) : (
-                          <div className="w-full h-full grid place-items-center text-[#B88E4F]">
-                            <ShoppingBag className="w-6 h-6" />
-                          </div>
-                        )}
-                        <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[10px] font-black bg-[#C59B58] text-white shadow-xs">
-                          {prod.customCommissionRate || 10}% thù lao
-                        </span>
-                      </div>
-
-                      <div className="text-[10px] font-semibold text-[#B88E4F] uppercase tracking-wider line-clamp-1">
-                        {prod.store?.name || 'Nhãn hàng đối tác'}
-                      </div>
-                      <h3 className="text-xs font-bold text-[#1A1612] line-clamp-2 mt-0.5" title={prod.title}>
-                        {prod.title}
-                      </h3>
-                    </div>
-
-                    <div className="mt-3 pt-2.5 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
-                      <strong className="text-xs sm:text-sm font-extrabold text-[#1A1612] tabular-nums">
-                        {currency(Number(prod.price || 0))}
-                      </strong>
-                      <Link
-                        to={`/collaborator/marketing?tab=links&storeId=${prod.store?.id || ""}&productId=${prod.id}&create=1`}
-                        className="px-2.5 py-1 rounded-lg bg-[#FBF5EB] hover:bg-[#C59B58] text-[#8C6226] hover:text-white border border-[#EEDFC6] text-[11px] font-bold transition-all shadow-2xs shrink-0"
-                      >
-                        Lấy link
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Featured Creators */}
-          <section className="col-span-full p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-featured-title">
-            <header className="flex items-center justify-between flex-wrap gap-3 mb-3.5">
-              <div className="flex items-center gap-2.5">
-                <span className="grid place-items-center w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
-                  <Trophy className="w-4 h-4" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 id="tier-featured-title" className="text-sm font-semibold text-[#1A1612]">Nhà sáng tạo nổi bật tháng này</h2>
-                  <p className="text-[11px] text-[#7D715E]">Xếp hạng theo doanh số ghi nhận khi giao / hoàn tất trong tháng.</p>
-                </div>
-              </div>
-              <Link className="inline-flex items-center gap-1 text-xs font-medium text-[#7D715E] hover:text-[#B88E4F] transition-colors" to="/collaborator/leaderboard">
-                Xem bảng xếp hạng <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-              </Link>
-            </header>
-            {loading ? (
-              <p className="py-4 text-center text-xs text-[#7D715E]" role="status">Đang tải nhà sáng tạo nổi bật…</p>
-            ) : podiumError ? (
-              <div className="py-4 text-center text-xs text-[#7D715E]" role="status">
-                Chưa tải được bảng vinh danh. <button className="ml-2 px-2 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#1A1612]" onClick={retry}>Thử lại</button>
-              </div>
-            ) : !podiumEntries.length ? (
-              <p className="py-4 text-center text-xs text-[#7D715E]">Chưa có Creator đủ điều kiện vinh danh trong tháng này.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#EAE4D7]">
-                {podiumEntries.map(({ creator }) => {
-                  const rank = creator!.rank;
-                  return (
-                    <article className="p-3 sm:px-4 flex flex-col justify-between gap-3 min-w-0" key={creator!.collaboratorId}>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="relative grid place-items-center w-9 h-9 shrink-0 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] font-semibold text-xs overflow-hidden" aria-hidden="true">
-                          {creator?.fullName?.charAt(0) || rank}
-                          {creator?.avatarUrl && <img src={creator.avatarUrl} alt="" className="w-full h-full object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} />}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-xs font-semibold text-[#1A1612] truncate">{creator?.fullName || 'Đang cập nhật'}</h3>
-                          <p className="text-[11px] text-[#7D715E] truncate">{creator?.tierName || 'KOL Tiếp thị'}</p>
-                        </div>
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-semibold shrink-0">
-                          {rank === 1 && <Crown className="w-3 h-3" aria-hidden="true" />} Hạng {rank}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline justify-between gap-2 pt-2 border-t border-[#EAE4D7]">
-                        <span className="text-[10px] text-[#7D715E]">Doanh số GMV{rank === 1 ? ' xuất sắc' : ''}:</span>
-                        <strong className="text-sm font-bold text-[#1A1612] tabular-nums">{currency(Number(creator?.grossRevenue || 0))}</strong>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-    </div>
-  );
+    let active = true; setLoading(true); setError('');
+    Promise.allSettled([tierService.getMyTierStatus(), tierService.getAllTiers()]).then(([result, rules]) => {
+      if (!active) return;
+      setStatus(result.status === 'fulfilled' ? result.value : null);
+      setError(result.status === 'rejected' ? 'Chưa tải được cấp bậc đang áp dụng.' : '');
+      setPolicies(rules.status === 'fulfilled' ? rules.value : []); setPolicyError(rules.status === 'rejected'); setLoading(false);
+    });
+    return () => { active = false; };
+  }, [view, revision]);
+  const current = status?.currentTier;
+  const revenue = Number(status?.currentRevenue || 0);
+  const maintenance = Number(status?.maintenanceThreshold ?? current?.maintenanceThreshold ?? Number(current?.minRevenueThreshold || 0) * .6);
+  const maintained = status?.isMaintained ?? revenue >= maintenance;
+  const next = status?.nextTier;
+  const target = Number(next?.minRevenueThreshold || 0);
+  const progress = next && target ? Math.min(100, Math.max(0, revenue / target * 100)) : 100;
+  const tabs = [{ label: 'Cấp bậc & Quyền lợi', path: '/collaborator/tiers', key: 'tiers', icon: Award }, { label: 'Bảng vinh danh', path: '/collaborator/leaderboard', key: 'leaderboard', icon: Trophy }, { label: 'Thưởng doanh số tháng', path: '/collaborator/bonus-progress', key: 'bonus', icon: Target }];
+  return <div className="kol-tier-workspace">
+    <nav className="kol-tier-navigation" aria-label="Cấp bậc và vinh danh">{tabs.map(tab => <Link key={tab.key} to={tab.path} aria-current={view === tab.key ? 'page' : undefined}><tab.icon size={17} /><span>{tab.label}</span></Link>)}</nav>
+    {view === 'leaderboard' ? <LeaderboardPage alignToContainer /> : view === 'bonus' ? <MonthlyRewardsPanel mode="kol" /> : <>
+      {loading ? <div className="kol-tier-state" role="status">Đang tải cấp bậc…</div> : error || !status || !current ? <div className="kol-tier-state" role="alert">{error || 'Chưa có dữ liệu cấp bậc.'}<button onClick={() => setRevision(v => v + 1)}>Thử lại</button></div> : <div className="kol-tier-grid">
+        <section className="kol-current-tier" aria-label="Cấp bậc hiện tại">
+          <header><span className="kol-tier-crown"><Crown size={28} /></span><div><span>Cấp bậc hiện tại</span><h2>{current.name}</h2><p>Mức cộng theo bậc <strong>+{Number(current.extraBonusPercentage)}%</strong></p></div><button className="kol-tier-rules-button" onClick={() => setShowRules(true)}><Info size={14} />Cách xét hạng</button></header>
+          <div className="kol-tier-stats"><div><span>GMV kỳ xét</span><strong>{money(revenue)}</strong></div><div><span>Đơn hợp lệ</span><strong>{Number(status.totalOrders).toLocaleString('vi-VN')} đơn</strong></div><div><span>Ngưỡng duy trì</span><strong>{money(maintenance)}</strong></div></div>
+          {status.assessmentPeriod && <p className="kol-tier-period">Kỳ xét: {date(status.assessmentPeriod.startsAt)} – {date(new Date(new Date(status.assessmentPeriod.endsAt).getTime() - 1).toISOString())}</p>}
+          <div className="kol-tier-progress">
+            <p className="kol-tier-maintained">{status.assessmentIncomplete ? <><Info size={15} />Số liệu kỳ xét cần đối soát</> : maintained ? <><Check size={15} />Đã đạt ngưỡng duy trì</> : <>Còn {money(Math.max(0, maintenance - revenue))} để duy trì hạng</>}</p>
+            {next ? <><div className="kol-tier-progress-label"><span>Còn <strong>{money(Math.max(0, target - revenue))}</strong> để đạt ngưỡng hạng {next.name}</span><strong>{progress.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</strong></div><div className="kol-tier-track" role="progressbar" aria-label={`Tiến độ hạng ${next.name}`} aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${progress}%` }} /></div><div className="kol-tier-progress-caption"><span>{money(revenue)}</span><span>Mục tiêu {money(target)}</span></div></> : <p>Bạn đang ở cấp bậc cao nhất.</p>}
+            {!maintained && status.cycleStatus === 'GRACE_PERIOD' && <p className="kol-tier-grace">Đang ân hạn · Còn {status.daysRemaining ?? '—'} ngày theo kỳ đánh giá.</p>}
+          </div>
+          <footer><span>Hạng áp dụng theo kết quả hệ thống.</span><Link to="/collaborator/marketing?tab=links">Tạo link tiếp thị<ArrowUpRight size={14} /></Link></footer>
+        </section>
+        <section className="kol-tier-policy" aria-label="Các cấp bậc"><header><h2>Cấp bậc & quyền lợi</h2><span>{policies.length} cấp bậc</span></header><div className="kol-tier-policy-grid">{policies.map(policy => {
+          const active = policy.id === current.id;
+          return <article key={policy.id} data-current={active || undefined}><header><h3>{policy.name}</h3>{active && <span><Check size={11} />Hiện tại</span>}</header><strong className="kol-tier-policy-bonus">+{Number(policy.extraBonusPercentage)}%<small>mức cộng theo bậc</small></strong><dl><div><dt>Ngưỡng lên hạng</dt><dd>{money(Number(policy.minRevenueThreshold))}</dd></div><div><dt>Ngưỡng duy trì</dt><dd>{money(Number(policy.maintenanceThreshold ?? Math.round(Number(policy.minRevenueThreshold) * .6)))}</dd></div></dl></article>;
+        })}</div>{policyError && <p role="alert">Chưa tải được chính sách. <button onClick={() => setRevision(v => v + 1)}>Thử lại</button></p>}</section>
+      </div>}
+    </>}
+    {showRules && status && <Modal isOpen title="Cách xét hạng" onClose={() => setShowRules(false)} maxWidth="xl"><div className="kol-tier-rule-content"><p>GMV hợp lệ tính từ đơn tiếp thị đã giao hoặc hoàn tất trong kỳ xét, không gồm phí vận chuyển và đã trừ ưu đãi, hoàn trả.</p>{status.assessmentPeriod && <p><strong>Kỳ dữ liệu:</strong> {date(status.assessmentPeriod.startsAt)} – {date(new Date(new Date(status.assessmentPeriod.endsAt).getTime() - 1).toISOString())}</p>}<p><strong>Duy trì hạng:</strong> theo ngưỡng cấu hình của từng cấp bậc. Đạt ngưỡng không phải xác nhận bảo toàn hạng cho một kỳ tương lai.</p>{status.nextEvaluationAt && <p><strong>Lần đánh giá tiếp theo:</strong> {new Date(status.nextEvaluationAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>}<p><strong>Ân hạn:</strong> {status.daysRemaining ?? '—'} ngày theo trạng thái kỳ; khi chưa duy trì được hạng, hệ thống áp dụng quy tắc chuyển tiếp.{status.stepDownTier ? ` Hạng chuyển tiếp: ${status.stepDownTier.name}.` : ''}</p><p>Thù lao theo bậc không cộng dồn vào tổng mức Deal đã thỏa thuận.</p><button onClick={() => setShowRules(false)}>Đóng</button></div></Modal>}
+  </div>;
 }

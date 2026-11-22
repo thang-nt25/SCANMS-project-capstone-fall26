@@ -1,3 +1,5 @@
+import { publicShareUrl } from '@/utils/public-url';
+import { handleAvatarImageError, handleStoreImageError } from '@/utils/image-fallback.utils';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { LiveVoucherDropDialog } from '../../components/live/LiveVoucherDropDialog';
 import { HostStudioProducts } from '../../components/live/HostStudioProducts';
@@ -638,7 +640,7 @@ export default function LiveStreamRoomPage() {
       sessionData?.creator?.avatarUrl ||
       (currentUser as any)?.avatar ||
       (currentUser as any)?.avatarUrl ||
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+      '/assets/avatar-placeholder.svg';
 
     const kolProfile: UserProfileData = {
       name: kolName,
@@ -909,7 +911,7 @@ export default function LiveStreamRoomPage() {
 
     const handleBeforeUnload = () => {
       try {
-        const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/live-sessions/public/${encodeURIComponent(identifier)}/interaction`;
+        const url = `${api.defaults.baseURL}/live-sessions/public/${encodeURIComponent(identifier)}/interaction`;
         const payload = JSON.stringify({ action: 'LEAVE', clientId: clientIdRef.current });
         navigator.sendBeacon?.(url, new Blob([payload], { type: 'application/json' }));
       } catch {}
@@ -949,7 +951,7 @@ export default function LiveStreamRoomPage() {
           variantId: p.variantId || p.variant?.id || undefined,
           variantName: p.variant?.name,
           title: prod.title || prod.name || `Sản phẩm Deal Live #${idx + 1}`,
-          imageUrl: prod.imageUrl || sessionData?.store?.logoUrl || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&auto=format&fit=crop&q=80',
+          imageUrl: prod.imageUrl || '/assets/product-placeholder.svg',
           price: basePrice,
           livePrice,
           discountPercentage: basePrice > 0 ? Math.round(((basePrice - livePrice) / basePrice) * 100) : 0,
@@ -1306,8 +1308,8 @@ export default function LiveStreamRoomPage() {
                     sessionData?.creator?.avatarUrl ||
                     (currentUser as any)?.avatar ||
                     (currentUser as any)?.avatarUrl ||
-                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
-                  }
+                    '/assets/avatar-placeholder.svg'
+                  } onError={handleAvatarImageError}
                   alt="Host"
                   className="w-full h-full object-cover group-hover/kol:scale-110 transition-transform"
                 />
@@ -1345,8 +1347,8 @@ export default function LiveStreamRoomPage() {
                   <img
                     src={
                       sessionData?.store?.logoUrl ||
-                      'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=100&auto=format&fit=crop&q=80'
-                    }
+                      '/assets/store-placeholder.svg'
+                    } onError={handleStoreImageError}
                     alt="Shop"
                     className="w-full h-full object-cover"
                   />
@@ -1524,7 +1526,7 @@ export default function LiveStreamRoomPage() {
             type="button"
             onClick={() => {
               if (navigator.clipboard) {
-                void navigator.clipboard.writeText(window.location.href);
+                void navigator.clipboard.writeText(publicShareUrl(window.location.href));
                 toast.success('Đã sao chép link phòng live');
               }
             }}
@@ -1627,8 +1629,8 @@ export default function LiveStreamRoomPage() {
                       src={
                         sessionData?.creator?.avatarUrl ||
                         sessionData?.store?.logoUrl ||
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
-                      }
+                        '/assets/avatar-placeholder.svg'
+                      } onError={handleAvatarImageError}
                       alt="Host Avatar"
                       className="w-full h-full object-cover rounded-full"
                     />
@@ -1936,8 +1938,8 @@ export default function LiveStreamRoomPage() {
                     <img
                       src={
                         sessionData?.store?.logoUrl ||
-                        'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=100&auto=format&fit=crop&q=80'
-                      }
+                        '/assets/store-placeholder.svg'
+                      } onError={handleStoreImageError}
                       alt="Shop"
                       className="w-full h-full object-cover"
                     />
@@ -2596,7 +2598,7 @@ export default function LiveStreamRoomPage() {
                   <div className="w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-[#FAF8F5] shadow-lg flex items-center justify-center">
                     {selectedProfile.avatar ? (
                       <img
-                        src={selectedProfile.avatar}
+                        src={selectedProfile.avatar} onError={handleAvatarImageError}
                         alt={selectedProfile.name}
                         className="w-full h-full object-cover"
                       />

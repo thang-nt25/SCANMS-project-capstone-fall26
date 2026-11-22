@@ -101,4 +101,3 @@ export function useControlledTab<T extends string>({
 
   return { activeTab, setActiveTab, isPending, visitedTabs };
 }
-

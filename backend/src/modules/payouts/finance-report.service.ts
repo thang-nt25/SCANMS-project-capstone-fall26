@@ -6,12 +6,42 @@ import {
 } from '@nestjs/common';
 import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { actualPayoutWhere, isTestPayout } from './payout-environment';
 import { COMMISSION_HOLD_DAYS } from '../commissions/commission.constants';
 import { cleanGoodsRevenue } from './finance-revenue';
 
 @Injectable()
 export class FinanceReportService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async pendingWork(userId: string) {
+    const [kol, customer, escrow, policies, grants, exchangeCandidates] = await Promise.all([
+      this.prisma.payoutRequest.count({ where: { status: 'PENDING' } }),
+      this.prisma.customerWithdrawal.count({ where: { status: 'PENDING' } }),
+      this.prisma.commission.count({ where: { status: 'PENDING', order: { OR: [
+        { rawPayload: { path: ['selfReferralReviewRequired'], equals: true } },
+        { returnRequests: { some: { OR: [
+          { status: { notIn: ['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED'] } },
+          { dispute: { is: { status: 'OPEN' } } },
+        ] } } },
+      ] } } }),
+      this.prisma.storeMonthlyRewardPolicy.findMany({ where: { status: 'PENDING', createdBy: { not: userId } }, select: { yearMonth: true } }),
+      this.prisma.storeMonthlyRewardGrant.findMany({ where: { status: 'PENDING', requestedBy: { not: userId }, policy: { status: 'APPROVED' } }, select: { policy: { select: { yearMonth: true } } } }),
+      this.prisma.commission.findMany({
+        where: { status: 'PENDING', order: { returnRequests: { some: { status: { in: ['EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'] } } } } },
+        select: { order: { select: { rawPayload: true, returnRequests: { select: { status: true, dispute: { select: { status: true } } } } } } },
+      }),
+    ]);
+    const escrowWaitingExchange = exchangeCandidates.filter(item => {
+      const risk = item.order.rawPayload as Prisma.JsonObject | null;
+      const active = item.order.returnRequests.filter(claim => !['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED'].includes(claim.status));
+      return risk?.selfReferralReviewRequired !== true && !item.order.returnRequests.some(claim => claim.dispute?.status === 'OPEN')
+        && active.length > 0 && active.every(claim => ['EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'].includes(claim.status));
+    }).length;
+    return { kol, customer, escrow, escrowWaitingExchange, monthly: { policies: policies.length, grants: grants.length, total: policies.length + grants.length,
+      months: [...new Set([...policies.map(p => p.yearMonth), ...grants.map(g => g.policy.yearMonth)])].sort(),
+    }, checkedAt: new Date().toISOString() };
+  }
 
   async storePnl(storeId: string, userId: string, role: UserRole) {
     const store = await this.prisma.store.findFirst({
@@ -334,8 +364,8 @@ export class FinanceReportService {
       },
       orderBy: [{ processedAt: 'asc' }, { id: 'asc' }],
     });
-    const realItems = items.filter(row => row.transferProvider !== 'BIDV_SANDBOX' && !row.bankRefCode?.startsWith('SBX-'));
-    const sandboxItems = items.filter(row => !realItems.includes(row));
+    const realItems = items.filter(row => !isTestPayout(row));
+    const sandboxItems = items.filter(isTestPayout);
     const total = (rows: typeof items, key: 'amount' | 'taxAmount' | 'netAmount') =>
       rows
         .reduce((sum, row) => sum.plus(row[key]), new Prisma.Decimal(0))
@@ -419,14 +449,16 @@ export class FinanceReportService {
     const start = new Date(Date.UTC(year, month - 1, 1, -7));
     const end = new Date(Date.UTC(year, month, 1, -7));
     return this.prisma.$transaction(async tx => {
-      const [ledgers, postings, created, completed, paid] = await Promise.all([
+      const [ledgers, postings, created, completed, paid, customerPaid] = await Promise.all([
         tx.financialLedger.groupBy({ by: ['balanceBucket'], where: { createdAt: { gte: start, lt: end } }, _sum: { amount: true } }),
-        tx.financePosting.findMany({ where: { createdAt: { gte: start, lt: end } }, select: { debitAccount: true, creditAccount: true, amount: true } }),
+        tx.financePosting.findMany({ where: { createdAt: { gte: start, lt: end } }, select: { debitAccount: true, creditAccount: true, amount: true, referenceType: true } }),
         tx.payoutRequest.aggregate({ where: { createdAt: { gte: start, lt: end } }, _sum: { amount: true } }),
         tx.payoutRequest.aggregate({ where: { status: { in: ['APPROVED', 'REJECTED'] }, processedAt: { gte: start, lt: end } }, _sum: { amount: true } }),
         tx.payoutRequest.findMany({ where: { status: 'APPROVED', processedAt: { gte: start, lt: end } }, select: { transferProvider: true, bankRefCode: true, netAmount: true, taxAmount: true } }),
+        tx.customerWithdrawal.aggregate({ where: { status: 'APPROVED', processedAt: { gte: start, lt: end } }, _sum: { amount: true } }),
       ]);
-      const book = (account: string) => postings.reduce((sum, row) => sum.plus(row.creditAccount === account ? row.amount : 0).minus(row.debitAccount === account ? row.amount : 0), new Prisma.Decimal(0));
+      // This row compares completed withdrawals only, excluding bank receipts/top-ups.
+      const book = (account: string) => postings.filter(row => account !== 'CORPORATE_BANK' || ['PAYOUT_REQUEST', 'CUSTOMER_WITHDRAWAL'].includes(row.referenceType)).reduce((sum, row) => sum.plus(row.creditAccount === account ? row.amount : 0).minus(row.debitAccount === account ? row.amount : 0), new Prisma.Decimal(0));
       const movement = (bucket: string) => new Prisma.Decimal(ledgers.find(row => row.balanceBucket === bucket)?._sum.amount ?? 0);
       const paidTotal = (sandbox: boolean, key: 'netAmount' | 'taxAmount') => paid.filter(row => (row.transferProvider === 'BIDV_SANDBOX' || !!row.bankRefCode?.startsWith('SBX-')) === sandbox).reduce((sum, row) => sum.plus(row[key]), new Prisma.Decimal(0));
       const values = [
@@ -434,7 +466,7 @@ export class FinanceReportService {
         ['AFFILIATE_ESCROW', movement('PENDING')],
         ['CUSTOMER_FUNDS', movement('SHOPPING')],
         ['PAYOUT_RESERVED', new Prisma.Decimal(created._sum.amount ?? 0).minus(completed._sum.amount ?? 0)],
-        ['CORPORATE_BANK', paidTotal(false, 'netAmount')],
+        ['CORPORATE_BANK', paidTotal(false, 'netAmount').plus(customerPaid._sum.amount ?? 0)],
         ['PIT_TAX_PAYABLE', paidTotal(false, 'taxAmount')],
         ['BIDV_SANDBOX_BANK', paidTotal(true, 'netAmount')],
         ['SANDBOX_PIT_PAYABLE', paidTotal(true, 'taxAmount')],
@@ -444,10 +476,103 @@ export class FinanceReportService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
 
+  async reconciliationDetails(yearMonth: string, account: string, page = 1) {
+    const buckets: Record<string, 'AVAILABLE' | 'PENDING' | 'SHOPPING'> = {
+      PARTNER_EARNINGS_PAYABLE: 'AVAILABLE', AFFILIATE_ESCROW: 'PENDING', CUSTOMER_FUNDS: 'SHOPPING',
+    };
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth ?? '') || !Number.isInteger(page) || page < 1 ||
+      ![...Object.keys(buckets), 'PAYOUT_RESERVED', 'CORPORATE_BANK', 'PIT_TAX_PAYABLE', 'BIDV_SANDBOX_BANK', 'SANDBOX_PIT_PAYABLE'].includes(account))
+      throw new BadRequestException('Kỳ, tài khoản hoặc trang đối soát không hợp lệ');
+    const [year, month] = yearMonth.split('-').map(Number);
+    const period = { gte: new Date(Date.UTC(year, month - 1, 1, -7)), lt: new Date(Date.UTC(year, month, 1, -7)) };
+    const take = 20, skip = (page - 1) * take;
+    return this.prisma.$transaction(async tx => {
+      const where: Prisma.FinancePostingWhereInput = { createdAt: period, OR: [{ debitAccount: account }, { creditAccount: account }],
+        ...(account === 'CORPORATE_BANK' ? { referenceType: { in: ['PAYOUT_REQUEST', 'CUSTOMER_WITHDRAWAL'] } } : {}) };
+      const [bookRows, bookCount] = await Promise.all([
+        tx.financePosting.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip, take }),
+        tx.financePosting.count({ where }),
+      ]);
+      const linked = await tx.payoutRequest.findMany({ where: { id: { in: bookRows.filter(row => ['PAYOUT_REQUEST', 'PAYOUT_SANDBOX'].includes(row.referenceType)).map(row => row.referenceId) } }, select: { id: true, createdAt: true, processedAt: true, status: true } });
+      const book = bookRows.map(row => ({ ...row, amount: row.amount.toFixed(2), signedAmount: (row.creditAccount === account ? row.amount : row.amount.negated()).toFixed(2), payout: linked.find(payout => payout.id === row.referenceId) ?? null }));
+      type Source = { id: string; referenceId: string | null; referenceType: string; createdAt: Date; amount: string; status?: string; processedAt?: Date | null };
+      let source: Source[] = [], sourceCount = 0, sourceHasMore = false;
+      if (buckets[account]) {
+        const sourceWhere = { balanceBucket: buckets[account], createdAt: period };
+        const [rows, count] = await Promise.all([
+          tx.financialLedger.findMany({ where: sourceWhere, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip, take }),
+          tx.financialLedger.count({ where: sourceWhere }),
+        ]);
+        sourceCount = count;
+        sourceHasMore = count > page * take;
+        source = rows.map(row => ({ id: row.id, referenceId: row.referenceId, referenceType: row.referenceType ?? row.transactionType, createdAt: row.createdAt, amount: row.amount.toFixed(2) }));
+      } else {
+        const payoutWhere: Prisma.PayoutRequestWhereInput = account === 'PAYOUT_RESERVED'
+          ? { OR: [{ createdAt: period }, { status: { in: ['APPROVED', 'REJECTED'] }, processedAt: period }] }
+          : { status: 'APPROVED', processedAt: period };
+        if (account !== 'PAYOUT_RESERVED') {
+          const sandbox: Prisma.PayoutRequestWhereInput = { OR: [{ transferProvider: 'BIDV_SANDBOX' }, { bankRefCode: { startsWith: 'SBX-' } }] };
+          payoutWhere.AND = [account.startsWith('BIDV_') || account.startsWith('SANDBOX_') ? sandbox : actualPayoutWhere];
+        }
+        const [rows, count] = await Promise.all([
+          tx.payoutRequest.findMany({ where: payoutWhere, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip, take }),
+          tx.payoutRequest.count({ where: payoutWhere }),
+        ]);
+        sourceCount = count;
+        sourceHasMore = count > page * take;
+        for (const row of rows) {
+          const base = { referenceId: row.id, referenceType: 'PAYOUT_REQUEST', status: row.status, processedAt: row.processedAt };
+          if (account === 'PAYOUT_RESERVED') {
+            if (row.createdAt >= period.gte && row.createdAt < period.lt) source.push({ ...base, id: `${row.id}:created`, createdAt: row.createdAt, amount: row.amount.toFixed(2) });
+            if (row.processedAt && row.processedAt >= period.gte && row.processedAt < period.lt && ['APPROVED', 'REJECTED'].includes(row.status)) source.push({ ...base, id: `${row.id}:closed`, createdAt: row.processedAt, amount: row.amount.negated().toFixed(2) });
+          } else source.push({ ...base, id: row.id, createdAt: row.processedAt!, amount: (account.includes('PIT') ? row.taxAmount : row.netAmount).toFixed(2) });
+        }
+        if (account === 'CORPORATE_BANK') {
+          const customerWhere = { status: 'APPROVED' as const, processedAt: period };
+          const [rows, count] = await Promise.all([
+            tx.customerWithdrawal.findMany({ where: customerWhere, orderBy: [{ processedAt: 'desc' }, { id: 'desc' }], skip, take }),
+            tx.customerWithdrawal.count({ where: customerWhere }),
+          ]);
+          sourceCount += count;
+          sourceHasMore ||= count > page * take;
+          source.push(...rows.map(row => ({ id: row.id, referenceId: row.id, referenceType: 'CUSTOMER_WITHDRAWAL', createdAt: row.processedAt!, amount: row.amount.toFixed(2), status: row.status })));
+        }
+      }
+      return { yearMonth, account, page, take, book, bookCount, source, sourceCount,
+        hasMore: bookCount > page * take || sourceHasMore };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+  }
+
+  async escrowMovements(id: string, page = 1) {
+    if (!Number.isInteger(page) || page < 1)
+      throw new BadRequestException('Trang không hợp lệ');
+    const commission = await this.prisma.commission.findUnique({
+      where: { id }, select: { id: true, collaboratorId: true, order: { select: { externalOrderSn: true } } },
+    });
+    if (!commission) throw new NotFoundException('Không tìm thấy khoản thù lao');
+    // Exact commission reference and wallet owner: never mix other orders or customer refunds.
+    const where: Prisma.FinancialLedgerWhereInput = {
+      referenceType: 'COMMISSION', referenceId: commission.id,
+      wallet: { collaboratorId: commission.collaboratorId },
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.financialLedger.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * 10, take: 10,
+        select: { id: true, createdAt: true, transactionType: true, balanceBucket: true,
+          amount: true, balanceBefore: true, balanceAfter: true },
+      }),
+      this.prisma.financialLedger.count({ where }),
+    ]);
+    return { items, total, page, limit: 10, orderCode: commission.order.externalOrderSn };
+  }
+
   async escrow(page = 1) {
     if (!Number.isInteger(page) || page < 1)
       throw new BadRequestException('Trang không hợp lệ');
-    const where: Prisma.CommissionWhereInput = { status: 'PENDING' };
+    const where: Prisma.CommissionWhereInput = { OR: [
+      { status: 'PENDING' },
+      { status: { in: ['APPROVED', 'PAID'] }, dealBonusStatus: 'PENDING_KPI', dealBonusAmount: { gt: 0 } },
+    ] };
     const [items, total, aggregate] = await this.prisma.$transaction([
       this.prisma.commission.findMany({
         where,
@@ -457,6 +582,13 @@ export class FinanceReportService {
         select: {
           id: true,
           commissionAmount: true,
+          baseCommissionAmount: true,
+          status: true,
+          baseCommissionRate: true,
+          dealBonusRate: true,
+          dealProposalId: true,
+          dealBonusAmount: true,
+          dealBonusStatus: true,
           availableAt: true,
           order: {
             select: {
@@ -472,7 +604,7 @@ export class FinanceReportService {
                 deliveredAt: true,
                 orderItems: { select: { quantity: true, unitPrice: true, appliedCommissionRate: true, product: { select: { title: true, imageUrl: true } }, variant: { select: { name: true } } } },
               store: { select: { name: true } },
-               returnRequests: { select: { status: true }, orderBy: { submittedAt: 'desc' }, take: 1 },
+              returnRequests: { select: { id: true, status: true, dispute: { select: { status: true } } }, orderBy: { submittedAt: 'desc' } },
               rawPayload: true,
             },
           },
@@ -488,11 +620,23 @@ export class FinanceReportService {
       items: items.map((item) => {
         const { rawPayload, returnRequests, ...order } = item.order;
         const risk = rawPayload as Prisma.JsonObject | null;
+        const activeReturn = returnRequests.find(claim => !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(claim.status));
+        const openDispute = returnRequests.find(claim => claim.dispute?.status === 'OPEN');
         return {
           ...item,
+          pendingStandardAmount: item.status && item.status !== 'PENDING' ? '0.00' : (item.baseCommissionAmount ?? item.commissionAmount).toFixed(2),
+          pendingDealAmount: (item.dealBonusStatus === 'PENDING_KPI' || (item.status === 'PENDING' && item.dealBonusStatus === 'QUALIFIED'))
+            ? (item.dealBonusAmount ?? new Prisma.Decimal(0)).toFixed(2) : '0.00',
           order: {
             ...order,
             returnRequest: returnRequests[0] ?? null,
+            reviewReturnId: (openDispute ?? activeReturn)?.id ?? null,
+            holdReasons: [
+              ...(activeReturn ? [activeReturn.status === 'EXCHANGE_SHIPPED' ? 'Chờ giao hàng đổi' : activeReturn.status === 'AWAITING_CUSTOMER_CONFIRMATION' ? 'Chờ khách xác nhận hàng đổi' : 'Đang xử lý đổi trả'] : []),
+              ...(openDispute ? ['Tranh chấp chưa giải quyết'] : []),
+              ...(risk?.selfReferralReviewRequired === true ? ['Cần kiểm tra ghi nhận tiếp thị'] : []),
+              ...(!activeReturn && !openDispute && !['DELIVERED', 'COMPLETED'].includes(order.status) ? ['Đơn chưa đủ trạng thái giải tỏa'] : []),
+            ],
             shopConfirmedAt: typeof risk?.shopConfirmedAt === 'string' ? risk.shopConfirmedAt : null,
             handedToShippingAt: typeof risk?.ghnShippedAt === 'string' ? risk.ghnShippedAt : null,
             referralReviewRequired: risk?.selfReferralReviewRequired === true,

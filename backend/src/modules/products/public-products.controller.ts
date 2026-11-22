@@ -1,3 +1,4 @@
+import { resolvePublicAppUrl } from '../../common/public-app-url';
 import {
   Controller,
   ExecutionContext,
@@ -37,7 +38,7 @@ class OptionalJwtAuthGuard extends AuthGuard('jwt') {
   }
 }
 
-@ApiTags('Public Product Landing Page (FR-15)')
+@ApiTags('Public Product Landing Page')
 @Controller('public/products')
 export class PublicProductsController {
   constructor(
@@ -119,7 +120,7 @@ export class PublicProductsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Lấy dữ liệu Landing Page mua hàng công khai & Video Review (FR-15)',
+      'Lấy dữ liệu Landing Page mua hàng công khai & Video Review',
     description:
       'Cung cấp dữ liệu công khai an toàn cho khách vãng lai: Thông tin sản phẩm, tồn kho, chính sách Shop, video review KOL đã APPROVED (ưu tiên đúng KOL referral), thống kê sao và đánh giá đã duyệt có huy hiệu Đã mua hàng. Không lộ PII, commission hay thông tin nội bộ.',
   })
@@ -158,17 +159,18 @@ export class PublicProductsController {
   async getLandingPage(
     @Param('idOrSlug') idOrSlug: string,
     @Req() req?: Request,
+    @Query('review') reviewId?: string,
   ): Promise<ProductLandingResponseDto> {
     const attrCookie =
       req?.cookies?.['scanms_attr'] || req?.cookies?.['scanms_attribution'];
-    return this.productsService.getLandingPageData(idOrSlug, attrCookie);
+    return this.productsService.getLandingPageData(idOrSlug, attrCookie, reviewId);
   }
 
   @Post('analytics/events')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Tiếp nhận sự kiện tương tác người dùng trên Landing Page (FR-15 Analytics)',
+      'Tiếp nhận sự kiện tương tác người dùng trên Landing Page Analytics',
     description:
       'Ghi nhận các sự kiện page_view, video_start, video_complete, cta_click, checkout_start phục vụ thống kê chuyển đổi tiếp thị.',
   })
@@ -201,7 +203,7 @@ export class PublicProductsController {
   @Get([':idOrSlug/seo', 'preview/:idOrSlug', 'p/:idOrSlug'])
   @ApiOperation({
     summary:
-      'Server-Side Render Open Graph Meta Tags cho mạng xã hội (Facebook, Zalo, Twitter) (FR-15 SEO)',
+      'Server-Side Render Open Graph Meta Tags cho mạng xã hội (Facebook, Zalo, Twitter)',
   })
   async getSeoPreview(
     @Param('idOrSlug') idOrSlug: string,
@@ -212,9 +214,7 @@ export class PublicProductsController {
       const landingData =
         await this.productsService.getLandingPageData(idOrSlug);
       const frontendBaseUrl =
-        this.configService.get<string>('FRONTEND_URL') ||
-        process.env.FRONTEND_URL ||
-        'http://localhost:5173';
+        resolvePublicAppUrl(this.configService.get<string>('PUBLIC_APP_URL'), process.env.PUBLIC_APP_URL, this.configService.get<string>('FRONTEND_URL'), process.env.FRONTEND_URL);
       const normalizedFrontendUrl = frontendBaseUrl.replace(/\/+$/, '');
       const targetSlug = landingData.product.sku || landingData.product.id;
       const targetUrl = new URL(
@@ -282,9 +282,7 @@ export class PublicProductsController {
       return res.send(html);
     } catch (err: any) {
       const frontendBaseUrl =
-        this.configService.get<string>('FRONTEND_URL') ||
-        process.env.FRONTEND_URL ||
-        'http://localhost:5173';
+        resolvePublicAppUrl(this.configService.get<string>('PUBLIC_APP_URL'), process.env.PUBLIC_APP_URL, this.configService.get<string>('FRONTEND_URL'), process.env.FRONTEND_URL);
       return res.redirect(`${frontendBaseUrl}/marketplace`);
     }
   }

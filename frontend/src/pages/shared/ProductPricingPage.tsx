@@ -1,3 +1,4 @@
+import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   pricingApi,
@@ -5,6 +6,11 @@ import {
 } from "../../services/enterprise-pricing.service";
 import { Modal } from "../../components/ui/Modal";
 import { getSafeProductImageUrl } from "@/utils/marketplace.utils";
+import { authService } from "../../services/auth.service";
+import {
+  calculateMinSafePrice,
+  estimateMaxLossPerUnit,
+} from "../../utils/pricing-math";
 import {
   ShieldCheck,
   Tag,
@@ -36,15 +42,15 @@ const statusBadges: Record<
   },
   APPROVED: {
     label: "Đã duyệt · Chờ kích hoạt",
-    bg: "bg-[#E0F2FE]",
-    text: "text-[#0369A1]",
-    border: "border-[#BAE6FD]",
+    bg: "bg-[#FBF5EB]",
+    text: "text-[#805B27]",
+    border: "border-[#EEDFC6]",
   },
   ACTIVE: {
     label: "Đang áp dụng",
-    bg: "bg-[#ECFDF5]",
-    text: "text-[#065F46]",
-    border: "border-[#A7F3D0]",
+    bg: "bg-[#FAF8F5]",
+    text: "text-[#715126]",
+    border: "border-[#EAE4D7]",
   },
   REJECTED: {
     label: "Bị từ chối",
@@ -98,7 +104,8 @@ export default function ProductPricingPage({
   );
   const [note, setNote] = useState("");
   const [approve, setApprove] = useState(true);
-  const [promoFilter, setPromoFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'HISTORY'>('ALL');
+  const [promoFilter, setPromoFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'ACTIVE' | 'HISTORY'>('ALL');
+  const [pricingSection, setPricingSection] = useState<'floor' | 'promotions'>('floor');
   const [storeFilter, setStoreFilter] = useState<string>('ALL');
   const [showMapInfoModal, setShowMapInfoModal] = useState<boolean>(false);
 
@@ -107,12 +114,14 @@ export default function ProductPricingPage({
   const product = catalog.find((item) => item.id === productId);
 
   const pendingCount = useMemo(() => promotions.filter((p) => p.status === "PENDING").length, [promotions]);
-  const activeCount = useMemo(() => promotions.filter((p) => ["ACTIVE", "APPROVED"].includes(p.status)).length, [promotions]);
+  const approvedCount = useMemo(() => promotions.filter((p) => p.status === 'APPROVED').length, [promotions]);
+  const activeCount = useMemo(() => promotions.filter((p) => p.status === 'ACTIVE').length, [promotions]);
   const historyCount = useMemo(() => promotions.filter((p) => ["REJECTED", "CANCELLED", "EXPIRED"].includes(p.status)).length, [promotions]);
 
   const filteredPromotions = useMemo(() => {
     if (promoFilter === "PENDING") return promotions.filter((p) => p.status === "PENDING");
-    if (promoFilter === "ACTIVE") return promotions.filter((p) => ["ACTIVE", "APPROVED"].includes(p.status));
+    if (promoFilter === "APPROVED") return promotions.filter((p) => p.status === 'APPROVED');
+    if (promoFilter === "ACTIVE") return promotions.filter((p) => p.status === 'ACTIVE');
     if (promoFilter === "HISTORY") return promotions.filter((p) => ["REJECTED", "CANCELLED", "EXPIRED"].includes(p.status));
     return promotions;
   }, [promotions, promoFilter]);
@@ -218,40 +227,13 @@ export default function ProductPricingPage({
   }
 
   return (
-    <div className={reviewer ? "space-y-4 text-[#1A1612] pb-6" : "space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen"}>
+    <div className={reviewer ? "product-pricing-review flex flex-col gap-3 text-[#1A1612] pb-6" : "space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen"}>
+      {reviewer && <div className="pricing-section-tabs" role="tablist" aria-label="Nghiệp vụ giá sản phẩm">
+        <button id="pricing-floor-tab" role="tab" type="button" aria-selected={pricingSection === 'floor'} aria-controls="pricing-floor-panel" onClick={() => setPricingSection('floor')}><ShieldCheck size={16}/>Giá sàn MAP</button>
+        <button id="pricing-promotions-tab" role="tab" type="button" aria-selected={pricingSection === 'promotions'} aria-controls="pricing-promotions-panel" onClick={() => setPricingSection('promotions')}><Tag size={16}/>Đề xuất giảm giá{pendingCount > 0 && <span>{pendingCount} chờ duyệt</span>}</button>
+      </div>}
       {/* Header section */}
-      {reviewer ? (
-        <div className="flex items-center justify-between gap-2 pb-1">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowMapInfoModal(true)}
-              title="Xem quy chuẩn kiểm soát giá sàn MAP"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-semibold border border-[#EEDFC6] transition cursor-pointer"
-            >
-              <Info className="w-3.5 h-3.5" />
-              <span>Quy chuẩn giá sàn MAP</span>
-            </button>
-            {pendingCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                {pendingCount} chờ duyệt
-              </span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
-            disabled={loading || busy}
-            onClick={() => void load()}
-          >
-            <RefreshCw
-              className={`w-3.5 h-3.5 text-[#7D715E] ${loading ? "animate-spin" : ""}`}
-            />
-            <span>Làm mới</span>
-          </button>
-        </div>
-      ) : (
+      {!reviewer && (
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#EAE4D7]">
           <div>
             <div className="flex items-center gap-2">
@@ -313,27 +295,14 @@ export default function ProductPricingPage({
       ) : (
         <>
           {/* Section 1: Promotion requests */}
-          <section className="space-y-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-[#1A1612]">
-                  Chiến dịch khuyến mãi ({promotions.length})
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowMapInfoModal(true)}
-                  className="w-5 h-5 rounded-full bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6226] inline-flex items-center justify-center border border-[#EAE4D7] transition"
-                  title="Quy chuẩn thẩm định"
-                >
-                  <Info className="w-3 h-3" />
-                </button>
-              </div>
-
+          <section id={reviewer ? 'pricing-promotions-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'pricing-promotions-tab' : undefined} hidden={reviewer && pricingSection !== 'promotions'} className="pricing-promotions-panel space-y-3.5">
+            <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Status Tabs */}
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] overflow-x-auto">
+              <div className="pricing-promotion-filters grid grid-cols-2 gap-2 sm:grid-cols-5 [&>button]:flex [&>button]:min-h-11 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button[aria-pressed=true]]:bg-[#FBF5EB]">
                 <button
                   type="button"
                   onClick={() => setPromoFilter("ALL")}
+                  aria-pressed={promoFilter === 'ALL'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                     promoFilter === "ALL"
                       ? "bg-white text-[#1A1612] shadow-2xs"
@@ -345,6 +314,7 @@ export default function ProductPricingPage({
                 <button
                   type="button"
                   onClick={() => setPromoFilter("PENDING")}
+                  aria-pressed={promoFilter === 'PENDING'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                     promoFilter === "PENDING"
                       ? "bg-white text-[#92400E] shadow-2xs font-bold"
@@ -354,21 +324,24 @@ export default function ProductPricingPage({
                   <Clock3 className="w-3 h-3 text-[#D97706]" />
                   <span>Chờ duyệt ({pendingCount})</span>
                 </button>
+                <button type="button" aria-pressed={promoFilter === 'APPROVED'} onClick={() => setPromoFilter('APPROVED')} className="flex items-center gap-1 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold text-[#805B27]"><Clock3 className="h-3 w-3"/>Đã duyệt ({approvedCount})</button>
                 <button
                   type="button"
                   onClick={() => setPromoFilter("ACTIVE")}
+                  aria-pressed={promoFilter === 'ACTIVE'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                     promoFilter === "ACTIVE"
-                      ? "bg-white text-[#065F46] shadow-2xs font-bold"
-                      : "text-[#7D715E] hover:text-[#065F46]"
+                      ? "bg-white text-[#8F682E] shadow-2xs font-bold"
+                      : "text-[#7D715E] hover:text-[#8F682E]"
                   }`}
                 >
                   <CheckCircle2 className="w-3 h-3 text-[#059669]" />
-                  <span>Đang chạy ({activeCount})</span>
+                  <span>Đang áp dụng ({activeCount})</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPromoFilter("HISTORY")}
+                  aria-pressed={promoFilter === 'HISTORY'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                     promoFilter === "HISTORY"
                       ? "bg-white text-[#7D715E] shadow-2xs font-bold"
@@ -387,6 +360,8 @@ export default function ProductPricingPage({
                 <p className="text-xs font-semibold text-[#1A1612]">
                   {promoFilter === "PENDING"
                     ? "Không có yêu cầu chờ thẩm định"
+                    : promoFilter === "APPROVED"
+                      ? "Chưa có đề xuất đã duyệt chờ áp dụng"
                     : promoFilter === "ACTIVE"
                       ? "Không có chiến dịch đang áp dụng"
                       : promoFilter === "HISTORY"
@@ -426,7 +401,7 @@ export default function ProductPricingPage({
                           <div className="flex items-start gap-3 min-w-0">
                             {prodImg ? (
                               <img
-                                src={prodImg}
+                                src={prodImg} onError={handleProductImageError}
                                 alt={item.product?.title}
                                 className="w-11 h-11 rounded-xl object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
                               />
@@ -549,37 +524,75 @@ export default function ProductPricingPage({
                       </div>
 
                       {/* Action buttons */}
-                      <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-end gap-2">
-                        {reviewer && item.status === "PENDING" && (
-                          <>
-                            <button
-                              type="button"
-                              className="px-3.5 py-1.5 rounded-lg border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-semibold transition cursor-pointer"
-                              onClick={() => open("review", item, false)}
-                            >
-                              Từ chối
-                            </button>
-                            <button
-                              type="button"
-                              className="px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-2xs transition cursor-pointer"
-                              onClick={() => open("review", item, true)}
-                            >
-                              Phê duyệt
-                            </button>
-                          </>
-                        )}
-                        {["PENDING", "APPROVED", "ACTIVE"].includes(
-                          item.status,
-                        ) && (
-                          <button
-                            type="button"
-                            className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-[#7D715E] hover:text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-medium transition cursor-pointer"
-                            onClick={() => open("cancel", item)}
-                          >
-                            Hủy khuyến mãi
-                          </button>
-                        )}
-                      </div>
+                      {(() => {
+                        const floorVal = Number(item.variant?.floorPrice ?? item.product?.floorPrice ?? 0);
+                        const safePrice = Number(item.minSafePrice || calculateMinSafePrice(floorVal));
+                        const isClearance =
+                          item.isClearanceBelowSafeFloor ??
+                          (safePrice > 0 && Number(item.proposedPrice || 0) < safePrice);
+                        const maxLoss =
+                          item.maxLossPerUnit ??
+                          (isClearance ? estimateMaxLossPerUnit(Number(item.proposedPrice || 0), floorVal) : 0);
+                        const isAdmin = authService.getCurrentUser()?.role === "SYSTEM_ADMIN";
+
+                        return (
+                          <div className="pt-3 border-t border-[#EAE4D7] flex flex-wrap items-center justify-between gap-2">
+                            {isClearance ? (
+                              <span
+                                title={`Giá đề xuất thấp hơn ngưỡng an toàn (${money(safePrice)}). Lỗ tối đa ước tính ${money(maxLoss)}/sp.`}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFFBEB] border border-[#D97706] text-[11px] font-bold text-[#92400E]"
+                              >
+                                <span>Xả hàng dưới sàn</span>
+                                <span className="font-mono text-[#DC2626]">
+                                  · Lỗ tối đa {money(maxLoss)} / sản phẩm
+                                </span>
+                              </span>
+                            ) : (
+                              <span />
+                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {reviewer && item.status === "PENDING" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="px-3.5 py-1.5 rounded-lg border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-semibold transition cursor-pointer"
+                                    onClick={() => open("review", item, false)}
+                                  >
+                                    Từ chối
+                                  </button>
+                                  {isClearance && !isAdmin ? (
+                                    <span
+                                      title="Khuyến mãi xả hàng dưới ngưỡng an toàn bắt buộc SYSTEM_ADMIN phê duyệt."
+                                      className="px-3 py-1.5 rounded-lg bg-[#F3EFE6] border border-[#EEDFC6] text-[#7D715E] text-xs font-bold cursor-not-allowed"
+                                    >
+                                      Chỉ SYSTEM_ADMIN duyệt
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-2xs transition cursor-pointer"
+                                      onClick={() => open("review", item, true)}
+                                    >
+                                      Phê duyệt
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              {["PENDING", "APPROVED", "ACTIVE"].includes(
+                                item.status,
+                              ) && (
+                                <button
+                                  type="button"
+                                  className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-[#7D715E] hover:text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-medium transition cursor-pointer"
+                                  onClick={() => open("cancel", item)}
+                                >
+                                  Hủy khuyến mãi
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </article>
                   );
                 })}
@@ -588,38 +601,26 @@ export default function ProductPricingPage({
           </section>
 
           {/* Section 2: Catalog and MAP configuration */}
-          <section className="space-y-3.5 pt-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-[#1A1612]">
-                  Cấu hình giá sàn bảo vệ biên lãi (MAP) ({filteredCatalog.length})
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowMapInfoModal(true)}
-                  className="w-5 h-5 rounded-full bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6226] inline-flex items-center justify-center border border-[#EAE4D7] transition"
-                  title="Quy chuẩn giá sàn MAP"
-                >
-                  <Info className="w-3 h-3" />
-                </button>
-              </div>
-
+          <section id={reviewer ? 'pricing-floor-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'pricing-floor-tab' : undefined} hidden={reviewer && pricingSection !== 'floor'} className={reviewer ? "space-y-3" : "space-y-3.5 pt-4"}>
+            <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Filter by In-house Store and Search */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
                   <input
                     type="text"
                     placeholder="Tìm tên sản phẩm..."
+                    aria-label="Tìm tên sản phẩm"
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
-                    className="w-44 sm:w-52 px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#A79B89] focus:border-[#C59B58] focus:outline-none"
+                    className="h-11 w-full px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#A79B89] focus:border-[#C59B58] focus:outline-none"
                   />
                 </div>
                 {availableStores.length > 1 && (
                   <select
+                    aria-label="Lọc nhãn hàng"
                     value={storeFilter}
                     onChange={(e) => setStoreFilter(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
+                    className="relative flex h-11 w-full items-center justify-center rounded-xl border border-[#EAE4D7] bg-white px-8 text-center text-sm font-semibold leading-normal text-[#1A1612] [text-align-last:center] [&::picker-icon]:absolute [&::picker-icon]:right-3 [&::picker-icon]:top-1/2 [&::picker-icon]:-translate-y-1/2 sm:w-64 focus:border-[#C59B58] focus:outline-none"
                   >
                     <option value="ALL">Tất cả nhãn hàng ({catalog.length})</option>
                     {availableStores.map((st) => (
@@ -634,7 +635,7 @@ export default function ProductPricingPage({
 
             <div className="overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-2xs">
               <table className="w-full min-w-[700px] text-left text-xs">
-                <thead className="bg-[#F3EFE6] text-[#1A1612] font-semibold">
+                <thead className="border-b border-[#EAE4D7] bg-white text-[#1A1612] font-semibold">
                   <tr>
                     <th className="p-3.5">Sản phẩm / Nhãn hàng</th>
                     <th className="p-3.5 whitespace-nowrap">Giá niêm yết</th>

@@ -348,6 +348,7 @@ model User {
   payoutRequests            PayoutRequest[]
   collaboratorConversations Conversation[]              @relation("CollaboratorConversations")
   sentChatMessages          ChatMessage[]               @relation("SentChatMessages")
+  chatMessageReactions      ChatMessageReaction[]
   campaignParticipants      CampaignParticipant[]
   exclusiveDealProposals    ExclusiveDealProposal[]     @relation("ExclusiveDealCollaborator")
   reviewedExclusiveDeals    ExclusiveDealProposal[]     @relation("ExclusiveDealReviewer")
@@ -619,6 +620,7 @@ model Product {
   sku                  String    @db.VarChar(100)
   title                String    @db.VarChar(255)
   categoryName         String?   @map("category_name") @db.VarChar(100)
+  productGroup         String?   @map("product_group") @db.VarChar(100)
   description          String?
   imageUrl             String?   @map("image_url")
   originalPrice        Decimal?  @map("original_price") @db.Decimal(15, 2)
@@ -798,6 +800,43 @@ model CommissionRule {
 
   @@index([storeId], map: "idx_fk_commission_rules_store")
   @@map("commission_rules")
+}
+
+model StoreMonthlyRewardPolicy {
+  id String @id @default(uuid()) @db.Uuid
+  storeId String @map("store_id") @db.Uuid
+  yearMonth String @map("year_month") @db.VarChar(7)
+  name String @db.VarChar(150)
+  targetRevenue Decimal @map("target_revenue") @db.Decimal(15,2)
+  rewardAmount Decimal @map("reward_amount") @db.Decimal(15,2)
+  status String @default("PENDING") @db.VarChar(20)
+  createdBy String @map("created_by") @db.Uuid
+  reviewedBy String? @map("reviewed_by") @db.Uuid
+  reviewNote String? @map("review_note") @db.VarChar(500)
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  isDemo Boolean @default(false) @map("is_demo")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  grants StoreMonthlyRewardGrant[]
+  @@unique([storeId, yearMonth])
+  @@map("store_monthly_reward_policies")
+}
+
+model StoreMonthlyRewardGrant {
+  id String @id @default(uuid()) @db.Uuid
+  policyId String @map("policy_id") @db.Uuid
+  collaboratorId String @map("collaborator_id") @db.Uuid
+  validRevenue Decimal @map("valid_revenue") @db.Decimal(15,2)
+  amount Decimal @db.Decimal(15,2)
+  status String @default("PENDING") @db.VarChar(20)
+  requestedBy String @map("requested_by") @db.Uuid
+  reviewedBy String? @map("reviewed_by") @db.Uuid
+  reviewNote String? @map("review_note") @db.VarChar(500)
+  paidAt DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  policy StoreMonthlyRewardPolicy @relation(fields: [policyId], references: [id])
+  @@unique([policyId, collaboratorId])
+  @@map("store_monthly_reward_grants")
 }
 
 model MonthlyBonusResult {
@@ -1798,7 +1837,8 @@ model PayoutRequest {
   collaboratorId     String       @map("collaborator_id") @db.Uuid
   storeId            String?      @map("store_id") @db.Uuid
   amount             Decimal      @db.Decimal(15, 2) // Gross Amount
-  taxAmount          Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2) // 10% PIT Tax
+  taxAmount          Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2)
+  taxContext         Json?        @map("tax_context")
   netAmount          Decimal      @default(0.00) @map("net_amount") @db.Decimal(15, 2) // Net Amount after tax
   status             PayoutStatus @default(PENDING)
   bankName           String?      @map("bank_name") @db.VarChar(100)
@@ -1808,7 +1848,7 @@ model PayoutRequest {
   proofImageUrl      String?      @map("proof_image_url")
   proofImagePublicId String?      @map("proof_image_public_id")
   proofImageFormat   String?      @map("proof_image_format") @db.VarChar(10)
-  proofImageSha256   String?      @unique(map: "idx_payouts_unique_bill_hash") @map("proof_image_sha256") @db.VarChar(64)
+  proofImageSha256   String?      @map("proof_image_sha256") @db.VarChar(64)
   approvedById       String?      @map("approved_by_id") @db.Uuid
   batchId            String?      @map("batch_id") @db.Uuid
   rejectedReason     String?      @map("rejected_reason")
@@ -1824,7 +1864,7 @@ model PayoutRequest {
   approvedBy   User?        @relation("PayoutApprover", fields: [approvedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
   batch        PayoutBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
-  @@unique([storeId, bankRefCode], map: "idx_payouts_store_bank_ref")
+  // Non-MANUAL payouts retain partial unique receipt/reference indexes in SQL.
   @@index([storeId, status], map: "idx_payouts_store_status")
   @@index([collaboratorId, createdAt], map: "idx_payouts_pending")
   @@index([approvedById], map: "idx_payouts_approver")
@@ -1905,11 +1945,25 @@ model ChatMessage {
   sender       User         @relation("SentChatMessages", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   replyTo      ChatMessage? @relation("ChatMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   replies      ChatMessage[] @relation("ChatMessageReplies")
+  reactions    ChatMessageReaction[]
 
   @@index([conversationId], map: "idx_fk_chat_messages_conv")
   @@index([senderId], map: "idx_fk_chat_messages_sender")
   @@index([replyToId], map: "idx_fk_chat_messages_reply")
   @@map("chat_messages")
+}
+
+model ChatMessageReaction {
+  messageId String @map("message_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  emoji String @db.VarChar(16)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([messageId, userId])
+  @@index([userId], map: "idx_chat_message_reactions_user")
+  @@map("chat_message_reactions")
 }
 
 model AuditLog {
@@ -2151,4 +2205,26 @@ model ReturnEvent {
 
   @@index([returnRequestId, createdAt], map: "return_events_request_created_at_idx")
   @@map("return_events")
+}
+
+// Customer shopping-wallet withdrawals are separate from taxable KOL earnings.
+model CustomerWithdrawal {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestKey String @unique @map("request_key") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  amount Decimal @db.Decimal(15,2)
+  status PayoutStatus @default(PENDING)
+  bankName String @map("bank_name") @db.VarChar(100)
+  bankAccountNumber String @map("bank_account_number") @db.VarChar(50)
+  bankAccountName String @map("bank_account_name") @db.VarChar(150)
+  bankRefCode String? @map("bank_ref_code") @db.VarChar(100)
+  proofPublicId String? @map("proof_public_id")
+  proofFormat String? @map("proof_format")
+  proofHash String? @map("proof_hash")
+  note String?
+  processedBy String? @map("processed_by") @db.Uuid
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@index([userId, createdAt])
+  @@map("customer_withdrawals")
 }

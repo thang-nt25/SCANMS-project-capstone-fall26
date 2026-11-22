@@ -23,9 +23,10 @@ interface AccountMenuProps {
   inputRef: RefObject<HTMLInputElement | null>;
   onAvatarUpload: (event: ChangeEvent<HTMLInputElement>) => void;
   uploading: boolean;
+  mobileTracking?: boolean;
 }
 
-export function AccountMenu({ id, user, role, onClose, onLogout, inputRef, onAvatarUpload, uploading }: AccountMenuProps) {
+export function AccountMenu({ id, user, role, onClose, onLogout, inputRef, onAvatarUpload, uploading, mobileTracking = false }: AccountMenuProps) {
   const navigate = useNavigate();
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const name = user?.fullName || user?.email || roleNames[role];
@@ -97,7 +98,8 @@ export function AccountMenu({ id, user, role, onClose, onLogout, inputRef, onAva
         <input type="file" ref={inputRef} onChange={onAvatarUpload} accept="image/png,image/jpeg,image/webp,image/jpg" className="hidden" />
       </div>
       <nav className="account-menu__links grid gap-0.5 py-2 [&_a]:flex [&_a]:w-full [&_a]:min-h-[38px] [&_a]:items-center [&_a]:gap-2.5 [&_a]:border-0 [&_a]:rounded-lg [&_a]:bg-transparent [&_a]:px-2.5 [&_a]:py-[7px] [&_a]:text-[#1a1612] [&_a]:text-[13px] [&_a]:font-medium [&_a]:leading-[1.4] [&_a]:text-left [&_a]:no-underline [&_a:hover]:bg-[#faf8f5] [&_a:hover]:text-[#986b2f] [[data-role=CUSTOMER]_&_a]:min-h-10" aria-label="Tài khoản">
-        {links.map((item) => {
+        {mobileTracking && <div className="sm:hidden"><Link to="/tracking" onClick={onClose}><span className="account-menu__icon grid size-5 place-items-center text-[#b88e4f]"><Package size={17} /></span><span>Tra cứu đơn hàng</span></Link></div>}
+        {links.map(item => {
           const Icon = icons[item.icon];
           return (
             <Link

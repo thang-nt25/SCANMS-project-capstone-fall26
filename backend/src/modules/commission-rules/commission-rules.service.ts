@@ -1322,6 +1322,9 @@ export class CommissionRulesService {
 
     return await this.prisma.$transaction(async (tx) => {
       await this.lockBonusLedger(tx, storeId, collaboratorId);
+      if (await tx.storeMonthlyRewardPolicy.findUnique({ where: { storeId_yearMonth: { storeId, yearMonth } } })) {
+        throw new BadRequestException('Kỳ này dùng chính sách thưởng riêng của Shop; hãy gửi đề nghị tại Thưởng doanh số tháng');
+      }
       // 3. Kiểm tra Idempotency
       await this.assertCompletionDatesResolved(tx, storeId, collaboratorId);
       const existingSettlement = await tx.monthlyBonusResult.findUnique({
@@ -1636,6 +1639,11 @@ export class CommissionRulesService {
         );
       }
 
+      await this.lockBonusLedger(tx, storeId, settlement.collaboratorId);
+      if (await tx.storeMonthlyRewardPolicy.findUnique({ where: { storeId_yearMonth: { storeId, yearMonth: settlement.yearMonth } } })) {
+        throw new BadRequestException('Kỳ này phải duyệt qua đề nghị thưởng riêng của Shop');
+      }
+
       await this.assertCompletionDatesResolved(
         tx,
         storeId,
@@ -1701,6 +1709,10 @@ export class CommissionRulesService {
       });
       if (!settlement)
         throw new NotFoundException('Bản ghi chốt thưởng không tồn tại');
+
+      if (await tx.storeMonthlyRewardPolicy.findUnique({ where: { storeId_yearMonth: { storeId, yearMonth: settlement.yearMonth } } })) {
+        throw new BadRequestException('Kỳ này phải cộng ví qua đề nghị thưởng riêng của Shop');
+      }
 
       if (
         settlement.status === CommissionStatus.PAID ||
@@ -2984,17 +2996,30 @@ export class CommissionRulesService {
     let eligibleCount = 0;
     let settledCount = 0;
 
-    for (const c of [
+    const collaborators = [
       ...storeCollabs.map((row) => row.collaborator),
       ...additionalMembers,
-    ]) {
+    ].filter(Boolean);
+    // Bound read concurrency to avoid both serial network round trips and an
+    // unbounded burst against the small database connection pool.
+    const progressResults = new Map<string, { progress?: any; error?: unknown }>();
+    for (let offset = 0; offset < collaborators.length; offset += 3) {
+      await Promise.all(collaborators.slice(offset, offset + 3).map(async (c) => {
+        try {
+          const progress = await this.getKolProgress(storeId, c.id, targetYearMonth);
+          progressResults.set(c.id, { progress });
+        } catch (error) {
+          progressResults.set(c.id, { error });
+        }
+      }));
+    }
+
+    for (const c of collaborators) {
       if (!c) continue;
       try {
-        const progress = await this.getKolProgress(
-          storeId,
-          c.id,
-          targetYearMonth,
-        );
+        const outcome = progressResults.get(c.id)!;
+        if ('error' in outcome) throw outcome.error;
+        const progress = outcome.progress;
         const rev = new Prisma.Decimal(progress.validRevenue || 0);
         const bonus = new Prisma.Decimal(progress.estimatedTotalBonus || 0);
         totalRevenue = totalRevenue.add(rev);

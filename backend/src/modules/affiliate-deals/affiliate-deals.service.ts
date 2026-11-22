@@ -1,3 +1,4 @@
+import { resolvePublicAppUrl } from '../../common/public-app-url';
 import { createDealProposal } from './deal-proposal-creation';
 import { activeDealMap, sameDealScope } from './deal-scope.policy';
 import { eligibleRevenue, evaluateRevenueKpi } from './deal-kpi.policy';
@@ -236,7 +237,12 @@ export class AffiliateDealsService {
   async getProposalState(id: string, userId: string, role: UserRole) {
     const proposal = await this.prisma.exclusiveDealProposal.findUnique({
       where: { id },
-      include: { store: { select: { isDeleted: true } }, referralLink: true },
+      include: {
+        store: { select: { isDeleted: true, name: true } },
+        referralLink: true,
+        product: { select: { id: true, title: true, imageUrl: true, price: true } },
+        scopeProducts: { include: { product: { select: { id: true, title: true, imageUrl: true, price: true } } } },
+      },
     });
     if (!proposal || proposal.store.isDeleted)
       throw new NotFoundException('Không tìm thấy đề nghị VIP.');
@@ -249,6 +255,15 @@ export class AffiliateDealsService {
       closedAt: proposal.closedAt,
       scopeType: proposal.scopeType,
       targetRevenue: proposal.targetRevenue,
+      targetOrders: proposal.targetOrders,
+      commitmentDays: proposal.commitmentDays,
+      salesCommitment: proposal.salesCommitment,
+      shopResponse: proposal.shopResponse,
+      product: proposal.product,
+      products: proposal.scopeProducts?.length ? proposal.scopeProducts.map(item => item.product) : proposal.product ? [proposal.product] : [],
+      productTitle: proposal.product?.title,
+      storeName: proposal.store.name,
+      publicCommissionRate: 10,
       approvedCommissionRate: proposal.approvedCommissionRate,
       proposedCommissionRate: proposal.proposedCommissionRate,
       exceptionNote: proposal.exceptionNote,
@@ -257,7 +272,7 @@ export class AffiliateDealsService {
         ? (proposal.offerTerms ?? { ...new ApproveExclusiveDealDto() })
         : proposal.offerTerms,
       shortUrl: shortCode
-        ? `${(process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '')}/r/${shortCode}`
+        ? `${resolvePublicAppUrl(process.env.PUBLIC_APP_URL, process.env.FRONTEND_URL)}/r/${shortCode}`
         : null,
       vipVoucherCode: proposal.referralLink?.customCouponCode || null,
     };
@@ -357,7 +372,7 @@ export class AffiliateDealsService {
           : Number(proposal.approvedCommissionRate),
       publicCommissionRate: 10,
       shortUrl: proposal.referralLink
-        ? `${process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/r/${proposal.referralLink.shortCode}`
+        ? `${resolvePublicAppUrl(process.env.PUBLIC_APP_URL, process.env.FRONTEND_URL)}/r/${proposal.referralLink.shortCode}`
         : null,
       isCurrentDeal:
         proposal.status === 'APPROVED' &&

@@ -1,6 +1,12 @@
 # FR-22 / FR-23 / FR-24: shop-scoped payouts, immutable ledger and VietQR batches
 
-> Flow 5 update: see [MAIN_FLOW_5_IMPLEMENTATION.md](../../../../docs/MAIN_FLOW_5_IMPLEMENTATION.md) for the current architecture, required migration and gateway contract. The older merchant workflow below is retained for historical context; write/approve/export routes now require SYSTEM_MANAGER or SYSTEM_ADMIN.
+Manual evidence policy (2026-11-16): Manager/Admin manual confirmations for KOL and Customer requests may reuse both receipt image and bank reference. Each request still requires a valid private receipt and nonempty reference, locks its own status, and posts its financial transaction only once. The non-MANUAL historical/shop flow retains partial unique proof/reference indexes. Apply `20261116133000_reusable_manual_payout_evidence` with this change. Receipt reuse does not alter tax snapshots, report inclusion, or accounting amounts.
+
+> Current approval flow: SYSTEM_MANAGER/SYSTEM_ADMIN confirm external bank transfers manually, with a bank transaction reference, receipt and expected net amount. Gateway approval/inquiry routes, BIDV test routes and automatic API reconciliation are no longer registered. Historical gateway implementation files remain for reading old data/tests; they are not active services.
+
+The payout dashboard and monthly tax report exclude historical test payments from actual disbursement/tax totals. Existing test rows and ledgers are retained, not renamed or converted into real transfers. New manual confirmations store `transferProvider=MANUAL`; gross remains reserved only once at withdrawal creation.
+
+Tax operations have four separate views: tax report, missing cost basis, issued tax certificates and ledger reconciliation. Tax reports and certificates load automatically by the selected Vietnam month. CSV requires at least one actual completed payout; issued certificates cannot be attached to old test payouts. Ledger reconciliation still includes historical test accounts with explicit historical labels to preserve bookkeeping.
 
 All routes require JWT authentication and the COLLABORATOR role:
 
@@ -13,18 +19,15 @@ Money is a decimal string, not a JavaScript floating-point number. Client-provid
 
 ## Tax: assignment business rule, not legal advice
 
-PayoutTaxService follows the Flow 5 blueprint: no withholding below 2,000,000 VND, 10% at or above that threshold. Tax is rounded to two decimals using Decimal ROUND_HALF_UP; net equals gross minus tax. The wallet-summary API returns threshold `2000000.00` and rate `0.10`. This is the project specification, not a verified current legal policy.
+PayoutTaxService uses the SCANMS monthly gross-withdrawal policy: 5% up to 10 million VND, 10% on the next 20 million, 20% on the next 30 million, 30% on the next 40 million and 35% above 100 million. A request crossing a bracket is split across brackets. The base is gross PENDING + PROCESSING + APPROVED requests for the authenticated collaborator across all stores, grouped by request creation month in Asia/Ho_Chi_Minh. Rejected requests are excluded. No personal deductions are applied: this is the user-approved project rule, not an assertion about statutory tax treatment of every KOL.
 
-| Gross        | Tax        | Net          |
-| ------------ | ---------- | ------------ |
-| 1,000,000.00 | 0.00 | 1,000,000.00   |
-| 1,999,999.99 | 0.00 | 1,999,999.99 |
-| 2,000,000.00 | 200,000.00 | 1,800,000.00 |
-| 2,000,000.05 | 200,000.01 | 1,800,000.04 |
+Gross is reserved once; tax is deducted from gross rather than debited again. Decimal ROUND_HALF_UP rounds tax to two decimals. Each new request stores policy version, month, monthly gross before the request and rate segments in taxContext. Legacy processing/completed/rejected requests retain their amounts. The migration reprices unsent PENDING requests only.
 
-The payout stores gross/tax/net snapshots in its existing columns. The wallet is debited once, by gross; tax is not a second wallet movement. API responses return decimal strings and taxCalculated. Historical FR-22 requests with default zero net are marked unknown; neither their snapshots nor old ledger entries are rewritten. The UI displays “Chưa tính thuế” / “Chưa xác định” for them.
+Creation, approval, rejection and batch export serialize on a collaborator advisory lock. Rejection reallocates pending requests in that month, preserving processing/completed snapshots. Already paid over-withholding, if any after a later rejection, is retained for separate reconciliation rather than silently rewriting history. Approval submits expectedNetAmount and rejects stale screens. Month attribution remains the request month even when approval occurs in a later month.
 
-The updated rule applies when creating a request; existing requests keep their stored tax/net snapshots, including already-approved requests below the former threshold. No migration or retrospective financial rewrite is required. A pending payout is not a completed bank transfer. FR-24 introduces the reviewed merchant flow below using these stored snapshots.
+Wallet summaries expose monthlyGross and bracket metadata; web/mobile estimates use the same brackets. Manager/Admin monthly summaries include all active statuses across stores and pages, distinguishing pending, processing and approved gross. Historical legacy entries remain labeled 10%.
+
+Deploy migration 20261113030000_monthly_payout_tax before starting the updated backend. Shared database deployment requires review because unsent financial snapshots change.
 
 ## Transaction and ledger invariants
 

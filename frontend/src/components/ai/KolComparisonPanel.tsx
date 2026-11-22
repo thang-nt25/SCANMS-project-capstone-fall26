@@ -1,3 +1,4 @@
+import { handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { useMemo } from 'react';
 import type { KolMatchResult } from '@/services/ai-recommendation.service';
 import { downloadReport } from '@/utils/report-export';
@@ -157,7 +158,7 @@ export function KolComparisonModal({
                           style={{ backgroundColor: COMPARISON_COLORS[idx % COMPARISON_COLORS.length].stroke }}
                         >
                           {kol.avatarUrl ? (
-                            <img src={kol.avatarUrl} alt={kol.fullName} className="w-full h-full rounded-full object-cover" />
+                            <img src={kol.avatarUrl} onError={handleAvatarImageError} alt={kol.fullName} className="w-full h-full rounded-full object-cover" />
                           ) : (
                             kol.fullName.charAt(0)
                           )}

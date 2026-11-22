@@ -1,18 +1,24 @@
-import { Link } from 'react-router-dom';
-import { ShoppingBag, Store, Trash2, Minus, Plus, ChevronRight, ArrowRight, RefreshCw, ShieldCheck, Truck, MessageCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingBag, BadgeCheck, Trash2, Minus, Plus, ChevronRight, ArrowRight, ArrowLeft, MessageCircle } from 'lucide-react';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { toast } from '@/utils/toast';
+import { handleStoreImageError } from '@/utils/image-fallback.utils';
 
 const isAvailable = (item: CartItem) => item.isActive && item.stockQuantity > 0;
 
 export default function CartPage() {
+  const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/marketplace');
+  };
+  const backButton = <button type="button" onClick={goBack} className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-medium text-[#7D715E] transition-colors hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#8C6226] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58]"><ArrowLeft size={14} aria-hidden="true" />Quay lại</button>;
   const {
     cart,
     selectedItemIds,
-    totalCount,
     groupedByStore,
     updateQuantity,
     updateVariant,
@@ -22,7 +28,6 @@ export default function CartPage() {
     toggleSelectStore,
     toggleSelectAll,
     startCheckout,
-    refreshCartStock,
     isValidatingStock,
     isCartSyncing,
   } = useCart();
@@ -59,58 +64,7 @@ export default function CartPage() {
       <PublicHeader />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Breadcrumb & Title */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <nav className="flex items-center gap-2 text-xs text-[#7D715E] mb-1.5" aria-label="Breadcrumb">
-              <Link to="/marketplace" className="hover:text-[#B88E4F] transition-colors">Trang chủ</Link>
-              <span>/</span>
-              <span className="font-semibold text-[#1A1612]">Giỏ hàng</span>
-            </nav>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1A1612]">
-                Giỏ Hàng
-              </h1>
-              {totalCount > 0 && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
-                  {totalCount} sản phẩm
-                </span>
-              )}
-            </div>
-          </div>
-
-          {cart.length > 0 && (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => void refreshCartStock()}
-                disabled={isValidatingStock || isCartSyncing}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#B88E4F] hover:border-[#C59B58] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
-              >
-                <RefreshCw size={14} className={isValidatingStock || isCartSyncing ? 'animate-spin' : ''} />
-                <span>{isValidatingStock || isCartSyncing ? 'Đang kiểm tra tồn kho...' : 'Cập nhật giá & kho'}</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Freeship Alert Banner */}
-        {cart.length > 0 && (
-          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#EAE4D7] shadow-xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-              <Truck size={20} />
-            </div>
-            <div className="min-w-0 flex-1 text-xs">
-              <p className="font-bold text-[#1A1612] sm:text-sm">
-                Ưu đãi miễn phí vận chuyển toàn quốc từ SCANMS
-              </p>
-              <p className="text-[#7D715E] mt-0.5">
-                Nhập mã ưu đãi của Đối tác tiếp thị (KOC) ở thanh bên phải để áp dụng giảm giá trực tiếp cho đơn hàng.
-              </p>
-            </div>
-          </div>
-        )}
-
+        <div className="mb-3 lg:hidden">{backButton}</div>
         {/* Cart Contents */}
         {cart.length === 0 ? (
           /* Empty Cart State */
@@ -133,13 +87,13 @@ export default function CartPage() {
             </Link>
           </div>
         ) : (
-          /* Main 2-Column SCANMS E-Commerce Layout */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          /* Full-width cart with aligned desktop columns */
+          <div className="space-y-5">
             {/* Left Column: Product Table grouped by Shop (8 cols) */}
-            <div className="lg:col-span-8 space-y-4">
+            <div className="space-y-4">
               {/* Header Bar */}
-              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 shadow-xs hidden md:grid md:grid-cols-12 gap-4 items-center text-xs font-bold text-[#7D715E]">
-                <div className="col-span-6 flex items-center gap-3">
+              <div className="bg-white rounded-2xl border border-[#EAE4D7] px-5 py-3.5 hidden lg:grid lg:grid-cols-[minmax(0,1fr)_130px_140px_150px_72px] gap-4 items-center text-xs font-semibold text-[#7D715E]">
+                <div className="min-w-0 flex items-center gap-3">
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded accent-[#C59B58] cursor-pointer"
@@ -151,10 +105,12 @@ export default function CartPage() {
                     onChange={() => toggleSelectAll()}
                   />
                   <span>Sản phẩm ({cart.length})</span>
+                  <span className="ml-1 border-l border-[#EAE4D7] pl-3">{backButton}</span>
                 </div>
-                <div className="col-span-2 text-center">Đơn giá</div>
-                <div className="col-span-2 text-center">Số lượng</div>
-                <div className="col-span-2 text-right">Số tiền</div>
+                <div className="text-center">Đơn giá</div>
+                <div className="text-center">Số lượng</div>
+                <div className="text-right">Thành tiền</div>
+                <div className="text-center">Thao tác</div>
               </div>
 
               {/* Grouped by Store */}
@@ -168,10 +124,10 @@ export default function CartPage() {
                 return (
                   <div
                     key={group.storeId}
-                    className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs overflow-hidden transition-all"
+                    className="bg-white rounded-2xl border border-[#EAE4D7] overflow-hidden"
                   >
                     {/* Shop Header */}
-                    <div className="p-3.5 sm:p-4 border-b border-[#EAE4D7] bg-[#FAF8F5]/60 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="px-4 py-3 sm:px-5 border-b border-[#EAE4D7]/70 bg-white flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3 min-w-0">
                         <input
                           type="checkbox"
@@ -184,8 +140,8 @@ export default function CartPage() {
                           onChange={() => toggleSelectStore(group.storeId)}
                         />
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                            <Store size={15} />
+                          <span className="w-9 h-9 rounded-xl bg-white border border-[#EAE4D7] p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                            <img src={group.storeLogoUrl || '/assets/store-placeholder.svg'} alt="" onError={handleStoreImageError} className="h-full w-full object-contain" />
                           </span>
                           <Link
                             to={`/shops/${group.storeSlug || group.storeId}`}
@@ -193,7 +149,8 @@ export default function CartPage() {
                           >
                             {group.storeName}
                           </Link>
-                          <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-[#B88E4F]">
+                            <BadgeCheck size={13} />
                             Chính hãng
                           </span>
                         </div>
@@ -204,15 +161,15 @@ export default function CartPage() {
                           <button
                             type="button"
                             onClick={() => openChat({ id: group.storeId, name: group.storeName })}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F] hover:border-[#C59B58] transition-colors cursor-pointer"
+                            className="inline-flex h-9 items-center gap-1.5 px-3 rounded-lg bg-[#FBF5EB] text-xs font-medium text-[#7D715E] hover:text-[#B88E4F] transition-colors cursor-pointer"
                           >
                             <MessageCircle size={13} />
-                            <span>Chat ngay</span>
+                            <span>Chat</span>
                           </button>
                         )}
                         <Link
                           to={`/shops/${group.storeSlug || group.storeId}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F] transition-colors"
+                          className="inline-flex h-9 items-center gap-1 px-3 rounded-lg text-xs font-medium text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#B88E4F] transition-colors"
                         >
                           <span>Xem Shop</span>
                           <ChevronRight size={13} />
@@ -230,21 +187,21 @@ export default function CartPage() {
                         return (
                           <div
                             key={item.cartItemId}
-                            className={`p-4 transition-colors ${!available ? 'opacity-50 bg-[#FAF8F5]' : ''}`}
+                            className={`px-4 py-5 sm:px-5 transition-colors ${!available ? 'opacity-50 bg-[#FAF8F5]' : 'hover:bg-[#FAF8F5]/40'}`}
                           >
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                            <div className="grid grid-cols-2 lg:grid-cols-[minmax(0,1fr)_130px_140px_150px_72px] gap-4 items-center">
                               {/* Checkbox, Image, Title (Col 6) */}
-                              <div className="md:col-span-6 flex items-start gap-3 min-w-0">
+                              <div className="col-span-2 lg:col-span-1 flex items-center gap-3 min-w-0">
                                 <input
                                   type="checkbox"
-                                  className="w-4 h-4 rounded accent-[#C59B58] cursor-pointer mt-3 shrink-0"
+                                  className="w-4 h-4 rounded accent-[#C59B58] cursor-pointer shrink-0"
                                   checked={isItemSelected && available}
                                   disabled={!available}
                                   onChange={() => toggleSelectItem(item.cartItemId)}
                                 />
                                 <Link
                                   to={`/products/${item.productId}`}
-                                  className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl bg-white border border-[#EAE4D7] p-1 shrink-0 overflow-hidden flex items-center justify-center hover:border-[#C59B58] transition-colors"
+                                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-white border border-[#EAE4D7] p-1 shrink-0 overflow-hidden flex items-center justify-center hover:border-[#C59B58] transition-colors"
                                 >
                                   <img
                                     src={getSafeProductImageUrl(item.imageUrl, item.title)}
@@ -274,7 +231,8 @@ export default function CartPage() {
                                       <select
                                         value={item.variantId || ''}
                                         onChange={(e) => updateVariant(item.cartItemId, e.target.value)}
-                                        className="text-[11px] py-1 px-2 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#1A1612] max-w-full font-medium"
+                                        aria-label={`Phân loại ${item.title}`}
+                                        className="text-xs py-2 px-2.5 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#7D715E] max-w-full font-medium focus:outline-none focus:ring-2 focus:ring-[#EEDFC6]"
                                       >
                                         {!item.variantId && <option value="" disabled>Chọn biến thể</option>}
                                         {variants.map((v) => (
@@ -308,10 +266,10 @@ export default function CartPage() {
                               </div>
 
                               {/* Price (Col 2) */}
-                              <div className="md:col-span-2 md:text-center flex md:block items-baseline justify-between">
-                                <span className="text-xs text-[#7D715E] md:hidden">Đơn giá:</span>
+                              <div className="lg:text-center flex flex-col sm:flex-row lg:block gap-1 items-baseline justify-between min-w-0">
+                                <span className="text-xs text-[#7D715E] lg:hidden">Đơn giá:</span>
                                 <div>
-                                  <strong className="text-sm font-bold text-[#1A1612]">
+                                  <strong className="text-sm font-semibold text-[#1A1612] tabular-nums">
                                     {formatMoney(item.price)}
                                   </strong>
                                   {!!item.originalPrice && item.originalPrice > item.price && (
@@ -323,26 +281,26 @@ export default function CartPage() {
                               </div>
 
                               {/* Quantity (Col 2) */}
-                              <div className="md:col-span-2 flex items-center md:justify-center justify-between">
-                                <span className="text-xs text-[#7D715E] md:hidden">Số lượng:</span>
+                              <div className="flex flex-col items-end gap-1 lg:flex-row lg:items-center lg:justify-center min-w-0">
+                                <span className="text-xs text-[#7D715E] lg:hidden">Số lượng:</span>
                                 <div className="inline-flex items-center border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shadow-2xs">
                                   <button
                                     type="button"
                                     onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                                     disabled={!available || item.quantity <= 1}
-                                    className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] disabled:opacity-30 transition-colors cursor-pointer"
+                                    className="w-10 h-10 flex items-center justify-center text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] disabled:opacity-30 transition-colors cursor-pointer"
                                     title="Giảm số lượng"
                                   >
                                     <Minus size={13} />
                                   </button>
-                                  <span className="w-10 text-center text-xs font-bold text-[#1A1612] tabular-nums">
+                                  <span className="w-10 h-10 flex items-center justify-center border-x border-[#EAE4D7] text-sm font-semibold text-[#1A1612] tabular-nums">
                                     {item.quantity}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                                     disabled={!available || item.quantity >= item.stockQuantity}
-                                    className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] disabled:opacity-30 transition-colors cursor-pointer"
+                                    className="w-10 h-10 flex items-center justify-center text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] disabled:opacity-30 transition-colors cursor-pointer"
                                     title="Tăng số lượng"
                                   >
                                     <Plus size={13} />
@@ -351,15 +309,17 @@ export default function CartPage() {
                               </div>
 
                               {/* Total & Action (Col 2) */}
-                              <div className="md:col-span-2 flex items-center justify-between md:justify-end gap-3">
-                                <span className="text-xs text-[#7D715E] md:hidden">Thành tiền:</span>
-                                <strong className="text-sm font-bold text-[#B88E4F] tabular-nums">
+                              <div className="flex items-center justify-between lg:justify-end gap-3">
+                                <span className="text-xs text-[#7D715E] lg:hidden">Thành tiền:</span>
+                                <strong className="text-base font-bold text-[#B88E4F] tabular-nums">
                                   {formatMoney(item.price * item.quantity)}
                                 </strong>
+                              </div>
+                              <div className="flex items-center justify-end lg:justify-center">
                                 <button
                                   type="button"
                                   onClick={() => removeItem(item.cartItemId)}
-                                  className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:text-[#DC2626] hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  className="w-10 h-10 flex items-center justify-center text-[#7D715E] hover:text-[#DC2626] hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
                                   title="Xóa sản phẩm"
                                 >
                                   <Trash2 size={16} />
@@ -372,10 +332,11 @@ export default function CartPage() {
                     </div>
 
                     {/* Shop Footer: Store Subtotal */}
-                    <div className="p-3.5 sm:p-4 bg-[#FAF8F5]/80 border-t border-[#EAE4D7] flex items-center justify-end gap-2 text-xs">
+                    <div className="mx-4 sm:mx-5 py-3 border-t border-[#EAE4D7]/70 flex items-center justify-end gap-2 text-xs">
                       {group.items.length > 0 && (
                         <div className="flex items-center justify-end gap-2 text-xs">
-                          <span className="text-[#7D715E]">Tiền hàng cửa hàng đã chọn:</span>
+                          <span className="text-[#7D715E]">Tạm tính</span>
+                          <span className="text-[#EAE4D7]">·</span>
                           <strong className="text-sm font-bold text-[#1A1612] tabular-nums">
                             {formatMoney(groupSubtotal)}
                           </strong>
@@ -386,98 +347,41 @@ export default function CartPage() {
                 );
               })}
 
-              {/* Bulk Actions Bar */}
-              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 shadow-xs flex items-center justify-between text-xs font-semibold">
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+            </div>
+            {/* Cart checkout bar */}
+            <div className="sticky bottom-0 z-20 rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_-4px_24px_rgba(35,29,21,0.06)]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] px-4 py-3 sm:px-5 text-xs text-[#7D715E]">
+                <span>Mã độc quyền KOL được nhập ở bước thanh toán.</span>
+                <span>Phí vận chuyển tính theo địa chỉ nhận hàng.</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center lg:gap-6">
+                <div className="flex items-center justify-between gap-4 lg:justify-start">
+                  <label className="flex items-center gap-3 text-sm font-medium cursor-pointer">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded accent-[#C59B58]"
+                      aria-label="Chọn tất cả sản phẩm"
+                      className="h-4 w-4 accent-[#C59B58]"
                       checked={allSelected}
                       disabled={!selectable.length}
+                      ref={(el) => { if (el) el.indeterminate = selected.length > 0 && !allSelected; }}
                       onChange={() => toggleSelectAll()}
                     />
-                    <span>Chọn tất cả ({selectable.length})</span>
+                    Chọn tất cả ({selectable.length})
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleRemoveSelected}
-                    disabled={selected.length === 0}
-                    className="text-[#7D715E] hover:text-[#DC2626] transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    Xóa các mục đã chọn
+                  <button type="button" onClick={handleRemoveSelected} disabled={!selected.length}
+                    className="inline-flex items-center gap-1.5 text-sm text-[#7D715E] hover:text-[#DC2626] disabled:opacity-40 cursor-pointer">
+                    <Trash2 size={15} /> Xóa đã chọn
                   </button>
                 </div>
-                <div className="text-[#7D715E]">
-                  Đã chọn <strong className="text-[#1A1612]">{selectedCount}</strong> sản phẩm
+                <div className="flex items-center justify-between gap-4 lg:block lg:text-right" aria-live="polite">
+                  <p className="text-sm text-[#7D715E]">Tổng tiền hàng ({selectedCount} sản phẩm)</p>
+                  <strong className="text-2xl font-bold text-[#B88E4F] tabular-nums">{formatMoney(estimatedTotal)}</strong>
                 </div>
-              </div>
-            </div>
-
-            {/* Right Column: Sticky Summary & SCANMS Voucher Card (4 cols) */}
-            <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
-              <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">Bạn có mã độc quyền KOL? Hãy sao chép và tự nhập ở bước thanh toán.</p>
-              {/* Order Summary & Checkout Card */}
-              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-5 sm:p-6 shadow-xs">
-                <h3 className="font-bold text-base text-[#1A1612] mb-4">
-                  Tóm tắt đơn hàng
-                </h3>
-
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between text-[#7D715E]">
-                    <span>Tổng tiền hàng ({selectedCount} món):</span>
-                    <strong className="text-sm font-semibold text-[#1A1612] tabular-nums">
-                      {formatMoney(subtotal)}
-                    </strong>
-                  </div>
-
-
-
-
-
-
-
-                  <div className="pt-3 border-t border-[#EAE4D7] flex items-baseline justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-[#1A1612] block">
-                        Tổng thanh toán (Tạm tính):
-                      </span>
-                      <span className="text-[10px] text-[#7D715E]">
-                        (Chưa gồm cước GHN thực tế)
-                      </span>
-                    </div>
-                    <strong className="text-2xl font-black text-[#B88E4F] tabular-nums tracking-tight">
-                      {formatMoney(estimatedTotal)}
-                    </strong>
-                  </div>
-                </div>
-
-                {/* Main Checkout Button */}
-                <button
-                  type="button"
-                  id="cart-checkout-btn"
-                  onClick={handleCheckout}
-                  disabled={selected.length === 0 || isValidatingStock || isCartSyncing}
-                  className="mt-6 w-full py-4 px-6 rounded-2xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#F3EFE6] disabled:border-[#EAE4D7] disabled:text-[#7D715E] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <span>Tiến hành Mua Hàng</span>
-                  {selectedCount > 0 && <span>({selectedCount})</span>}
-                  <ArrowRight size={18} />
+                <button type="button" id="cart-checkout-btn" onClick={handleCheckout}
+                  disabled={!selected.length || isValidatingStock || isCartSyncing}
+                  className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl border border-[#EEDFC6] bg-[#C59B58] px-8 py-3 text-sm font-bold text-[#1A1612] hover:bg-[#B88E4F] disabled:bg-[#F3EFE6] disabled:text-[#7D715E] disabled:cursor-not-allowed transition-colors lg:min-w-48">
+                  Mua hàng {selectedCount > 0 && `(${selectedCount})`} <ArrowRight size={18} />
                 </button>
-
-                {selected.length === 0 && (
-                  <p className="mt-2 text-center text-[11px] text-[#7D715E]">
-                    Vui lòng chọn ít nhất 1 sản phẩm để tiếp tục đặt hàng
-                  </p>
-                )}
-
-                {/* Trust & Guarantee Badge */}
-                <div className="mt-5 pt-4 border-t border-[#EAE4D7] flex items-center gap-2.5 text-[11px] text-[#7D715E]">
-                  <ShieldCheck size={18} className="text-[#B88E4F] shrink-0" />
-                  <span>
-                    Bảo đảm thanh toán an toàn 100% qua bảo chứng sàn SCANMS & Đổi trả dễ dàng trong 14 ngày.
-                  </span>
-                </div>
               </div>
             </div>
           </div>

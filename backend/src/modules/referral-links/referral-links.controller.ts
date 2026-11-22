@@ -42,7 +42,7 @@ import {
 // ==========================================
 // 1. COLLABORATOR CONTROLLER
 // ==========================================
-@ApiTags('Collaborator - Referral Links (FR-10)')
+@ApiTags('Collaborator - Referral Links')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.COLLABORATOR)
@@ -106,7 +106,7 @@ export class CollaboratorReferralLinksController {
 
   @Get(':id/analytics')
   @ApiOperation({
-    summary: 'Thống kê tracking & attribution của link tiếp thị (FR-13)',
+    summary: 'Thống kê tracking & attribution của link tiếp thị',
     description:
       'Trả về số liệu tách bạch: Raw clicks, Valid clicks, Unique clicks, Suspicious clicks, Đơn hàng, Tỷ lệ chuyển đổi và doanh thu hoa hồng.',
   })
@@ -145,7 +145,7 @@ export class CollaboratorReferralLinksController {
     UserRole.SYSTEM_MANAGER,
   )
   @ApiOperation({
-    summary: 'Xem trước hoặc tải về ảnh mã QR Code động (FR-11)',
+    summary: 'Xem trước hoặc tải về ảnh mã QR Code động',
   })
   @ApiParam({ name: 'id', description: 'ID hoặc shortCode của link tiếp thị' })
   @ApiProduces('image/png', 'image/svg+xml')
@@ -284,7 +284,7 @@ export class CollaboratorReferralLinksController {
 // ==========================================
 // 2. STORE MANAGER CONTROLLER
 // ==========================================
-@ApiTags('Store Manager - Referral Links (FR-10)')
+@ApiTags('Store Manager - Referral Links')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
@@ -307,7 +307,7 @@ export class StoreReferralLinksController {
 
   @Get(':id/analytics')
   @ApiOperation({
-    summary: 'Chủ Shop xem thống kê tracking & attribution của link (FR-13)',
+    summary: 'Chủ Shop xem thống kê tracking & attribution của link',
   })
   @ApiParam({ name: 'id', description: 'ID của link tiếp thị' })
   @ApiParam({ name: 'storeId', description: 'ID của cửa hàng' })
@@ -465,7 +465,7 @@ export class StoreReferralLinksController {
   @Get('orders/:orderId/effective-attribution')
   @ApiOperation({
     summary:
-      'Chủ Shop tra cứu KOL hiệu lực và lịch sử điều chỉnh của đơn hàng (FR-13 - Issue 3 & Issue 1)',
+      'Chủ Shop tra cứu KOL hiệu lực và lịch sử điều chỉnh của đơn hàng',
     description:
       'Chỉ cho phép tra cứu đơn hàng thuộc đúng StoreId trên URL và người gọi phải là chủ sở hữu gian hàng.',
   })
@@ -487,7 +487,7 @@ export class StoreReferralLinksController {
 // ==========================================
 // 3. ADMIN CONTROLLER
 // ==========================================
-@ApiTags('System Admin - Referral Links (FR-10)')
+@ApiTags('System Admin - Referral Links')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
@@ -614,7 +614,7 @@ export class AdminReferralLinksController {
 
   @Get('tracking/events')
   @ApiOperation({
-    summary: 'Quản trị viên tra cứu nhật ký sự kiện click/attribution (FR-13)',
+    summary: 'Quản trị viên tra cứu nhật ký sự kiện click/attribution',
     description:
       'Tra cứu sự kiện phục vụ điều tra gian lận, IP được che mờ bảo vệ riêng tư.',
   })
@@ -628,7 +628,7 @@ export class AdminReferralLinksController {
 
   @Post('orders/:orderId/attribution-adjustment')
   @ApiOperation({
-    summary: 'Quản trị viên điều chỉnh nguồn attribution của đơn hàng (FR-13)',
+    summary: 'Quản trị viên điều chỉnh nguồn attribution của đơn hàng',
     description:
       'Tạo bản ghi điều chỉnh bất biến và lưu audit log giải quyết khiếu nại.',
   })
@@ -645,7 +645,7 @@ export class AdminReferralLinksController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary:
-      'Quản trị viên tra cứu KOL hiệu lực và thông tin điều chỉnh của đơn hàng (FR-13 - Issue 3)',
+      'Quản trị viên tra cứu KOL hiệu lực và thông tin điều chỉnh của đơn hàng',
     description:
       'Chỉ dành riêng cho Quản trị viên hệ thống (SYSTEM_ADMIN) phục vụ đối soát và báo cáo.',
   })
@@ -666,7 +666,7 @@ export class AdminReferralLinksController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary:
-      'Quản trị viên xem Dashboard giám sát Rate Limit & Redis Realtime (FR-14)',
+      'Quản trị viên xem Dashboard giám sát Rate Limit & Redis Realtime',
     description:
       'Cung cấp toàn diện latency, error count, timeout count, số IP vượt hạn, thống kê spike theo link/KOL/Shop, và cảnh báo bất thường.',
   })

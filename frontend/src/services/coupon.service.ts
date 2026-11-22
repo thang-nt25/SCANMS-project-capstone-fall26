@@ -55,6 +55,8 @@ export interface EligibleProductCoupon {
 }
 
 export interface CouponItem {
+  usageHistory?: Array<{ id: string; status: string; discountAmount: number | string; createdAt: string }>;
+  usageHistoryTotal?: number;
   benefitType?: 'GOODS' | 'SHIPPING';
   id: string;
   codeNormalized: string;

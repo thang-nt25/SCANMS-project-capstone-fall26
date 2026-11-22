@@ -46,6 +46,7 @@ it('settles a selected 10% line without clawing back the unrelated 16% line or i
     orderItem: { findMany: jest.fn(async () => items), update: jest.fn() },
     returnItem: { findMany: jest.fn(async () => []) },
     commission: { findMany: jest.fn(async () => [income]), update: jest.fn() },
+    storeMonthlyRewardPolicy: { findUnique: jest.fn().mockResolvedValue(null) },
     monthlyBonusResult: { findUnique: jest.fn(async () => null) },
     auditLog: { create: jest.fn() },
   };

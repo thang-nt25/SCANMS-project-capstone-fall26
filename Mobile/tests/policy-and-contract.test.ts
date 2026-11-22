@@ -13,6 +13,13 @@ import { ROLE_TABS } from "../src/navigation/role-tabs";
 import { canReviewVipExceptions } from "../src/features/workspace/policy";
 import { mergeMessages } from "../src/services/realtime/messages";
 import { validateInput } from "../src/utils/validate-input";
+test("KOL starts at overview and has five task-specific destinations", () => {
+  assert.deepEqual(ROLE_TABS.COLLABORATOR, ["workspace", "marketing", "cooperation", "wallet", "account"]);
+  for (const role of RoleSchema.options.filter((role) => role !== "COLLABORATOR")) {
+    assert.ok(!ROLE_TABS[role].includes("marketing"));
+    assert.ok(!ROLE_TABS[role].includes("wallet"));
+  }
+});
 test("Manager cannot access admin-only users or exception tabs", () => {
   assert.ok(!ROLE_TABS.SYSTEM_MANAGER.includes("users"));
   assert.ok(!ROLE_TABS.SYSTEM_MANAGER.includes("exceptions"));

@@ -19,6 +19,7 @@ import { PayoutSettingsService } from './payout-settings.service';
 import { ExportPayoutBatchDto } from './dto/manage-payout.dto';
 import { QueryWithdrawalsDto } from './dto/query-withdrawals.dto';
 import { assertPayoutBeneficiary } from './payout-beneficiary';
+import { lockPayoutTax } from './payout-monthly-tax';
 
 @Injectable()
 export class PayoutBatchesService {
@@ -48,6 +49,8 @@ export class PayoutBatchesService {
     return this.prisma.$transaction(
       async (tx) => {
         await this.payouts.assertStoreOwnership(storeId, userId, tx);
+        const owners = await tx.payoutRequest.findMany({ where: { storeId, id: { in: ids } }, select: { collaboratorId: true } });
+        for (const owner of [...new Set(owners.map(row => row.collaboratorId))].sort()) await lockPayoutTax(tx, owner);
         await tx.$queryRaw(
           Prisma.sql`SELECT id FROM payout_requests WHERE store_id = ${storeId}::uuid AND id IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))}) ORDER BY id FOR UPDATE`,
         );

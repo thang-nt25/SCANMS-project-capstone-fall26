@@ -34,7 +34,7 @@ import {
   SubmitSampleVideoDto,
 } from './dto/sample-request.dto';
 
-@ApiTags('Sample Requests (FR-26)')
+@ApiTags('Sample Requests')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('sample-requests')
@@ -67,6 +67,13 @@ export class SamplesController {
   })
   getMyEligibility(@Request() req: any) {
     return this.samplesService.getMyEligibility(req.user?.id || req.user?.sub);
+  }
+
+  @Get('my/catalog')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Sản phẩm Shop mở cấp mẫu, còn hạn mức và chưa xin trùng' })
+  getMySampleCatalog(@Request() req: any) {
+    return this.samplesService.getMySampleCatalog(req.user?.id || req.user?.sub);
   }
 
   @Patch(':id/cancel')

@@ -18,7 +18,6 @@ import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ShoppingScene } from '../../components/auth/ShoppingScene';
 import { AnimatedPasswordField, type PasswordAuthState } from '../../components/auth/AnimatedPasswordField';
-import { getDemoLogin } from '../../utils/demo-login';
 import { getRememberedIdentifier, getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
 import { safeLoginReturn } from '../../utils/login-return';
 
@@ -61,10 +60,9 @@ export default function LoginPage() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [identifier, setIdentifier] = useState(() => {
     if (registeredEmail) return registeredEmail;
-    const account = getDemoLogin(role);
-    return account?.identifier || getRememberedIdentifier(role) || '';
+    return getRememberedIdentifier(role) || '';
   });
-  const [password, setPassword] = useState(() => registeredEmail ? '' : getDemoLogin(role)?.password || '');
+  const [password, setPassword] = useState('');
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -88,9 +86,8 @@ export default function LoginPage() {
       setIsRoleDropdownOpen(false);
       return;
     }
-    const account = getDemoLogin(selectedRole);
-    setIdentifier(account?.identifier || getRememberedIdentifier(selectedRole) || '');
-    setPassword(account?.password || '');
+    setIdentifier(getRememberedIdentifier(selectedRole) || '');
+    setPassword('');
     setPasswordAuthState('idle');
     setRole(selectedRole);
     setError(null);

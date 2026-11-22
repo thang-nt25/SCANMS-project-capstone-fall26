@@ -1675,7 +1675,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                               <MapPin className="w-4 h-4 text-[#C59B58] shrink-0" />
                               Đang sử dụng địa chỉ giao hàng mới bên dưới
                             </span>
-                            
+
                           </div>
                         )}
 
