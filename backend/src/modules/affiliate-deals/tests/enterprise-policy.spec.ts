@@ -129,9 +129,9 @@ describe('Enterprise contract and price policies', () => {
     expect(() => cosineSimilarity([0, 0], [1, 1])).toThrow();
     expect(() => cosineSimilarity([NaN], [1])).toThrow();
   });
-  it('chooses the best absolute rate, adds Live once and caps new orders at 25%', () => {
-    expect(precedenceCommissionRate(3, 16, 12, 2)).toBe(18);
-    expect(precedenceCommissionRate(3, 0, 0, 2)).toBe(15);
-    expect(precedenceCommissionRate(3, 25, 14, 3)).toBe(25);
+  it('chooses the best absolute rate without stacking and caps new orders at 25%', () => {
+    expect(precedenceCommissionRate(3, 16, 12)).toBe(16);
+    expect(precedenceCommissionRate(3, 0, 0)).toBe(13);
+    expect(precedenceCommissionRate(3, 25, 14)).toBe(25);
   });
 });

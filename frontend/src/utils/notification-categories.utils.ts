@@ -15,7 +15,6 @@ export function getNotificationSection(type: string): NotificationSection {
     type.startsWith('PROMO_') ||
     type.startsWith('VOUCHER_') ||
     type.startsWith('CAMPAIGN_') ||
-    type.startsWith('LIVE_SESSION_') ||
     type.includes('COUPON') ||
     type.includes('SALE')
   ) {

@@ -420,7 +420,7 @@ export default function OrdersManagementPage({
           page: ordersPage,
           limit: 12,
           storeId,
-        }, isManualFresh);
+        }, !background && isManualFresh);
         if (active && res && requestedRevision === fulfillmentRevision.current) {
           lastOrdersSnapshot = {
             orders: res.items || [],
@@ -446,7 +446,7 @@ export default function OrdersManagementPage({
     };
     void loadOrders();
     const refresh = () => { void loadOrders(true); };
-    const timer = window.setInterval(refresh, 10000);
+    const timer = window.setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
     const handleOrderEvent = () => { refresh(); };

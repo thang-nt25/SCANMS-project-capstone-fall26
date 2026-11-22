@@ -340,7 +340,7 @@ export function ProposePromotionModal({
                     Phê duyệt đề xuất
                   </div>
                   <p className="text-[11px] text-[#7D715E] leading-relaxed">
-                    Đề xuất sẽ được gửi tới <strong>Chuyên viên Vận hành / Ban Quản Trị</strong> phê duyệt. Khi duyệt thành công, mức giá ưu đãi sẽ tự động kích hoạt đồng bộ trên toàn sàn đúng thời gian đã thiết lập.
+                    Đề xuất sẽ được gửi tới <strong>Chuyên viên Vận hành / Ban Quản Trị</strong> phê duyệt. Khi duyệt thành công, mức giá ưu đãi sẽ tự động kích hoạt đồng bộ trên toàn hệ thống đúng thời gian đã thiết lập.
                   </p>
                 </div>
               )}

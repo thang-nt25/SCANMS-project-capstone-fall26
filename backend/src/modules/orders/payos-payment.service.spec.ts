@@ -538,18 +538,4 @@ describe('PayOS checkout', () => {
     expect(mockCancel).toHaveBeenCalledTimes(1);
     expect(order.rawPayload.payos.paymentLinkId).toBe('new-link');
   });
-
-  it('does not cancel or reprice a QR that has already received partial funds', async () => {
-    const { service, provider } = fixture();
-    mockGet.mockResolvedValue({
-      ...provider,
-      status: 'UNDERPAID',
-      amountPaid: 1000,
-      amountRemaining: 1000,
-    });
-    expect(await service.cancelPendingLinkForLivePriceReset(orderId)).toBe(
-      false,
-    );
-    expect(mockCancel).not.toHaveBeenCalled();
-  });
 });

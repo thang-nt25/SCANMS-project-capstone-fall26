@@ -15,6 +15,8 @@ import { CouponOversightDetails, couponDate, couponExpiry, couponLimit } from ".
 
 const labels: Record<string, string> = {
   PENDING_APPROVAL: "Chờ Shop duyệt",
+  PENDING_ADMIN_APPROVAL: "Chờ Admin duyệt (>10%)",
+  PENDING_BLOCK_APPROVAL: "Chờ duyệt ngừng",
   ACTIVE: "Đang áp dụng",
   PAUSED: "Tạm dừng",
   BLOCKED: "Đã khóa",
@@ -30,7 +32,7 @@ const input =
   "w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm text-[#1A1612]";
 type Action = {
   item: CouponItem;
-  kind: "APPROVE" | "POLICY" | "REJECT" | "BLOCK" | "UNBLOCK" | "DETAIL";
+  kind: "APPROVE" | "POLICY" | "REJECT" | "BLOCK" | "UNBLOCK" | "DETAIL" | "ADMIN_APPROVE" | "ADMIN_REJECT" | "REVIEW_BLOCK";
 };
 
 /** Shared KOL-only oversight. Generic retail issuance and platform subsidy screens are retired. */
@@ -80,16 +82,28 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
             search,
           }),
   });
+  const pendingBlockCountQuery = useQuery({
+    queryKey: [user?.id, "kol-coupons-pending-block-count"],
+    enabled: !shop,
+    queryFn: () =>
+      couponService.getAdminCoupons({
+        page: 1,
+        limit: 1,
+        status: "PENDING_BLOCK_APPROVAL",
+      }),
+  });
+  const pendingBlockCount: number = pendingBlockCountQuery.data?.meta?.total ?? 0;
   const rows: CouponItem[] = list.data?.data || [];
+  const defaultExpiryLocal = () => {
+    const d = new Date(Date.now() + 14 * 86_400_000);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
   const [terms, setTerms] = useState({
     discountType: "PERCENTAGE",
     discountValue: "10",
     minimumOrderAmount: "0",
     maximumDiscountAmount: "50000",
-    budgetTotal: "1000000",
-    usageLimitTotal: "100",
-    usageLimitPerCustomer: "1",
-    expiresAt: "",
+    expiresAt: defaultExpiryLocal(),
     reason: "",
   });
   const open = (next: Action) => {
@@ -101,9 +115,6 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
       discountValue: String(item.discountValue),
       minimumOrderAmount: String(item.minimumOrderAmount ?? 0),
       maximumDiscountAmount: String(item.maximumDiscountAmount ?? 50000),
-      budgetTotal: String(item.budgetTotal ?? 1000000),
-      usageLimitTotal: String(item.usageLimitTotal ?? 100),
-      usageLimitPerCustomer: String(item.usageLimitPerCustomer ?? 1),
       expiresAt: item.expiresAt
         ? new Date(
             new Date(item.expiresAt).getTime() -
@@ -111,7 +122,7 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
           )
             .toISOString()
             .slice(0, 16)
-        : "",
+        : defaultExpiryLocal(),
       reason: "",
     });
   };
@@ -126,40 +137,36 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
         const values = [
           "discountValue",
           "maximumDiscountAmount",
-          "budgetTotal",
-          "usageLimitTotal",
-          "usageLimitPerCustomer",
         ] as const;
         for (const field of values)
           if (
             !Number.isFinite(Number(terms[field])) ||
             Number(terms[field]) <= 0
           )
-            throw new Error("Nhập đầy đủ các hạn mức dương hợp lệ.");
+            throw new Error("Nhập đầy đủ mức giảm và trần giảm tối đa hợp lệ.");
+        if (!terms.expiresAt || new Date(terms.expiresAt).getTime() <= Date.now())
+          throw new Error("Vui lòng chọn ngày hết hạn chiến dịch hợp lệ ở tương lai.");
         if (
           !Number.isFinite(Number(terms.minimumOrderAmount)) ||
           Number(terms.minimumOrderAmount) < 0 ||
           (terms.discountType === "PERCENTAGE" &&
-            Number(terms.discountValue) > 100)
+            (Number(terms.discountValue) < 3 || Number(terms.discountValue) > 20))
         )
-          throw new Error("Mức giảm hoặc giá trị đơn tối thiểu không hợp lệ.");
+          throw new Error("Voucher % phải từ 3% đến tối đa 20% (trên 10% chuyển Admin duyệt).");
         if (
-          ![terms.usageLimitTotal, terms.usageLimitPerCustomer].every((value) =>
-            Number.isSafeInteger(Number(value)),
-          )
+          terms.discountType === "FIXED_AMOUNT" &&
+          (Number(terms.discountValue) < 10000 ||
+            Number(terms.minimumOrderAmount) <= 0 ||
+            Number(terms.discountValue) / Number(terms.minimumOrderAmount) > 0.2)
         )
-          throw new Error("Số lượt dùng phải là số nguyên.");
+          throw new Error("Voucher cố định tối thiểu 10.000₫ và không vượt 20% đơn tối thiểu.");
+        const maxDiscount = Number(terms.maximumDiscountAmount);
         const body: ApproveCouponPayload = {
           discountType: terms.discountType as "PERCENTAGE" | "FIXED_AMOUNT",
           discountValue: Number(terms.discountValue),
           minimumOrderAmount: Number(terms.minimumOrderAmount),
-          maximumDiscountAmount: Number(terms.maximumDiscountAmount),
-          budgetTotal: Number(terms.budgetTotal),
-          usageLimitTotal: Number(terms.usageLimitTotal),
-          usageLimitPerCustomer: Number(terms.usageLimitPerCustomer),
-          ...(terms.expiresAt
-            ? { expiresAt: new Date(terms.expiresAt).toISOString() }
-            : {}),
+          ...(maxDiscount > 0 ? { maximumDiscountAmount: maxDiscount } : {}),
+          expiresAt: new Date(terms.expiresAt).toISOString(),
           scopeType: item.scopeType,
           productIds: item.couponProducts?.map((row) => row.product.id),
           categoryNames: item.couponCategories?.map((row) => row.categoryName),
@@ -173,12 +180,16 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
         if (kind === "APPROVE")
           await couponService.approveCoupon(item.storeId, item.id, body);
         else await couponService.updatePolicy(item.storeId, item.id, body);
+      } else if (kind === "ADMIN_APPROVE") {
+        await couponService.adminApproveException(item.id, true);
       } else if (kind === "UNBLOCK")
         await couponService.adminUnblockCoupon(item.id);
       else {
         if (terms.reason.trim().length < 5)
           throw new Error("Nhập lý do ít nhất 5 ký tự.");
-        if (kind === "REJECT")
+        if (kind === "ADMIN_REJECT") {
+          await couponService.adminApproveException(item.id, false, terms.reason.trim());
+        } else if (kind === "REJECT")
           await couponService.rejectCoupon(
             item.storeId,
             item.id,
@@ -193,7 +204,10 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
         else await couponService.adminBlockCoupon(item.id, terms.reason.trim());
       }
       setAction(null);
-      await list.refetch();
+      await Promise.all([
+        list.refetch(),
+        !shop ? pendingBlockCountQuery.refetch() : Promise.resolve(),
+      ]);
     } catch (caught: any) {
       setError(
         caught?.response?.data?.message ||
@@ -205,10 +219,38 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
       setBusy(false);
     }
   };
+
+  const submitReviewBlock = async (approve: boolean) => {
+    if (!action || action.kind !== "REVIEW_BLOCK" || lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await couponService.reviewBlockRequest(
+        action.item.id,
+        approve,
+        terms.reason.trim() || undefined,
+      );
+      setAction(null);
+      await Promise.all([
+        list.refetch(),
+        pendingBlockCountQuery.refetch(),
+      ]);
+    } catch (caught: any) {
+      setError(
+        caught?.response?.data?.message ||
+          caught.message ||
+          "Không thể xử lý yêu cầu ngừng mã.",
+      );
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  };
   const editing = action?.kind === "APPROVE" || action?.kind === "POLICY";
   return (
     <main className="space-y-5 text-[#1A1612]">
-      <section aria-label="Bộ lọc mã ưu đãi KOL" className={`kol-coupon-filters grid w-full grid-cols-1 items-stretch gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 ${shop ? 'sm:grid-cols-3' : 'sm:grid-cols-[minmax(0,1fr)_220px]'}`}>
+      <section aria-label="Bộ lọc mã ưu đãi KOL" className={`kol-coupon-filters grid w-full grid-cols-1 items-stretch gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 ${shop ? 'sm:grid-cols-3' : 'sm:grid-cols-[minmax(0,1fr)_250px]'}`}>
         {shop && (
           <select
             aria-label="Gian hàng phụ trách"
@@ -256,6 +298,46 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
           ))}
         </select>
       </section>
+      {!shop && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {[
+            { value: "", label: "Tất cả" },
+            { value: "PENDING_BLOCK_APPROVAL", label: "Chờ duyệt ngừng", count: pendingBlockCount },
+            { value: "ACTIVE", label: "Đang áp dụng" },
+            { value: "BLOCKED", label: "Đã khóa" },
+            { value: "EXPIRED", label: "Hết hạn" },
+          ].map((pill) => {
+            const active = status === pill.value;
+            return (
+              <button
+                key={pill.value || "ALL"}
+                type="button"
+                onClick={() => {
+                  setStatus(pill.value);
+                  setPage(1);
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                  active
+                    ? "border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-xs"
+                    : "border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]/60 hover:text-[#1A1612]"
+                }`}
+              >
+                {pill.value === "PENDING_BLOCK_APPROVAL" && (pill.count ?? 0) > 0 && (
+                  <span className="h-2 w-2 rounded-full bg-[#D97706]" aria-hidden="true" />
+                )}
+                <span>{pill.label}</span>
+                {typeof pill.count === "number" && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                    pill.count > 0 ? "bg-[#FEF3C7] text-[#92400E]" : "bg-[#F3EFE6] text-[#7D715E]"
+                  }`}>
+                    {pill.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {(list.error || stores.error) && (
         <p role="alert" className="text-[#DC2626]">
           Không tải được dữ liệu. Hãy làm mới hoặc kiểm tra quyền gian hàng.
@@ -278,6 +360,18 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
             </header>
             <div className="kol-coupon-owner"><strong>{item.collaborator?.fullName || 'Chưa có thông tin KOL'}</strong>{!shop && <span>{item.store?.name || 'Chưa có thông tin cửa hàng'}</span>}</div>
             {!shop && item.status==='PENDING_APPROVAL' && <p className="coupon-pending-shop">Chờ cửa hàng duyệt điều kiện và ngân sách mã.</p>}
+            {item.status === "PENDING_BLOCK_APPROVAL" && (
+              <div className="my-2 rounded-xl border border-amber-200 bg-[#FBF5EB] px-3 py-2 text-xs text-[#1A1612]">
+                <p className="m-0 font-semibold text-[#92400E]">
+                  Shop đề nghị ngừng mã · Chờ Vận hành xét duyệt
+                </p>
+                {item.blockedReason && (
+                  <p className="mt-0.5 mb-0 text-[11px] text-[#7D715E] line-clamp-2">
+                    Lý do: {item.blockedReason}
+                  </p>
+                )}
+              </div>
+            )}
             <dl className="kol-coupon-terms">
               <div><dt>Mức giảm</dt><dd>{item.discountType === 'PERCENTAGE' ? `${Number(item.discountValue)}%` : formatMoney(Number(item.discountValue))}</dd></div>
               <div><dt>Đơn tối thiểu</dt><dd>{Number(item.minimumOrderAmount ?? 0) === 0 ? 'Không yêu cầu' : formatMoney(Number(item.minimumOrderAmount))}</dd></div>
@@ -330,6 +424,33 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
                   onClick={() => open({ item, kind: "BLOCK" })}
                 >
                   Khóa mã
+                </button>
+              )}
+              {!shop && item.status === "PENDING_ADMIN_APPROVAL" && user?.role === "SYSTEM_ADMIN" && (
+                <>
+                  <button
+                    type="button"
+                    className={button + " !bg-[#C59B58] !text-[#231D15] font-semibold"}
+                    onClick={() => open({ item, kind: "ADMIN_APPROVE" })}
+                  >
+                    Duyệt ngoại lệ (&gt;10%)
+                  </button>
+                  <button
+                    type="button"
+                    className={button}
+                    onClick={() => open({ item, kind: "ADMIN_REJECT" })}
+                  >
+                    Từ chối
+                  </button>
+                </>
+              )}
+              {!shop && item.status === "PENDING_BLOCK_APPROVAL" && (
+                <button
+                  type="button"
+                  className={button + " !bg-[#C59B58] !border-[#B88E4F] !text-[#1A1612] font-semibold cursor-pointer"}
+                  onClick={() => open({ item, kind: "REVIEW_BLOCK" })}
+                >
+                  Xem &amp; Duyệt ngừng
                 </button>
               )}
               {!shop && item.status === "BLOCKED" && (
@@ -388,6 +509,8 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
               <h2 id="kol-coupon-dialog" className="font-bold">
                 {action.kind === "DETAIL"
                   ? "Chi tiết mã KOL"
+                  : action.kind === "REVIEW_BLOCK"
+                  ? "Thẩm định yêu cầu ngừng mã KOC"
                   : "Xác nhận cập nhật mã"}{" "}
                 · {action.item.displayCode}
               </h2>
@@ -402,6 +525,61 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
             </header>
             {action.kind === "DETAIL" ? (
               <CouponOversightDetails key={action.item.id} item={action.item} shop={shop}/>
+            ) : action.kind === "REVIEW_BLOCK" ? (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 text-xs space-y-1.5">
+                  <div className="font-bold text-[#1A1612]">Cam kết đang chạy với KOC</div>
+                  <div className="grid grid-cols-2 gap-2 text-[#7D715E]">
+                    <div>Cửa hàng: <strong className="text-[#1A1612]">{action.item.store?.name || "—"}</strong></div>
+                    <div>KOC/KOL: <strong className="text-[#1A1612]">{action.item.collaborator?.fullName || "—"}</strong></div>
+                    <div>Mức giảm: <strong className="text-[#B88E4F]">{action.item.discountType === "PERCENTAGE" ? `${Number(action.item.discountValue)}%` : formatMoney(Number(action.item.discountValue))}</strong></div>
+                    <div>Đã dùng: <strong className="text-[#1A1612]">{action.item.usageCount} lượt</strong></div>
+                    <div className="col-span-2">Hiệu lực: <strong className="text-[#1A1612]">{couponExpiry(action.item)}</strong></div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs space-y-1">
+                  <div className="font-bold text-[#92400E]">Lý do Cửa hàng đề nghị ngừng mã</div>
+                  <p className="m-0 text-[#1A1612] leading-relaxed">
+                    {action.item.blockedReason || "Không có lý do chi tiết."}
+                  </p>
+                </div>
+                <label className="block text-xs font-semibold text-[#1A1612]">
+                  Ghi chú phản hồi của Vận hành (gửi tới Shop &amp; KOC)
+                  <textarea
+                    rows={3}
+                    className={input + " mt-1.5"}
+                    disabled={busy}
+                    placeholder="Nhập nhận xét hoặc lý do chấp thuận / từ chối (tùy chọn)..."
+                    value={terms.reason}
+                    onChange={(event) =>
+                      setTerms({ ...terms, reason: event.target.value })
+                    }
+                  />
+                </label>
+                {error && (
+                  <p role="alert" className="text-sm text-[#DC2626]">
+                    {error}
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void submitReviewBlock(false)}
+                    className="rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer disabled:opacity-50"
+                  >
+                    {busy ? "Đang xử lý…" : "Từ chối ngừng (Giữ mã cho KOC)"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void submitReviewBlock(true)}
+                    className="rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-4 py-2 text-xs font-bold text-[#1A1612] transition cursor-pointer disabled:opacity-50"
+                  >
+                    {busy ? "Đang xử lý…" : "Chấp thuận ngừng mã"}
+                  </button>
+                </div>
+              </div>
             ) : (
               <form
                 className="space-y-4"
@@ -431,12 +609,9 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
                     </label>
                     {(
                       [
-                        ["discountValue", "Mức giảm"],
-                        ["minimumOrderAmount", "Đơn tối thiểu"],
-                        ["maximumDiscountAmount", "Giảm tối đa"],
-                        ["budgetTotal", "Ngân sách mã"],
-                        ["usageLimitTotal", "Tổng lượt dùng"],
-                        ["usageLimitPerCustomer", "Lượt dùng mỗi khách"],
+                        ["discountValue", "Mức giảm (% hoặc ₫)"],
+                        ["minimumOrderAmount", "Đơn tối thiểu (₫)"],
+                        ["maximumDiscountAmount", "Giảm tối đa / đơn (₫)"],
                       ] as const
                     ).map(([field, label]) => (
                       <label key={field} className="block text-sm">
@@ -455,8 +630,9 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
                       </label>
                     ))}
                     <label className="block text-sm">
-                      Hạn dùng (giờ địa phương)
+                      Ngày hết hạn chiến dịch *
                       <input
+                        required
                         type="datetime-local"
                         className={input}
                         disabled={busy}
@@ -466,9 +642,10 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
                         }
                       />
                     </label>
+                    <p className="text-xs text-[#7D715E]">Mã hoạt động không giới hạn số lượt trong suốt thời hạn hiệu lực (trừ doanh thu đơn hàng, bảo vệ bằng trần giảm tối đa/đơn).</p>
                   </>
                 ) : (
-                  action.kind !== "UNBLOCK" && (
+                  action.kind !== "UNBLOCK" && action.kind !== "ADMIN_APPROVE" && (
                     <label className="block text-sm">
                       Lý do
                       <textarea

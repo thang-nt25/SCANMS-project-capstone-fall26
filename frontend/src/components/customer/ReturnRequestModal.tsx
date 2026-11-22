@@ -181,12 +181,19 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
           </label>
         </div>
 
-        <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex gap-2 border-t border-[#EAE4D7] bg-white px-4 py-4 shadow-[0_-8px_20px_rgba(35,29,21,.05)] sm:-mx-6 sm:px-6">
+        <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex flex-col gap-2 border-t border-[#EAE4D7] bg-white px-4 py-3.5 shadow-[0_-8px_20px_rgba(35,29,21,.05)] sm:-mx-6 sm:px-6">
+          {returnAllowed && (!Object.values(selectedItems).some(quantity => quantity > 0) || !images.length || (reason === 'DAMAGED' && !video)) && (
+            <p className="text-[11px] font-medium text-[#B45309] bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl px-3 py-1.5 m-0">
+              Lưu ý: Vui lòng chọn sản phẩm cần đổi trả và tải lên ít nhất 1 ảnh bằng chứng{reason === 'DAMAGED' ? ' (kèm video mở hộp)' : ''} ở phía trên để gửi yêu cầu.
+            </p>
+          )}
+          <div className="flex gap-2">
           <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-3 rounded-xl bg-[#F3EFE6] text-[#7D715E] text-xs font-bold">Đóng</button>
           <button type="submit" disabled={!returnAllowed || submitting || !Object.values(selectedItems).some(quantity => quantity > 0) || !images.length || (reason === 'DAMAGED' && !video)} className="flex-[2] py-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-[#231D15] text-xs font-bold flex items-center justify-center gap-2">
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {submitting ? 'Đang tải bằng chứng...' : 'Gửi yêu cầu'}
           </button>
+          </div>
         </div>
       </form>
     </div>

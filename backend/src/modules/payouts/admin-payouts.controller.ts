@@ -7,6 +7,7 @@ import {
   Header,
   Logger,
   NotFoundException,
+  Optional,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -27,6 +28,7 @@ import {
 } from '@nestjs/swagger';
 import { PayoutRequest, PayoutStatus, Prisma, UserRole } from '@prisma/client';
 import type { Response } from 'express';
+import { CacheService } from '../../core/cache/cache.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -66,15 +68,19 @@ export class AdminPayoutsController {
     private readonly batches: PayoutBatchesService,
     private readonly bills: PayoutBillService,
     private readonly wallets: WalletsService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
-  @ApiOperation({ summary: 'Toàn bộ danh sách yêu cầu rút tiền trên toàn sàn' })
+  @ApiOperation({ summary: 'Toàn bộ danh sách yêu cầu rút tiền' })
   async list(@Query() query: QueryMerchantPayoutsDto & { search?: string }) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
     const search = query.search?.trim();
+    const cacheKey = `admin:payouts:list:${page}:${limit}:${query.status || 'ALL'}:${search || ''}`;
+    const cached = await this.cacheService?.get<any>(cacheKey);
+    if (cached) return cached;
 
     const where: Prisma.PayoutRequestWhereInput = {
       ...(query.status ? { status: query.status } : {}),
@@ -141,19 +147,47 @@ export class AdminPayoutsController {
       this.prisma.payoutRequest.count({ where }),
     ]);
 
-    const monthlySummaries = await payoutMonthlySummaries(this.prisma, requests);
     const rejected = requests.filter(request => request.status === PayoutStatus.REJECTED);
-    const refunds = rejected.length ? await this.prisma.financialLedger.findMany({
-      where: { referenceType: 'PAYOUT_REQUEST', transactionType: 'PAYOUT_REJECT_REFUND', balanceBucket: 'AVAILABLE', amount: { gt: 0 },
-        OR: rejected.map(request => ({ referenceId: request.id, wallet: { collaboratorId: request.collaboratorId } })),
-      }, select: { referenceId: true, amount: true },
-    }) : [];
-    const funding = await this.prisma.financialLedger.groupBy({
-      by: ['referenceId', 'walletId', 'storeId'],
-      where: { referenceType: 'PAYOUT_REQUEST', referenceId: { in: requests.map(request => request.id) }, transactionType: 'PAYOUT_WITHDRAW', balanceBucket: 'AVAILABLE' },
-      _sum: { amount: true },
-    });
-    return {
+    if (!requests.length) {
+      const emptyPayload = {
+        requests: [],
+        total,
+        page,
+        limit,
+        maxBillBytes: this.bills.maxBillBytes,
+      };
+      await this.cacheService?.set(cacheKey, emptyPayload, 30);
+      return emptyPayload;
+    }
+    const [monthlySummaries, refunds, funding] = await Promise.all([
+      payoutMonthlySummaries(this.prisma, requests),
+      rejected.length
+        ? this.prisma.financialLedger.findMany({
+            where: {
+              referenceType: 'PAYOUT_REQUEST',
+              transactionType: 'PAYOUT_REJECT_REFUND',
+              balanceBucket: 'AVAILABLE',
+              amount: { gt: 0 },
+              OR: rejected.map((request) => ({
+                referenceId: request.id,
+                wallet: { collaboratorId: request.collaboratorId },
+              })),
+            },
+            select: { referenceId: true, amount: true },
+          })
+        : Promise.resolve([] as Array<{ referenceId: string | null; amount: Prisma.Decimal }>),
+      this.prisma.financialLedger.groupBy({
+        by: ['referenceId', 'walletId', 'storeId'],
+        where: {
+          referenceType: 'PAYOUT_REQUEST',
+          referenceId: { in: requests.map((request) => request.id) },
+          transactionType: 'PAYOUT_WITHDRAW',
+          balanceBucket: 'AVAILABLE',
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+    const responsePayload = {
       requests: requests.map((request) => ({
         ...this.payouts.serializePayout(request),
         refundedAmount: request.status === PayoutStatus.REJECTED && refunds.some(entry => entry.referenceId === request.id)
@@ -181,6 +215,8 @@ export class AdminPayoutsController {
       limit,
       maxBillBytes: this.bills.maxBillBytes,
     };
+    await this.cacheService?.set(cacheKey, responsePayload, 30);
+    return responsePayload;
   }
 
   @Get('stats')
@@ -453,6 +489,7 @@ export class AdminPayoutsController {
       });
 
       this.logger.log(`Manual payout saved: receipt=${uploadMs}ms, accounting=${Math.round(performance.now() - uploadStartedAt - uploadMs)}ms, total=${Math.round(performance.now() - startedAt)}ms`);
+      await this.cacheService?.delPrefix('admin:payouts:');
       return result;
     } catch (err) {
       if (!uploaded.reused) await this.bills.removeUnusedBill(uploaded.publicId).catch(() => undefined);
@@ -536,6 +573,9 @@ export class AdminPayoutsController {
         data: { payoutId, actionUrl: '/collaborator/wallet', reason },
       } });
       return this.payouts.serializePayout(rejected);
+    }).then(async (res) => {
+      await this.cacheService?.delPrefix('admin:payouts:');
+      return res;
     });
   }
 

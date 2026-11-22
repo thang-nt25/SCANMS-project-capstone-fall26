@@ -26,6 +26,7 @@ import {
   Handshake,
   Link2,
   ExternalLink,
+  Ticket,
   MapPin,
   Plus,
   Loader2,
@@ -48,6 +49,7 @@ import { socialService, type SocialChannel } from '../../services/social.service
 import { referralLinksService } from '../../services/referral-links.service';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 import ChatBoxPage from '../chat/ChatBoxPage';
+import { ProposeCouponInChatModal } from '../../components/chat/ProposeCouponInChatModal';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
 import QRCode from 'qrcode';
@@ -63,7 +65,7 @@ const SAMPLE_FILTER_GROUPS: {
   { id: 'ALL', label: 'Tất cả' },
   { id: 'PENDING', label: 'Chờ duyệt', statuses: ['PENDING'] },
   { id: 'SHIPPING', label: 'Đang giao', statuses: ['APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'] },
-  { id: 'TO_REVIEW', label: 'Cần review', statuses: ['RECEIVED', 'REVISION_REQUIRED', 'OVERDUE'], isWarning: true },
+  { id: 'TO_REVIEW', label: 'Cần review', statuses: ['RECEIVED', 'REVISION_REQUIRED', 'APPEALED', 'OVERDUE'], isWarning: true },
   { id: 'COMPLETED', label: 'Hoàn tất', statuses: ['VIDEO_SUBMITTED', 'COMPLETED'] },
   { id: 'CLOSED', label: 'Đã đóng', statuses: ['REJECTED', 'CANCELLED'] },
 ];
@@ -349,6 +351,7 @@ export default function ShopCollaborationPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [dealModalProduct, setDealModalProduct] = useState<any | null>(null);
   const [dealPickerStoreId, setDealPickerStoreId] = useState<string | null>(null);
+  const [couponProposalStore, setCouponProposalStore] = useState<{ id: string; name: string } | null>(null);
   const [dealModalProducts, setDealModalProducts] = useState<any[]>([]);
 
   // Discover Stores Modal
@@ -1175,8 +1178,8 @@ setActiveTab('samples');
                     loadMarketplaceStores();
                   }}
                   className="w-8 h-8 rounded-xl flex items-center justify-center bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-[#B88E4F] transition shadow-2xs cursor-pointer active:scale-95"
-                  title="Khám phá gian hàng trên Sàn"
-                  aria-label="Khám phá gian hàng trên Sàn"
+                  title="Khám phá cửa hàng trực thuộc"
+                  aria-label="Khám phá cửa hàng trực thuộc"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
                 </button>
@@ -1396,7 +1399,7 @@ setActiveTab('samples');
               </div>
               <h3 className="text-sm font-bold text-[#1A1612] m-0">Chưa có cuộc trò chuyện</h3>
               <p className="text-xs text-[#7D715E] max-w-sm mt-1 mb-4">
-                Kết nối với gian hàng trên sàn để trao đổi hợp tác.
+                Kết nối với cửa hàng trực thuộc để trao đổi hợp tác.
               </p>
               <button
                 type="button"
@@ -1450,24 +1453,21 @@ setActiveTab('samples');
                     </div>
                   </div>
 
-                  {/* Nút Xem Trang Gian Hàng Trên Sàn */}
+                  {/* Nút Đề xuất Deal & Xin mã ưu đãi */}
                   <div className="collaboration-heading-actions flex items-center gap-2 shrink-0">
                     <button type="button" onClick={() => setDealPickerStoreId(selectedStore.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-semibold cursor-pointer hover:bg-[#F3EFE6]">
                       <Plus size={13} aria-hidden="true" /> Đề xuất Deal
                     </button>
-                    <a
-                      href={selectedStore.slug
-                        ? `/shop/${encodeURIComponent(selectedStore.slug)}`
-                        : `/marketplace?shop=${encodeURIComponent(selectedStore.id)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer group shrink-0 select-none"
-                      aria-label={`Xem cửa hàng ${selectedStore.name}`}
-                      title={`Xem cửa hàng ${selectedStore.name} trên hệ thống`}
+                    <button
+                      type="button"
+                      onClick={() => setCouponProposalStore({ id: selectedStore.id, name: selectedStore.name })}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer shrink-0 select-none"
+                      aria-label={`Xin mã ưu đãi từ ${selectedStore.name}`}
+                      title={`Đề xuất mã ưu đãi KOC toàn shop ${selectedStore.name}`}
                     >
-                      <span>Xem cửa hàng</span>
-                      <ExternalLink className="w-3 h-3 text-[#B88E4F]" />
-                    </a>
+                      <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
+                      <span>Xin mã ưu đãi</span>
+                    </button>
                     <button type="button" className="collaboration-search-messages" aria-label="Tìm tin nhắn và tệp trong hội thoại" title="Tìm tin nhắn và tệp" onClick={() => { setActiveTab('messages'); setChatSearchRequest(value => value + 1); }}><Search size={17} /></button>
                   </div>
                 </div>
@@ -1611,12 +1611,13 @@ setActiveTab('samples');
                               : [];
                             const activeSample = productSamples.find((sample) => [
                               'PENDING', 'APPROVED', 'SHIPPED', 'RECEIVED', 'VIDEO_SUBMITTED',
-                              'REVISION_REQUIRED', 'OVERDUE', 'DELIVERY_ISSUE',
+                              'REVISION_REQUIRED', 'APPEALED', 'OVERDUE', 'DELIVERY_ISSUE',
                             ].includes(sample.status));
                             const sampleStatusLabels: Record<string, string> = {
                               PENDING: 'Đã xin mẫu · Chờ duyệt', APPROVED: 'Đã duyệt mẫu',
                               SHIPPED: 'Mẫu đang giao', RECEIVED: 'Đã nhận mẫu · Chờ review',
                               VIDEO_SUBMITTED: 'Đã nộp review', REVISION_REQUIRED: 'Cần sửa review',
+                              APPEALED: 'Đang khiếu nại Trọng tài',
                               OVERDUE: 'Mẫu quá hạn review', DELIVERY_ISSUE: 'Mẫu có sự cố giao hàng',
                               COMPLETED: 'Đã hoàn thành mẫu', REJECTED: 'Yêu cầu trước bị từ chối',
                               CANCELLED: 'Yêu cầu trước đã hủy',
@@ -1789,7 +1790,7 @@ setActiveTab('samples');
                         <div className="flex-1">
                           <strong className="block font-bold">Khóa quyền xin mẫu mới do có đơn quá hạn 14 ngày</strong>
                           <p className="mt-0.5 text-[11px] text-[#7D715E] leading-relaxed">
-                            Bạn có <strong className="text-[#DC2626]">{overdueSamplesCount}</strong> đơn mẫu quá hạn chưa nghiệm thu video. Vui lòng bấm "Nộp Link Video Review" ở các đơn bên dưới để mở lại quyền nhận mẫu toàn sàn.
+                            Bạn có <strong className="text-[#DC2626]">{overdueSamplesCount}</strong> đơn mẫu quá hạn chưa nghiệm thu video. Vui lòng bấm "Nộp Link Video Review" ở các đơn bên dưới để mở lại quyền nhận mẫu toàn hệ thống.
                           </p>
                         </div>
                       </div>
@@ -1885,7 +1886,7 @@ setActiveTab('samples');
                           const statusLabel: Record<string, string> = {
                             PENDING: 'Chờ Shop duyệt', APPROVED: 'Shop đã duyệt', SHIPPED: 'Đang giao',
                             RECEIVED: 'Đã nhận · chờ video', VIDEO_SUBMITTED: 'Chờ Shop nghiệm thu',
-                            REVISION_REQUIRED: 'Shop yêu cầu sửa video', COMPLETED: 'Đã hoàn tất',
+                            REVISION_REQUIRED: 'Shop yêu cầu sửa video', APPEALED: 'Đang chờ Trọng tài phân xử', COMPLETED: 'Đã hoàn tất',
                             OVERDUE: 'Quá hạn video · cần xử lý', REJECTED: 'Shop từ chối',
                             CANCELLED: 'Đã hủy', DELIVERY_ISSUE: 'Có sự cố giao hàng',
                           };
@@ -1963,7 +1964,7 @@ setActiveTab('samples');
                                 {awaitingReceipt && samp.carrier?.toUpperCase().includes('GHN') && (
                                   <span className="basis-full text-[10.5px] text-[#7D715E] italic">Hạn nộp video bắt đầu khi GHN xác nhận giao thành công.</span>
                                 )}
-                                {isShipped && !samp.receivedAt && (
+                                {isShipped && !samp.receivedAt && samp.carrier && !samp.carrier.toUpperCase().includes('GHN') && (
                                   <button
                                     type="button"
                                     onClick={() => void handleConfirmReceivedSample(samp.id)}
@@ -1972,6 +1973,26 @@ setActiveTab('samples');
                                     <CheckCircle2 size={13} aria-hidden="true" />
                                     <span>Đã nhận được hàng</span>
                                   </button>
+                                )}
+                                {status === 'REVISION_REQUIRED' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const reason = window.prompt('Nhập giải trình gửi System Manager trọng tài (tối thiểu 15 ký tự):')?.trim();
+                                      if (!reason) return;
+                                      if (reason.length < 15) {
+                                        toast.error('Giải trình khiếu nại cần ít nhất 15 ký tự.');
+                                        return;
+                                      }
+                                      api.post(`/sample-requests/${samp.id}/appeal`, { reason })
+                                        .then(() => {
+                                          toast.success('Đã gửi yêu cầu Trọng tài. Đồng hồ SLA đã tạm đóng băng.');
+                                          if (selectedStore?.id) void loadStoreSamples(selectedStore.id);
+                                        })
+                                        .catch((err: any) => toast.error(err?.response?.data?.message || 'Không gửi được khiếu nại.'));
+                                    }}
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[30px] px-2.5 py-1 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#8C6226] text-xs font-semibold hover:bg-[#F3EFE6] transition cursor-pointer"
+                                  >Yêu cầu Trọng tài</button>
                                 )}
                                 {isShipped && (
                                   <button
@@ -2643,6 +2664,22 @@ setActiveTab('samples');
           initialProductIds={dealModalProducts.map(item => item.id)}
           onClose={() => { setDealModalProduct(null); setDealModalProducts([]); }}
           onSuccess={conversationId => { setDealModalProduct(null); setDealModalProducts([]); navigate('/chat?conversationId=' + conversationId); }}
+        />
+      )}
+      {couponProposalStore && (
+        <ProposeCouponInChatModal
+          isOpen={Boolean(couponProposalStore)}
+          storeId={couponProposalStore.id}
+          storeName={couponProposalStore.name}
+          onClose={() => setCouponProposalStore(null)}
+          onSuccess={(payload) => {
+            setCouponProposalStore(null);
+            if (payload?.conversationId) {
+              navigate('/chat?conversationId=' + encodeURIComponent(payload.conversationId));
+            } else {
+              setActiveTab('messages');
+            }
+          }}
         />
       )}   </div>
   );

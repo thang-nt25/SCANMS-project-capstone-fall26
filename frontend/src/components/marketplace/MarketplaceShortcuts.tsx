@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Radio, Tag, Store } from 'lucide-react';
+import { Tag, Store } from 'lucide-react';
 
-export function MarketplaceShortcuts({ onOpenLive }: { onOpenLive: () => void; compact?: boolean }) {
+export function MarketplaceShortcuts({ compact: _compact }: { compact?: boolean }) {
   const location = useLocation();
   const storesActive = location.hash === '#featured-stores';
   const discountsActive = location.pathname === '/search' && new URLSearchParams(location.search).get('discount') === 'true';
@@ -20,17 +20,6 @@ export function MarketplaceShortcuts({ onOpenLive }: { onOpenLive: () => void; c
         <span>Gian hàng</span>
         {storesActive && <span className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 w-[26px] h-[2.5px] bg-[#B8862F] rounded-full" />}
       </Link>
-
-      <span className="text-[#DEC9B0] text-[11px] font-light select-none px-0.5" aria-hidden="true">|</span>
-
-      <button
-        type="button"
-        onClick={onOpenLive}
-        className="relative inline-flex items-center gap-1.5 py-1.5 px-3.5 no-underline rounded-full text-[13px] font-medium text-[#63523e] border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:text-[#94621f] whitespace-nowrap"
-      >
-        <Radio size={14} className="text-[#85735f]" aria-hidden="true" />
-        <span>Live KOC</span>
-      </button>
 
       <span className="text-[#DEC9B0] text-[11px] font-light select-none px-0.5" aria-hidden="true">|</span>
 

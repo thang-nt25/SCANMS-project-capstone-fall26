@@ -22,6 +22,8 @@ import {
   RejectSampleRequestDto,
   ShipSampleRequestDto,
   SubmitSampleVideoDto,
+  ReviewSampleVideoDto,
+  AppealSampleRevisionDto,
 } from './dto/sample-request.dto';
 
 const SAMPLE_COMMITMENT_DAYS = 14;
@@ -32,6 +34,7 @@ const ACTIVE_SAMPLE_STATUSES: SampleRequestStatus[] = [
   SampleRequestStatus.RECEIVED,
   SampleRequestStatus.VIDEO_SUBMITTED,
   SampleRequestStatus.REVISION_REQUIRED,
+  SampleRequestStatus.APPEALED,
   SampleRequestStatus.OVERDUE,
   SampleRequestStatus.DELIVERY_ISSUE,
 ];
@@ -85,19 +88,23 @@ export class SamplesService {
       },
     });
     const blocked = Boolean(profile?.sampleRequestsBlockedAt);
+    const hasOverduePenalty = overdueRequests.length > 0;
     return {
       canRequest: Boolean(
         user?.isActive &&
         profile?.kycStatus === 'VERIFIED' &&
         channels.length > 0 &&
-        !blocked,
+        !blocked &&
+        !hasOverduePenalty,
       ),
       kycVerified: profile?.kycStatus === 'VERIFIED',
       hasSocialChannel: channels.length > 0,
-      isBlocked: blocked,
+      isBlocked: blocked || hasOverduePenalty,
       blockedAt: profile?.sampleRequestsBlockedAt ?? null,
       blockReason: blocked
         ? profile?.sampleRequestsBlockReason || 'Admin đã khóa quyền nhận mẫu.'
+        : hasOverduePenalty
+        ? `Bạn đang có ${overdueRequests.length} đơn hàng mẫu quá hạn nộp link review (OVERDUE). Vui lòng hoàn tất nộp link để mở khóa.`
         : null,
       overdueRequests,
       channels,
@@ -410,11 +417,16 @@ export class SamplesService {
   }
 
   async getAdminRequests(status?: SampleRequestStatus) {
-    return this.prisma.sampleProductRequest.findMany({
+    const cacheKey = `samples:admin:${status || 'ALL'}`;
+    const cached = await this.cacheService?.get<any[]>(cacheKey);
+    if (cached) return cached;
+    const rows = await this.prisma.sampleProductRequest.findMany({
       where: status ? { status } : undefined,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       include: this.includeRelations(),
     });
+    await this.cacheService?.set(cacheKey, rows, 30);
+    return rows;
   }
 
   async getBlockedCollaborators() {
@@ -679,10 +691,28 @@ export class SamplesService {
   }
 
   async confirmReceived(requestId: string, collaboratorId: string) {
-    await this.getOwnedRequest(requestId, collaboratorId);
-    throw new BadRequestException(
-      'Hệ thống tự xác nhận nhận mẫu sau khi xác minh giao thành công. KOL không thể xác nhận thủ công.',
-    );
+    const req = await this.getOwnedRequest(requestId, collaboratorId);
+    if (req.carrier?.toUpperCase().includes('GHN')) {
+      throw new BadRequestException(
+        'Đơn hàng mẫu GHN được hệ thống tự xác nhận khi giao thành công. KOL không thể xác nhận thủ công.',
+      );
+    }
+    if (req.status !== SampleRequestStatus.SHIPPED) {
+      throw new BadRequestException('Chỉ có thể xác nhận nhận mẫu khi đơn đang ở trạng thái đang giao.');
+    }
+    const receivedAt = new Date();
+    const deadlineAt = new Date(receivedAt.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000);
+    const updated = await this.prisma.sampleProductRequest.update({
+      where: { id: requestId },
+      data: {
+        status: SampleRequestStatus.RECEIVED,
+        receivedAt,
+        deadlineAt,
+      },
+      include: this.includeRelations(),
+    });
+    await this.invalidateShopSamplesCache();
+    return updated;
   }
 
   async reportDeliveryIssue(
@@ -1234,6 +1264,7 @@ export class SamplesService {
         SampleRequestStatus.SHIPPED,
         SampleRequestStatus.RECEIVED,
         SampleRequestStatus.REVISION_REQUIRED,
+        SampleRequestStatus.APPEALED,
         SampleRequestStatus.OVERDUE,
         SampleRequestStatus.DELIVERY_ISSUE,
       ];
@@ -1242,11 +1273,26 @@ export class SamplesService {
           'Chỉ có thể miễn nghĩa vụ với yêu cầu đã được Shop duyệt cấp mẫu.',
         );
       }
-      const updated = await this.prisma.sampleProductRequest.update({
-        where: { id: requestId },
-        data: { status: SampleRequestStatus.CANCELLED, rejectedReason: reason },
-        include: this.includeRelations(),
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const next = await tx.sampleProductRequest.update({
+          where: { id: requestId },
+          data: { status: SampleRequestStatus.CANCELLED, rejectedReason: reason },
+          include: this.includeRelations(),
+        });
+        if (req.productVariantId) {
+          await tx.productVariant.updateMany({
+            where: { id: req.productVariantId, sampleGrantedCount: { gt: 0 } },
+            data: { sampleGrantedCount: { decrement: 1 } },
+          });
+        } else {
+          await tx.product.updateMany({
+            where: { id: req.productId, sampleGrantedCount: { gt: 0 } },
+            data: { sampleGrantedCount: { decrement: 1 } },
+          });
+        }
+        return next;
       });
+      await this.invalidateShopSamplesCache();
       await this.notify({
         userId: req.collaboratorId,
         title: 'Quản trị viên đã giải quyết nghĩa vụ mẫu',
@@ -1260,6 +1306,72 @@ export class SamplesService {
         requestId,
         { reason },
       );
+      return updated;
+    }
+
+    if (dto.action === 'FORCE_COMPLETE') {
+      if (req.status !== SampleRequestStatus.APPEALED && req.status !== SampleRequestStatus.REVISION_REQUIRED && req.status !== SampleRequestStatus.VIDEO_SUBMITTED) {
+        throw new BadRequestException('Chỉ có thể phán quyết hoàn thành cho đơn đang khiếu nại hoặc chờ duyệt video.');
+      }
+      const updated = await this.prisma.sampleProductRequest.update({
+        where: { id: requestId },
+        data: { status: SampleRequestStatus.COMPLETED, videoRejectionReason: null, overdueAt: null },
+        include: this.includeRelations(),
+      });
+      await this.invalidateShopSamplesCache();
+      await this.notify({
+        userId: req.collaboratorId,
+        title: 'Trọng tài chấp nhận video nghiệm thu',
+        message: `System Manager đã nghiệm thu hoàn tất video mẫu ${req.product.title}. Lý do: ${reason}`,
+        type: 'SAMPLE_VIDEO_APPROVED',
+        requestId,
+      });
+      await this.audit(adminId, 'SAMPLE_APPEAL_FORCE_COMPLETE', requestId, { reason });
+      return updated;
+    }
+
+    if (dto.action === 'UPHOLD_REVISION') {
+      if (req.status !== SampleRequestStatus.APPEALED) {
+        throw new BadRequestException('Chỉ có thể giữ nguyên yêu cầu sửa cho đơn đang khiếu nại.');
+      }
+      const revisionDeadlineAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const updated = await this.prisma.sampleProductRequest.update({
+        where: { id: requestId },
+        data: { status: SampleRequestStatus.REVISION_REQUIRED, revisionDeadlineAt, overdueAt: null },
+        include: this.includeRelations(),
+      });
+      await this.invalidateShopSamplesCache();
+      await this.notify({
+        userId: req.collaboratorId,
+        title: 'Trọng tài giữ nguyên yêu cầu chỉnh sửa video',
+        message: `Vui lòng chỉnh sửa lại video ${req.product.title} trước ${revisionDeadlineAt.toLocaleDateString('vi-VN')}. Ghi chú: ${reason}`,
+        type: 'SAMPLE_VIDEO_REVISION_REQUIRED',
+        requestId,
+      });
+      await this.audit(adminId, 'SAMPLE_APPEAL_UPHOLD_REVISION', requestId, { reason });
+      return updated;
+    }
+
+    if (dto.action === 'CONFIRM_VIOLATION') {
+      const updated = await this.prisma.sampleProductRequest.update({
+        where: { id: requestId },
+        data: { status: SampleRequestStatus.OVERDUE, overdueAt: req.overdueAt ?? new Date() },
+        include: this.includeRelations(),
+      });
+      const overdueCount = await this.prisma.sampleProductRequest.count({
+        where: { collaboratorId: req.collaboratorId, status: SampleRequestStatus.OVERDUE },
+      });
+      if (overdueCount >= 2) {
+        await this.prisma.collaboratorProfile.updateMany({
+          where: { userId: req.collaboratorId, sampleRequestsBlockedAt: null },
+          data: {
+            sampleRequestsBlockedAt: new Date(),
+            sampleRequestsBlockReason: `Tự động khóa do vi phạm quá hạn/không hoàn thành ${overdueCount} đơn hàng mẫu.`,
+          },
+        });
+      }
+      await this.invalidateShopSamplesCache();
+      await this.audit(adminId, 'SAMPLE_VIOLATION_CONFIRMED', requestId, { reason, overdueCount });
       return updated;
     }
 
@@ -1293,11 +1405,15 @@ export class SamplesService {
             revisionDeadlineAt: deadlineAt,
             revisionReminderSentAt: null,
             revisionShopReminderSentAt: null,
+            overdueAt: null,
+            shopReminderSentAt: null,
           }
         : {
             status: SampleRequestStatus.RECEIVED,
             deadlineAt,
             reminderSentAt: null,
+            overdueAt: null,
+            shopReminderSentAt: null,
           },
       include: this.includeRelations(),
     });
@@ -1721,6 +1837,116 @@ export class SamplesService {
       });
     } catch {
       // Notifications are best-effort; the sample state remains authoritative.
+    }
+  }
+
+  async reviewVideoByShop(
+    requestId: string,
+    shopOwnerId: string,
+    dto: ReviewSampleVideoDto,
+  ) {
+    const req = await this.ensureShopOwns(requestId, shopOwnerId);
+    if (req.status !== SampleRequestStatus.VIDEO_SUBMITTED) {
+      throw new BadRequestException('Chỉ có thể nghiệm thu khi KOL đã nộp link video review.');
+    }
+    if (!dto.approve) {
+      const reason = dto.rejectionReason?.trim() || '';
+      if (reason.length < 15) {
+        throw new BadRequestException('Vui lòng nhập lý do yêu cầu chỉnh sửa tối thiểu 15 ký tự.');
+      }
+      if ((req.revisionCount || 0) >= 2) {
+        throw new BadRequestException(
+          'Đã đạt giới hạn tối đa 2 lần yêu cầu chỉnh sửa. Nếu chưa đạt, vui lòng báo cáo hoặc chuyển System Manager trọng tài.',
+        );
+      }
+      const now = new Date();
+      const revisionDeadlineAt = new Date(
+        Math.max(req.deadlineAt?.getTime() ?? 0, now.getTime() + 7 * 24 * 60 * 60 * 1000),
+      );
+      const updated = await this.prisma.sampleProductRequest.update({
+        where: { id: requestId },
+        data: {
+          status: SampleRequestStatus.REVISION_REQUIRED,
+          videoRejectionReason: reason,
+          revisionCount: { increment: 1 },
+          revisionDeadlineAt,
+          revisionReminderSentAt: null,
+          revisionShopReminderSentAt: null,
+        },
+        include: this.includeRelations(),
+      });
+      await this.invalidateShopSamplesCache();
+      await this.notify({
+        userId: req.collaboratorId,
+        title: 'Shop yêu cầu chỉnh sửa video mẫu',
+        message: `Shop yêu cầu sửa video cho ${req.product.title}: ${reason}. Nếu thấy không hợp lý, bạn có thể bấm Yêu cầu Trọng tài.`,
+        type: 'SAMPLE_VIDEO_REVISION_REQUIRED',
+        requestId,
+      });
+      await this.audit(shopOwnerId, 'SAMPLE_VIDEO_REVISION_REQUIRED', requestId, { reason });
+      return updated;
+    }
+
+    const updated = await this.prisma.sampleProductRequest.update({
+      where: { id: requestId },
+      data: {
+        status: SampleRequestStatus.COMPLETED,
+        videoRejectionReason: null,
+        overdueAt: null,
+      },
+      include: this.includeRelations(),
+    });
+    await this.invalidateShopSamplesCache();
+    await this.notify({
+      userId: req.collaboratorId,
+      title: 'Video mẫu đã được nghiệm thu',
+      message: `Shop đã nghiệm thu hoàn tất video cho ${req.product.title}.`,
+      type: 'SAMPLE_VIDEO_APPROVED',
+      requestId,
+    });
+    await this.audit(shopOwnerId, 'SAMPLE_VIDEO_APPROVED', requestId, { videoUrl: req.videoUrl });
+    return updated;
+  }
+
+  async appealRevision(
+    requestId: string,
+    collaboratorId: string,
+    dto: AppealSampleRevisionDto,
+  ) {
+    const req = await this.getOwnedRequest(requestId, collaboratorId);
+    if (req.status !== SampleRequestStatus.REVISION_REQUIRED) {
+      throw new BadRequestException('Chỉ có thể yêu cầu trọng tài khi đơn đang bị yêu cầu chỉnh sửa.');
+    }
+    const reason = dto.reason.trim();
+    const updated = await this.prisma.sampleProductRequest.update({
+      where: { id: requestId },
+      data: {
+        status: SampleRequestStatus.APPEALED,
+        appealReason: reason,
+        appealedAt: new Date(),
+      },
+      include: this.includeRelations(),
+    });
+    await this.invalidateShopSamplesCache();
+    await this.notify({
+      userId: req.product.store.ownerId,
+      title: 'KOL yêu cầu trọng tài video mẫu',
+      message: `KOL đã gửi khiếu nại trọng tài lên System Manager cho mẫu ${req.product.title}. Đồng hồ SLA được tạm đóng băng chờ phân xử.`,
+      type: 'SAMPLE_REVISION_APPEALED',
+      requestId,
+    });
+    await this.audit(collaboratorId, 'SAMPLE_REVISION_APPEALED', requestId, { reason });
+    return updated;
+  }
+
+  private async invalidateShopSamplesCache() {
+    try {
+      await Promise.all([
+        this.cacheService?.delPrefix?.('samples:shop:'),
+        this.cacheService?.delPrefix?.('samples:admin:'),
+      ]);
+    } catch {
+      // ignore cache errors
     }
   }
 

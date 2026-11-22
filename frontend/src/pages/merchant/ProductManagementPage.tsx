@@ -534,7 +534,7 @@ export default function ProductManagementPage() {
     try {
       await productService.moderateProduct(product.id, 'APPROVED');
       toast.success(`Đã phê duyệt sản phẩm "${product.title || product.name}"!`, {
-        description: 'Sản phẩm đã được mở bán công khai trên sàn SCANMS cho khách và KOL.',
+        description: 'Sản phẩm đã được mở bán công khai trên hệ thống SCANMS cho khách và KOL.',
       });
       setProducts((prev) =>
         prev.map((item) =>
@@ -658,7 +658,7 @@ export default function ProductManagementPage() {
   const [formFloorPrice, setFormFloorPrice] = useState<number | ''>('');
   const [discountModalProduct, setDiscountModalProduct] = useState<any>(null);
   const [bulkDiscountProducts, setBulkDiscountProducts] = useState<any[] | null>(null);
-  const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
+  const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(true);
   const [formStock, setFormStock] = useState<number | ''>('');
   const [formPackageWeight, setFormPackageWeight] = useState<number | ''>('');
   const [formPackageLength, setFormPackageLength] = useState<number | ''>('');
@@ -762,9 +762,8 @@ export default function ProductManagementPage() {
         errors.push(`${vLabel}: Nhập giá niêm yết bán lẻ > 0.`);
       }
       if (Number(v.floorPrice) > 0 && Number(v.price) > 0) {
-        const minSafe = calculateMinSafePrice(Number(v.floorPrice));
-        if (Number(v.price) < minSafe) {
-          errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) phải >= ${minSafe.toLocaleString('vi-VN')}₫ (đã gánh Voucher 10% + KOL 25%).`);
+        if (Number(v.price) < Number(v.floorPrice)) {
+          errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) không được thấp hơn giá sàn (${Number(v.floorPrice).toLocaleString('vi-VN')}₫).`);
         }
       }
       if (v.stockQuantity === '' || v.stockQuantity === undefined || Number(v.stockQuantity) < 0 || !Number.isInteger(Number(v.stockQuantity))) {
@@ -3447,8 +3446,11 @@ export default function ProductManagementPage() {
                     <tbody className="divide-y divide-[#EAE4D7]">
                       {formVariants.map((variant, index) => {
                         const isPrimary = index === 0;
-                        const minSafePrice = Number(variant.floorPrice) > 0 ? calculateMinSafePrice(Number(variant.floorPrice)) : 0;
-                        const isBelowFloor = minSafePrice > 0 && Number(variant.price) > 0 && Number(variant.price) < minSafePrice;
+                        const floorNum = Number(variant.floorPrice || 0);
+                        const priceNum = Number(variant.price || 0);
+                        const minSafePrice = floorNum > 0 ? calculateMinSafePrice(floorNum) : 0;
+                        const isBelowHardFloor = floorNum > 0 && priceNum > 0 && priceNum < floorNum;
+                        const isBelowSafeMargin = minSafePrice > 0 && priceNum >= floorNum && priceNum < minSafePrice;
 
                         return (
                           <Fragment key={variant.id || `variant-${index}`}>
@@ -3590,12 +3592,25 @@ export default function ProductManagementPage() {
                                   }}
                                   placeholder="200.000"
                                   className={`h-8.5 w-full rounded-lg border px-2 text-xs font-bold tabular-nums outline-none transition focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 ${
-                                    isBelowFloor
+                                    isBelowHardFloor
                                       ? 'border-rose-400 bg-rose-50 text-rose-700 ring-1 ring-rose-300'
+                                      : isBelowSafeMargin
+                                      ? 'border-[#D97706] bg-[#FEF3C7]/45 text-[#92400E]'
                                       : 'border-[#EAE4D7] bg-white text-[#1A1612]'
                                   }`}
-                                  title={isBelowFloor ? 'Cảnh báo: Giá niêm yết không được thấp hơn giá sàn bảo vệ!' : 'Giá bán niêm yết'}
+                                  title={
+                                    isBelowHardFloor
+                                      ? 'Lỗi: Giá niêm yết không được thấp hơn giá sàn!'
+                                      : isBelowSafeMargin
+                                      ? `Cảnh báo biên mỏng: Giá thấp hơn ngưỡng an toàn (${minSafePrice.toLocaleString('vi-VN')}₫). Hệ thống sẽ gắn cờ để System Manager lưu ý khi duyệt.`
+                                      : 'Giá bán niêm yết'
+                                  }
                                 />
+                                {isBelowSafeMargin && (
+                                  <span className="mt-1 block text-[10px] font-semibold text-[#B45309]">
+                                    Biên mỏng (&lt; {minSafePrice.toLocaleString('vi-VN')}₫)
+                                  </span>
+                                )}
                               </td>
 
                               {/* 7. Tồn kho */}
@@ -4063,22 +4078,17 @@ export default function ProductManagementPage() {
                     </strong>
                   </div>
 
-                  {/* Cột 2: Kích hoạt kênh Tiếp thị liên kết */}
-                  <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 flex flex-col justify-center">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formAffiliateEnabled}
-                        onChange={(e) => setFormAffiliateEnabled(e.target.checked)}
-                        className="mt-0.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] h-4 w-4 cursor-pointer"
-                      />
+                  {/* Cột 2: Kênh Tiếp thị liên kết (Mặc định bật cho SP nội bộ) */}
+                  <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 flex flex-col justify-center">
+                    <div className="flex items-start gap-2.5">
+                      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#B88E4F]" />
                       <div>
                         <span className="text-xs font-bold text-[#1A1612] flex items-center">
-                          Kích hoạt Tiếp thị Liên kết (Affiliate)
-                          <InfoTooltip text="Cho phép CTV/KOL sinh Link, QR và đề xuất Deal độc quyền cho sản phẩm này." />
+                          Tiếp thị Liên kết: Tự động Bật
+                          <InfoTooltip text="Toàn bộ sản phẩm nội bộ sau khi duyệt đều sẵn sàng cho CTV/KOL tạo Link, QR, Deal độc quyền và áp Voucher." />
                         </span>
                       </div>
-                    </label>
+                    </div>
                   </div>
 
                   {/* Cột 3: Hàng mẫu cho KOL */}
@@ -4371,7 +4381,7 @@ export default function ProductManagementPage() {
             </div>
 
             <p className="text-xs text-[#7D715E] leading-relaxed mb-4">
-              Sau khi phê duyệt, sản phẩm sẽ được mở bán chính thức trên sàn SCANMS, khách hàng có thể đặt mua và KOL có thể lấy link tiếp thị liên kết để nhận hoa hồng.
+              Sau khi phê duyệt, sản phẩm sẽ được mở bán chính thức trên hệ thống SCANMS, khách hàng có thể đặt mua và KOL có thể lấy link tiếp thị liên kết để nhận hoa hồng.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#EAE4D7]">

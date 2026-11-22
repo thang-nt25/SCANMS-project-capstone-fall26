@@ -648,6 +648,9 @@ export class ReferralLinksService {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
+    const cacheKey = `ref:kol:${collaboratorId}:${page}:${limit}:${query.status || 'ALL'}:${query.remuneration || 'ALL'}:${query.channel || 'ALL'}:${query.storeId || 'ALL'}:${query.search?.trim() || ''}`;
+    const cached = await this.cacheService?.get<any>(cacheKey);
+    if (cached) return cached;
 
     const where: Prisma.ReferralLinkWhereInput = {
       collaboratorId,
@@ -792,7 +795,7 @@ export class ReferralLinksService {
       };
     });
 
-    return {
+    const payload = {
       data: formattedItems,
       summary: { totalClicks: summary._sum.totalClicks ?? 0, uniqueClicks: summary._sum.uniqueClicks ?? 0, totalOrders },
       meta: {
@@ -802,6 +805,8 @@ export class ReferralLinksService {
         totalPages: Math.ceil(total / limit),
       },
     };
+    await this.cacheService?.set(cacheKey, payload, 45);
+    return payload;
   }
 
   /**

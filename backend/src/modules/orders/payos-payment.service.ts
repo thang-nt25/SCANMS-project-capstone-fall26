@@ -117,50 +117,6 @@ export class PayosPaymentService {
     return Number.parseInt(randomBytes(6).toString('hex'), 16) + 1;
   }
 
-  async cancelPendingLinkForLivePriceReset(orderId: string): Promise<boolean> {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      select: { rawPayload: true },
-    });
-    const raw = (order?.rawPayload || {}) as Record<string, any>;
-    if (raw.paymentStatus === 'PAID') return false;
-    if (raw.paymentMethod !== 'PAYOS') return true;
-
-    const details = raw.payos as PayosDetails | undefined;
-    if (!details?.paymentLinkId && !details?.orderCode) return true;
-
-    try {
-      const payos = this.client();
-      const identifier = details.paymentLinkId || details.orderCode!;
-      const current = typeof identifier === 'string'
-        ? await payos.paymentRequests.get(identifier)
-        : await payos.paymentRequests.get(identifier);
-      if (
-        current.amountPaid > 0 ||
-        current.status === 'PAID' ||
-        (details.orderCode && current.orderCode !== details.orderCode) ||
-        (details.paymentLinkId && current.id !== details.paymentLinkId)
-      )
-        return false;
-      if (['CANCELLED', 'EXPIRED'].includes(current.status)) return true;
-      if (current.status !== 'PENDING') return false;
-      const reason = 'Livestream ended; the unpaid order was repriced.';
-      const link = typeof identifier === 'string'
-        ? await payos.paymentRequests.cancel(identifier, reason)
-        : await payos.paymentRequests.cancel(identifier, reason);
-      return (
-        link.amountPaid === 0 &&
-        link.id === current.id &&
-        (link.status === 'CANCELLED' || link.status === 'EXPIRED')
-      );
-    } catch {
-      this.logger.warn(
-        `Could not cancel PayOS link before repricing order ${orderId}`,
-      );
-      return false;
-    }
-  }
-
   private async ownedOrder(publicCode: string, userId: string, manager?: OrderManagerIdentity, prepare = false) {
     if (manager && !new Set<UserRole>([UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER]).has(manager.role))
       throw new ForbiddenException('Bạn không có quyền quản lý thanh toán đơn hàng.');
@@ -247,18 +203,9 @@ export class PayosPaymentService {
       existing = undefined;
     }
     if (existing?.paymentLinkId && existing.amount !== amount) {
-      const cancelled = await this.cancelPendingLinkForLivePriceReset(order.id);
-      if (!cancelled) {
-        throw new ConflictException(
-          'Liên kết thanh toán cũ đang được xử lý. Vui lòng tải lại sau ít phút.',
-        );
-      }
-      orderCode = this.newPaymentOrderCode();
-      existing = undefined;
-      await this.prisma.order.update({
-        where: { id: order.id },
-        data: { rawPayload: { ...raw, payos: { orderCode } } },
-      });
+      throw new ConflictException(
+        'Liên kết thanh toán cũ đang được xử lý với số tiền khác. Vui lòng tạo đơn mới.',
+      );
     }
     const base = this.storefrontBaseUrl();
     const resultPath = `/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn || publicCode)}${manager ? '&manual=1' : ''}`;

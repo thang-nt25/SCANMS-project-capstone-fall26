@@ -24,11 +24,6 @@ export enum PaymentMethod {
 }
 
 export class OrderItemInputDto {
-  @ApiPropertyOptional({ description: 'Phiên livestream nguồn của sản phẩm' })
-  @IsOptional()
-  @IsUUID()
-  liveSessionId?: string;
-
   @ApiProperty({ description: 'ID sản phẩm', example: 'uuid-product-id' })
   @IsString()
   @IsNotEmpty()

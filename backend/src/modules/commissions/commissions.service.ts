@@ -247,16 +247,8 @@ export class CommissionsService {
 
         for (const item of calculation.items) {
           const appliedRate = Number(item.appliedCommissionRate || 0);
-          const orderItem = order.orderItems.find(
-            (oi) => oi.id === item.orderItemId,
-          );
-          // Isolate liveBonus (+2%) into 14-day pendingBalance; only Exclusive Deal uplift enters KPI Deal Escrow.
-          const dealCompareRate =
-            orderItem?.regularCommissionRate != null
-              ? Number(orderItem.regularCommissionRate)
-              : appliedRate;
-          if (dealCompareRate > tierBaseRateNum && appliedRate > 0) {
-            const dealUpliftRate = dealCompareRate - tierBaseRateNum;
+          if (appliedRate > tierBaseRateNum && appliedRate > 0) {
+            const dealUpliftRate = appliedRate - tierBaseRateNum;
             const dealPortion = item.calculatedCommissionAmount
               .times(dealUpliftRate)
               .dividedBy(appliedRate)
@@ -503,8 +495,13 @@ export class CommissionsService {
       if (
         (commission.order.returnRequests ?? []).some(
           (claim) =>
-            !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(claim.status) ||
-            claim.dispute?.status === 'OPEN',
+            ![
+              'CLOSED',
+              'EXPIRED',
+              'COMPLETED',
+              'SHOP_REJECTED',
+              'INSPECTION_REJECTED',
+            ].includes(claim.status) || claim.dispute?.status === 'OPEN',
         )
       )
         return false;

@@ -45,39 +45,4 @@ describe('Quy marketplace seed contract', () => {
       'active verified seed shop',
     );
   });
-
-  it('pins a member product for all five live sessions without faking current viewers', () => {
-    const data = buildDataset(context);
-    for (const session of data.liveSessions) {
-      const pinned = jsonObject(session.governance).pinnedProductId;
-      expect(
-        data.liveProducts.some(
-          (row) => row.sessionId === session.id && row.productId === pinned,
-        ),
-      ).toBe(true);
-      if (session.status === 'LIVE')
-        expect(
-          data.liveViewers.some((row) => row.sessionId === session.id),
-        ).toBe(false);
-    }
-  });
-
-  it('rejects cross-session pins and fake attendance in active rooms', () => {
-    const data = buildDataset(context);
-    data.liveSessions[0].governance = {
-      ...jsonObject(data.liveSessions[0].governance),
-      pinnedProductId: data.products[3].id,
-    };
-    expect(() => validateDataset(data)).toThrow(
-      'live pin must belong to its session',
-    );
-    const other = buildDataset(context);
-    other.liveViewers.push({
-      sessionId: other.liveSessions[0].id!,
-      clientId: 'fabricated-live-viewer',
-    });
-    expect(() => validateDataset(other)).toThrow(
-      'must not fabricate current viewers',
-    );
-  });
 });

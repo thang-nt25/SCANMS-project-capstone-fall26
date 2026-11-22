@@ -288,7 +288,17 @@ export class GhnService {
    */
   async calculateShippingFee(dto: CalculateShippingFeeDto) {
     // service_type_id=2: GHN requires a separate per-parcel service for loads >=20kg.
-    assertShippingPackage({ weight: dto.weight ?? 500, length: dto.length ?? 15, width: dto.width ?? 10, height: dto.height ?? 5 });
+    const weight = dto.weight || 500;
+    const length = dto.length ?? 15;
+    const width = dto.width ?? 10;
+    const height = dto.height ?? 5;
+    const insuranceValue = dto.insuranceValue || 0;
+    assertShippingPackage({ weight, length, width, height });
+
+    const feeCacheKey = `ghn:fee:${dto.fromDistrictId || 0}:${dto.fromWardCode || ''}:${dto.toDistrictId}:${dto.toWardCode}:${weight}:${length}x${width}x${height}:${insuranceValue}`;
+    const cachedFee = await this.cacheService?.get<any>(feeCacheKey);
+    if (cachedFee) return cachedFee;
+
     try {
       const res = await this.ghnFetch<{
         code: number;
@@ -306,21 +316,23 @@ export class GhnService {
           ...(dto.fromWardCode ? { from_ward_code: dto.fromWardCode } : {}),
           to_district_id: dto.toDistrictId,
           to_ward_code: dto.toWardCode,
-          weight: dto.weight || 500,
-          length: dto.length ?? 15,
-          width: dto.width ?? 10,
-          height: dto.height ?? 5,
-          insurance_value: dto.insuranceValue || 0,
+          weight,
+          length,
+          width,
+          height,
+          insurance_value: insuranceValue,
         },
       });
 
       if (res?.code === 200 && res.data) {
-        return {
+        const result = {
           totalFee: requireShippingFee(res.data.total),
           serviceFee: res.data.service_fee,
           insuranceFee: res.data.insurance_fee,
           isRealGhn: true,
         };
+        await this.cacheService?.set(feeCacheKey, result, 600);
+        return result;
       }
     } catch (e: any) {
       this.logger.warn(
@@ -340,8 +352,10 @@ export class GhnService {
     // Match Shop Settings, which treats the return warehouse as the pickup address when no separate pickup address is saved.
     const warehouseAddress = onboardingData?.warehouseAddress || returnWarehouse?.address;
     if (!warehouseAddress) throw new BadRequestException('Gian hàng chưa cấu hình địa chỉ kho GHN.');
-    const from = await this.resolveGhnLocation(warehouseAddress);
-    const { districtId, wardCode } = await this.resolveGhnLocation(address);
+    const [from, { districtId, wardCode }] = await Promise.all([
+      this.resolveGhnLocation(warehouseAddress),
+      this.resolveGhnLocation(address),
+    ]);
     const fee = await this.calculateShippingFee({
       fromDistrictId: from.districtId,
       fromWardCode: from.wardCode,
@@ -381,7 +395,19 @@ export class GhnService {
     customOptions?: CreateGhnOrderDto,
     storeIdContext?: string,
   ) {
-    const order = await this.prisma.order.findUnique({
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(1731032, hashtext(${orderId}))`;
+      return this.createShippingOrderInternal(orderId, customOptions, storeIdContext, tx);
+    }, { timeout: 60000 });
+  }
+
+  private async createShippingOrderInternal(
+    orderId: string,
+    customOptions?: CreateGhnOrderDto,
+    storeIdContext?: string,
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
+    const order = await db.order.findUnique({
       where: { id: orderId },
       include: {
         store: { include: { owner: { select: { phoneNumber: true } } } },
@@ -596,7 +622,7 @@ export class GhnService {
         ? { ghnSimulation: createCustomerGhnSimulation(orderCode) } : {}),
     };
 
-    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+    const updatedOrder = await (async (tx) => {
       const changed = await tx.order.updateMany({
         where: { id: order.id, status: order.status },
         data: {
@@ -615,10 +641,10 @@ export class GhnService {
         });
       }
       return current;
-    });
+    })(db);
 
     try {
-      await this.cacheService?.delPrefix('orders:store:');
+      await this.cacheService?.delPrefix(`orders:store:${order.storeId}:`);
     } catch {
       this.logger.warn('Đã tạo vận đơn GHN; chưa xóa được cache danh sách đơn.');
     }

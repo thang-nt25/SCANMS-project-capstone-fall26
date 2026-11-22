@@ -4,11 +4,9 @@ import { MarketplaceShortcuts } from './MarketplaceShortcuts';
 
 export function MarketplaceHeader({
   onOpenTracking,
-  onOpenLive,
   showShortcuts = true,
 }: {
   onOpenTracking: () => void;
-  onOpenLive: () => void;
   showShortcuts?: boolean;
 }) {
   const [compact, setCompact] = useState(false);
@@ -37,7 +35,7 @@ export function MarketplaceHeader({
         sticky={false}
         layout="marketplace"
         onOpenTracking={onOpenTracking}
-        navigation={showShortcuts ? <MarketplaceShortcuts onOpenLive={onOpenLive} compact={compact} /> : undefined}
+        navigation={showShortcuts ? <MarketplaceShortcuts compact={compact} /> : undefined}
       />
     </div>
   );

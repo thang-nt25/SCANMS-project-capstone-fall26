@@ -23,7 +23,6 @@ describe('KYC HTTP authorization (real RolesGuard)', () => {
     ['get', '/kyc/admin/applications', 'getUpgradeApplications'],
     ['patch', '/kyc/admin/profile-id/review', 'reviewKyc'],
     ['patch', '/kyc/admin/kol/profile-id/review', 'reviewKolApplication'],
-    ['patch', '/kyc/admin/shop/store-id/review', 'reviewShopApplication'],
   ] as const;
 
   beforeAll(async () => {

@@ -27,7 +27,6 @@ import { uploadService } from '../../services/upload.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
-import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 import { StorefrontSettingsSection } from '../../components/stores/StorefrontSettingsSection';
 
 export default function ShopSettingsPage() {
@@ -284,7 +283,7 @@ export default function ShopSettingsPage() {
             Chỉ dành cho Chủ gian hàng
           </h2>
           <p className="text-xs sm:text-sm text-[#7D715E] leading-relaxed m-0">
-            Đây là nơi quản lý thông tin và chính sách của một gian hàng cụ thể. Tài khoản quản trị sàn không dùng khu vực này để cấu hình chính sách toàn sàn.
+            Đây là nơi quản lý thông tin và chính sách của một cửa hàng trực thuộc. Tài khoản quản trị hệ thống không dùng khu vực này để cấu hình chính sách toàn hệ thống.
           </p>
           <Button
             variant="gold"
@@ -439,7 +438,7 @@ export default function ShopSettingsPage() {
                   disabled
                   className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
                 />
-                <span className="text-xs text-[#7D715E]">Cố định 10% theo chuẩn sàn SCANMS</span>
+                <span className="text-xs text-[#7D715E]">Cố định 10% theo chuẩn hệ thống SCANMS</span>
               </div>
 
               <div className="min-w-0">
@@ -727,7 +726,6 @@ export default function ShopSettingsPage() {
           </Button>
         </div>
       </form>
-      {isShopManager && <SponsoredPlacementsPanel />}
     </div>
   );
 }
