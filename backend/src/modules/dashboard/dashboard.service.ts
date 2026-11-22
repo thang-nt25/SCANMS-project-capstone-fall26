@@ -1462,7 +1462,6 @@ export class DashboardService {
           tierName,
           dealBonus,
           hasExclusiveDeal: Boolean(dealRate),
-          liveBonus: finalRate > baseRate + tierBonus + dealBonus ? finalRate - (baseRate + tierBonus + dealBonus) : 0,
           finalRate,
         },
       };
@@ -1474,119 +1473,6 @@ export class DashboardService {
       success: true,
       totalProducts: items.length,
       items: items.slice(0, limit),
-    };
-  }
-
-  // ─── 10. TỔNG HỢP HIỆU SUẤT LIVESTREAM CỦA KOL (LIVE SESSION SUMMARY) ───
-  async getCollaboratorLiveSessionsSummary(collaboratorId: string) {
-    const cacheKey = `dashboard:livesummary:${collaboratorId}`;
-    const cached = await this.cacheService.get<any>(cacheKey);
-    if (cached) return cached;
-
-    const liveSessions = await this.prisma.liveShoppingSession.findMany({
-      where: { creatorId: collaboratorId },
-      include: {
-        store: { select: { id: true, name: true, logoUrl: true } },
-        products: {
-          include: {
-            product: { select: { id: true, title: true, imageUrl: true, price: true } },
-          },
-        },
-      },
-      orderBy: { startsAt: 'desc' },
-      take: 20,
-    });
-
-    if (!liveSessions.length) {
-      const emptyRes = {
-        success: true,
-        totalSessions: 0,
-        totals: {
-          totalLiveRevenue: 0,
-          totalLiveCommission: 0,
-          totalLiveOrders: 0,
-        },
-        sessions: [],
-      };
-      await this.cacheService.set(cacheKey, emptyRes, 45);
-      return emptyRes;
-    }
-
-    // Tối ưu N+1: Gộp 20 câu query thành 1 query duy nhất quét toàn bộ khoảng thời gian
-    const minStartsAt = new Date(Math.min(...liveSessions.map(s => s.startsAt.getTime())));
-    const maxEndsAt = new Date(Math.max(...liveSessions.map(s => (s.endsAt ? s.endsAt.getTime() : Date.now()))));
-    const storeIds = [...new Set(liveSessions.map(s => s.storeId))];
-
-    const allLiveOrders = await this.prisma.order.findMany({
-      where: {
-        attributedCollaboratorId: collaboratorId,
-        storeId: { in: storeIds },
-        createdAt: { gte: minStartsAt, lte: maxEndsAt },
-        status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
-      },
-      include: {
-        orderItems: {
-          select: {
-            quantity: true,
-            unitPrice: true,
-            calculatedCommissionAmount: true,
-          },
-        },
-      },
-    });
-
-    const sessions = liveSessions.map((sess) => {
-      const sessEndsAt = sess.endsAt || new Date();
-      const liveOrders = allLiveOrders.filter(
-        (o) => o.storeId === sess.storeId && o.createdAt >= sess.startsAt && o.createdAt <= sessEndsAt
-      );
-
-      const ordersCount = liveOrders.length;
-      let unitsSold = 0;
-      let grossRevenue = 0;
-      let commissionEarned = 0;
-
-      for (const ord of liveOrders) {
-        for (const it of ord.orderItems) {
-          unitsSold += it.quantity;
-          grossRevenue += Number(it.unitPrice) * it.quantity;
-          commissionEarned += Number(it.calculatedCommissionAmount || 0);
-        }
-      }
-
-        return {
-          id: sess.id,
-          title: sess.title,
-          coverImageUrl: sess.coverImageUrl,
-          storeName: sess.store?.name || 'Gian hàng',
-          storeLogo: sess.store?.logoUrl,
-          startsAt: sess.startsAt,
-          endsAt: sess.endsAt,
-          status: sess.status,
-          pinnedProductsCount: sess.products.length,
-          liveBonusRate: Number(sess.commissionRate || 2),
-          metrics: {
-            ordersCount,
-            unitsSold,
-            grossRevenue,
-            commissionEarned,
-          },
-        };
-      });
-
-    const totalLiveRevenue = sessions.reduce((sum, s) => sum + s.metrics.grossRevenue, 0);
-    const totalLiveCommission = sessions.reduce((sum, s) => sum + s.metrics.commissionEarned, 0);
-    const totalLiveOrders = sessions.reduce((sum, s) => sum + s.metrics.ordersCount, 0);
-
-    return {
-      success: true,
-      totalSessions: sessions.length,
-      totals: {
-        totalLiveRevenue,
-        totalLiveCommission,
-        totalLiveOrders,
-      },
-      sessions,
     };
   }
 }
