@@ -29,13 +29,7 @@ export function validateDataset(data: SeedDataset): void {
     'expected 20 creators and 30 customers',
   );
   assertSeed(data.orders.length === 60, 'each customer must have two orders');
-  assertSeed(
-    data.liveSessions.filter((row) => row.status === 'LIVE').length === 2 &&
-      data.liveSessions.filter((row) => row.status === 'ENDED').length === 3,
-    'expected two live and three ended sessions',
-  );
   for (const key of Object.keys(data) as SeedTable[]) {
-    if (key === 'liveViewers') continue;
     if (key === 'savedCoupons' || key === 'stackedRedemptions') {
       const identities =
         key === 'savedCoupons'
@@ -72,39 +66,6 @@ export function validateDataset(data: SeedDataset): void {
   const sampleCounts = new Map<string, number>();
   const date = (value: Date | string | null | undefined): number =>
     value ? new Date(value).getTime() : NaN;
-
-  for (const session of data.liveSessions) {
-    const productsInSession = data.liveProducts.filter(
-      (row) => row.sessionId === session.id,
-    );
-    const pinnedId = jsonObject(session.governance).pinnedProductId;
-    assertSeed(
-      typeof pinnedId === 'string' &&
-        productsInSession.some((row) => row.productId === pinnedId),
-      'live pin must belong to its session',
-    );
-    assertSeed(
-      productsInSession.every(
-        (row) =>
-          products.get(row.productId)?.storeId === session.storeId &&
-          variants.get(row.variantId!)?.productId === row.productId,
-      ),
-      'live product/variant must belong to its shop',
-    );
-    assertSeed(
-      date(session.startsAt) < date(session.endsAt),
-      'invalid live time window',
-    );
-    assertSeed(
-      [2, 3].includes(amount(session.commissionRate)),
-      'live commission must store bonus 2 or 3, not total rate',
-    );
-    if (session.status === 'LIVE')
-      assertSeed(
-        !data.liveViewers.some((row) => row.sessionId === session.id),
-        'active seed live must not fabricate current viewers',
-      );
-  }
 
   data.tiers.forEach((tier, index) =>
     assertSeed(

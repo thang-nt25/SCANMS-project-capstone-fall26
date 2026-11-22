@@ -285,7 +285,7 @@ export class LeaderboardService {
     // 3. Sắp xếp danh sách theo Metric được chọn
     type CreatorStats = (typeof statsMap extends Map<string, infer T> ? T : never);
     const conversion = (item: CreatorStats) => item.totalClicks > 0
-      ? (item.totalOrders / item.totalClicks) * 100 : 0;
+      ? Math.min(100, (item.totalOrders / item.totalClicks) * 100) : 0;
     const eligible = (item: CreatorStats) => {
       switch (metric) {
         case LeaderboardMetricType.ORDERS: return item.totalOrders > 0;
@@ -340,7 +340,7 @@ export class LeaderboardService {
         const conversionRate =
           item.totalClicks > 0
             ? parseFloat(
-                ((item.totalOrders / item.totalClicks) * 100).toFixed(2),
+                Math.min(100, (item.totalOrders / item.totalClicks) * 100).toFixed(2),
               )
             : 0;
 

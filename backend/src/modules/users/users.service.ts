@@ -182,8 +182,7 @@ export class UsersService {
         store &&
         (!store.ownerId ||
           store.owner?.role === UserRole.SYSTEM_ADMIN ||
-          store.owner?.role === UserRole.SYSTEM_MANAGER ||
-          store.ownerId !== newUser.id)
+          store.owner?.role === UserRole.SYSTEM_MANAGER)
       ) {
         await this.prisma.store.update({
           where: { id: dto.storeId },

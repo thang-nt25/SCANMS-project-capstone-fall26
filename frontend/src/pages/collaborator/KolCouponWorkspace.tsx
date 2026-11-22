@@ -7,11 +7,11 @@ type Coupon = CouponItem & { totalSales?: number; totalCommission?: number };
 type Summary = { totalSales: number; totalCommission: number; totalOrders: number };
 const money = (value: unknown) => value == null ? 'Chưa có dữ liệu' : `${Number(value).toLocaleString('vi-VN')} đ`;
 const date = (value?: string | null, fallback = 'Không giới hạn') => value ? new Date(value).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : fallback;
-const labels: Record<CouponStatus, string> = { ACTIVE: 'Đang hoạt động', PENDING_APPROVAL: 'Chờ Shop duyệt', PAUSED: 'Tạm ngưng', REJECTED: 'Đã từ chối', BLOCKED: 'Đã bị khóa', EXPIRED: 'Hết hạn / Đã thay thế', DELETED: 'Đã xóa' };
+const labels: Record<CouponStatus, string> = { ACTIVE: 'Đang hoạt động', PENDING_APPROVAL: 'Chờ Shop duyệt', PENDING_ADMIN_APPROVAL: 'Chờ Admin duyệt (>10%)', PENDING_BLOCK_APPROVAL: 'Shop xin ngừng (Chờ duyệt)', PAUSED: 'Tạm ngưng', REJECTED: 'Đã từ chối', BLOCKED: 'Đã bị khóa', EXPIRED: 'Hết hạn / Đã thay thế', DELETED: 'Đã xóa' };
 const filters = [['ALL', 'Tất cả'], ['ACTIVE', 'Đang chạy'], ['PENDING_APPROVAL', 'Chờ duyệt'], ['PAUSED', 'Tạm ngưng'], ['EXPIRED', 'Hết hạn'], ['REJECTED', 'Từ chối'], ['BLOCKED', 'Bị khóa']];
 const usageLabels: Record<string, string> = { USED: 'Đã dùng', RESERVED: 'Đang giữ lượt', CANCELLED: 'Đã hủy', PARTIALLY_REFUNDED: 'Hoàn một phần', REFUNDED: 'Đã hoàn tiền' };
 function effectiveStatus(c: Coupon): CouponStatus {
-  return ['ACTIVE', 'PAUSED'].includes(c.status) && c.expiresAt && new Date(c.expiresAt).getTime() <= Date.now() ? 'EXPIRED' : c.status;
+  return ['ACTIVE', 'PAUSED', 'PENDING_BLOCK_APPROVAL'].includes(c.status) && c.expiresAt && new Date(c.expiresAt).getTime() <= Date.now() ? 'EXPIRED' : c.status;
 }
 function StoreLogo({ coupon }: { coupon: Coupon }) {
   const [failed, setFailed] = useState(false);
@@ -64,7 +64,7 @@ export function KolCouponWorkspace({ coupons, summary, loading, error, copiedCod
           <div className="kc-card-heading"><div><StoreLogo coupon={c} /><span title={c.store?.name}>{c.store?.name || 'Cửa hàng đối tác'}</span></div><span className={`kc-status is-${state.toLowerCase()}`}>{labels[state]}</span></div>
           <div className="kc-code"><strong title={c.displayCode}>{c.displayCode}</strong><button type="button" aria-label={`Sao chép mã ${c.displayCode}`} onClick={() => onCopy(c.displayCode)}>{copiedCode === c.displayCode ? <Check size={16} /> : <Copy size={16} />}</button></div>
           {terms(c)}
-          <div className="kc-limits"><span>Lượt dùng <strong>{c.usageCount} / {c.usageLimitTotal == null ? 'Không giới hạn' : c.usageLimitTotal}</strong></span><span>Ngân sách còn <strong>{c.budgetTotal == null ? 'Không giới hạn' : money(Math.max(0, Number(c.budgetTotal) - Number(c.budgetUsed)))}</strong></span></div>
+          <div className="kc-limits"><span>Lượt đã áp dụng <strong>{c.usageCount} lượt</strong></span><span>Hiệu lực <strong>{c.expiresAt ? `Đến ${date(c.expiresAt)}` : 'Theo chiến dịch'}</strong></span></div>
           <dl className="kc-results"><div><dt>Doanh số</dt><dd>{money(c.totalSales)}</dd></div><div><dt>Thù lao dự kiến</dt><dd>{money(c.totalCommission)}</dd></div></dl>
           <footer><button type="button" onClick={() => setDetails(c)}>Xem chi tiết</button>{state === 'ACTIVE' && <button type="button" onClick={() => onToggle(c)}>Tạm ngưng</button>}{state === 'PAUSED' && c.approvedBy && c.approvedAt && <button type="button" onClick={() => onToggle(c)}>Kích hoạt lại</button>}{(state === 'PENDING_APPROVAL' || state === 'REJECTED') && <button type="button" className="is-danger" onClick={() => onDelete(c)}>{state === 'PENDING_APPROVAL' ? 'Hủy đề xuất' : 'Xóa mã'}</button>}</footer>
         </article>;
@@ -79,9 +79,7 @@ export function KolCouponWorkspace({ coupons, summary, loading, error, copiedCod
           <div><dt>Phạm vi áp dụng</dt><dd>{details.scopeType === 'STORE_WIDE' ? 'Toàn cửa hàng' : details.scopeType === 'PRODUCTS' ? details.couponProducts?.map(p => p.product.title).join(', ') || 'Sản phẩm được chỉ định' : details.scopeType === 'CATEGORIES' ? details.couponCategories?.map(c => c.categoryName).join(', ') || 'Ngành hàng được chỉ định' : 'Theo cấu hình mã'}</dd></div>
           <div><dt>Ngày bắt đầu</dt><dd>{date(details.startsAt, 'Không ấn định')}</dd></div>
           <div><dt>Giảm tối đa</dt><dd>{details.discountType === 'FIXED_AMOUNT' ? 'Không áp dụng' : details.maximumDiscountAmount == null ? 'Không giới hạn' : money(details.maximumDiscountAmount)}</dd></div>
-          <div><dt>Giới hạn mỗi khách</dt><dd>{details.usageLimitPerCustomer == null ? 'Không giới hạn' : `${details.usageLimitPerCustomer} lượt`}</dd></div>
-          <div><dt>Lượt dùng đã ghi nhận</dt><dd>{details.usageCount}{details.usageLimitTotal != null ? ` / ${details.usageLimitTotal}` : ''}</dd></div>
-          <div><dt>Ngân sách đã dùng</dt><dd>{money(details.budgetUsed)} / {details.budgetTotal == null ? 'Không giới hạn' : money(details.budgetTotal)}</dd></div>
+          <div><dt>Lượt đã áp dụng</dt><dd>{details.usageCount} lượt (Không giới hạn lượt)</dd></div>
           <div><dt>Ngày tạo</dt><dd>{date(details.createdAt)}</dd></div>
           {details.approvedAt && <div><dt>Ngày duyệt</dt><dd>{date(details.approvedAt)}</dd></div>}
           {details.rejectedReason && <div><dt>Lý do từ chối</dt><dd>{details.rejectedReason}</dd></div>}

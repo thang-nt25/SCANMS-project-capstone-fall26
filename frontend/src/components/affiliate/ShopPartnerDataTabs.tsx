@@ -15,7 +15,7 @@ interface TeamMember {
 interface Team {store:{id:string;name:string};members:TeamMember[]}
 export function useShopPartnerTeam() {
   return useQuery({queryKey:['shop-partner-team'],queryFn:async()=>{
-    const response:any=await api.get('/store-collaborators/shop',{headers:{'x-skip-cache':'true'}});
+    const response:any=await api.get('/store-collaborators/shop');
     const data=response?.data?.data??response?.data??response;
     if(!Array.isArray(data?.members)||!data?.store?.id)throw new Error('Không đọc được đội ngũ hợp tác.');
     return data as Team;

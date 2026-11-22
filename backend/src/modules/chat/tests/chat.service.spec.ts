@@ -526,7 +526,6 @@ describe('ChatService (FR-25)', () => {
       { usageLimitTotal: 2, usageCount: 2 },
       { budgetTotal: 10000, budgetUsed: 10000 },
       { scopeType: 'CAMPAIGN', campaign: { isActive: false } },
-      { liveSession: { status: 'ENDED', inviteStatus: 'ACCEPTED' } },
     ])('rejects unavailable vouchers before a message can be saved: %p', async overrides => {
       prisma.coupon.findFirst.mockResolvedValue(overrides === null ? null : { usageLimitTotal: null, usageCount: 0, scopeType: 'STORE_WIDE', ...overrides });
       await expect(service.normalizeShareCardMessage(mockStoreId, JSON.stringify({ type: 'COUPON_VOUCHER', couponId: '8b8b8b8b-8b8b-4b8b-8b8b-8b8b8b8b8b8b' }))).rejects.toBeInstanceOf(BadRequestException);

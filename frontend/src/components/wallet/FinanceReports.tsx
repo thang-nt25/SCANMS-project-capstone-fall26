@@ -168,29 +168,29 @@ const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     impact: "Nghĩa vụ công nợ thanh toán ngắn hạn tức thời của doanh nghiệp đối với đối tác.",
   },
   netPaid: {
-    title: "Chi trả ngoài Sandbox trong tháng",
+    title: "Tổng chi trả trong tháng",
     badge: "Thực chi chuyển khoản",
     meaning: "Tổng số tiền thực tế (sau khi khấu trừ thuế theo từng lệnh) đã được Kế toán duyệt chi và chuyển khoản thành công qua ngân hàng Napas 24/7 cho các đối tác trong tháng.",
     formula: "Thực chuyển = Tổng tiền gốc − Tổng thuế đã khấu trừ",
     impact: "Dòng tiền mặt thực tế đã xuất khỏi tài khoản ngân quỹ của công ty.",
   },
   taxWithheld: {
-    title: "Thuế ngoài Sandbox trong tháng",
+    title: "Thuế TNCN đã khấu trừ trong tháng",
     badge: "Thuế TNCN",
     meaning: "Tổng thuế đã khấu trừ trên các lệnh rút tiền hoàn tất trong kỳ.",
     formula: "Thuế TNCN = Tổng thuế lưu trên từng lệnh đã hoàn tất",
     impact: "Nghĩa vụ thuế vãng lai của doanh nghiệp nộp cho cơ quan thuế thay cho đối tác.",
   },
   sandboxNetPaid: {
-    title: "Chi trả Sandbox trong tháng",
-    badge: "Mô phỏng thử nghiệm",
-    meaning: "Số tiền giải ngân mô phỏng trong môi trường thử nghiệm kiểm thử (Sandbox Demo), không phát sinh dòng tiền thật ngoài đời thực.",
-    impact: "Phục vụ công tác kiểm thử tính năng và demo đồ án tốt nghiệp.",
+    title: "Chi trả thử nghiệm trong tháng",
+    badge: "Đối soát thử nghiệm",
+    meaning: "Số tiền giải ngân mô phỏng trong môi trường thử nghiệm kiểm thử, không phát sinh dòng tiền thật ngoài đời thực.",
+    impact: "Phục vụ công tác kiểm thử tính năng và đối soát nghiệp vụ.",
   },
   sandboxTaxWithheld: {
-    title: "Thuế mô phỏng Sandbox",
-    badge: "Mô phỏng thử nghiệm",
-    meaning: "Số tiền thuế mô phỏng trong môi trường thử nghiệm kiểm thử (Sandbox Demo).",
+    title: "Thuế đối soát thử nghiệm",
+    badge: "Đối soát thử nghiệm",
+    meaning: "Số tiền thuế mô phỏng trong môi trường thử nghiệm kiểm thử.",
     impact: "Dữ liệu mô phỏng đối soát kế toán.",
   },
   affiliateExpenseRatio: {
@@ -439,42 +439,42 @@ export function ExecutiveFinanceReport() {
               )}
               {renderMetricCard(
                 "netPaid",
-                "Chi trả ngoài Sandbox trong tháng",
+                "Tổng chi trả trong tháng",
                 data.netPaid,
                 { subtext: "Thực nhận sau thuế" }
               )}
               {renderMetricCard(
                 "taxWithheld",
-                "Thuế ngoài Sandbox trong tháng",
+                "Thuế TNCN đã khấu trừ trong tháng",
                 data.taxWithheld,
                 { subtext: "Thuế đã khấu trừ" }
               )}
             </div>
           </div>
 
-          {/* Section 4: Môi trường Sandbox Demo (Thử nghiệm) */}
+          {/* Section 4: Số liệu đối soát thử nghiệm */}
           <div className="pt-1">
             <button
               type="button"
               onClick={() => setShowSandbox((prev) => !prev)}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
             >
-              <span>{showSandbox ? "▼ Ẩn số liệu Sandbox thử nghiệm" : "▶ Hiển thị số liệu mô phỏng Sandbox (2 chỉ số)"}</span>
+              <span>{showSandbox ? "▼ Ẩn số liệu đối soát thử nghiệm" : "▶ Xem thêm số liệu đối soát thử nghiệm (2 chỉ số)"}</span>
             </button>
 
             {showSandbox && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2.5 p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
                 {renderMetricCard(
                   "sandboxNetPaid",
-                  "Chi trả Sandbox trong tháng",
+                  "Chi trả thử nghiệm trong tháng",
                   data.sandboxNetPaid,
-                  { subtext: "Mô phỏng demo" }
+                  { subtext: "Đối soát thử nghiệm" }
                 )}
                 {renderMetricCard(
                   "sandboxTaxWithheld",
-                  "Thuế mô phỏng Sandbox",
+                  "Thuế đối soát thử nghiệm",
                   data.sandboxTaxWithheld,
-                  { subtext: "Mô phỏng demo" }
+                  { subtext: "Đối soát thử nghiệm" }
                 )}
               </div>
             )}

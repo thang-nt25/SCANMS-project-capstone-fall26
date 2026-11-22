@@ -57,20 +57,6 @@ describe('Voucher discovery and immediate use', () => {
       ),
     ).toBe(false);
   });
-  it('intersects live-session products with ordinary voucher scope', () => {
-    expect(
-      voucherMatchesProduct(
-        { ...base, liveSession: { products: [{ productId: 'other' }] } },
-        product,
-      ),
-    ).toBe(false);
-    expect(
-      voucherMatchesProduct(
-        { ...base, liveSession: { products: [{ productId: product.id }] } },
-        product,
-      ),
-    ).toBe(true);
-  });
   it('public product discovery excludes deleted, inactive and unapproved products', () => {
     expect(voucherProductWhere(base)).toMatchObject({
       storeId: 'shop-1',
@@ -96,11 +82,6 @@ describe('Voucher discovery and immediate use', () => {
     expect(
       voucherProductWhere({ ...base, scopeType: 'CAMPAIGN' }),
     ).toMatchObject({ id: { in: [] } });
-  });
-  it('applies the live session restriction to the product query', () => {
-    expect(
-      voucherProductWhere({ ...base, liveSessionId: 'live-1' }),
-    ).toMatchObject({ liveSessionProducts: { some: { sessionId: 'live-1' } } });
   });
   it('refuses expired vouchers before exposing eligible products', async () => {
     const prisma = { product: { findMany: jest.fn() } };

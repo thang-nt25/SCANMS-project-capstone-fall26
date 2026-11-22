@@ -156,7 +156,7 @@ export const referralLinksService = {
 
   async getMyExclusiveDeals(): Promise<ExclusiveDealProposal[]> {
     return readDealPages(async (page, after) => {
-      const res: any = await api.get('/affiliate-deals/mine', { params: { page, after }, headers: { 'x-skip-cache': '1' } });
+      const res: any = await api.get('/affiliate-deals/mine', { params: { page, after } });
       return (res?.data ?? res) as DealPage<ExclusiveDealProposal>;
     });
   },
@@ -200,7 +200,7 @@ export const referralLinksService = {
 
   async getShopExclusiveDeals(): Promise<ExclusiveDealProposal[]> {
     return readDealPages(async (page, after) => {
-      const res: any = await api.get('/affiliate-deals/shop', { params: { page, after }, headers: { 'x-skip-cache': '1' } });
+      const res: any = await api.get('/affiliate-deals/shop', { params: { page, after } });
       return (res?.data ?? res) as DealPage<ExclusiveDealProposal>;
     });
   },
@@ -244,7 +244,7 @@ export const referralLinksService = {
   },
 
   async getMyLinks(params?: QueryReferralLinksParams): Promise<{ data: ReferralLinkItem[]; meta: any; summary?: { totalClicks: number; uniqueClicks: number; totalOrders: number } }> {
-    const res: any = await api.get('/collaborator/referral-links', { params, headers: { 'x-skip-cache': 'true' } });
+    const res: any = await api.get('/collaborator/referral-links', { params });
     const payload = res?.data || res;
     return {
       data: payload?.data || [],

@@ -46,19 +46,9 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
       const completed = status === 'COMPLETED';
       const delivered =
         completed || status === 'DELIVERED' || status === 'RETURN_REQUESTED';
-      const historicalLive =
-        purchase === 0
-          ? data.liveSessions.find(
-              (row) => row.storeId === storeId && row.status === 'ENDED',
-            )
-          : undefined;
-      const createdAt = historicalLive
-        ? new Date(new Date(historicalLive.startsAt).getTime() + 15 * 60_000)
-        : daysFrom(context, purchase === 0 ? -43 : completed ? -23 : -4);
+      const createdAt = daysFrom(context, purchase === 0 ? -43 : completed ? -23 : -4);
       const deliveredAt = delivered
-        ? historicalLive
-        ? new Date(createdAt.getTime() + 2 * 86_400_000)
-        : daysFrom(context, purchase === 0 ? -40 : completed ? -20 : -2)
+        ? daysFrom(context, purchase === 0 ? -40 : completed ? -20 : -2)
         : null;
       const completedAt = completed
         ? new Date(deliveredAt!.getTime() + 14 * 86_400_000)
@@ -225,7 +215,6 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           productId: product.id!,
           storeId,
           referralLinkId,
-          liveSessionId: historicalLive?.id,
           at: createdAt,
         });
         const itemCommission = commissionAmount(
@@ -237,7 +226,6 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           netGoods: netItemSubtotal,
           remunerationBase,
           ...breakdown,
-          liveSessionId: historicalLive?.id ?? null,
         });
         if (breakdown.campaignId) {
           const reserved = commissionAmount(
@@ -257,12 +245,6 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           quantity,
           unitPrice,
           appliedCommissionRate: breakdown.rate,
-          regularCommissionRate: breakdown.live
-            ? breakdown.rate - breakdown.live
-            : null,
-          regularCommissionAmount: breakdown.live
-            ? commissionAmount(remunerationBase, breakdown.rate - breakdown.live)
-            : null,
           calculatedCommissionAmount: itemCommission,
           commissionSnapshotAt: createdAt,
           createdAt,

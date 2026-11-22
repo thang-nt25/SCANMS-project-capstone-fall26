@@ -30,9 +30,26 @@ const isProvince = (value: unknown): value is ShippingProvince =>
   Array.isArray(value.districts) &&
   value.districts.every(isDistrict);
 
+let cachedShippingProvinces: ShippingProvince[] | null = null;
+const PROVINCES_SESSION_KEY = "scanms_shipping_provinces_v1";
+
 export async function loadShippingAddresses(
   signal?: AbortSignal,
 ): Promise<ShippingProvince[]> {
+  if (cachedShippingProvinces) return cachedShippingProvinces;
+  try {
+    const raw = sessionStorage.getItem(PROVINCES_SESSION_KEY);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length && parsed.every(isProvince)) {
+        cachedShippingProvinces = parsed;
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore storage quota/access errors
+  }
+
   const baseUrl =
     import.meta.env.VITE_MANUAL_ORDER_ADDRESS_API_URL ||
     "https://provinces.open-api.vn/api/v1/";
@@ -57,5 +74,11 @@ export async function loadShippingAddresses(
   const data: unknown = await response.json();
   if (!Array.isArray(data) || !data.length || !data.every(isProvince))
     throw new Error("Danh mục địa chỉ không đúng cấu trúc tỉnh / huyện / xã");
+  cachedShippingProvinces = data;
+  try {
+    sessionStorage.setItem(PROVINCES_SESSION_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore storage quota errors
+  }
   return data;
 }

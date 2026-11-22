@@ -83,6 +83,7 @@ export class ProductsService {
     try {
       await Promise.all([
         this.cacheService?.delPrefix?.('marketplace:products:'),
+        this.cacheService?.delPrefix?.('products:shop:top:'),
         this.cacheService?.del?.('marketplace:categories'),
         this.cacheService?.del?.('marketplace:stores:list'),
       ]);
@@ -1322,23 +1323,17 @@ export class ProductsService {
     const effectiveProductFloor = Number(
       dto.floorPrice ?? preparedVariants[0]?.floorPrice ?? 0,
     );
-    if (effectiveProductFloor > 0) {
-      const minSafe = calculateMinSafePrice(effectiveProductFloor);
-      if (Number(dto.price) < minSafe) {
-        throw new BadRequestException(
-          `Giá bán (${Number(dto.price).toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
-        );
-      }
+    if (effectiveProductFloor > 0 && Number(dto.price) < effectiveProductFloor) {
+      throw new BadRequestException(
+        `Giá bán (${Number(dto.price).toLocaleString('vi-VN')} ₫) không được thấp hơn giá sàn (${effectiveProductFloor.toLocaleString('vi-VN')} ₫).`,
+      );
     }
     for (const v of preparedVariants) {
       const vFloor = Number(v.floorPrice ?? 0);
-      if (vFloor > 0) {
-        const minSafe = calculateMinSafePrice(vFloor);
-        if (Number(v.price) < minSafe) {
-          throw new BadRequestException(
-            `SKU ${v.sku}: Giá bán (${Number(v.price).toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
-          );
-        }
+      if (vFloor > 0 && Number(v.price) < vFloor) {
+        throw new BadRequestException(
+          `SKU ${v.sku}: Giá bán (${Number(v.price).toLocaleString('vi-VN')} ₫) không được thấp hơn giá sàn (${vFloor.toLocaleString('vi-VN')} ₫).`,
+        );
       }
     }
 
@@ -1376,7 +1371,7 @@ export class ProductsService {
           packageLength: dto.packageLength ?? null,
           packageWidth: dto.packageWidth ?? null,
           packageHeight: dto.packageHeight ?? null,
-          isAffiliateEnabled: dto.isAffiliateEnabled ?? false,
+          isAffiliateEnabled: dto.isAffiliateEnabled ?? true,
           sampleEnabled: dto.sampleEnabled ?? false,
           sampleQuota: dto.sampleQuota ?? 0,
           ...(preparedVariants.length
@@ -1629,13 +1624,10 @@ export class ProductsService {
     if (dto.price !== undefined || dto.floorPrice !== undefined) {
       const nextFloor = Number(dto.floorPrice ?? product.floorPrice ?? 0);
       const nextPrice = Number(dto.price ?? product.price ?? 0);
-      if (nextFloor > 0) {
-        const minSafe = calculateMinSafePrice(nextFloor);
-        if (nextPrice < minSafe) {
-          throw new BadRequestException(
-            `Giá bán (${nextPrice.toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
-          );
-        }
+      if (nextFloor > 0 && nextPrice < nextFloor) {
+        throw new BadRequestException(
+          `Giá bán (${nextPrice.toLocaleString('vi-VN')} ₫) không được thấp hơn giá sàn (${nextFloor.toLocaleString('vi-VN')} ₫).`,
+        );
       }
     }
 
@@ -2040,7 +2032,15 @@ export class ProductsService {
       for (const [index, variant] of variants.entries()) {
         const previous = variant.id ? currentVariantsById.get(variant.id) : null;
         const price = variant.price ?? product.price;
-        // assertFloor removed: clearance / liquidation sale prices allowed below floor
+        const resolvedFloor =
+          variant.floorPrice !== undefined
+            ? variant.floorPrice
+            : (previous?.floorPrice ?? product.floorPrice ?? null);
+        if (resolvedFloor !== null && Number(resolvedFloor) > 0 && Number(price) < Number(resolvedFloor)) {
+          throw new BadRequestException(
+            `SKU ${normalizedSkus[index]}: Giá bán (${Number(price).toLocaleString('vi-VN')} ₫) không được thấp hơn giá sàn (${Number(resolvedFloor).toLocaleString('vi-VN')} ₫).`,
+          );
+        }
         const data = {
           sku: normalizedSkus[index],
           barcode: variant.barcode?.trim() || null,
@@ -2048,7 +2048,7 @@ export class ProductsService {
           attributes: normalizedAttributes[index],
           price,
           listPrice: previous && Number(previous.price) === Number(price) ? previous.listPrice ?? price : price,
-          floorPrice: variant.floorPrice !== undefined ? variant.floorPrice : (previous?.floorPrice ?? product.floorPrice ?? null),
+          floorPrice: resolvedFloor,
           stockQuantity: variant.stockQuantity,
           imageUrl: variant.imageUrl?.trim() || null,
           isActive: true,

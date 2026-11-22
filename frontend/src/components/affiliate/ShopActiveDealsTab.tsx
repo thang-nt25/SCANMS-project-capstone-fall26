@@ -80,7 +80,6 @@ const defaultVipTerms = {
   budgetTotal: 1000000,
   validDays: 30,
 };
-type VipTerms = typeof defaultVipTerms;
 
 export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   // Main Tab: 'ACTIVE' | 'PENDING' | 'HISTORY'
@@ -112,7 +111,6 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   // Processing & Terminate states
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [voucherTermsById, setVoucherTermsById] = useState<Record<string, VipTerms>>({});
   const [selectedDealToTerminate, setSelectedDealToTerminate] = useState<any | null>(null);
   const [terminateReason, setTerminateReason] = useState('KOL không đạt chỉ tiêu đơn hàng/doanh số sau chu kỳ cam kết');
   const [escalateDispute, setEscalateDispute] = useState(false);
@@ -163,8 +161,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
     setBusyId(proposalId);
     try {
       if (approve) {
-        const terms = voucherTermsById[proposalId] || defaultVipTerms;
-        await referralLinksService.approveExclusiveDeal(proposalId, terms);
+        await referralLinksService.approveExclusiveDeal(proposalId, defaultVipTerms);
         toast.success('Đã chấp thuận Thỏa thuận Độc quyền và kích hoạt link tiếp thị.');
       } else {
         await referralLinksService.rejectExclusiveDeal(proposalId);
@@ -790,7 +787,6 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
           ) : (
             <div className="space-y-3">
               {pendingProposals.map((item) => {
-                const terms = voucherTermsById[item.id] || defaultVipTerms;
                 return (
                   <div
                     key={item.id}
@@ -833,115 +829,9 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                       </div>
                     )}
 
-                    {/* Voucher Terms Config */}
-                    <div className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]/40 p-3 space-y-2">
-                      <span className="text-xs font-bold text-[#1A1612] block">
-                        Cấu hình Voucher độc quyền đi kèm:
-                      </span>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Giảm (%)
-                          <input
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={terms.discountPercent === 0 ? '' : (terms.discountPercent ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, discountPercent: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Đơn tối thiểu (₫)
-                          <input
-                            type="number"
-                            min={0}
-                            step={10000}
-                            value={terms.minimumOrderAmount === 0 ? '' : (terms.minimumOrderAmount ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, minimumOrderAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Giảm tối đa (₫)
-                          <input
-                            type="number"
-                            min={1000}
-                            step={5000}
-                            value={terms.maximumDiscountAmount === 0 ? '' : (terms.maximumDiscountAmount ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, maximumDiscountAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Lượt dùng
-                          <input
-                            type="number"
-                            min={1}
-                            value={terms.usageLimitTotal === 0 ? '' : (terms.usageLimitTotal ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, usageLimitTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Ngân sách (₫)
-                          <input
-                            type="number"
-                            min={10000}
-                            step={100000}
-                            value={terms.budgetTotal === 0 ? '' : (terms.budgetTotal ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, budgetTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Hiệu lực (ngày)
-                          <input
-                            type="number"
-                            min={1}
-                            max={365}
-                            value={terms.validDays === 0 ? '' : (terms.validDays ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, validDays: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-                      </div>
-                    </div>
+                    <p className="text-[11px] text-[#7D715E] m-0">
+                      Lưu ý: Thỏa thuận này áp dụng riêng cho hoa hồng tiếp thị sản phẩm trên. Nếu cần cấp Mã ưu đãi toàn cửa hàng cho KOL, vui lòng duyệt tại mục <strong>Ưu đãi &amp; Đãi ngộ → Mã ưu đãi KOC</strong>.
+                    </p>
 
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-2 pt-1">

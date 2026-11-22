@@ -89,20 +89,10 @@ export class KycController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({ summary: 'Admin duyệt đơn nâng cấp KOL' })
   async reviewKolApplication(
+    @CurrentUser('id') reviewerId: string,
     @Param('id') profileId: string,
     @Body() dto: ReviewUpgradeApplicationDto,
   ) {
-    return this.kycService.reviewKolApplication(profileId, dto);
-  }
-
-  @Patch('admin/shop/:id/review')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  @ApiOperation({ summary: 'Admin duyệt đơn nâng cấp Gian Hàng (Shop)' })
-  async reviewShopApplication(
-    @CurrentUser('id') reviewerId: string,
-    @Param('id') storeId: string,
-    @Body() dto: ReviewShopApplicationDto,
-  ) {
-    return this.kycService.reviewShopApplication(reviewerId, storeId, dto);
+    return this.kycService.reviewKolApplication(profileId, dto, reviewerId);
   }
 }

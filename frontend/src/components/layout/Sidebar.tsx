@@ -227,16 +227,9 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
       );
     }
 
-    if (path === '/merchant/live-sessions') {
-      return (
-        currentPath.startsWith('/merchant/live-sessions') ||
-        (currentPath.startsWith('/merchant/promotions') && location.search.includes('tab=live-sessions'))
-      );
-    }
-
     if (path === '/merchant/promotions') {
       return (
-        (currentPath.startsWith('/merchant/promotions') && !location.search.includes('tab=live-sessions')) ||
+        currentPath.startsWith('/merchant/promotions') ||
         currentPath.startsWith('/merchant/coupons') ||
         currentPath.startsWith('/merchant/commission-rules') ||
         currentPath.startsWith('/merchant/referral-links') ||

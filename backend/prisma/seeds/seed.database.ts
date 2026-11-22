@@ -44,9 +44,6 @@ const MODEL_NAMES: Record<SeedTable, string> = {
   redemptions: 'CouponRedemption',
   stackedRedemptions: 'StackedVoucherRedemption',
   savedCoupons: 'CustomerSavedCoupon',
-  liveSessions: 'LiveShoppingSession',
-  liveProducts: 'LiveSessionProduct',
-  liveViewers: 'LiveSessionViewer',
   orders: 'Order',
   orderItems: 'OrderItem',
   commissions: 'Commission',
@@ -150,12 +147,6 @@ const WRITERS: Record<SeedTable, TableWriter> = {
   deals: (tx, d) => tx.exclusiveDealProposal.createMany({ data: d.deals }),
   referralLinks: (tx, d) =>
     tx.referralLink.createMany({ data: d.referralLinks }),
-  liveSessions: (tx, d) =>
-    tx.liveShoppingSession.createMany({ data: d.liveSessions }),
-  liveProducts: (tx, d) =>
-    tx.liveSessionProduct.createMany({ data: d.liveProducts }),
-  liveViewers: (tx, d) =>
-    tx.liveSessionViewer.createMany({ data: d.liveViewers }),
   coupons: (tx, d) => tx.coupon.createMany({ data: d.coupons }),
   couponProducts: (tx, d) =>
     tx.couponProduct.createMany({ data: d.couponProducts }),
@@ -226,16 +217,6 @@ export async function readPersistedCounts(
       );
       result =
         await tx.$queryRaw`SELECT count(*) FROM ${table} WHERE (${firstColumn}, coupon_id) IN (${Prisma.join(identities)})`;
-    } else if (key === 'liveViewers') {
-      const identities = data.liveViewers.map(
-        (row) => Prisma.sql`(${row.sessionId}::uuid, ${row.clientId})`,
-      );
-      if (!identities.length) {
-        counts[key] = 0;
-        continue;
-      }
-      result =
-        await tx.$queryRaw`SELECT count(*) FROM ${table} WHERE (session_id, client_id) IN (${Prisma.join(identities)})`;
     } else {
       const ids = (data[key] as { id?: string }[]).map(
         (row) => Prisma.sql`${row.id}::uuid`,

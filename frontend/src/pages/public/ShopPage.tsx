@@ -12,7 +12,6 @@ import type {
   ShopProduct as Product,
 } from '../../types/storefront.types';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
-import { useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
 import { Select } from '../../components/ui/Select';
 
 
@@ -49,13 +48,6 @@ export default function ShopPage() {
   const [category, setCategory] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [page, setPage] = useState(1);
-
-  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals([
-    ...new Set([
-      ...(result?.items || []).map((product) => product.id),
-      ...highlights.map((product) => product.id),
-    ]),
-  ]);
 
   // 1. Fetch Store Profile
   useEffect(() => {
@@ -335,8 +327,6 @@ export default function ShopPage() {
                         <ShopProductCard
                           key={product.id}
                           product={product}
-                          deal={liveDeals[product.id]}
-                          now={liveDealsNow}
                         />
                       ))}
                     </div>
@@ -447,8 +437,6 @@ export default function ShopPage() {
                       <ShopProductCard
                         key={product.id}
                         product={product}
-                        deal={liveDeals[product.id]}
-                        now={liveDealsNow}
                       />
                     ))}
                   </div>

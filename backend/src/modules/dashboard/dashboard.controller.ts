@@ -211,14 +211,4 @@ export class DashboardController {
       limit ? parseInt(limit) : 10,
     );
   }
-
-  // ─── 10. Tổng hợp hiệu suất các phiên Livestream của KOL ──────────────
-  @Get('collaborator/live-sessions-summary')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Lấy báo cáo tổng hợp doanh số và hoa hồng từ các phiên Livestream của KOL',
-  })
-  getCollaboratorLiveSessionsSummary(@CurrentUser() user: any) {
-    return this.dashboardService.getCollaboratorLiveSessionsSummary(user.id);
-  }
 }

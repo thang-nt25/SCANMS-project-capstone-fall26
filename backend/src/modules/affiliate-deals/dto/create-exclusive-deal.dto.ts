@@ -44,6 +44,7 @@ export class CreateExclusiveDealDto {
   @IsUUID(undefined, { each: true })
   productIds?: string[];
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

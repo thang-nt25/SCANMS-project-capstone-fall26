@@ -10,6 +10,7 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
     let clock = 0;
     const coupon: any = { id: 'coupon', storeId: 'shop', collaboratorId: 'kol', collaborator: {role:'COLLABORATOR'}, codeNormalized: 'AUDIT5',
       status: CouponStatus.ACTIVE, fundingSource: 'SHOP_FUNDED', benefitType: 'GOODS', scopeType: 'STORE_WIDE',
+      discountType: 'PERCENTAGE', discountValue: 5, maximumDiscountAmount: 50000,
       shopFundingRate: 100, platformFundingRate: 0, approvedBy: 'owner', approvedAt: new Date('2026-10-01'),
       updatedAt: new Date('2026-10-01'), statusBeforeBlock: null, expiresAt: new Date('2099-01-01'), ...overrides };
     const prisma: any = {
@@ -66,6 +67,12 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
     await expect(service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', { shopFundingRate: 1 })).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('locks ACTIVE coupon discount/minOrder terms against arbitrary SHOP_MANAGER downgrades', async () => {
+    const { service } = fixture({ status: CouponStatus.ACTIVE, discountValue: 10 });
+    await expect(service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', { discountValue: 3 })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', { minimumOrderAmount: 500000 })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it("Admin cannot reactivate platform voucher policy through the legacy edit API", async () => {const {service,coupon}=fixture({fundingSource:'PLATFORM_FUNDED',shopFundingRate:0,platformFundingRate:100});await expect(service.updateCouponPolicy('shop','coupon','admin','SYSTEM_ADMIN',{budgetTotal:2000000})).rejects.toBeInstanceOf(GoneException);expect(coupon.fundingSource).toBe('PLATFORM_FUNDED');});
 
   it.each(['SYSTEM_ADMIN', 'SYSTEM_MANAGER', 'COLLABORATOR', 'CUSTOMER'])(
@@ -78,7 +85,7 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
 
   it('only the owner Shop can approve and fund a pending proposal', async () => {
     const { service, coupon } = fixture({ status: 'PENDING_APPROVAL', approvedBy: null, approvedAt: null });
-    await service.approveCoupon('shop', 'coupon', 'owner', 'SHOP_MANAGER', { discountType: 'PERCENTAGE', discountValue: 5 });
+    await service.approveCoupon('shop', 'coupon', 'owner', 'SHOP_MANAGER', { discountType: 'PERCENTAGE', discountValue: 5, maximumDiscountAmount: 50000 });
     expect(coupon.status).toBe('ACTIVE'); expect(coupon.approvedBy).toBe('owner');
     expect(coupon.fundingSource).toBe('SHOP_FUNDED'); expect(Number(coupon.shopFundingRate)).toBe(100);
   });
@@ -129,7 +136,7 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
     prisma.coupon.findFirst.mockImplementationOnce(async () => {
       const snapshot = { ...coupon }; coupon.status = 'BLOCKED'; return snapshot;
     });
-    await expect(service.approveCoupon('shop', 'coupon', 'owner', 'SHOP_MANAGER', { discountType: 'PERCENTAGE', discountValue: 5 })).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.approveCoupon('shop', 'coupon', 'owner', 'SHOP_MANAGER', { discountType: 'PERCENTAGE', discountValue: 5, maximumDiscountAmount: 50000 })).rejects.toBeInstanceOf(ConflictException);
     expect(coupon.status).toBe('BLOCKED'); expect(coupon.approvedBy).toBeNull();
   });
 

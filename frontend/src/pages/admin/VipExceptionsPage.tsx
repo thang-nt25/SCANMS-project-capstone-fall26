@@ -252,7 +252,7 @@ export default function VipExceptionsPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-[#EAE4D7] p-3.5 shadow-2xs">
-          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Pipeline cam kết</p>
+          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Doanh số cam kết</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold text-[#1A1612] tabular-nums">
               {stats.totalTargetRevenue > 0
