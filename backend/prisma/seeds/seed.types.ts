@@ -26,9 +26,6 @@ export interface SeedDataset {
   redemptions: Prisma.CouponRedemptionCreateManyInput[];
   stackedRedemptions: Prisma.StackedVoucherRedemptionCreateManyInput[];
   savedCoupons: Prisma.CustomerSavedCouponCreateManyInput[];
-  liveSessions: Prisma.LiveShoppingSessionCreateManyInput[];
-  liveProducts: Prisma.LiveSessionProductCreateManyInput[];
-  liveViewers: Prisma.LiveSessionViewerCreateManyInput[];
   orders: Prisma.OrderCreateManyInput[];
   orderItems: Prisma.OrderItemCreateManyInput[];
   commissions: Prisma.CommissionCreateManyInput[];
