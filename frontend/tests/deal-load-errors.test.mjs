@@ -16,6 +16,7 @@ function render(path, exported) {
   const module = { exports: {} };
   vm.runInNewContext(code, { module, exports: module.exports, require: name => {
     if (name === 'react-router-dom') return { useSearchParams: () => [new URLSearchParams(), () => {}] };
+    if (name === '../ui/Modal') return { Modal: ({ isOpen, children }) => isOpen ? children : null };
     if (['react', 'react/jsx-runtime', 'lucide-react'].includes(name)) return require(name);
     return { registerPrivateCacheReset() {}, analyticsService: {}, referralLinksService: {}, toast: {} };
   } });

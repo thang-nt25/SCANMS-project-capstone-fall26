@@ -12,7 +12,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as argon2 from 'argon2';
-import { OAuth2Client } from 'google-auth-library';
+import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -391,12 +391,14 @@ export class AuthService {
     dto: GoogleLoginDto,
     meta?: { ipAddress?: string; userAgent?: string },
   ) {
-    let payload: any;
-
-    if (
+    let payload: TokenPayload | undefined;
+    const isAccessToken =
       dto.idToken.startsWith('ya29.') ||
-      dto.idToken.split('.').length !== 3
-    ) {
+      dto.idToken.split('.').length !== 3;
+    if (dto.intent && isAccessToken) {
+      throw new UnauthorizedException('Google chưa cấp mã định danh hợp lệ cho ứng dụng.');
+    }
+    if (isAccessToken) {
       let userInfoResponse: Response;
       try {
         userInfoResponse = await fetch(
@@ -437,10 +439,14 @@ export class AuthService {
         );
       }
     } else {
+      const audience = process.env.GOOGLE_CLIENT_ID?.trim();
+      if (!audience) {
+        throw new ServiceUnavailableException('Máy chủ chưa cấu hình đăng nhập Google.');
+      }
       try {
         const ticket = await this.googleOAuthClient.verifyIdToken({
           idToken: dto.idToken,
-          audience: process.env.GOOGLE_CLIENT_ID,
+          audience,
         });
         payload = ticket.getPayload();
       } catch (err: any) {
@@ -456,16 +462,23 @@ export class AuthService {
     }
 
     const email = payload.email.toLowerCase().trim();
-    let user = await this.prisma.user.findUnique({
+    if (
+      dto.intent &&
+      (!payload.sub || payload.email_verified !== true ||
+        (!email.endsWith('@gmail.com') && !payload.hd))
+    ) {
+      throw new UnauthorizedException(
+        'Google không xác nhận quyền sở hữu email này. Hãy dùng Gmail, Google Workspace hoặc đăng nhập bằng mật khẩu SCANMS.',
+      );
+    }
+    const findGoogleUser = () => this.prisma.user.findUnique({
       where: { email },
-      include: {
-        stores: { where: { isDeleted: false } },
-        collaboratorProfile: {
-          include: { tier: true },
-        },
-        wallet: true,
-      },
+      include: loginUserInclude,
     });
+    let user = await findGoogleUser();
+    if (!user && dto.intent === 'login') {
+      throw new NotFoundException('Email Google này chưa có tài khoản SCANMS. Hãy chọn Đăng ký bằng Google.');
+    }
 
     // Signing in proves identity, not consent to become an affiliate or staff.
     // New Google accounts start as customers. Partner onboarding is a separate
@@ -473,28 +486,26 @@ export class AuthService {
     if (!user) {
       const randomPassword = randomBytes(32).toString('base64url');
       const passwordHash = await this.hashPassword(randomPassword);
-      const createdUser = await this.prisma.user.create({
-        data: {
-          email,
-          fullName: payload.name || payload.given_name || 'Khách Hàng Google',
-          passwordHash,
-          role: UserRole.CUSTOMER,
-          isActive: true,
-          auditLogs: { create: {
-            action: 'GOOGLE_CUSTOMER_REGISTERED',
-            details: { source: 'GOOGLE_LOGIN', assignedRole: 'CUSTOMER', requestedRole: dto.role ?? null },
-          } },
-        },
-      });
-      // Customers supply their own shipping address at checkout.
-      user = await this.prisma.user.findUnique({
-        where: { id: createdUser.id },
-        include: {
-          stores: { where: { isDeleted: false } },
-          collaboratorProfile: { include: { tier: true } },
-          wallet: true,
-        },
-      });
+      try {
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            fullName: payload.name || payload.given_name || 'Khách Hàng Google',
+            passwordHash,
+            role: UserRole.CUSTOMER,
+            isActive: true,
+            auditLogs: { create: {
+              action: 'GOOGLE_CUSTOMER_REGISTERED',
+              details: { source: 'GOOGLE_LOGIN', assignedRole: 'CUSTOMER', requestedRole: dto.role ?? null },
+            } },
+          },
+          include: loginUserInclude,
+        });
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+        user = await findGoogleUser();
+        if (!user) throw error;
+      }
     }
 
     if (!user) {

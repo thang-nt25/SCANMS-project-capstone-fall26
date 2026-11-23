@@ -23,6 +23,7 @@ describe('shipping simulation HTTP authorization and error contract', () => {
     createShippingOrder: jest.fn(),
     startCustomerSimulation: jest.fn(),
     completeCustomerSimulation: jest.fn(),
+    sandboxSampleState: jest.fn(),
   };
   const prisma = { store: { findFirst: jest.fn() } };
   beforeAll(async () => {
@@ -67,6 +68,31 @@ describe('shipping simulation HTTP authorization and error contract', () => {
   });
   afterAll(async () => {
     await app?.close();
+  });
+
+  it('maps sandbox video review through Shop role and validated submission metadata', async () => {
+    service.sandboxSampleState.mockResolvedValue({ simulated: true, status: 'COMPLETED' });
+    const body = { status: 'APPROVED', videoUrl: 'https://www.tiktok.com/@kol/video/123', revision: 1 };
+    await request(app.getHttpServer()).post('/api/shipping/ghn/sandbox-sample/TEST123/review-video')
+      .set('x-test-role', 'SHOP_MANAGER').send(body).expect(201);
+    expect(service.sandboxSampleState).toHaveBeenCalledWith('TEST123', 'actor', 'review-video', undefined, { review: body });
+  });
+
+  it.each(['CUSTOMER', 'COLLABORATOR', 'SYSTEM_ADMIN'])('rejects sandbox video decisions by %s', async role => {
+    await request(app.getHttpServer()).post('/api/shipping/ghn/sandbox-sample/TEST123/review-video')
+      .set('x-test-role', role).send({ status: 'APPROVED', videoUrl: 'https://example.test/video', revision: 1 }).expect(403);
+    expect(service.sandboxSampleState).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 'PENDING', videoUrl: 'https://example.test/video', revision: 1 },
+    { status: 'APPROVED', revision: 1 },
+    { status: 'APPROVED', videoUrl: 'https://example.test/video', revision: 0 },
+    { status: 'APPROVED', videoUrl: 'https://example.test/video', revision: '1' },
+  ])('rejects malformed sandbox review payload %j', async body => {
+    await request(app.getHttpServer()).post('/api/shipping/ghn/sandbox-sample/TEST123/review-video')
+      .set('x-test-role', 'SHOP_MANAGER').send(body).expect(400);
+    expect(service.sandboxSampleState).not.toHaveBeenCalled();
   });
 
   it.each(['TEST', 'LIVE'])(

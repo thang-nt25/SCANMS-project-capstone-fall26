@@ -4421,6 +4421,9 @@ export class OrdersService {
               product: {
                 select: { id: true, title: true, sku: true, imageUrl: true },
               },
+              variant: {
+                select: { name: true, sku: true, imageUrl: true },
+              },
             },
           },
           coupon: {
@@ -4562,10 +4565,14 @@ export class OrdersService {
               }
             : null,
           items: order.orderItems.map((item) => ({
+            id: item.id,
             productId: item.productId,
             title: item.product?.title || 'Sản phẩm',
             sku: item.product?.sku || '',
             imageUrl: item.product?.imageUrl || '',
+            variantName: item.variant?.name ?? null,
+            variantSku: item.variant?.sku ?? null,
+            variantImageUrl: item.variant?.imageUrl ?? null,
             quantity: item.quantity,
             unitPrice: Number(item.unitPrice),
             appliedCommissionRate: Number(item.appliedCommissionRate || 0),

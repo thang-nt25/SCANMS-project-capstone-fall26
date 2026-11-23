@@ -5,11 +5,13 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import {
   UnauthorizedException,
   ForbiddenException,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { MailService } from '../mail.service';
 import { UserRole } from '@prisma/client';
+import { LoginTicket } from 'google-auth-library';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -106,8 +108,8 @@ describe('AuthService', () => {
   it.each(['COLLABORATOR', 'SHOP_MANAGER', 'SYSTEM_ADMIN'])('creates a new Google user as CUSTOMER even when login submits %s', async role => {
     jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({ email: 'new-google@example.test', email_verified: true, name: 'Buyer' }) } as Response);
     jest.spyOn(authService as any, 'hashPassword').mockResolvedValue('test-hash');
-    mockPrismaService.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ ...mockUser, id: 'new-user', email: 'new-google@example.test', role: 'CUSTOMER' });
-    mockPrismaService.user.create.mockResolvedValueOnce({ id: 'new-user' });
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+    mockPrismaService.user.create.mockResolvedValueOnce({ ...mockUser, id: 'new-user', email: 'new-google@example.test', role: 'CUSTOMER' });
     const result = await authService.googleLogin({ idToken: 'ya29.valid', role });
     expect(mockPrismaService.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ role: UserRole.CUSTOMER }) }));
     expect(result.user.role).toBe('CUSTOMER');
@@ -120,6 +122,89 @@ describe('AuthService', () => {
     const result = await authService.googleLogin({ idToken: 'ya29.valid', role: 'COLLABORATOR' });
     expect(result.user.role).toBe('CUSTOMER');
     expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+  });
+
+  describe('native Google ID token', () => {
+    const idToken = 'header.payload.signature';
+    const expectedAudience = 'scanms-test.apps.googleusercontent.com';
+    const email = 'mobile-user@gmail.com';
+    let previousAudience: string | undefined;
+
+    beforeEach(() => {
+      previousAudience = process.env.GOOGLE_CLIENT_ID;
+      process.env.GOOGLE_CLIENT_ID = expectedAudience;
+    });
+
+    afterEach(() => {
+      if (previousAudience === undefined) delete process.env.GOOGLE_CLIENT_ID;
+      else process.env.GOOGLE_CLIENT_ID = previousAudience;
+    });
+
+    const verifiedGoogle = (emailAddress = email, verified = true) =>
+      jest.spyOn((authService as any).googleOAuthClient, 'verifyIdToken')
+        .mockImplementation(async () => new LoginTicket(undefined, {
+          iss: 'https://accounts.google.com',
+          sub: 'google-subject',
+          aud: expectedAudience,
+          iat: 1,
+          exp: 2,
+          email: emailAddress,
+          email_verified: verified,
+          name: 'Mobile Buyer',
+        }));
+
+    it('opens the existing account with its original ID and role', async () => {
+      const verify = verifiedGoogle(' MOBILE-USER@GMAIL.COM ');
+      mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, email });
+
+      const result = await authService.googleLogin({ idToken, intent: 'login' });
+
+      expect(verify).toHaveBeenCalledWith({ idToken, audience: expectedAudience });
+      expect(result.user).toMatchObject({ id: mockUser.id, email, role: mockUser.role });
+      expect(result.user).not.toHaveProperty('passwordHash');
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+    });
+
+    it('creates a customer from Google signup and signs into that same user next time', async () => {
+      verifiedGoogle();
+      jest.spyOn(authService as any, 'hashPassword').mockResolvedValue('test-hash');
+      const customer = { ...mockUser, id: 'mobile-customer', email, role: UserRole.CUSTOMER };
+      mockPrismaService.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(customer);
+      mockPrismaService.user.create.mockResolvedValueOnce(customer);
+
+      const signup = await authService.googleLogin({ idToken, intent: 'register' });
+      const login = await authService.googleLogin({ idToken, intent: 'login' });
+
+      expect(signup.user.id).toBe('mobile-customer');
+      expect(login.user.id).toBe(signup.user.id);
+      expect(mockPrismaService.user.create).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.user.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ email, role: UserRole.CUSTOMER }),
+      }));
+    });
+
+    it('asks unregistered Google users to use the registration screen', async () => {
+      verifiedGoogle();
+      mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+
+      await expect(authService.googleLogin({ idToken, intent: 'login' })).rejects.toThrow(NotFoundException);
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+    });
+
+    it.each([[email, false], ['external@example.test', true]])(
+      'does not open accounts when Google cannot prove current email ownership (%s)',
+      async (emailAddress, verified) => {
+        verifiedGoogle(emailAddress, verified);
+        await expect(authService.googleLogin({ idToken, intent: 'login' })).rejects.toThrow();
+        expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects opaque access tokens submitted by the mobile flow', async () => {
+      const fetch = jest.spyOn(global, 'fetch');
+      await expect(authService.googleLogin({ idToken: 'ya29.token', intent: 'login' })).rejects.toThrow(UnauthorizedException);
+      expect(fetch).not.toHaveBeenCalled();
+    });
   });
 
   it('returns 401 only when Google rejects the access token', async () => {

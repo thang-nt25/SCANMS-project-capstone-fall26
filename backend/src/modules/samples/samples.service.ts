@@ -4,12 +4,12 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SampleRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
-import { Optional } from '@nestjs/common';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { MediaService } from '../media/media.service';
 import { GhnService } from '../shipping/ghn.service';
@@ -22,6 +22,7 @@ import {
   RejectSampleRequestDto,
   ShipSampleRequestDto,
   SubmitSampleVideoDto,
+  AppealSampleRevisionDto,
 } from './dto/sample-request.dto';
 
 const SAMPLE_COMMITMENT_DAYS = 14;
@@ -32,6 +33,7 @@ const ACTIVE_SAMPLE_STATUSES: SampleRequestStatus[] = [
   SampleRequestStatus.RECEIVED,
   SampleRequestStatus.VIDEO_SUBMITTED,
   SampleRequestStatus.REVISION_REQUIRED,
+  SampleRequestStatus.APPEALED,
   SampleRequestStatus.OVERDUE,
   SampleRequestStatus.DELIVERY_ISSUE,
 ];
@@ -388,11 +390,8 @@ export class SamplesService {
   }
 
   async getRequestsForShop(shopOwnerId: string, status?: SampleRequestStatus, storeId?: string) {
-    const cacheKey = `samples:shop:${shopOwnerId}:${storeId || 'default'}:${status || 'ALL'}`;
-    if (this.cacheService) {
-      const cached = await this.cacheService.get(cacheKey);
-      if (cached) return cached;
-    }
+    // This is an action inbox. Approval, shipping and video review can change
+    // it outside this service/tab; always resolve current access and DB state.
     const store = await this.prisma.store.findFirst({
       where: { ...managedStoreWhere(shopOwnerId), ...(storeId ? { id: storeId } : {}) },
       select: { id: true },
@@ -403,18 +402,20 @@ export class SamplesService {
       orderBy: { createdAt: 'desc' },
       include: this.includeRelations(),
     });
-    if (this.cacheService) {
-      await this.cacheService.set(cacheKey, list, 30);
-    }
     return list;
   }
 
   async getAdminRequests(status?: SampleRequestStatus) {
-    return this.prisma.sampleProductRequest.findMany({
+    const cacheKey = `samples:admin:${status || 'ALL'}`;
+    const cached = await this.cacheService?.get<any[]>(cacheKey);
+    if (cached) return cached;
+    const rows = await this.prisma.sampleProductRequest.findMany({
       where: status ? { status } : undefined,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       include: this.includeRelations(),
     });
+    await this.cacheService?.set(cacheKey, rows, 30);
+    return rows;
   }
 
   async getBlockedCollaborators() {
@@ -461,6 +462,8 @@ export class SamplesService {
 
   async approveRequest(requestId: string, shopOwnerId: string) {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
+    // A repeated click or a lost response must not allocate another sample.
+    if (req.status === SampleRequestStatus.APPROVED) return req;
     if (req.status !== SampleRequestStatus.PENDING) {
       throw new BadRequestException(
         `Không thể duyệt yêu cầu đang ở trạng thái ${req.status}.`,
@@ -679,10 +682,28 @@ export class SamplesService {
   }
 
   async confirmReceived(requestId: string, collaboratorId: string) {
-    await this.getOwnedRequest(requestId, collaboratorId);
-    throw new BadRequestException(
-      'Hệ thống tự xác nhận nhận mẫu sau khi xác minh giao thành công. KOL không thể xác nhận thủ công.',
-    );
+    const req = await this.getOwnedRequest(requestId, collaboratorId);
+    if (req.carrier?.toUpperCase().includes('GHN')) {
+      throw new BadRequestException(
+        'Đơn hàng mẫu GHN được hệ thống tự xác nhận khi giao thành công. KOL không thể xác nhận thủ công.',
+      );
+    }
+    if (req.status !== SampleRequestStatus.SHIPPED) {
+      throw new BadRequestException('Chỉ có thể xác nhận nhận mẫu khi đơn đang ở trạng thái đang giao.');
+    }
+    const receivedAt = new Date();
+    const deadlineAt = new Date(receivedAt.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000);
+    const updated = await this.prisma.sampleProductRequest.update({
+      where: { id: requestId, status: SampleRequestStatus.SHIPPED, carrier: req.carrier },
+      data: {
+        status: SampleRequestStatus.RECEIVED,
+        receivedAt,
+        deadlineAt,
+      },
+      include: this.includeRelations(),
+    });
+    await this.invalidateShopSamplesCache();
+    return updated;
   }
 
   async reportDeliveryIssue(
@@ -1234,6 +1255,7 @@ export class SamplesService {
         SampleRequestStatus.SHIPPED,
         SampleRequestStatus.RECEIVED,
         SampleRequestStatus.REVISION_REQUIRED,
+        SampleRequestStatus.APPEALED,
         SampleRequestStatus.OVERDUE,
         SampleRequestStatus.DELIVERY_ISSUE,
       ];
@@ -1247,6 +1269,7 @@ export class SamplesService {
         data: { status: SampleRequestStatus.CANCELLED, rejectedReason: reason },
         include: this.includeRelations(),
       });
+      await this.invalidateShopSamplesCache();
       await this.notify({
         userId: req.collaboratorId,
         title: 'Quản trị viên đã giải quyết nghĩa vụ mẫu',
@@ -1260,6 +1283,55 @@ export class SamplesService {
         requestId,
         { reason },
       );
+      return updated;
+    }
+
+    if (dto.action === 'FORCE_COMPLETE') {
+      if (req.status !== SampleRequestStatus.APPEALED && req.status !== SampleRequestStatus.REVISION_REQUIRED && req.status !== SampleRequestStatus.VIDEO_SUBMITTED) {
+        throw new BadRequestException('Chỉ có thể phán quyết hoàn thành cho đơn đang khiếu nại hoặc chờ duyệt video.');
+      }
+      const updated = await this.prisma.sampleProductRequest.update({
+        where: { id: requestId, status: req.status },
+        data: { status: SampleRequestStatus.COMPLETED, videoRejectionReason: null, overdueAt: null },
+        include: this.includeRelations(),
+      });
+      await this.invalidateShopSamplesCache();
+      await this.notify({
+        userId: req.collaboratorId,
+        title: 'Trọng tài chấp nhận video nghiệm thu',
+        message: `System Manager đã nghiệm thu hoàn tất video mẫu ${req.product.title}. Lý do: ${reason}`,
+        type: 'SAMPLE_VIDEO_APPROVED',
+        requestId,
+      });
+      await this.audit(adminId, 'SAMPLE_APPEAL_FORCE_COMPLETE', requestId, { reason });
+      return updated;
+    }
+
+    if (dto.action === 'UPHOLD_REVISION') {
+      if (req.status !== SampleRequestStatus.APPEALED) {
+        throw new BadRequestException('Chỉ có thể giữ nguyên yêu cầu sửa cho đơn đang khiếu nại.');
+      }
+      const revisionDeadlineAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const updated = await this.prisma.sampleProductRequest.update({
+        where: { id: requestId, status: SampleRequestStatus.APPEALED },
+        data: {
+          status: SampleRequestStatus.REVISION_REQUIRED,
+          revisionDeadlineAt,
+          revisionReminderSentAt: null,
+          revisionShopReminderSentAt: null,
+          overdueAt: null,
+        },
+        include: this.includeRelations(),
+      });
+      await this.invalidateShopSamplesCache();
+      await this.notify({
+        userId: req.collaboratorId,
+        title: 'Trọng tài giữ nguyên yêu cầu chỉnh sửa video',
+        message: `Vui lòng chỉnh sửa lại video ${req.product.title} trước ${revisionDeadlineAt.toLocaleDateString('vi-VN')}. Ghi chú: ${reason}`,
+        type: 'SAMPLE_VIDEO_REVISION_REQUIRED',
+        requestId,
+      });
+      await this.audit(adminId, 'SAMPLE_APPEAL_UPHOLD_REVISION', requestId, { reason });
       return updated;
     }
 
@@ -1293,11 +1365,15 @@ export class SamplesService {
             revisionDeadlineAt: deadlineAt,
             revisionReminderSentAt: null,
             revisionShopReminderSentAt: null,
+            overdueAt: null,
+            shopReminderSentAt: null,
           }
         : {
             status: SampleRequestStatus.RECEIVED,
             deadlineAt,
             reminderSentAt: null,
+            overdueAt: null,
+            shopReminderSentAt: null,
           },
       include: this.includeRelations(),
     });
@@ -1721,6 +1797,57 @@ export class SamplesService {
       });
     } catch {
       // Notifications are best-effort; the sample state remains authoritative.
+    }
+  }
+
+  async appealRevision(
+    requestId: string,
+    collaboratorId: string,
+    dto: AppealSampleRevisionDto,
+  ) {
+    const req = await this.getOwnedRequest(requestId, collaboratorId);
+    if (req.status !== SampleRequestStatus.REVISION_REQUIRED) {
+      throw new BadRequestException('Chỉ có thể yêu cầu trọng tài khi đơn đang bị yêu cầu chỉnh sửa.');
+    }
+    const reason = dto.reason.trim();
+    if (reason.length < 15) {
+      throw new BadRequestException('Giải trình cần ít nhất 15 ký tự.');
+    }
+    const updated = await this.prisma.sampleProductRequest.update({
+      where: { id: requestId, status: SampleRequestStatus.REVISION_REQUIRED },
+      data: {
+        status: SampleRequestStatus.APPEALED,
+        appealReason: reason,
+        appealedAt: new Date(),
+      },
+      include: this.includeRelations(),
+    });
+    await this.invalidateShopSamplesCache();
+    const reviewers = await this.prisma.user.findMany({
+      where: { role: { in: ['SYSTEM_MANAGER', 'SYSTEM_ADMIN'] }, isActive: true },
+      select: { id: true },
+    });
+    for (const userId of new Set([req.product.store.ownerId, ...reviewers.map(({ id }) => id)])) {
+      await this.notify({
+        userId,
+        title: 'KOL yêu cầu trọng tài video mẫu',
+        message: `KOL đã gửi khiếu nại cho mẫu ${req.product.title}. Hạn thực hiện được tạm dừng chờ vận hành xử lý.`,
+        type: 'SAMPLE_REVISION_APPEALED',
+        requestId,
+      });
+    }
+    await this.audit(collaboratorId, 'SAMPLE_REVISION_APPEALED', requestId, { reason });
+    return updated;
+  }
+
+  private async invalidateShopSamplesCache() {
+    try {
+      await Promise.all([
+        this.cacheService?.delPrefix?.('samples:shop:'),
+        this.cacheService?.delPrefix?.('samples:admin:'),
+      ]);
+    } catch {
+      // ignore cache errors
     }
   }
 

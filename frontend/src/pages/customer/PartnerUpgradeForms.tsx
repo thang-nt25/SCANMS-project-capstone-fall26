@@ -35,6 +35,7 @@ import { toast } from '../../utils/toast';
 import type { ApplyKolData, SocialChannelFormItem } from '../../services/kyc.service';
 import { ApplicationBadge } from './PartnerUpgradeTab';
 import { socialChannelFields, socialChannelUrlError } from '../../utils/social-channel-form';
+import { kycReviewItems } from '../../utils/kyc-review-items';
 
 const PRIMARY_CATEGORIES = [
   'Mỹ phẩm & Chăm sóc da chuyên sâu',
@@ -182,6 +183,7 @@ export function KolUpgradeForm({
   onSubmit,
   submitting,
   rejectionReason,
+  requestedItems,
   status,
   readOnly = false,
 }: {
@@ -190,6 +192,7 @@ export function KolUpgradeForm({
   onSubmit: FormEventHandler<HTMLFormElement>;
   submitting: boolean;
   rejectionReason?: string;
+  requestedItems?: unknown;
   status?: string | null;
   readOnly?: boolean;
 }) {
@@ -197,6 +200,17 @@ export function KolUpgradeForm({
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [stepError, setStepError] = useState<{ message: string; id: string } | null>(null);
   const [editingSecondary, setEditingSecondary] = useState<number | null>(null);
+  const reviewItems = Array.isArray(requestedItems)
+    ? requestedItems.filter((item): item is string => typeof item === 'string')
+    : [];
+  const showReviewField = ({ step, fieldId }: (typeof kycReviewItems)[number]) => {
+    setCurrentStep(step);
+    requestAnimationFrame(() => {
+      const field = document.getElementById(fieldId);
+      field?.scrollIntoView({ block: 'center' });
+      field?.focus({ preventScroll: true });
+    });
+  };
 
   // User profile
   const currentUser = authService.getCurrentUser();
@@ -442,7 +456,7 @@ export function KolUpgradeForm({
         </div>
       )}
 
-      {rejectionReason && (
+      {(rejectionReason || reviewItems.length > 0) && (
         <div
           className={`flex items-start gap-2.5 border rounded-xl p-3.5 text-xs leading-relaxed ${
             isRejected
@@ -462,7 +476,17 @@ export function KolUpgradeForm({
             >
               {isNeedsInfo ? 'Yêu cầu bổ sung từ Ban Quản Trị' : 'Hồ sơ bị từ chối'}
             </strong>
-            {rejectionReason}
+            {rejectionReason && <p className="whitespace-pre-wrap wrap-anywhere">{rejectionReason}</p>}
+            {reviewItems.length > 0 && (
+              <ul className="mt-2 grid list-disc gap-1 pl-4">
+                {reviewItems.map(label => {
+                  const item = kycReviewItems.find(option => option.label === label);
+                  return <li key={label}>{item
+                    ? <button type="button" onClick={() => showReviewField(item)} className="cursor-pointer text-left font-medium text-[#795A2D] underline underline-offset-2">{label}</button>
+                    : label}</li>;
+                })}
+              </ul>
+            )}
           </div>
         </div>
       )}
@@ -823,7 +847,7 @@ export function KolUpgradeForm({
 
                 {/* 2 Khung ảnh CCCD Mặt trước & Mặt sau */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <ImageUploadDropzone
+                  <div id="kol-front-card" tabIndex={-1}><ImageUploadDropzone
                     variant="document"
                     label="Ảnh CCCD mặt trước"
                     value={form.frontCardUrl}
@@ -831,8 +855,8 @@ export function KolUpgradeForm({
                     iconType="idcard"
                     folder="scanms/kyc/idcards"
                     required
-                  />
-                  <ImageUploadDropzone
+                  /></div>
+                  <div id="kol-back-card" tabIndex={-1}><ImageUploadDropzone
                     variant="document"
                     label="Ảnh CCCD mặt sau"
                     value={form.backCardUrl}
@@ -840,7 +864,7 @@ export function KolUpgradeForm({
                     iconType="idcard"
                     folder="scanms/kyc/idcards"
                     required
-                  />
+                  /></div>
                 </div>
               </div>
 
@@ -859,7 +883,7 @@ export function KolUpgradeForm({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex flex-col gap-1.5">
+                  <div id="kol-bank-name" tabIndex={-1} className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-[#1A1612]">
                       Ngân hàng thụ hưởng
                     </label>

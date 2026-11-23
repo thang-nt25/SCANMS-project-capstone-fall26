@@ -14,32 +14,39 @@ import { Button, ErrorNotice } from "../../components/ui";
 import { Icon, Wordmark } from "../../components/commerce";
 import { colors } from "../../theme/tokens";
 import { useAuth } from "./AuthProvider";
+import { useRouter } from "expo-router";
+import { GoogleAuthButton } from "./GoogleAuthButton";
 
 export function LoginScreen() {
-  const { login } = useAuth();
+  const router = useRouter();
+  const { login, loginWithGoogle } = useAuth();
   const [identifier, setIdentifier] = useState(""),
     [password, setPassword] = useState(""),
     [visible, setVisible] = useState(false),
-    [busy, setBusy] = useState(false),
+    [pending, setPending] = useState<"password" | "google" | null>(null),
     [error, setError] = useState<unknown>(null);
+  const busy = pending !== null;
   const lock = useRef(false);
-  const submit = async () => {
+  const submit = async (method: "password" | "google" = "password") => {
     if (lock.current) return;
-    if (!identifier.trim() || !password) {
+    if (method === "password" && (!identifier.trim() || !password)) {
       setError("Nhập email/số điện thoại và mật khẩu đã đăng ký.");
       return;
     }
     lock.current = true;
-    setBusy(true);
+    setPending(method);
     setError(null);
     try {
-      await login(identifier, password);
-      setPassword("");
+      if (method === "google") await loginWithGoogle("login");
+      else {
+        await login(identifier, password);
+        setPassword("");
+      }
     } catch (caught) {
       setError(caught);
     } finally {
       lock.current = false;
-      setBusy(false);
+      setPending(null);
     }
   };
   return (
@@ -129,9 +136,22 @@ export function LoginScreen() {
             <ErrorNotice error={error} />
             <Button
               title="Đăng nhập"
-              loading={busy}
+              loading={pending === "password"}
+              disabled={busy}
               onPress={() => void submit()}
             />
+            <GoogleAuthButton
+              intent="login"
+              busy={pending === "google"}
+              disabled={busy}
+              onPress={() => void submit("google")}
+            />
+            <View style={styles.registerRow}>
+              <Text style={styles.subtitle}>Chưa có tài khoản?</Text>
+              <Pressable accessibilityRole="link" accessibilityLabel="Đăng ký tài khoản" disabled={busy} onPress={() => router.push("/register")} style={{ paddingVertical: 10, paddingHorizontal: 4 }}>
+                <Text style={{ color: colors.strong, fontSize: 13, fontWeight: "700" }}>Đăng ký ngay</Text>
+              </Pressable>
+            </View>
           </View>
           <View style={styles.note}>
             <Icon name="shield" size={16} color={colors.strong} />
@@ -141,7 +161,7 @@ export function LoginScreen() {
             </Text>
           </View>
           <Text style={styles.footer}>
-            Sàn thương mại tiếp thị liên kết SCANMS
+            Hệ thống quản lý đội ngũ cộng tác viên bán hàng và tiếp thị liên kết
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -227,4 +247,5 @@ const styles = StyleSheet.create({
   },
   noteText: { flex: 1, fontSize: 10, lineHeight: 17, color: colors.muted },
   footer: { color: colors.muted, fontSize: 10, textAlign: "center" },
+  registerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, flexWrap: "wrap" },
 });

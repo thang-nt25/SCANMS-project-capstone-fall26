@@ -527,7 +527,7 @@ export default function ShopDashboardPage() {
         <div className="shop-dashboard-middle">
           {/* Revenue & Remuneration Curve */}
           <div className="space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs lg:col-span-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 {activeChartTab === 'revenue' ? (
                   <>
@@ -542,32 +542,20 @@ export default function ShopDashboardPage() {
                 )}
               </div>
 
-              {/* Sub-tabs for switching metrics displayed in Chart */}
-              <div className="flex items-center rounded-xl border border-[#EAE4D7] bg-[#F3EFE6] p-1 text-xs font-semibold">
-                <button
-                  type="button"
-                  aria-pressed={activeChartTab === 'revenue'}
-                  onClick={() => setActiveChartTab('revenue')}
-                  className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
-                    activeChartTab === 'revenue'
-                      ? 'bg-white text-[#1A1612] font-bold shadow-2xs'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  Doanh thu
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={activeChartTab === 'commission'}
-                  onClick={() => setActiveChartTab('commission')}
-                  className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
-                    activeChartTab === 'commission'
-                      ? 'bg-white text-[#1A1612] font-bold shadow-2xs'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  Thù lao KOC
-                </button>
+              <div role="group" aria-label="Chỉ số biểu đồ"
+                className="relative grid w-full grid-cols-2 gap-2 rounded-xl border border-[#EAE4D7] bg-white p-1 sm:w-[280px]">
+                <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-5 w-px -translate-y-1/2 bg-[#EAE4D7]" />
+                {([
+                  { value: 'revenue', label: 'Doanh thu', Icon: TrendingUp },
+                  { value: 'commission', label: 'Thù lao KOC', Icon: Coins },
+                ] as const).map(({ value, label, Icon }) => (
+                  <button key={value} type="button" aria-pressed={activeChartTab === value}
+                    onClick={() => setActiveChartTab(value)}
+                    className="inline-flex h-10 min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-transparent bg-white px-1 text-center text-[13px] font-semibold leading-tight text-[#655A49] transition-colors duration-150 hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-[#B88E4F] aria-pressed:border-[#EEDFC6] aria-pressed:bg-[#FBF5EB] aria-pressed:text-[#231D15]">
+                    <Icon size={14} className="shrink-0 text-[#8C7654]" aria-hidden="true" />
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 

@@ -32,6 +32,7 @@ import {
   ReportSampleViolationDto,
   ShipSampleRequestDto,
   SubmitSampleVideoDto,
+  AppealSampleRevisionDto,
 } from './dto/sample-request.dto';
 
 @ApiTags('Sample Requests')
@@ -255,6 +256,18 @@ export class SamplesController {
   ) {
     const userId = req.user?.id || req.user?.sub;
     return this.samplesService.shipRequest(id, userId, dto);
+  }
+
+  @Post(':id/appeal')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Khiếu nại trọng tài lên System Manager khi bị từ chối video vô lý' })
+  appealRevision(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AppealSampleRevisionDto,
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.appealRevision(id, userId, dto);
   }
 
   // ---- Shared ----

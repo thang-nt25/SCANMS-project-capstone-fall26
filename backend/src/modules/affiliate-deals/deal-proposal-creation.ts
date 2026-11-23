@@ -9,7 +9,7 @@ import { ChatGateway } from '../chat/chat.gateway';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
 import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
 import { dealScope, sameDealScope, scopedProducts } from './deal-scope.policy';
-import { validateRevenueKpi } from './deal-kpi.policy';
+import { validateDealKpi, validateRevenueKpi } from './deal-kpi.policy';
 import { lockDealPair } from './exclusive-deal-activation';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
@@ -24,7 +24,10 @@ export async function createDealProposal(
 ) {
   if (dto.videoReviewCommitment !== true)
     throw new BadRequestException('Cần cam kết thực hiện video review.');
-  const kpi = validateRevenueKpi(dto.targetRevenue, dto.commitmentDays);
+  const kpi =
+    dto.targetRevenue != null
+      ? { ...validateRevenueKpi(dto.targetRevenue, dto.commitmentDays), targetOrders: null }
+      : { ...validateDealKpi(dto.targetOrders, dto.commitmentDays), targetRevenue: null };
   const rate = Number(dto.proposedCommissionRate);
   if (!Number.isFinite(rate) || rate < 10 || rate > 25)
     throw new BadRequestException('Hoa hồng VIP phải từ 10% đến 25%.');
@@ -217,6 +220,7 @@ export async function createDealProposal(
             proposalId: proposal.id,
             scopeType: scope.scopeType,
             targetRevenue: kpi.targetRevenue,
+            targetOrders: kpi.targetOrders,
             rate,
           },
         },

@@ -46,7 +46,7 @@ export const modules = {
   },
   kyc: {
     title: "Hồ sơ xác minh KYC",
-    roles: ["COLLABORATOR", "SHOP_MANAGER", ...operations],
+    roles: ["CUSTOMER", "COLLABORATOR", ...operations],
   },
   reviews: {
     title: "Đánh giá & phản hồi",
@@ -65,10 +65,6 @@ export const modules = {
   "manual-orders": {
     title: "Tạo đơn & Import Excel",
     roles: ["SHOP_MANAGER", ...operations],
-  },
-  campaigns: {
-    title: "Chiến dịch & lời mời",
-    roles: ["COLLABORATOR", "SHOP_MANAGER", ...operations],
   },
   fraud: { title: "Giám sát rủi ro", roles: operations },
   identity: { title: "Thông tin định danh", roles: ["CUSTOMER"] },

@@ -13,17 +13,17 @@ export const moneyInCents = (value: string): number | null => {
   return Number.isSafeInteger(cents) && cents <= 999999999999999 ? cents : null;
 };
 
-export function validateManualItems(
+export function getManualItemsIssue(
   items: ManualItemForm[],
   products: Product[],
-): string | null {
+): { message: string; itemId?: string; field?: 'productId' | 'quantity' | 'unitPrice' } | null {
   if (!items.length || items.length > 500)
-    return "Đơn hàng cần từ 1 đến 500 dòng sản phẩm";
+    return { message: "Đơn hàng cần từ 1 đến 500 dòng sản phẩm" };
   const quantities = new Map<string, number>();
   let subtotal = 0;
   for (const [index, item] of items.entries()) {
     const product = products.find((p) => p.id === item.productId && p.isActive);
-    if (!product) return `Dòng ${index + 1}: vui lòng chọn sản phẩm đang bán`;
+    if (!product) return { itemId: item.id, field: 'productId', message: `Dòng ${index + 1}: vui lòng chọn sản phẩm đang bán` };
     const quantity = Number(item.quantity);
     if (
       !/^\d+$/.test(item.quantity) ||
@@ -31,18 +31,22 @@ export function validateManualItems(
       quantity < 1 ||
       quantity > 2147483647
     )
-      return `Dòng ${index + 1}: số lượng phải là số nguyên lớn hơn 0`;
+      return { itemId: item.id, field: 'quantity', message: `Dòng ${index + 1}: số lượng phải là số nguyên lớn hơn 0` };
     const price = moneyInCents(item.unitPrice);
     if (price === null || price <= 0)
-      return `Dòng ${index + 1}: đơn giá phải lớn hơn 0, tối đa 2 chữ số thập phân`;
+      return { itemId: item.id, field: 'unitPrice', message: `Dòng ${index + 1}: đơn giá phải lớn hơn 0, tối đa 2 chữ số thập phân` };
     quantities.set(product.id, (quantities.get(product.id) ?? 0) + quantity);
     if (quantities.get(product.id)! > product.stockQuantity)
-      return `Dòng ${index + 1}: tổng số lượng ${product.title} vượt tồn kho (${product.stockQuantity})`;
+      return { itemId: item.id, field: 'quantity', message: `Dòng ${index + 1}: tổng số lượng ${product.title} vượt tồn kho (${product.stockQuantity})` };
     subtotal += price * quantity;
     if (!Number.isSafeInteger(subtotal) || subtotal > 999999999999999)
-      return "Tổng tiền hàng vượt giới hạn";
+      return { message: "Tổng tiền hàng vượt giới hạn" };
   }
   return null;
+}
+
+export function validateManualItems(items: ManualItemForm[], products: Product[]): string | null {
+  return getManualItemsIssue(items, products)?.message ?? null;
 }
 
 export function validateExcelFile(file: File): string | null {

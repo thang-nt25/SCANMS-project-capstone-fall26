@@ -22,6 +22,7 @@ import { getRememberedIdentifier, getRememberedLoginRole, rememberLoginIdentifie
 import { safeLoginReturn } from '../../utils/login-return';
 
 type RoleType = 'customer' | 'kol' | 'shop' | 'manager' | 'admin';
+const showRoleSelector = import.meta.env.VITE_SHOW_LOGIN_ROLE_SELECTOR !== 'false';
 
 interface RoleOption {
   id: RoleType;
@@ -201,7 +202,7 @@ export default function LoginPage() {
             </div>
 
             {/* Role Dropdown */}
-            <div className="relative">
+            {showRoleSelector && <div className="relative">
               <label id="login-role-label" className="block text-xs font-bold text-[#1A1612] mb-1">
                 Vai trò đăng nhập:
               </label>
@@ -285,9 +286,10 @@ export default function LoginPage() {
                   </div>
                 </>
               )}
-            </div>
+            </div>}
 
             {/* Social sign-in options */}
+            {showRoleSelector && <>
             <div className="w-full">
               <GoogleOfficialButton
                 onSuccess={onGoogleTokenSuccess}
@@ -303,6 +305,7 @@ export default function LoginPage() {
                 hoặc email / số điện thoại
               </span>
             </div>
+            </>}
 
             {error && (
               <div role="alert" className="p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium">
@@ -313,7 +316,7 @@ export default function LoginPage() {
             {/* Form inputs */}
             {searchParams.get('sessionChanged') === '1' && (
               <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2.5 text-xs leading-relaxed text-[#7D715E]">
-                Tài khoản đã được thay đổi ở tab khác. Đăng nhập tài khoản {activeRole.label} để tiếp tục trang vừa mở.
+                Tài khoản đã được thay đổi ở tab khác. Đăng nhập {showRoleSelector ? `tài khoản ${activeRole.label} ` : ''}để tiếp tục trang vừa mở.
               </p>
             )}
             <form id="scanms-auth-form" name="scanms-auth-form" autoComplete="off" onSubmit={handleSubmit} className="space-y-3">
@@ -382,6 +385,19 @@ export default function LoginPage() {
                 <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
               </button>
             </form>
+
+            {!showRoleSelector && <div className="w-full space-y-4">
+              <div className="flex items-center gap-3 text-[11px] uppercase text-[#7D715E]">
+                <span className="h-px flex-1 bg-[#EAE4D7]" />
+                <span>hoặc</span>
+                <span className="h-px flex-1 bg-[#EAE4D7]" />
+              </div>
+              <GoogleOfficialButton
+                onSuccess={onGoogleTokenSuccess}
+                onError={(err) => setError(err)}
+                className="h-11"
+              />
+            </div>}
 
             {/* Bottom switch link */}
             <div className="login-register-link border-t border-line pt-3.5 text-center text-xs leading-[1.7] text-muted [&_a]:text-[#90682F]">

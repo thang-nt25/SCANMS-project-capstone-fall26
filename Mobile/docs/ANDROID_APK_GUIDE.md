@@ -1,5 +1,22 @@
 # Android Studio, Emulator và APK demo
 
+## APK demo đã build — 22/11/2026
+
+- Bản hiện tại: `Mobile/artifacts/scanms-demo.apk`, package `vn.scanms.mobile.demo`, version `1.0.2-demo`, versionCode **3** để cài đè bản trước. Byte/hash chính xác nằm trong `Mobile/artifacts/apk-metadata.json`. Có bundle JavaScript và hỗ trợ ARM/x86; app không cần Metro.
+- API được nhúng: `http://192.168.27.24:3000/api`. Điện thoại thật cần cùng Wi-Fi với laptop; backend phải đang chạy. Không thay `.env` emulator: build lần này dùng biến môi trường của terminal. Nếu địa chỉ laptop đổi, cần build lại với API phù hợp.
+- Bản 1.0.2 bổ sung hồ sơ KOL nhiều kênh, thẩm định, tạo Store nội bộ, thẻ VIP trong chat và thao tác hàng mẫu sandbox. **136 test Mobile, 218 test backend liên quan**, typecheck, lint và build backend đạt. Đăng nhập thật 5 role và 41 kiểm tra API đọc/đăng nhập đạt; chưa nghiệm thu E2E các mutation đủ 5 role hoặc điện thoại thật. Xem các bước test tại [README](../README.md).
+- Kiểm tra API phát hiện schema nhóm thiếu bảng/cột trong khi lịch sử migration đã ghi đã áp dụng. Migration bổ sung `20261122090000_restore_live_schema_objects` đã được áp dụng sau khi backup phục hồi cục bộ và thử hai lần; toàn bộ bảng/cột Prisma cần đã có, các số lượng dữ liệu cũ giữ nguyên. Không reset hoặc seed DB nhóm.
+- Bằng chứng kiểm thử API/schema nằm tại `.dev-runtime/mobile-flow-native-smoke-results.json` và `.dev-runtime/mobile-schema-repair-receipt.json` ở thư mục gốc dự án. Backup có dữ liệu nhạy cảm, chỉ giữ cục bộ, không commit/chia sẻ. Bằng chứng build/thiết bị nằm trong `Mobile/artifacts/`.
+- APK cuối đã cài đè trên emulator API 37, khôi phục phiên Customer và mở Tôi → Đăng ký KOL/KOC → cả ba bước của form. Đã xem ảnh bố cục chọn ngành/kênh và ngân hàng/đồng ý; không nộp hồ sơ. Bằng chứng: `apk-verification-20261122-flows.json`, `mobile-kyc-channels-20261122.png`, `mobile-kyc-bank-20261122.png` trong `artifacts/`. Lúc vừa build native vừa nhập bàn phím từng xuất hiện ANR (cả các app hệ thống emulator); đã thử lại đăng nhập/điều hướng thành công sau build. Đây chưa phải kiểm thử hiệu năng thiết bị hoặc E2E nhiều role.
+
+### Test đăng ký Customer
+
+1. Cài đè bản mới, mở màn đăng nhập → **Đăng ký ngay**.
+2. Nhập họ tên, email đang sử dụng, số điện thoại tùy chọn, mật khẩu tối thiểu 8 ký tự và xác nhận; đồng ý điều khoản.
+3. **Tiếp tục · Gửi mã OTP** gọi `/api/auth/send-otp`. Kiểm tra hộp thư/spam; mã hiệu lực 5 phút, nút gửi lại mở sau 60 giây.
+4. Nhập đủ 6 số → **Xác thực & tạo tài khoản** gọi `/api/auth/register` với role `CUSTOMER`. Thành công → **Đăng nhập ngay**. Không lưu mật khẩu/OTP vào SecureStore hoặc URL, không tự tạo phiên đăng nhập từ response đăng ký.
+5. Kiểm tra email trùng, mật khẩu không khớp, điện thoại sai, OTP sai/hết hạn, gửi lại và trở lại sửa email. Các nhánh API đã kiểm thử bằng fixture/mock; kiểm thử email thực tế do người dùng thao tác trên app.
+
 ## Trạng thái trên máy ngày 03/11/2026
 
 Android Studio/SDK đã được cài. SDK nằm tại `C:\Users\Dell\AppData\Local\Android\Sdk`; đã có Platform 37.0, Build Tools 37.0.0, NDK 27.1.12297006 và CMake 3.22.1. JDK dùng để build là `C:\Program Files\Java\jdk-21.0.12.1`.
@@ -60,7 +77,7 @@ npm test
 npm run build:demo
 ```
 
-Script chạy prebuild rồi thực thi lệnh Gradle Windows **`gradlew.bat :app:assembleDemo --no-daemon`**. Variant `demo` kế thừa release bundling, `debuggable=false`, ID **`vn.scanms.mobile.demo`**, version **`1.0.0-demo`**, versionCode **1**. Dùng debug signing cho nghiệm thu nội bộ, không dùng để phát hành Store.
+Script chạy prebuild rồi thực thi lệnh Gradle Windows **`gradlew.bat :app:assembleDemo --no-daemon`**. Variant `demo` kế thừa release bundling, `debuggable=false`, ID **`vn.scanms.mobile.demo`**. Version đọc từ `app.json` và thêm hậu tố `-demo`; hiện là **`1.0.2-demo`**, versionCode **3**. Dùng debug signing cho nghiệm thu nội bộ, không dùng để phát hành Store.
 
 Chỉ khi build thành công, script mới tạo:
 
@@ -69,7 +86,7 @@ Mobile/artifacts/scanms-demo.apk
 Mobile/artifacts/apk-metadata.json
 ```
 
-Metadata gồm bytes, SHA-256 và thời điểm build, ban đầu `deviceSmokeTest=NOT_RUN`. File nguồn Gradle dự kiến `android/app/build/outputs/apk/demo/app-demo.apk`. Những đường dẫn này là **đầu ra được cấu hình**, chưa tồn tại APK trong lần bàn giao hiện tại.
+Metadata gồm bytes, SHA-256 và thời điểm build, ban đầu `deviceSmokeTest=NOT_RUN`; chỉ cập nhật sau khi kiểm tra thiết bị thực tế. File nguồn Gradle là `android/app/build/outputs/apk/demo/app-demo.apk`. Bản mới ngày 22/11 đã được build và xác minh như ghi ở đầu tài liệu.
 
 Không bấm Assemble Debug rồi bàn giao nhầm là APK demo độc lập Metro. Tham khảo [APK và AAB](https://docs.expo.dev/build-reference/apk/) và [build production local](https://docs.expo.dev/guides/local-app-production/).
 
@@ -98,6 +115,6 @@ Chưa gửi source lên EAS/cloud hoặc tạo build remote; Android Studio loca
 
 ## 7. Lỗi đã xử lý khi build Windows
 
-- Ninja báo `Filename longer than 260 characters` ở codegen gesture handler. Config plugin đặt `CMAKE_OBJECT_PATH_MAX=240`; CMake hash phần thư mục object. Đường dẫn gây lỗi đã đo lại còn 234 ký tự và build C++/APK đã qua. Cấu hình nằm ở `plugins/with-android-demo.cjs`, không sửa `node_modules` hoặc Registry Windows. Cơ chế hash được mô tả trong [tài liệu CMake](https://cmake.org/cmake/help/latest/variable/CMAKE_OBJECT_PATH_MAX.html).
+- Ninja báo `Filename longer than 260 characters` ở codegen gesture handler. Với Debug trước đây, giới hạn 240 tạo được đường dẫn 234 ký tự. Bản demo release dùng thư mục `RelWithDebInfo` dài hơn: object đã hash cần 246 ký tự nên đặt 240 lại khiến CMake không rút gọn được. Plugin nay đặt **256 cho app**, **240 cho thư viện native**, cấu hình thư viện bằng `androidComponents.finalizeDsl` trong root Gradle. Bản build ngày 22/11 đã biên dịch được object gesture handler tại đường dẫn 246 ký tự. Không sửa tay `node_modules` hoặc Registry Windows. Xem [cơ chế hash của CMake](https://cmake.org/cmake/help/latest/variable/CMAKE_OBJECT_PATH_MAX.html) và [Android Gradle DSL lifecycle](https://developer.android.com/reference/tools/gradle-api/9.2/com/android/build/api/variant/AndroidComponentsExtension).
 - Máy 16 GB RAM chạy đồng thời IDE/Emulator/build bị thiếu RAM. Plugin giới hạn 2 Gradle worker, heap 1536 MB, metaspace 1024 MB, compiler Kotlin in-process. Nên build xong rồi mới mở Emulator trong lần đầu.
 - Emulator đã boot bằng renderer `software`, 2 CPU, RAM 2048 MB. Android 17 hiện quyền Nearby devices cho `ACCESS_LOCAL_NETWORK`: bản debug cần quyền này để kết nối Metro trên máy tính. Đã đối chiếu với `LocalNetworkPermissionUtil.kt` của React Native và wrapper của Expo trước khi cấp quyền; không cấp camera/micro.

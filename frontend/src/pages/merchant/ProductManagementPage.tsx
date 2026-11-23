@@ -2651,10 +2651,10 @@ export default function ProductManagementPage() {
         )}
         maxWidth="full"
         stickyHeader
-        className="!w-[min(94vw,1240px)] !max-w-[min(94vw,1240px)] !min-w-[min(94vw,1240px)] !h-[min(88dvh,780px)] !min-h-[min(88dvh,780px)] !max-h-[min(88dvh,780px)] transition-none rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
-        bodyClassName="!p-4 sm:!p-5 [scrollbar-gutter:stable] flex-1 flex flex-col"
+        className="!w-[min(94vw,1240px)] !max-w-[min(94vw,1240px)] !min-w-[min(94vw,1240px)] !h-[min(88dvh,780px)] !min-h-[min(88dvh,780px)] !max-h-[min(88dvh,780px)] transition-none rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)] [&>.modal-header]:px-4! [&>.modal-header]:py-2! sm:[&>.modal-header]:px-6! [&>.modal-header_h3]:text-base!"
+        bodyClassName="!p-4 !pt-3 sm:!p-5 sm:!pt-3 [scrollbar-gutter:stable] flex-1 flex flex-col"
         belowHeader={(
-          <div className="product-editor-stepper bg-[#FAF8F5] border-b border-[#EAE4D7] px-4 py-2 sm:px-6">
+          <div className="product-editor-stepper bg-[#FAF8F5] border-b border-[#EAE4D7] px-4 py-1.5 sm:px-6 sm:[&_button]:min-h-[50px]!">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {[
                 { step: 1, title: 'Thông tin & Ảnh', isDone: isStep1Complete },

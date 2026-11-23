@@ -1616,7 +1616,7 @@ export default function CustomerPortalPage() {
             {currentTab === 'profile' && (
               <section className="@container/profile grid gap-[16px] w-full max-w-[1200px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
                 {/* Sub-tabs Navigation Bar - Segmented pill bar gọn gàng */}
-                <nav className="grid w-full grid-cols-3 items-stretch gap-2 p-2 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs" aria-label="Phân mục hồ sơ cá nhân">
+                <nav className="grid w-full grid-cols-3 items-stretch gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-2 shadow-2xs [&>button]:relative [&>button:not(:last-child)]:after:pointer-events-none [&>button:not(:last-child)]:after:absolute [&>button:not(:last-child)]:after:top-1/2 [&>button:not(:last-child)]:after:-right-[5px] [&>button:not(:last-child)]:after:h-5 [&>button:not(:last-child)]:after:w-px [&>button:not(:last-child)]:after:-translate-y-1/2 [&>button:not(:last-child)]:after:bg-[#EAE4D7]" aria-label="Phân mục hồ sơ cá nhân">
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('info')}

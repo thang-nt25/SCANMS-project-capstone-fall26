@@ -76,57 +76,77 @@ test('both Shop pages create separate sandbox waybills and KOL tracks TEST witho
       sample.status = initial;
       sample.trackingNumber = initial === 'SHIPPED' ? 'LIVE-ORIGINAL' : null;
       for (const route of ['/merchant/kol-hub?kol=audit-kol&tab=samples', '/merchant/orders?tab=samples']) {
+        // Existing live waybills can be supplemented with a test waybill from Orders.
+        if (initial === 'SHIPPED' && route.includes('/kol-hub')) continue;
         sample.shippingCharges = [];
         const page = await open(route, 'SHOP_MANAGER');
         const createLabel = initial === 'SHIPPED' ? 'Tạo mã GHN sandbox' : 'Tạo vận đơn GHN';
+        if (initial === 'SHIPPED') {
+          await page.waitForSelector('button[aria-label="Chi tiết hàng mẫu Sample test"]');
+          await page.click('button[aria-label="Chi tiết hàng mẫu Sample test"]');
+        }
         await page.waitForFunction(label => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === label), {}, createLabel);
         await clickText(page, createLabel);
-        await page.waitForSelector('form select');
-        const chosen = await page.$eval('form', form => [...form.querySelectorAll('select')].find(select => [...select.options].some(option => option.value === 'TEST')).value);
+        const picker = 'dialog[open] input[name="sample-ghn-environment"]';
+        await page.waitForSelector(picker);
+        const chosen = await page.$eval(picker + ':checked', input => input.value);
         assert.equal(chosen, initial === 'SHIPPED' ? 'TEST' : 'LIVE');
-        const pickerId = await page.$eval('form', form => [...form.querySelectorAll('select')].find(select => [...select.options].some(option => option.value === 'TEST')).id);
-        await page.select(`form select[id="${pickerId}"]`, 'TEST');
-        await page.$eval('form', form => form.requestSubmit());
-        await page.waitForFunction(() => document.body.innerText.includes('TEST-ISSUED'));
-        await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent.includes('Bắt đầu hành trình') && !b.disabled));
+        assert.equal(await page.$eval(picker + '[value="LIVE"]', input => input.disabled), initial === 'SHIPPED');
+        await page.$eval(picker + '[value="TEST"]', input => input.labels[0].click());
+        assert.equal(await page.$eval('dialog[open] button[type="submit"]', button => button.textContent), 'Tạo vận đơn thử nghiệm');
+        await page.click('dialog[open] button[type="submit"]');
+        await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+        if (route.startsWith('/merchant/orders')) {
+          await page.waitForSelector('button[aria-label="Chi tiết hàng mẫu Sample test"]');
+          await page.click('button[aria-label="Chi tiết hàng mẫu Sample test"]');
+          await page.click('[aria-label="Vận đơn mẫu GHN sandbox"] button[aria-label="Xem hành trình"]');
+        }
+        await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent.includes('Bắt đầu hành trình') && !b.disabled)).catch(async error => {
+          throw new Error(`${route} (${initial}): ${error.message}; ${await page.$eval('body', el => el.innerText.slice(-1500))}`);
+        });
         await clickText(page, 'Bắt đầu hành trình');
-        await page.waitForFunction(() => document.body.innerText.includes('Chờ lấy hàng'));
+        const steps = '[aria-label="Các mốc giao hàng"]';
+        await page.waitForSelector(steps + ' li:nth-child(1)[aria-current="step"]');
         receipt.deliveryStatus = 'IN_TRANSIT';
         await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-        await page.waitForFunction(() => document.body.innerText.includes('Đang vận chuyển'));
+        await page.waitForSelector(steps + ' li:nth-child(2)[aria-current="step"]');
         receipt.deliveryStatus = 'DELIVERED';
         receipt.receivedAt = new Date(Date.now() - 2000).toISOString();
         receipt.deadlineAt = new Date(Date.parse(receipt.receivedAt) + 14 * 86400000).toISOString();
         await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-        await page.waitForFunction(() => document.body.innerText.includes('Đã nhận hàng · Chờ video'));
-        await page.click('[aria-label="Vận đơn mẫu GHN sandbox"] button[aria-label="Xem hành trình"]');
-        await page.click('[aria-label="Tiến độ giao hàng đơn mẫu"] details summary');
-        await clickText(page, 'Chuyển quá hạn');
-        await page.waitForFunction(() => document.body.innerText.includes('Quá hạn nộp video'));
+        await page.waitForSelector(steps + ' li:nth-child(3)[data-complete="true"]');
+        if (route.startsWith('/merchant/orders')) {
+          await page.click('[aria-label="Tiến độ giao hàng đơn mẫu"] details summary');
+          await clickText(page, 'Chuyển quá hạn');
+          await page.waitForFunction(() => document.querySelector('[aria-label="Tiến độ giao hàng đơn mẫu"] [role="status"]')?.textContent === 'Quá hạn');
+        }
         assert.equal(sample.trackingNumber, initial === 'SHIPPED' ? 'LIVE-ORIGINAL' : null);
         assert.equal(sample.status, initial);
         if (initial === 'APPROVED') {
-          assert.match(await page.$eval('body', el => el.innerText), /Quá hạn nộp video/);
           assert.doesNotMatch(await page.$eval('body', el => el.innerText), /Đã duyệt · Chờ gửi/);
         }
         await page.close();
         receipt = { receivedAt: null, deadlineAt: null, videoUrl: null };
       }
       }
-      assert.deepEqual(creates, Array.from({ length: 4 }, () => ({ environment: 'TEST' })));
+      assert.deepEqual(creates, Array.from({ length: 3 }, () => ({ environment: 'TEST' })));
       sample.status = 'APPROVED'; sample.trackingNumber = null;
       receipt = { simulationStartedAt: new Date(Date.now() - 120000).toISOString(), deliveryStatus: 'DELIVERED', receivedAt: new Date().toISOString(), deadlineAt: new Date(Date.now() + 14 * 86400000).toISOString(), videoUrl: null };
       const kol = await open(`/collaborator/collaboration?shop=${storeId}&tab=samples`, 'COLLABORATOR');
+      await kol.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Xem yêu cầu'));
+      await clickText(kol, 'Xem yêu cầu');
       await kol.waitForSelector('[aria-label="Vận đơn mẫu GHN sandbox"]').catch(async error => { throw new Error(`${error.message}: ${await kol.$eval('body', el => el.innerText.slice(-2500))}`); });
-      await kol.waitForFunction(() => document.body.innerText.includes('Đã nhận hàng · Chờ video'));
+      await kol.waitForFunction(() => document.querySelector('[aria-label="Tiến độ giao hàng đơn mẫu"] [role="status"]')?.textContent === 'Chờ video');
       await clickText(kol, 'Theo dõi hành trình bưu kiện');
       await kol.waitForSelector('[aria-label="Tiến độ giao hàng đơn mẫu"] ol');
       assert.deepEqual(tracking, [], 'sample simulation does not query real GHN history');
       assert.deepEqual(syncs, []);
-      await clickText(kol, 'Nộp video');
-      await kol.waitForFunction(() => document.body.innerText.includes('Nộp Video Review Sản Phẩm'));
-      await kol.type('input[type="url"]', 'https://www.youtube.com/watch?v=sandbox-review');
-      await kol.$eval('input[type="url"]', el => el.closest('form').requestSubmit());
+      await clickText(kol, 'Nộp video kiểm thử');
+      const videoLink = '#kol-review-form input[placeholder^="Dán liên kết"]';
+      await kol.waitForSelector(videoLink);
+      await kol.type('#kol-review-form input[placeholder^="Ví dụ: Trải nghiệm"]', 'Review hàng mẫu');
+      await kol.type(videoLink, 'https://www.youtube.com/watch?v=sandbox-review');
+      await kol.click('button[form="kol-review-form"][type="submit"]');
       await kol.waitForFunction(() => document.body.innerText.includes('Đã nộp video'));
     } finally { await browser.close(); }
   });

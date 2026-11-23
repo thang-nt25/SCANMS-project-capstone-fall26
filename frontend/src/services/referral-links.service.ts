@@ -97,6 +97,7 @@ export interface ExclusiveDealProposal {
   targetRevenue?: number | string | null;
   targetOrders?: number | null;
   commitmentDays?: number | null;
+  commitmentEndsAt?: string | null;
   closedAt?: string | null;
   id: string;
   productId: string;
@@ -128,6 +129,7 @@ export interface ExclusiveDealProposal {
   collaborator?: { id: string; fullName: string; email: string; collaboratorProfile?: { avatarUrl?: string | null; kycStatus?: string } };
   createdAt: string;
   updatedAt?: string;
+  couponTerms?: Record<string, number | string | null> | null;
 }
 
 export interface QueryReferralLinksParams {
@@ -203,6 +205,11 @@ export const referralLinksService = {
       const res: any = await api.get('/affiliate-deals/shop', { params: { page, after }, headers: { 'x-skip-cache': '1' } });
       return (res?.data ?? res) as DealPage<ExclusiveDealProposal>;
     });
+  },
+
+  async getExclusiveDealDetails(id: string): Promise<ExclusiveDealProposal> {
+    const res: any = await api.get(`/affiliate-deals/${encodeURIComponent(id)}`, { headers: { 'x-skip-cache': '1' } });
+    return res?.data?.data || res?.data || res;
   },
 
   async approveExclusiveDeal(id: string, voucher: { discountPercent: number; minimumOrderAmount: number; maximumDiscountAmount: number; usageLimitTotal: number; budgetTotal: number; validDays: number }) {

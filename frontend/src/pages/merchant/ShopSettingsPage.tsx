@@ -1,27 +1,8 @@
-import { publicWebsiteUrl } from '@/utils/public-url';
-import { useCallback, useState, useEffect } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Save,
-  ShieldAlert,
-  Percent,
-  Clock,
-  CheckCircle2,
-  Store,
-  Upload,
-  Loader2,
-  ImageIcon,
-  Building2,
-  FileText,
-  ChevronDown,
-  Mail,
-  MapPin,
-  Phone,
-  UserRound,
-  Pencil,
-  X,
-} from 'lucide-react';
-import { storeService } from '../../services/store.service';
+import { Building2, FileText, Loader2, MapPin, Pencil, Percent, Save, ShieldAlert, Store, Upload } from 'lucide-react';
+import { publicWebsiteUrl } from '@/utils/public-url';
+import { storeService, type StoreSettings } from '../../services/store.service';
 import { authService } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { Button } from '../../components/ui/Button';
@@ -30,267 +11,256 @@ import { Select } from '../../components/ui/Select';
 import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 import { StorefrontSettingsSection } from '../../components/stores/StorefrontSettingsSection';
 
+const tabs = [
+  { id: 'profile', label: 'Hồ sơ gian hàng', icon: Store },
+  { id: 'affiliate', label: 'Tiếp thị liên kết', icon: Percent },
+  { id: 'owner', label: 'Thông tin chủ Shop', icon: Building2 },
+] as const;
+type SettingsTab = typeof tabs[number]['id'];
+
+const emptyProfile = { name: '', description: '', logoUrl: '', policyReturn: '', policyWarranty: '', policyShipping: '' };
+const policies = [
+  { key: 'policyReturn', label: 'Đổi trả & hoàn tiền' },
+  { key: 'policyWarranty', label: 'Bảo hành & chất lượng' },
+  { key: 'policyShipping', label: 'Giao nhận & đồng kiểm' },
+] as const;
+
+const businessTypes = [
+  { value: 'INDIVIDUAL', label: 'Cá nhân' },
+  { value: 'HOUSEHOLD', label: 'Hộ kinh doanh' },
+  { value: 'ENTERPRISE', label: 'Doanh nghiệp' },
+];
+const contactFields = [
+  { key: 'representativeName', label: 'Người đại diện', maxLength: 150, required: true },
+  { key: 'contactPhone', label: 'Điện thoại liên hệ', maxLength: 21, type: 'tel', required: true },
+  { key: 'contactEmail', label: 'Email nhận đối soát', maxLength: 255, type: 'email', required: true },
+] as const;
+const legalFields = [
+  { key: 'companyName', label: 'Tên doanh nghiệp / hộ kinh doanh', maxLength: 200 },
+  { key: 'businessType', label: 'Loại hình kinh doanh', required: true },
+  { key: 'taxCode', label: 'Mã số thuế', maxLength: 30, required: true },
+  { key: 'businessAddress', label: 'Địa chỉ trụ sở chính', maxLength: 500 },
+] as const;
+
+function getOwnerDetails(store: StoreSettings, currentName: string) {
+  const data = store.onboardingData ?? {};
+  const pickup = data.warehouseAddress || store.warehouseAddress || store.returnWarehouse?.address || '';
+  return {
+    companyName: data.companyName === undefined ? store.companyName || data.businessName || data.registeredBusinessName || '' : data.companyName || '',
+    representativeName: data.representativeName || store.representativeName || store.owner?.fullName || currentName,
+    contactPhone: data.contactPhone || store.contactPhone || store.owner?.phoneNumber || '',
+    contactEmail: data.contactEmail || store.contactEmail || store.owner?.email || '',
+    businessType: data.businessType || store.businessType || '',
+    taxCode: data.taxCode || store.taxCode || '',
+    businessAddress: data.businessAddress ?? store.businessAddress ?? '',
+    warehouseAddress: pickup,
+    returnWarehouseAddress: data.returnWarehouseAddress || store.returnWarehouseAddress || store.returnWarehouse?.address || pickup,
+  };
+}
+
+type OwnerDetails = ReturnType<typeof getOwnerDetails>;
+
+const inputClass = 'h-[42px] w-full min-w-0 rounded-lg border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#B88E4F] focus:ring-2 focus:ring-[#C59B58]/15';
+const textareaClass = 'min-h-20 w-full resize-y rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-sm text-[#1A1612] outline-none focus:border-[#B88E4F] focus:ring-2 focus:ring-[#C59B58]/15';
+const labelClass = 'grid min-w-0 gap-1.5 text-xs font-semibold text-[#665948]';
+const rowClass = 'grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-start gap-2 border-b border-[#EAE4D7]/70 py-2 text-sm last:border-0';
+const sectionHeading = 'flex items-center gap-2 text-sm font-semibold text-[#1A1612]';
+const policyTextArea = 'min-h-[96px] w-full min-w-0 rounded-lg border px-3.5 py-3 text-sm font-normal leading-relaxed';
+
+function OwnerValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={rowClass}>
+      <dt className="text-xs leading-5 text-[#7D715E]">{label}</dt>
+      <dd className={`break-words ${value ? 'font-medium text-[#1A1612]' : 'text-xs leading-5 text-[#7D715E]'}`}>{value || 'Chưa cập nhật'}</dd>
+    </div>
+  );
+}
+
+function SaveBar({ saving, disabled, onCancel, label = 'Lưu thay đổi' }: {
+  saving: boolean;
+  disabled?: boolean;
+  onCancel: () => void;
+  label?: string;
+}) {
+  return (
+    <footer className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-[#EAE4D7] bg-white px-4 py-2.5 sm:px-6">
+      <Button type="button" variant="outline" className="h-[42px] rounded-lg shadow-none" disabled={saving || disabled} onClick={onCancel}>Hủy</Button>
+      <Button type="submit" variant="gold" className="h-[42px] rounded-lg" loading={saving} disabled={disabled} icon={<Save size={15} aria-hidden="true" />}>{saving ? 'Đang lưu…' : label}</Button>
+    </footer>
+  );
+}
+
 export default function ShopSettingsPage() {
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
+  const currentName = currentUser?.fullName || '';
   const isShopManager = currentUser?.role === 'SHOP_MANAGER';
-  const isPlatformAdmin =
-    currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'SYSTEM_MANAGER';
+  const isPlatformAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'SYSTEM_MANAGER';
 
-  const [saving, setSaving] = useState(false);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
-  const [storeSlug, setStoreSlug] = useState('');
-  const [policyReturn, setPolicyReturn] = useState('');
-  const [policyWarranty, setPolicyWarranty] = useState('');
-  const [policyShipping, setPolicyShipping] = useState('');
-  const [attributionWindowDays, setAttributionWindowDays] = useState<number>(30);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [shopOwnerDetails, setShopOwnerDetails] = useState({
-    companyName: '',
-    representativeName: currentUser?.fullName || '',
-    contactPhone: currentUser?.phoneNumber || '',
-    contactEmail: currentUser?.email || '',
-    businessType: '',
-    taxCode: '',
-    businessAddress: '',
-    warehouseAddress: '',
-    returnWarehouseAddress: '',
-  });
-  const [ownerDetailsDraft, setOwnerDetailsDraft] = useState(shopOwnerDetails);
-  const [isEditingOwnerDetails, setIsEditingOwnerDetails] = useState(false);
-  const [savingOwnerDetails, setSavingOwnerDetails] = useState(false);
+  const [tab, setTab] = useState<SettingsTab>('profile');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+  const [saving, setSaving] = useState<SettingsTab | null>(null);
+  const saveInProgress = useRef(false);
+  const [slug, setSlug] = useState('');
+  const [profile, setProfile] = useState(emptyProfile);
+  const [savedProfile, setSavedProfile] = useState(emptyProfile);
+  const [attributionDays, setAttributionDays] = useState(30);
+  const [savedAttributionDays, setSavedAttributionDays] = useState(30);
+  const [owner, setOwner] = useState<OwnerDetails | null>(null);
+  const [ownerDraft, setOwnerDraft] = useState<OwnerDetails | null>(null);
   const [sameReturnAddress, setSameReturnAddress] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [hasVisitedAffiliate, setHasVisitedAffiliate] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingLogo(true);
-    try {
-      const secureUrl = await uploadService.uploadImage(file, 'scanms/logos');
-      setLogoUrl(secureUrl);
-      showToast('Đã tải logo gian hàng lên Cloudinary thành công!');
-    } catch (err: any) {
-      console.error('Lỗi upload logo Cloudinary:', err);
-      showToast(err?.response?.data?.message || err?.message || 'Không thể tải logo lên Cloudinary');
-    } finally {
-      setUploadingLogo(false);
-      e.target.value = '';
-    }
+  const openTab = (next: SettingsTab) => {
+    if (next === 'affiliate') setHasVisitedAffiliate(true);
+    setTab(next);
   };
-
-  const loadStore = useCallback(async () => {
-    try {
-      const store = await storeService.getMyStore();
-      if (store.name) setName(store.name);
-      if (store.description) setDescription(store.description);
-      if (store.logoUrl) {
-        setLogoUrl(store.logoUrl);
-      } else {
-        setLogoUrl('');
-      }
-      if (store.slug) setStoreSlug(store.slug);
-      setPolicyReturn(store.policyReturn || '');
-      setPolicyWarranty(store.policyWarranty || '');
-      setPolicyShipping(store.policyShipping || '');
-      if (store.attributionWindowDays) setAttributionWindowDays(store.attributionWindowDays);
-
-      const onboardingData = (store as any).onboardingData || {};
-      const returnWarehouse = (store as any).returnWarehouse || {};
-      const businessAddr = onboardingData.businessAddress || '';
-      const pickupAddr = onboardingData.warehouseAddress || returnWarehouse.address || '';
-      const returnAddr = onboardingData.returnWarehouseAddress || returnWarehouse.address || pickupAddr;
-
-      const loadedDetails = {
-        companyName: onboardingData.companyName !== undefined
-          ? onboardingData.companyName || ''
-          : onboardingData.businessName || onboardingData.registeredBusinessName || '',
-        representativeName:
-          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || '',
-        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '',
-        contactEmail: onboardingData.contactEmail || store.owner?.email || '',
-        businessType: onboardingData.businessType || '',
-        taxCode: onboardingData.taxCode || '',
-        businessAddress: businessAddr,
-        warehouseAddress: pickupAddr,
-        returnWarehouseAddress: returnAddr,
-      };
-      setShopOwnerDetails(loadedDetails);
-      setOwnerDetailsDraft(loadedDetails);
-      setSameReturnAddress(returnAddr === pickupAddr);
-    } catch (err) {
-      console.error('Lỗi tải cấu hình shop:', err);
-    }
-  }, [currentUser?.fullName]);
 
   useEffect(() => {
-    if (isShopManager) void loadStore();
-  }, [isShopManager, loadStore]);
+    if (!isShopManager) return;
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    storeService.getMyStore(Boolean(loadAttempt)).then(store => {
+      if (!active) return;
+      const storedProfile = {
+        name: store.name || '',
+        description: store.description || '',
+        logoUrl: store.logoUrl || '',
+        policyReturn: store.policyReturn || '',
+        policyWarranty: store.policyWarranty || '',
+        policyShipping: store.policyShipping || '',
+      };
+      setProfile(storedProfile);
+      setSavedProfile(storedProfile);
+      setSlug(store.slug || '');
+      const days = store.attributionWindowDays || 30;
+      setAttributionDays(days);
+      setSavedAttributionDays(days);
+      setOwner(getOwnerDetails(store, currentName));
+    }).catch(() => {
+      if (active) setLoadError(true);
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [currentName, isShopManager, loadAttempt]);
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
-  };
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(null), message.error ? 7500 : 3000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
-  const storefrontPath = storeSlug ? `/shop/${encodeURIComponent(storeSlug)}` : '';
-  const storefrontUrl = storefrontPath && typeof window !== 'undefined'
-    ? publicWebsiteUrl(storefrontPath)
-    : '';
+  const profileChanged = (Object.keys(savedProfile) as Array<keyof typeof savedProfile>).some(key => profile[key] !== savedProfile[key]);
+  const affiliateChanged = attributionDays !== savedAttributionDays;
+  const ownerChanged = owner && ownerDraft && (
+    (Object.keys(owner) as Array<keyof OwnerDetails>).some(key => ownerDraft[key] !== owner[key]) ||
+    sameReturnAddress !== (owner.warehouseAddress === owner.returnWarehouseAddress)
+  );
+  const storefrontPath = slug ? `/shop/${encodeURIComponent(slug)}` : '';
+  const storefrontUrl = storefrontPath ? publicWebsiteUrl(storefrontPath) : '';
 
-  const copyStorefrontUrl = async () => {
-    if (!storefrontUrl) return;
+  const copyUrl = async () => {
     try {
       await navigator.clipboard.writeText(storefrontUrl);
-      showToast('Đã sao chép liên kết gian hàng.');
+      setMessage({ text: 'Đã sao chép liên kết gian hàng.' });
     } catch {
-      showToast('Không thể sao chép tự động. Hãy chọn và sao chép đường dẫn.');
+      setMessage({ text: 'Chưa sao chép được. Bạn có thể chọn và sao chép đường dẫn.', error: true });
     }
   };
 
-  const handleSave = async (e: any) => {
-    e.preventDefault();
-
-    const detailsToSave = isEditingOwnerDetails ? ownerDetailsDraft : shopOwnerDetails;
-    const warehouseAddress = detailsToSave.warehouseAddress.trim();
-    const returnWarehouseAddress = sameReturnAddress
-      ? warehouseAddress
-      : (detailsToSave.returnWarehouseAddress || warehouseAddress).trim();
-
-    if (isEditingOwnerDetails) {
-      if (!detailsToSave.representativeName.trim() || !detailsToSave.businessType ||
-          !detailsToSave.taxCode.trim() || !detailsToSave.contactPhone.trim() ||
-          !detailsToSave.contactEmail.trim() || !warehouseAddress) {
-        showToast('Vui lòng bổ sung đầy đủ thông tin chủ shop và kho hàng.');
-        return;
-      }
-      if (!/^[+]?([0-9().\-\s]){8,20}$/.test(detailsToSave.contactPhone.trim())) {
-        showToast('Số điện thoại liên hệ chưa đúng định dạng.');
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detailsToSave.contactEmail.trim())) {
-        showToast('Email đối soát chưa đúng định dạng.');
-        return;
-      }
-      if (warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
-        showToast('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện, tỉnh/thành, ngăn cách bằng dấu phẩy.');
-        return;
-      }
+  const uploadLogo = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const logoUrl = await uploadService.uploadImage(file, 'scanms/logos');
+      setProfile(values => ({ ...values, logoUrl }));
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : 'Không tải được logo.', error: true });
+    } finally {
+      input.value = '';
+      setUploading(false);
     }
+  };
 
-    if (!logoUrl?.trim()) {
-      showToast('Logo gian hàng không được để trống (Bắt buộc)');
+  const save = async (activeTab: SettingsTab, data: Partial<StoreSettings>, onSaved: () => void) => {
+    if (saveInProgress.current) return;
+    saveInProgress.current = true;
+    setSaving(activeTab);
+    setMessage(null);
+    try {
+      await storeService.updateMyStore(data);
+      onSaved();
+      setMessage({ text: 'Đã lưu thay đổi.' });
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : 'Không lưu được thay đổi.', error: true });
+    } finally {
+      saveInProgress.current = false;
+      setSaving(null);
+    }
+  };
+
+  const saveProfile = (event: FormEvent) => {
+    event.preventDefault();
+    if (!profileChanged || uploading) return;
+    const next = { ...profile, name: profile.name.trim(), description: profile.description.trim(), logoUrl: profile.logoUrl.trim(), policyReturn: profile.policyReturn.trim(), policyWarranty: profile.policyWarranty.trim(), policyShipping: profile.policyShipping.trim() };
+    if (!next.name || !next.logoUrl) {
+      setMessage({ text: 'Vui lòng nhập tên gian hàng và tải logo.', error: true });
       return;
     }
-
-    setSaving(true);
-    try {
-      await storeService.updateMyStore({
-        name,
-        companyName: detailsToSave.companyName.trim(),
-        description,
-        logoUrl: logoUrl.trim(),
-        websiteUrl: '',
-        policyReturn,
-        policyWarranty,
-        policyShipping,
-        defaultCommissionRate: 10,
-        attributionWindowDays: Number(attributionWindowDays),
-        ...(warehouseAddress && {
-          representativeName: detailsToSave.representativeName || name,
-          businessType: detailsToSave.businessType || 'ENTERPRISE',
-          taxCode: detailsToSave.taxCode || '0316892451',
-          contactPhone: detailsToSave.contactPhone || '0902345678',
-          contactEmail: detailsToSave.contactEmail || 'shop@scanms.vn',
-          businessAddress: detailsToSave.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
-          warehouseAddress,
-          returnWarehouseAddress,
-        }),
-      });
-      if (isEditingOwnerDetails) {
-        const savedDetails = { ...detailsToSave, warehouseAddress, returnWarehouseAddress };
-        setShopOwnerDetails(savedDetails);
-        setOwnerDetailsDraft(savedDetails);
-        setIsEditingOwnerDetails(false);
-      }
-      showToast('Đã lưu cấu hình gian hàng.');
-    } catch (err: any) {
-      showToast(err.message || 'Lỗi lưu cấu hình');
-    } finally {
-      setSaving(false);
-    }
+    void save('profile', next, () => { setProfile(next); setSavedProfile(next); });
   };
 
-  const handleSaveOwnerDetails = async () => {
-    const returnWarehouseAddr = sameReturnAddress
-      ? ownerDetailsDraft.warehouseAddress.trim()
-      : (ownerDetailsDraft.returnWarehouseAddress || ownerDetailsDraft.warehouseAddress).trim();
+  const saveAffiliate = (event: FormEvent) => {
+    event.preventDefault();
+    if (!affiliateChanged) return;
+    void save('affiliate', { attributionWindowDays: attributionDays }, () => setSavedAttributionDays(attributionDays));
+  };
 
+  const saveOwner = (event: FormEvent) => {
+    event.preventDefault();
+    if (!ownerDraft || !ownerChanged) return;
+    const warehouseAddress = ownerDraft.warehouseAddress.trim();
     const details = {
-      companyName: ownerDetailsDraft.companyName.trim(),
-      representativeName: ownerDetailsDraft.representativeName.trim(),
-      businessType: ownerDetailsDraft.businessType,
-      contactPhone: ownerDetailsDraft.contactPhone.trim(),
-      contactEmail: ownerDetailsDraft.contactEmail.trim(),
-      taxCode: ownerDetailsDraft.taxCode.trim(),
-      businessAddress: ownerDetailsDraft.businessAddress.trim() || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
-      warehouseAddress: ownerDetailsDraft.warehouseAddress.trim(),
-      returnWarehouseAddress: returnWarehouseAddr,
+      companyName: ownerDraft.companyName.trim(),
+      representativeName: ownerDraft.representativeName.trim(),
+      businessType: ownerDraft.businessType,
+      taxCode: ownerDraft.taxCode.trim(),
+      contactPhone: ownerDraft.contactPhone.trim(),
+      contactEmail: ownerDraft.contactEmail.trim(),
+      businessAddress: ownerDraft.businessAddress.trim(),
+      warehouseAddress,
+      returnWarehouseAddress: sameReturnAddress ? warehouseAddress : ownerDraft.returnWarehouseAddress.trim(),
     };
-
-    if (!details.representativeName || !details.businessType || !details.taxCode ||
-        !details.contactPhone || !details.contactEmail || !details.warehouseAddress) {
-      showToast('Vui lòng bổ sung đầy đủ thông tin chủ shop và kho hàng.');
+    if (!details.representativeName || !details.businessType || !details.taxCode || !details.contactPhone || !details.contactEmail || !details.warehouseAddress || !details.returnWarehouseAddress) {
+      setMessage({ text: 'Vui lòng điền các trường bắt buộc.', error: true });
       return;
     }
-    if (!/^[+]?([0-9().\-\s]){8,20}$/.test(details.contactPhone)) {
-      showToast('Số điện thoại liên hệ chưa đúng định dạng.');
+    if (!/^\+?[0-9().\-\s]{8,20}$/.test(details.contactPhone) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.contactEmail)) {
+      setMessage({ text: 'Kiểm tra định dạng điện thoại và email liên hệ.', error: true });
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.contactEmail)) {
-      showToast('Email đối soát chưa đúng định dạng.');
+    if (warehouseAddress.split(',').filter(part => part.trim()).length < 4) {
+      setMessage({ text: 'Địa chỉ kho lấy hàng cần đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành, cách nhau bằng dấu phẩy.', error: true });
       return;
     }
-    if (details.warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
-      showToast('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện, tỉnh/thành, ngăn cách bằng dấu phẩy.');
-      return;
-    }
-
-    setSavingOwnerDetails(true);
-    try {
-      await storeService.updateMyStore(details);
-      setShopOwnerDetails(details);
-      setOwnerDetailsDraft(details);
-      setIsEditingOwnerDetails(false);
-      showToast('Đã cập nhật thông tin chủ shop.');
-    } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.message || 'Không thể lưu thông tin chủ shop.');
-    } finally {
-      setSavingOwnerDetails(false);
-    }
+    void save('owner', details, () => { setOwner(details); setOwnerDraft(null); });
   };
 
   if (!isShopManager) {
     return (
-      <div className="max-w-lg mx-auto my-12 text-center">
-        <Card className="p-8 bg-white border border-[#EAE4D7] flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
-            <ShieldAlert className="w-7 h-7" />
-          </div>
-          <h2 className="text-xl font-extrabold text-[#1A1612] m-0">
-            Chỉ dành cho Chủ gian hàng
-          </h2>
-          <p className="text-xs sm:text-sm text-[#7D715E] leading-relaxed m-0">
-            Đây là nơi quản lý thông tin và chính sách của một gian hàng cụ thể. Tài khoản quản trị sàn không dùng khu vực này để cấu hình chính sách toàn sàn.
-          </p>
-          <Button
-            variant="gold"
-            size="md"
-            onClick={() => navigate(isPlatformAdmin ? '/admin/analytics' : '/collaborator/dashboard')}
-          >
+      <div className="mx-auto my-12 max-w-lg text-center">
+        <Card className="flex flex-col items-center gap-4 border border-[#EAE4D7] bg-white p-8">
+          <span className="grid size-12 place-items-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><ShieldAlert size={24} /></span>
+          <h2 className="text-lg font-semibold text-[#1A1612]">Chỉ dành cho Chủ gian hàng</h2>
+          <Button variant="gold" onClick={() => navigate(isPlatformAdmin ? '/admin/analytics' : '/collaborator/dashboard')}>
             {isPlatformAdmin ? 'Về trang quản trị sàn' : 'Về trang Tổng quan KOL'}
           </Button>
         </Card>
@@ -299,435 +269,197 @@ export default function ShopSettingsPage() {
   }
 
   return (
-    <div className="merchant-settings-page mx-auto flex w-full min-w-0 max-w-[1440px] flex-col gap-4 pb-10 pt-3 text-left sm:gap-5 sm:pt-4">
-      {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2.5 border border-[#EEDFC6] animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-5 h-5 text-[#B88E4F]" />
-          <span>{toastMsg}</span>
+    <div className="merchant-settings-page w-full min-w-0 pb-8 text-left">
+      {message && (
+        <div role={message.error ? 'alert' : 'status'} className={`fixed top-5 right-4 z-50 max-w-[min(24rem,calc(100vw-32px))] rounded-xl border bg-white px-4 py-3 text-sm shadow-lg ${message.error ? 'border-[#DC2626]/30 text-[#DC2626]' : 'border-[#EEDFC6] text-[#1A1612]'}`}>
+          {message.text}
         </div>
       )}
-
-      <form onSubmit={handleSave} className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.04fr_0.96fr] xl:gap-5">
-        <div className="space-y-4 xl:space-y-5">
-          <section className="settings-brand space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
-            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                <Store className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Nhận diện thương hiệu</h2>
-                <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Logo và thông tin cơ bản của gian hàng</p>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-[#1A1612]">
-                Tên gian hàng <span className="text-rose-600">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="VD: Sora Skin Official Store"
-                className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
-                required
-              />
-            </div>
-
-            <div className="settings-logo flex flex-col gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
-                <ImageIcon className="h-3.5 w-3.5 text-[#B88E4F]" />
-                <span>Logo đại diện <strong className="text-rose-600">*</strong></span>
-              </label>
-
-              <div className="flex items-center gap-3">
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E8D4B0] bg-[#F3EFE6]">
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt="Shop Logo"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
-                      }}
-                    />
-                  ) : (
-                    <Store className="h-5 w-5 text-[#7D715E]" />
-                  )}
-                </div>
-
-                <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-center text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#FDFBF7]">
-                  {uploadingLogo ? (
-                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#B88E4F]" />
-                  ) : (
-                    <Upload className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-                  )}
-                  <span>{uploadingLogo ? 'Đang tải lên...' : 'Tải logo'}</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    disabled={uploadingLogo}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <StorefrontSettingsSection url={storefrontUrl} path={storefrontPath} description={description}
-              onDescriptionChange={setDescription} onCopy={() => void copyStorefrontUrl()} />
-          </section>
-
-          <details className="group space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
-            <summary className="flex cursor-pointer items-center gap-3 list-none [&::-webkit-details-marker]:hidden">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                <FileText className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Chính sách công khai</h2>
-                <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Đổi trả, bảo hành và giao nhận. Bấm để chỉnh sửa.</p>
-              </div>
-              <ChevronDown className="ml-auto h-[18px] w-[18px] shrink-0 text-[#B88E4F] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
-            </summary>
-
-<div className="space-y-3 border-t border-[#EAE4D7] pt-3">
-              {([
-                ['Đổi trả & hoàn tiền', policyReturn, setPolicyReturn, 'Cam kết đổi trả trong 7-14 ngày nếu lỗi nhà sản xuất...'],
-                ['Bảo hành & chất lượng', policyWarranty, setPolicyWarranty, 'Cam kết 100% hàng chính hãng có tem niêm phong...'],
-                ['Giao nhận & đồng kiểm', policyShipping, setPolicyShipping, 'Hỗ trợ đồng kiểm khi nhận hàng, giao nhanh 2-3 ngày...'],
-              ] as const).map(([label, value, setValue, placeholder]) => (
-                <div key={label}>
-                  <label className="mb-1.5 block text-xs font-semibold text-[#1A1612]">
-                    {label}
-                  </label>
-                  <textarea
-                    value={value}
-                    onChange={(event) => setValue(event.target.value)}
-                    maxLength={500}
-                    rows={2}
-                    placeholder={placeholder}
-                    className="min-h-[88px] w-full resize-y rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-sm text-[#1A1612] outline-none transition focus:border-[#C59B58] focus:bg-white"
-                  />
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
-
-        <div className="space-y-4 xl:space-y-5">
-          <section className="settings-affiliate space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
-            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                <Percent className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Tiếp thị liên kết</h2>
-                <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Mức hoa hồng và thời hạn ghi nhận đơn</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="min-w-0">
-                <label className="mb-1.5 flex min-h-7 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
-                  <Percent className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                  Hoa hồng nền SCANMS (%)
-                </label>
-                <input
-                  type="number"
-                  value={10}
-                  readOnly
-                  disabled
-                  className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
-                />
-                <span className="text-xs text-[#7D715E]">Cố định 10% theo chuẩn sàn SCANMS</span>
-              </div>
-
-              <div className="min-w-0">
-                <label className="mb-1.5 flex min-h-7 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
-                  <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                  Thời hạn ghi nhận đơn
-                </label>
-                <Select
-                  value={String(attributionWindowDays)}
-                  onChange={(e) => setAttributionWindowDays(Number(e.target.value))}
-                  className="h-11 w-full"
-                >
-                  <option value="7">7 ngày</option>
-                  <option value="14">14 ngày</option>
-                  <option value="30">30 ngày (Tiêu chuẩn)</option>
-                  <option value="60">60 ngày</option>
-                </Select>
-              </div>
-            </div>
-          </section>
-
-          <section className="settings-owner rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                      <Building2 className="h-4 w-4" />
+      <div className="rounded-xl border border-[#EAE4D7] bg-white">
+        <StorefrontSettingsSection name={savedProfile.name} logoUrl={tab === 'profile' ? profile.logoUrl : savedProfile.logoUrl} url={storefrontUrl} path={storefrontPath} onCopy={() => void copyUrl()} />
+        <nav aria-label="Cài đặt gian hàng" role="tablist" className="grid grid-cols-3 gap-1 border-b border-[#EAE4D7] p-1.5 sm:gap-2 sm:p-2">
+          {tabs.map(({ id, label, icon: Icon }, index) => (
+            <button
+              key={id}
+              id={`store-settings-tab-${id}`}
+              role="tab"
+              type="button"
+              aria-selected={tab === id}
+              aria-controls={`store-settings-panel-${id}`}
+              tabIndex={tab === id ? 0 : -1}
+              onClick={() => openTab(id)}
+              onKeyDown={event => {
+                const nextIndex = event.key === 'ArrowRight' ? (index + 1) % tabs.length
+                  : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length
+                  : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null;
+                if (nextIndex === null) return;
+                event.preventDefault();
+                const next = tabs[nextIndex].id;
+                openTab(next);
+                document.getElementById(`store-settings-tab-${next}`)?.focus();
+              }}
+              className="relative flex min-h-[42px] min-w-0 items-center justify-center gap-1.5 rounded-lg border border-transparent px-1.5 text-center text-[11px] font-semibold leading-tight text-[#665948] after:pointer-events-none after:absolute after:-right-[3px] after:top-1/2 after:h-5 after:w-px after:-translate-y-1/2 after:bg-[#EAE4D7] last:after:hidden hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-[#C59B58] aria-selected:border-[#EEDFC6] aria-selected:bg-[#FBF5EB] aria-selected:text-[#231D15] sm:px-3 sm:text-sm sm:after:-right-[5px]"
+            >
+              <Icon size={16} aria-hidden="true" className="hidden shrink-0 text-[#B88E4F] sm:block" />
+              {label}
+            </button>
+          ))}
+        </nav>
+        {loading ? (
+          <p role="status" className="flex items-center gap-2 p-5 text-sm text-[#7D715E]"><Loader2 size={16} className="animate-spin" /> Đang tải cài đặt…</p>
+        ) : loadError ? (
+          <div role="alert" className="flex flex-wrap items-center gap-3 p-5 text-sm text-[#DC2626]">
+            Chưa tải được cài đặt. <Button type="button" variant="outline" size="sm" onClick={() => setLoadAttempt(value => value + 1)}>Thử lại</Button>
+          </div>
+        ) : (
+          <>
+            <section id="store-settings-panel-profile" role="tabpanel" aria-labelledby="store-settings-tab-profile" hidden={tab !== 'profile'}>
+              <form onSubmit={saveProfile}>
+                <fieldset disabled={saving !== null} className="min-w-0 space-y-5 px-4 py-5 sm:px-6 sm:py-6">
+                  <div className="grid min-w-0 grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                    <div className="min-w-0 space-y-3.5 pb-4 md:pr-6 md:pb-0">
+                      <label className={`${labelClass} gap-2`}><span>Tên gian hàng <span className="text-[#DC2626]" aria-hidden="true">*</span></span>
+                        <input value={profile.name} required onChange={event => setProfile(values => ({ ...values, name: event.target.value }))} className={inputClass} />
+                      </label>
+                      <label className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-[#EAE4D7] px-2.5 text-xs font-semibold text-[#765629] hover:bg-[#FBF5EB] focus-within:ring-2 focus-within:ring-[#C59B58]/30">
+                        {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} aria-hidden="true" />}
+                        {uploading ? 'Đang tải…' : profile.logoUrl ? 'Đổi logo' : 'Tải logo'}
+                        {!profile.logoUrl && <span className="text-[#DC2626]" aria-hidden="true">*</span>}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={event => void uploadLogo(event)} className="sr-only" />
+                      </label>
                     </div>
-                    <div>
-                      <h3 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Thông tin chủ shop</h3>
-                      <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Thông tin liên hệ và pháp lý</p>
-                    </div>
+                    <label className={`${labelClass} gap-2 border-t border-[#EAE4D7] pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-6`}>
+                      <span className="flex items-center justify-between gap-2">
+                        Giới thiệu gian hàng <span className="shrink-0 font-normal tabular-nums text-[#7D715E]">{profile.description.length.toLocaleString('vi-VN')} ký tự</span>
+                      </span>
+                      <textarea value={profile.description} rows={3} onChange={event => setProfile(values => ({ ...values, description: event.target.value }))} className={`${textareaClass} px-3.5 py-3 font-normal leading-relaxed`} />
+                    </label>
                   </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {isEditingOwnerDetails ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingOwnerDetails(false)}
-                        disabled={savingOwnerDetails}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-semibold text-[#7D715E] transition hover:border-[#C59B58] hover:text-[#1A1612] disabled:opacity-50"
-                      >
-                        <X className="h-3.5 w-3.5" /> Hủy
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOwnerDetailsDraft({ ...shopOwnerDetails });
-                          setIsEditingOwnerDetails(true);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#8A642C] transition hover:border-[#C59B58]"
-                      >
-                        <Pencil className="h-3.5 w-3.5" /> Sửa thông tin
-                      </button>
-                    )}
-                  </div>
-              </div>
-
-                {isEditingOwnerDetails ? (
-                  <div className="space-y-3.5">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <label className="block text-xs font-semibold text-[#1A1612] sm:col-span-2">
-                        Tên doanh nghiệp / hộ kinh doanh
-                        <input
-                          value={ownerDetailsDraft.companyName}
-                          maxLength={200}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, companyName: event.target.value })}
-                          placeholder="Nhập tên đăng ký kinh doanh (nếu có)"
-                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                        />
-                        <span className="mt-1 block text-[11px] font-normal text-[#7D715E]">Tên này hiển thị công khai trên trang gian hàng.</span>
-                      </label>
-                      <label className="block text-xs font-semibold text-[#1A1612]">
-                        Người đại diện <span className="text-rose-600">*</span>
-                        <input
-                          value={ownerDetailsDraft.representativeName}
-                          maxLength={150}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, representativeName: event.target.value })}
-                          placeholder="Nhập tên người đại diện"
-                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                        />
-                      </label>
-                      <div>
-                        <span className="block text-xs font-semibold text-[#1A1612] mb-1.5">
-                          Loại hình kinh doanh <span className="text-rose-600">*</span>
-                        </span>
-                        <Select
-                          value={ownerDetailsDraft.businessType}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, businessType: event.target.value })}
-                          className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition focus:border-[#C59B58]"
-                        >
-                          <option value="">Chọn loại hình kinh doanh</option>
-                          <option value="INDIVIDUAL">Cá nhân</option>
-                          <option value="HOUSEHOLD">Hộ kinh doanh</option>
-                          <option value="ENTERPRISE">Doanh nghiệp</option>
-                        </Select>
-                      </div>
-                      <label className="block text-xs font-semibold text-[#1A1612]">
-                        Điện thoại liên hệ <span className="text-rose-600">*</span>
-                        <input
-                          type="tel"
-                          value={ownerDetailsDraft.contactPhone}
-                          maxLength={20}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, contactPhone: event.target.value })}
-                          placeholder="Ví dụ: 0902345678"
-                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                        />
-                      </label>
-                      <label className="block text-xs font-semibold text-[#1A1612]">
-                        Email nhận đối soát <span className="text-rose-600">*</span>
-                        <input
-                          type="email"
-                          value={ownerDetailsDraft.contactEmail}
-                          maxLength={255}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, contactEmail: event.target.value })}
-                          placeholder="Ví dụ: shop@example.vn"
-                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                        />
-                      </label>
-                      <label className="block text-xs font-semibold text-[#1A1612] sm:col-span-2">
-                        Mã số thuế <span className="text-rose-600">*</span>
-                        <input
-                          value={ownerDetailsDraft.taxCode}
-                          maxLength={30}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, taxCode: event.target.value })}
-                          placeholder="Nhập mã số thuế cá nhân, hộ kinh doanh hoặc doanh nghiệp"
-                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                        />
-                      </label>
-                      <label className="block text-xs font-semibold text-[#1A1612] sm:col-span-2">
-                        Địa chỉ trụ sở chính / Đăng ký kinh doanh (Legal HQ) <span className="text-rose-600">*</span>
-                        <input
-                          value={ownerDetailsDraft.businessAddress}
-                          maxLength={500}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, businessAddress: event.target.value })}
-                          placeholder="Địa chỉ trụ sở xuất hóa đơn VAT và hiển thị công khai trên gian hàng"
-                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                        />
-                      </label>
-                      <label className="block text-xs font-semibold text-[#1A1612] sm:col-span-2">
-                        Kho lấy hàng xuất đi (GHN Pickup Warehouse) <span className="text-rose-600">*</span>
-                        <textarea
-                          value={ownerDetailsDraft.warehouseAddress}
-                          maxLength={500}
-                          rows={2}
-                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, warehouseAddress: event.target.value })}
-                          placeholder="Nhập địa chỉ kho thật: số nhà/đường, phường/xã, quận/huyện, tỉnh/thành"
-                          className="mt-1.5 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                        />
-                        <span className="mt-1 block font-normal text-[#7D715E]">Địa chỉ này được dùng làm điểm lấy hàng để GHN tính cước. Hãy nhập kho thực tế của Shop.</span>
-                      </label>
-                      <div className="sm:col-span-2 space-y-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
-                        <label className="flex items-center gap-2 text-xs font-semibold text-[#1A1612] cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={sameReturnAddress}
-                            onChange={(e) => setSameReturnAddress(e.target.checked)}
-                            className="rounded accent-[#C59B58]"
-                          />
-                          <span>Kho nhận hàng hoàn trả (Return Warehouse) trùng với kho lấy hàng</span>
+                  <section aria-labelledby="store-public-policies" className="border-t border-[#EAE4D7] pt-4">
+                    <h2 id="store-public-policies" className={sectionHeading}><FileText size={16} aria-hidden="true" className="text-[#B88E4F]" /> Chính sách công khai</h2>
+                    <div className="mt-4 grid divide-y divide-[#EAE4D7] lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+                      {policies.map(({ key, label }) => (
+                        <label key={key} className={`${labelClass} grid-rows-[auto_1fr] gap-2 py-4 first:pt-0 last:pb-0 lg:px-5 lg:py-0 lg:first:pl-0 lg:last:pr-0`}>
+                          {label}
+                          <span className="grid min-w-0">
+                            <span aria-hidden="true" className={`${policyTextArea} invisible col-start-1 row-start-1 border-transparent whitespace-pre-wrap [overflow-wrap:anywhere]`}>{profile[key]}&nbsp;</span>
+                            <textarea value={profile[key]} maxLength={500} rows={2} onChange={event => setProfile(values => ({ ...values, [key]: event.target.value }))} className={`${policyTextArea} col-start-1 row-start-1 h-full resize-none overflow-hidden border-[#EAE4D7] bg-white text-[#1A1612] outline-none focus:border-[#B88E4F] focus:ring-2 focus:ring-[#C59B58]/15`} />
+                          </span>
                         </label>
-                        {!sameReturnAddress && (
-                          <div className="pt-2">
-                            <label className="block text-xs font-semibold text-[#1A1612]">
-                              Địa chỉ kho nhận hàng hoàn trả riêng <span className="text-rose-600">*</span>
-                              <textarea
-                                value={ownerDetailsDraft.returnWarehouseAddress}
-                                maxLength={500}
-                                rows={2}
-                                onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, returnWarehouseAddress: event.target.value })}
-                                placeholder="Địa chỉ nơi bưu tá mang hàng trả về khi khách khiếu nại hoặc giao thất bại"
-                                className="mt-1.5 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
-                              />
-                            </label>
-                          </div>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EAE4D7] pt-3">
-                      <p className="m-0 text-[11px] text-[#7D715E]">Các mục có dấu * cần được điền đầy đủ.</p>
-                      <button
-                        type="button"
-                        onClick={handleSaveOwnerDetails}
-                        disabled={savingOwnerDetails}
-                        className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#C59B58] px-4 text-xs font-bold text-white transition hover:bg-[#B88E4F] disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {savingOwnerDetails ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        {savingOwnerDetails ? 'Đang lưu...' : 'Lưu thông tin'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="settings-owner-details">
-                  <div className="settings-owner-info grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3 sm:col-span-2">
-                      <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Tên doanh nghiệp / hộ kinh doanh</p>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.companyName || 'Chưa cập nhật'}</p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
-                      <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Người đại diện</p>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.representativeName || 'Chưa cập nhật'}</p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
-                      <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Loại hình kinh doanh</p>
-                        <p className="m-0 mt-0.5 text-sm font-semibold text-[#1A1612]">
-                          {shopOwnerDetails.businessType === 'INDIVIDUAL'
-                            ? 'Cá nhân'
-                            : shopOwnerDetails.businessType === 'HOUSEHOLD'
-                              ? 'Hộ kinh doanh'
-                              : shopOwnerDetails.businessType === 'ENTERPRISE'
-                                ? 'Doanh nghiệp'
-                                : shopOwnerDetails.businessType || 'Chưa cập nhật'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
-                      <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Điện thoại liên hệ</p>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.contactPhone || 'Chưa cập nhật'}</p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
-                      <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Email nhận đối soát</p>
-                        <p className="m-0 mt-0.5 break-all text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.contactEmail || 'Chưa cập nhật'}</p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
-                      <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Mã số thuế</p>
-                        <p className="m-0 mt-0.5 break-words font-mono text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.taxCode || 'Chưa cập nhật'}</p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
-                      <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Trụ sở chính & Pháp lý</p>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.businessAddress || 'Chưa cập nhật'}</p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3 sm:col-span-2">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="m-0 text-[11px] font-bold text-[#1A1612]">Kho lấy hàng xuất đi (GHN)</p>
-                          <span className="text-[10px] rounded bg-[#FBF5EB] px-1.5 py-0.5 font-bold text-[#8A642C] border border-[#EEDFC6]">Pickup Warehouse</span>
-                        </div>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.warehouseAddress || 'Chưa cập nhật'}</p>
-                        <div className="mt-2 pt-2 border-t border-[#EAE4D7]/70 flex items-center justify-between text-xs text-[#7D715E]">
-                          <span>Kho nhận hàng hoàn trả:</span>
-                          <span className="font-semibold text-[#1A1612]">{shopOwnerDetails.returnWarehouseAddress || shopOwnerDetails.warehouseAddress || 'Trùng với kho lấy hàng'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  </div>
-                )}
-              </div>
-          </section>
+                  </section>
+                </fieldset>
+                {profileChanged && <SaveBar saving={saving === 'profile'} disabled={uploading || (saving !== null && saving !== 'profile')} onCancel={() => setProfile(savedProfile)} />}
+              </form>
+            </section>
 
-        </div>
+            <section id="store-settings-panel-affiliate" role="tabpanel" aria-labelledby="store-settings-tab-affiliate" hidden={tab !== 'affiliate'}>
+              <form onSubmit={saveAffiliate}>
+                <fieldset disabled={saving !== null} className="grid min-w-0 divide-y divide-[#EAE4D7] px-4 py-2 sm:px-6 md:grid-cols-2 md:divide-x md:divide-y-0 md:py-4">
+                  <div className="flex min-h-[54px] flex-wrap items-center justify-between gap-2 py-2.5 md:py-0 md:pr-5">
+                    <span className="text-sm font-medium text-[#1A1612]">Thù lao cơ sở SCANMS</span>
+                    <span className="inline-flex items-center gap-2"><strong className="tabular-nums text-[#765629]">10%</strong><span className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 py-0.5 text-xs text-[#765629]">Cố định</span></span>
+                  </div>
+                  <div className="flex min-h-[54px] min-w-0 flex-wrap items-center justify-between gap-2 py-2.5 md:py-0 md:pl-5">
+                    <label htmlFor="store-attribution-window" className="text-sm font-medium text-[#1A1612]">Thời hạn ghi nhận qua link</label>
+                    <div className="w-48 max-w-full">
+                      <Select id="store-attribution-window" aria-label="Thời hạn ghi nhận qua link" value={String(attributionDays)} disabled={saving !== null} onChange={event => setAttributionDays(Number(event.target.value))} className={inputClass}>
+                        <option value="7">7 ngày</option>
+                        <option value="14">14 ngày</option>
+                        <option value="30">30 ngày (Tiêu chuẩn)</option>
+                        <option value="60">60 ngày</option>
+                        {![7, 14, 30, 60].includes(savedAttributionDays) && <option value={savedAttributionDays}>{savedAttributionDays} ngày</option>}
+                      </Select>
+                    </div>
+                  </div>
+                </fieldset>
+                {affiliateChanged && <SaveBar saving={saving === 'affiliate'} disabled={saving !== null && saving !== 'affiliate'} onCancel={() => setAttributionDays(savedAttributionDays)} />}
+              </form>
+              <section aria-label="Quảng bá gian hàng" className="border-t border-[#EAE4D7] px-4 py-4 sm:px-6">
+                {hasVisitedAffiliate && <SponsoredPlacementsPanel embedded storefront={savedProfile} />}
+              </section>
+            </section>
 
-        <div className="settings-save-bar flex flex-wrap items-center justify-between gap-3 border border-[#EAE4D7] bg-white p-3 rounded-xl lg:col-span-2">
-          <p className="m-0 text-[11px] text-[#7D715E]">Thay đổi của bạn sẽ được áp dụng lên trang gian hàng.</p>
-          <Button
-            type="submit"
-            variant="gold"
-            size="lg"
-            icon={<Save className="w-4 h-4" />}
-            loading={saving}
-            className="h-11 rounded-xl px-6 text-sm font-semibold shadow-sm"
-          >
-            {saving ? 'Đang lưu cấu hình...' : 'Lưu thay đổi'}
-          </Button>
-        </div>
-      </form>
-      {isShopManager && <SponsoredPlacementsPanel />}
+            <section id="store-settings-panel-owner" role="tabpanel" aria-labelledby="store-settings-tab-owner" hidden={tab !== 'owner'}>
+              {owner && !ownerDraft && (
+                <div className="space-y-3 px-4 py-4 sm:px-6">
+                  <header className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
+                    <h2 className="text-sm font-semibold">Thông tin chủ Shop</h2>
+                    <Button type="button" size="sm" variant="outline" className="h-9 rounded-lg shadow-none" icon={<Pencil size={14} aria-hidden="true" />} disabled={saving !== null} onClick={() => {
+                      setOwnerDraft(owner);
+                      setSameReturnAddress(owner.warehouseAddress === owner.returnWarehouseAddress);
+                    }}>Sửa thông tin</Button>
+                  </header>
+                  <div className="grid gap-3 md:grid-cols-2 md:gap-0 md:divide-x md:divide-[#EAE4D7]">
+                    <div className="md:pr-4">
+                      <h3 className="text-xs font-semibold text-[#765629]">Liên hệ</h3>
+                      <dl>{contactFields.map(({ key, label }) => <OwnerValue key={key} label={label} value={owner[key]} />)}</dl>
+                    </div>
+                    <div className="border-t border-[#EAE4D7] pt-3 md:border-t-0 md:pt-0 md:pl-4">
+                      <h3 className="text-xs font-semibold text-[#765629]">Pháp lý</h3>
+                      <dl>{legalFields.map(({ key, label }) => <OwnerValue key={key} label={label} value={key === 'businessType' ? businessTypes.find(item => item.value === owner.businessType)?.label ?? owner.businessType : owner[key]} />)}</dl>
+                    </div>
+                  </div>
+                  <div className="border-t border-[#EAE4D7] pt-3">
+                    <h3 className="flex items-center gap-1.5 text-xs font-semibold text-[#765629]"><MapPin size={14} aria-hidden="true" /> Kho hàng</h3>
+                    <dl>
+                      <OwnerValue label="Kho lấy hàng (GHN)" value={owner.warehouseAddress} />
+                      <OwnerValue label="Kho nhận hàng trả" value={owner.returnWarehouseAddress} />
+                    </dl>
+                  </div>
+                </div>
+              )}
+              {ownerDraft && (
+                <form onSubmit={saveOwner}>
+                  <fieldset disabled={saving !== null} className="min-w-0 space-y-4 px-4 py-4 sm:px-6">
+                    <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
+                      <h2 className="text-sm font-semibold">Sửa thông tin chủ Shop</h2>
+                      {!ownerChanged && <Button type="button" size="sm" variant="outline" className="h-9 rounded-lg shadow-none" onClick={() => setOwnerDraft(null)}>Hủy</Button>}
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 md:gap-0 md:divide-x md:divide-[#EAE4D7]">
+                      <div className="space-y-2.5 md:pr-4">
+                        <h3 className="text-xs font-semibold text-[#765629]">Liên hệ</h3>
+                        {contactFields.map(item => (
+                          <label key={item.key} className={labelClass}><span>{item.label} <span className="text-[#DC2626]">*</span></span>
+                            <input type={'type' in item ? item.type : 'text'} value={ownerDraft[item.key]} required maxLength={item.maxLength} onChange={event => setOwnerDraft({ ...ownerDraft, [item.key]: event.target.value })} className={inputClass} />
+                          </label>
+                        ))}
+                      </div>
+                      <div className="space-y-2.5 md:pl-4">
+                        <h3 className="text-xs font-semibold text-[#765629]">Pháp lý</h3>
+                        {legalFields.map(item => (
+                          <label key={item.key} className={labelClass}><span>{item.label}{'required' in item && <span className="text-[#DC2626]"> *</span>}</span>
+                            {item.key === 'businessType' ? (
+                              <Select aria-label={item.label} value={ownerDraft.businessType} options={businessTypes} placeholder="Chọn loại hình" disabled={saving !== null} onChange={event => setOwnerDraft({ ...ownerDraft, businessType: event.target.value })} className={inputClass} />
+                            ) : (
+                              <input value={ownerDraft[item.key]} required={'required' in item} maxLength={item.maxLength} onChange={event => setOwnerDraft({ ...ownerDraft, [item.key]: event.target.value })} className={inputClass} />
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2.5 border-t border-[#EAE4D7] pt-3">
+                      <h3 className="flex items-center gap-1.5 text-xs font-semibold text-[#765629]"><MapPin size={14} aria-hidden="true" /> Kho hàng</h3>
+                      <label className={labelClass}><span>Kho lấy hàng (GHN) <span className="text-[#DC2626]">*</span></span>
+                        <textarea value={ownerDraft.warehouseAddress} required maxLength={500} rows={2} placeholder="Số nhà/đường, phường/xã, quận/huyện, tỉnh/thành" onChange={event => setOwnerDraft({ ...ownerDraft, warehouseAddress: event.target.value })} className={textareaClass} />
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-[#665948]">
+                        <input type="checkbox" checked={sameReturnAddress} onChange={event => setSameReturnAddress(event.target.checked)} className="accent-[#C59B58]" />
+                        Kho nhận hàng trả cùng địa chỉ kho lấy hàng
+                      </label>
+                      <label className={labelClass}><span>Kho nhận hàng trả {!sameReturnAddress && <span className="text-[#DC2626]">*</span>}</span>
+                        <textarea value={sameReturnAddress ? ownerDraft.warehouseAddress : ownerDraft.returnWarehouseAddress} readOnly={sameReturnAddress} required={!sameReturnAddress} maxLength={500} rows={2} onChange={event => setOwnerDraft({ ...ownerDraft, returnWarehouseAddress: event.target.value })} className={`${textareaClass} read-only:bg-[#FAF8F5]`} />
+                      </label>
+                    </div>
+                  </fieldset>
+                  {ownerChanged && <SaveBar saving={saving === 'owner'} disabled={saving !== null && saving !== 'owner'} onCancel={() => setOwnerDraft(null)} label="Lưu thông tin" />}
+                </form>
+              )}
+            </section>
+          </>
+        )}
+      </div>
     </div>
   );
 }

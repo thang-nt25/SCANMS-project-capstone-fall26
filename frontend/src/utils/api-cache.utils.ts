@@ -100,6 +100,7 @@ export const apiCache = {
     }
     // Shipping creates the waybill and changes the purchase order's fulfillment state.
     if (url.includes('/shipping/ghn/create-order/')) return '/orders';
+    if (url.includes('/shipping/ghn/create-sample/')) return '/sample-requests';
     if (url.includes('/shipping/ghn/simulation/')) return '/orders';
     if (url.includes('/orders')) return '/orders';
     if (url.includes('/products')) return '/products';

@@ -1,3 +1,4 @@
+import { ShopWorkspaceToolbar } from '../../components/affiliate/ShopWorkspaceToolbar';
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { SampleRequestDetails } from '../../components/orders/SampleRequestDetails';
 import { InviteKolModal } from '../../components/affiliate/InviteKolModal';
@@ -25,10 +26,28 @@ import {
 import api from '../../services/api';
 import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineExtension';
 import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
-import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
+import { SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
+import { SampleWaybillDialog } from '../../components/shipping/SampleWaybillDialog';
 import { toast } from '../../utils/toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
+import { Select } from '../../components/ui/Select';
+
+const otherSampleStatuses = [
+  { value: 'SHIPPED', label: 'Đang giao' },
+  { value: 'RECEIVED', label: 'Đã nhận' },
+  { value: 'OVERDUE', label: 'Quá hạn' },
+  { value: 'COMPLETED', label: 'Hoàn tất' },
+] as const;
+
+function recordedSampleFreight(charges: NonNullable<SampleRequestItem['shippingCharges']>) {
+  const amounts = charges.flatMap(charge => {
+    if (charge.environment === 'TEST' || charge.amount == null || String(charge.amount).trim() === '') return [];
+    const amount = Number(charge.amount);
+    return Number.isFinite(amount) && amount >= 0 ? [amount] : [];
+  });
+  return amounts.length ? amounts.reduce((sum, amount) => sum + amount, 0) : null;
+}
 
 export interface SampleRequestItem {
   id: string;
@@ -280,7 +299,8 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
         const q = searchQuery.trim().toLowerCase();
         const matchCreator = (s.collaboratorInfo?.fullName || '').toLowerCase().includes(q);
         const matchProduct = s.product.title.toLowerCase().includes(q);
-        const matchTracking = s.trackingCode?.toLowerCase().includes(q) || false;
+        const matchTracking = s.trackingCode?.toLowerCase().includes(q)
+          || s.shippingCharges?.some(charge => charge.trackingNumber?.toLowerCase().includes(q));
         if (!matchCreator && !matchProduct && !matchTracking) return false;
       }
 
@@ -291,10 +311,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   const samplePageCount = Math.max(1, Math.ceil(filteredSamples.length / 20));
   const currentSamplePage = Math.min(samplePage, samplePageCount);
   const pageSamples = filteredSamples.slice((currentSamplePage - 1) * 20, currentSamplePage * 20);
-  const recordedFreight = samples.flatMap(sample => sample.shippingCharges || []).reduce((sum, charge) => {
-    const amount = Number(charge.amount);
-    return sum + (charge.environment === 'TEST' || charge.amount === null || !Number.isFinite(amount) ? 0 : amount);
-  }, 0);
+  const recordedFreight = recordedSampleFreight(samples.flatMap(sample => sample.shippingCharges || []));
 
   // Handlers
 
@@ -354,8 +371,13 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
     toast.success('Đã gửi thông báo nhắc KOL đăng tải video review theo cam kết 14 ngày!');
   };
 
-  const handleCopyTracking = (tracking: string) => {
-    navigator.clipboard.writeText(tracking);
+  const handleCopyTracking = async (tracking: string) => {
+    try {
+      await navigator.clipboard.writeText(tracking);
+    } catch {
+      toast.error('Không sao chép được mã vận đơn.');
+      return;
+    }
     setCopiedTracking(tracking);
     toast.success('Đã sao chép mã vận đơn!');
     setTimeout(() => setCopiedTracking(null), 2000);
@@ -414,146 +436,22 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
   return (
     <div className="shop-samples-page w-full flex flex-col space-y-4">
-      {storeTab === 'SAMPLES_QUEUE' && <>
-      {/* 4 THẺ SỐ LIỆU NHANH (STAT BADGES) */}
-      <div className="sample-summary-grid grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Stat 1: Chờ duyệt */}
-        <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('PENDING');
-          }}
-          className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'PENDING'
-              ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/50'
-              : 'border-[#EAE4D7] hover:border-[#C59B58]'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-[#7D715E]">Mẫu chờ duyệt</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center group-hover:scale-105 transition">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-[#1A1612]">{storeStats.pending}</div>
-          <div className="text-[11px] text-[#7D715E] mt-1">Cần shop duyệt cấp mẫu</div>
-        </div>
-
-        {/* Stat 2: Chờ gửi (Đóng gói) */}
-        <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('APPROVED');
-          }}
-          className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'APPROVED'
-              ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/50'
-              : 'border-[#EAE4D7] hover:border-[#C59B58]'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-[#7D715E]">Mẫu chờ gửi</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center group-hover:scale-105 transition">
-              <Package className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-[#1A1612]">{storeStats.readyToShip}</div>
-          <div className="text-[11px] text-[#7D715E] mt-1">Chờ tạo mã vận đơn GHN</div>
-        </div>
-
-        {/* Stat 3: Video chờ nghiệm thu */}
-        <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('VIDEO_SUBMITTED');
-          }}
-          className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'VIDEO_SUBMITTED'
-              ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FBF5EB]/50'
-              : 'border-[#EAE4D7] hover:border-[#C59B58]'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-[#7D715E]">Video chờ nghiệm thu</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center group-hover:scale-105 transition">
-              <Video className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-[#1A1612]">{storeStats.videoPending}</div>
-          <div className="text-[11px] text-[#7D715E] mt-1">KOL đã gửi video review</div>
-        </div>
-
-        {/* Stat 4: Quá hạn 14 ngày */}
-        <div
-          onClick={() => {
-            setStoreTab('SAMPLES_QUEUE');
-            setStatusFilter('OVERDUE');
-          }}
-          className={`p-4 rounded-2xl bg-white border transition shadow-2xs cursor-pointer text-left group ${
-            storeTab === 'SAMPLES_QUEUE' && statusFilter === 'OVERDUE'
-              ? 'border-[#DC2626] ring-2 ring-[#DC2626]/20 bg-rose-50/50'
-              : 'border-rose-200 hover:border-rose-400'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-[#DC2626]">Quá hạn video</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 text-[#DC2626] flex items-center justify-center group-hover:scale-105 transition">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-[#DC2626]">{storeStats.overdue}</div>
-        </div>
-      </div></>}
-
       {/* STORE TABS CONTAINER */}
       <div className="sample-data-container bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-2xs">
-        {/* Tab Header Navigation */}
-        <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3 sm:px-5">
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setStoreTab('SAMPLES_QUEUE')}
-              className={`flex min-h-12 min-w-0 cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 text-center text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:gap-2 sm:px-3.5 sm:text-xs ${
-                storeTab === 'SAMPLES_QUEUE'
-                  ? 'border-[#C59B58] text-[#8C6B32] shadow-sm'
-                  : 'border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
-              }`}
-            >
-              <PackageCheck className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Hàng mẫu</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E] text-[10px] font-bold">
-                {samples.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStoreTab('LEADERBOARD')}
-              className={`flex min-h-12 min-w-0 cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 text-center text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:gap-2 sm:px-3.5 sm:text-xs ${
-                storeTab === 'LEADERBOARD'
-                  ? 'border-[#C59B58] text-[#8C6B32] shadow-sm'
-                  : 'border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
-              }`}
-            >
-              <Award className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Hiệu quả KOL</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E] text-[10px] font-bold">
-                {partnerTeam.data?.members.length ?? '—'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStoreTab('DEALS')}
-              className={`flex min-h-12 min-w-0 cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 text-center text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:gap-2 sm:px-3.5 sm:text-xs ${
-                storeTab === 'DEALS'
-                  ? 'border-[#C59B58] text-[#8C6B32] shadow-sm'
-                  : 'border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
-              }`}
-            >
-              <Handshake className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-              <span className="min-w-0 break-words">Deal độc quyền</span>
-            </button>
+        <div className="flex items-center gap-2 border-b border-[#EAE4D7] p-1.5 sm:px-4">
+          <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-[#EAE4D7]" role="group" aria-label="Quản lý hàng mẫu và hợp tác">
+            {([
+              { key: 'SAMPLES_QUEUE', label: 'Hàng mẫu', Icon: PackageCheck, count: samples.length },
+              { key: 'LEADERBOARD', label: 'Hiệu quả KOL', Icon: Award, count: partnerTeam.data?.members.length },
+              { key: 'DEALS', label: 'Deal độc quyền', Icon: Handshake },
+            ] as const).map(({ key, label, Icon, ...tab }) => <div key={key} className="min-w-0 px-0.5 sm:px-1.5">
+              <button type="button" aria-pressed={storeTab === key} onClick={() => setStoreTab(key)}
+                className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-1 rounded-lg border border-transparent px-1 text-center text-[11px] font-semibold text-[#655A49] hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-[#C59B58] aria-pressed:border-[#EEDFC6] aria-pressed:bg-[#FBF5EB] aria-pressed:text-[#231D15] sm:gap-2 sm:text-xs">
+                <Icon size={16} className="hidden shrink-0 text-[#B88E4F] sm:block" aria-hidden="true" />
+                {label}
+                {'count' in tab && tab.count !== undefined && <span className="rounded-md bg-[#F3EFE6] px-1.5 py-0.5 text-[10px] tabular-nums">{tab.count}</span>}
+              </button>
+            </div>)}
           </div>
 
           {showRefreshButton && <button
@@ -570,55 +468,39 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
         {/* TAB 1: CENTRAL SAMPLE QUEUE (HÀNG ĐỢI HÀNG MẪU TOÀN SHOP) */}
         {storeTab === 'SAMPLES_QUEUE' && (
-          <div className="p-4 sm:p-5 space-y-4">
-            {/* Search & Filters bar */}
-            <div className="@container w-full min-w-0" data-sample-toolbar>
-              <div className="flex min-w-0 flex-col gap-2 @[1000px]:flex-row @[1000px]:items-center">
-              <div className="grid min-w-0 flex-1 grid-cols-4 items-stretch gap-1.5 @[640px]:grid-cols-8" role="group" aria-label="Lọc trạng thái hàng mẫu">
-                {[
-                  { key: 'ALL', label: 'Tất cả' },
-                  { key: 'PENDING', label: `Chờ duyệt (${storeStats.pending})` },
-                  { key: 'APPROVED', label: `Chờ gửi (${storeStats.readyToShip})` },
-                  { key: 'SHIPPED', label: 'Đang giao' },
-                  { key: 'RECEIVED', label: 'Đã nhận' },
-                  { key: 'VIDEO_SUBMITTED', label: `Chờ duyệt video (${storeStats.videoPending})` },
-                  { key: 'OVERDUE', label: `Quá hạn (${storeStats.overdue})`, isDanger: true },
-                  { key: 'COMPLETED', label: 'Hoàn tất' },
-                ].map((btn) => (
-                  <button
-                    key={btn.key}
-                    type="button"
-                    onClick={() => setStatusFilter(btn.key as any)}
-                    aria-pressed={statusFilter === btn.key}
-                    className={`flex h-10 min-w-0 w-full cursor-pointer items-center justify-center rounded-lg border px-1 py-1 text-center text-[10px] font-medium leading-tight transition-colors @[1200px]:text-[11px] ${
-                      statusFilter === btn.key
-                        ? btn.isDanger
-                          ? 'border-rose-200 bg-rose-50 text-[#DC2626]'
-                          : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6B32]'
-                        : btn.isDanger && storeStats.overdue > 0
-                          ? 'bg-rose-50 border border-rose-200 text-[#DC2626]'
-                          : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
-                    }`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-              {/* Search box */}
-              <div className="relative w-full min-w-0 @[1000px]:w-[210px] @[1000px]:shrink-0 @[1200px]:w-[240px]">
-                <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Tìm KOL, sản phẩm, vận đơn..."
-                  aria-label="Tìm hàng mẫu theo KOL, sản phẩm hoặc mã vận đơn"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-[#EAE4D7] bg-white pl-9 pr-3 text-xs text-[#1A1612] outline-none focus:border-[#C59B58]"
-                />
-              </div>
-
-              </div>
+          <div className="p-3 space-y-3">
+            <div data-sample-toolbar>
+              <ShopWorkspaceToolbar label="Công cụ hàng mẫu"
+                search={<label className="relative block min-w-0">
+                  <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#7D715E]" />
+                  <input type="search" placeholder="Tìm KOL, sản phẩm, vận đơn…" aria-label="Tìm hàng mẫu theo KOL, sản phẩm hoặc mã vận đơn"
+                    value={searchQuery} onChange={event => setSearchQuery(event.target.value)}
+                    className="w-full border border-[#EAE4D7] bg-white pl-9 pr-3 text-xs text-[#1A1612] outline-none focus:border-[#C59B58]" />
+                </label>}
+                filters={<div className="grid grid-cols-3 divide-x divide-[#EAE4D7]" role="group" aria-label="Lọc trạng thái hàng mẫu">
+                  {([
+                    { key: 'ALL', label: 'Tất cả', count: samples.length },
+                    { key: 'PENDING', label: 'Chờ duyệt', count: storeStats.pending },
+                    { key: 'APPROVED', label: 'Chờ gửi', count: storeStats.readyToShip },
+                  ] as const).map(({ key, label, count }) => <div key={key} className="min-w-0 px-1">
+                    <button type="button" onClick={() => setStatusFilter(key)} aria-pressed={statusFilter === key}
+                      className="flex w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap border border-transparent px-1 text-xs text-[#655A49] transition-colors hover:bg-[#FAF8F5] aria-pressed:border-[#EEDFC6] aria-pressed:bg-[#FBF5EB] aria-pressed:font-semibold aria-pressed:text-[#79592C]">
+                      {label}{(key === 'ALL' || count > 0) && <span className="tabular-nums">{count}</span>}
+                    </button>
+                  </div>)}
+                </div>}
+                action={<Select aria-label="Lọc theo trạng thái khác" portal
+                  value={['VIDEO_SUBMITTED', ...otherSampleStatuses.map(option => option.value)].includes(statusFilter) ? statusFilter : ''}
+                  options={[{ value: '', label: 'Trạng thái' }, { value: 'VIDEO_SUBMITTED', label: 'Chờ video' }, ...otherSampleStatuses]}
+                  onChange={event => setStatusFilter((event.target.value || 'ALL') as typeof statusFilter)}
+                  className="min-h-10 w-full py-0 text-xs shadow-none" />} />
             </div>
+
+            {storeStats.overdue > 0 && <button type="button" onClick={() => setStatusFilter('OVERDUE')}
+              aria-pressed={statusFilter === 'OVERDUE'}
+              className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-[#DC2626] hover:bg-red-50 aria-pressed:bg-red-50">
+              <AlertTriangle size={14} aria-hidden="true" /> Quá hạn <span className="tabular-nums">{storeStats.overdue}</span>
+            </button>}
 
             {/* Central Sample Queue Table */}
             {selectedSampleIds.length > 0 && (
@@ -651,11 +533,11 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
               </div>
             )}
             <div className="overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_10px_rgb(35_29_21_/_2%)]">
-              <table className="sample-queue-table w-full min-w-[1060px] table-fixed border-collapse text-left text-xs">
+              <table className="sample-queue-table w-full table-fixed border-collapse text-left text-xs">
                 <colgroup><col className="w-[5%]" /><col className="w-[17%]" /><col className="w-[23%]" /><col className="w-[19%]" /><col className="w-[18%]" /><col className="w-[18%]" /></colgroup>
                 <thead>
                   <tr className="border-b border-[#EAE4D7] bg-[#FBF5EB]/40 font-bold text-[#7D715E]">
-                    <th className="w-10" aria-label="Ch?n y?u c?u" />
+                    <th className="w-10" aria-label="Chọn yêu cầu" />
                     <th className="py-3 px-3 font-medium">Nhà sáng tạo</th>
                     <th className="py-3 px-3 font-medium">Sản phẩm mẫu</th>
                     <th className="py-3 px-3 font-medium">Tiến độ & hạn video</th>
@@ -681,6 +563,11 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                       const isOverdue = s.status === 'OVERDUE' || (s.status === 'RECEIVED' && msLeft <= 0);
                       const isDueSoon = s.status === 'RECEIVED' && msLeft > 0 && msLeft <= 2 * 86400000;
 
+                      const testCharge = s.shippingCharges?.find(charge => charge.environment === 'TEST' && charge.trackingNumber);
+                      const tracking = s.trackingCode || testCharge?.trackingNumber;
+                      const isTestTracking = Boolean(tracking && s.shippingCharges?.some(charge => charge.trackingNumber === tracking && charge.environment === 'TEST'));
+                      const liveCharges = s.shippingCharges?.filter(charge => charge.trackingNumber === tracking) || [];
+                      const freight = recordedSampleFreight(liveCharges);
                       return (
                         <tr key={s.id} data-sample-row={s.id} className="bg-white align-middle transition-colors hover:bg-[#FBF5EB]/30 [&>td]:px-3 [&>td]:py-3.5">
                           {/* Column 0: Checkbox */}
@@ -726,9 +613,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                               />
                               <div className="min-w-0 max-w-[220px]">
                                 <p title={s.product.title} className="line-clamp-2 text-xs font-semibold leading-relaxed text-[#1A1612] hover:text-[#B88E4F]">{s.product.title}</p>
-                                <p className="text-[11px] text-[#7D715E] mt-0.5">
-                                  {s.productVariantName ? `Biến thể: ${s.productVariantName}` : 'Bản tiêu chuẩn'}
-                                </p>
+                                {s.productVariantName && <p className="mt-0.5 text-[11px] text-[#7D715E]">{s.productVariantName}</p>}
 
                               </div>
                             </Link>
@@ -795,37 +680,23 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
                           {/* Column 4: Mã vận đơn */}
                           <td className="py-3.5 px-4 align-middle text-xs">
-                            {s.trackingCode ? (
-                              <div className="flex min-h-7 items-center gap-1">
-                                <span title={s.trackingCode} className="min-w-0 truncate rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 font-mono text-[11px] font-semibold leading-[18px] text-[#795A2D]">
-                                  {s.trackingCode}
+                            {tracking ? <>
+                              <div className="flex min-h-7 w-full min-w-0 flex-nowrap items-center gap-1.5" data-sample-tracking>
+                                <span className="shrink-0 whitespace-nowrap text-xs text-[#7D715E]">
+                                  {isTestTracking ? 'GHN thử nghiệm' : s.carrier || 'GHN'}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyTracking(s.trackingCode!)}
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-[#C59B58] cursor-pointer"
-                                  title="Sao chép mã"
-                                  aria-label={`Sao chép mã vận đơn ${s.trackingCode}`}
-                                >
-                                  {copiedTracking === s.trackingCode ? (
-                                    <Check className="w-3.5 h-3.5 text-[#059669]" />
-                                  ) : (
-                                    <Copy className="w-3.5 h-3.5" />
-                                  )}
+                                <span aria-hidden="true" className="shrink-0 text-[#7D715E]">·</span>
+                                <code title={tracking} className="min-w-0 truncate whitespace-nowrap text-xs font-semibold text-[#231D15]">{tracking}</code>
+                                <button type="button" onClick={() => void handleCopyTracking(tracking)}
+                                  className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-lg text-[#7D715E] hover:bg-[#F3EFE6]"
+                                  title="Sao chép mã" aria-label={`Sao chép mã vận đơn ${tracking}`}>
+                                  {copiedTracking === tracking ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
                                 </button>
                               </div>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1.5 text-[11px] font-medium text-[#7D715E]"><Package size={13} className="shrink-0 text-[#B88E4F]" />Chưa có vận đơn</span>
-                            )}
-                            {s.trackingCode && (
-                              <div className="mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-[#7D715E]">
-                                <p>Shop trả phí <span className="px-0.5 text-[#C59B58]">·</span> COD <span className="font-medium tabular-nums text-[#1A1612]">0 đ</span></p>
-                                <dl className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                                  <dt>Cước ghi nhận:</dt><dd className="font-semibold tabular-nums text-[#1A1612]">{s.shippingCharges?.length ? `${s.shippingCharges.reduce((sum, charge) => sum + (charge.environment === 'TEST' || charge.amount === null ? 0 : Number(charge.amount)), 0).toLocaleString('vi-VN')} đ` : '—'}</dd>
-                                </dl>
-                                {(s.shippingCharges?.some(charge => charge.environment !== 'TEST' && charge.amount === null) || !s.shippingCharges?.length) && <p className="text-[10px] text-[#9A805A]">{s.shippingCharges?.length ? 'Chờ xác nhận cước' : 'Chưa có dữ liệu cước'}</p>}
-                              </div>
-                            )}
+                              <p className="text-[11px] leading-relaxed text-[#7D715E]">
+                                {isTestTracking ? 'Cước thử nghiệm' : freight == null ? 'Cước chưa ghi nhận' : `Cước Shop ${freight.toLocaleString('vi-VN')} ₫`} · COD <strong className="font-semibold text-[#1A1612]">0 ₫</strong>
+                              </p>
+                            </> : <span className="text-[11px] text-[#7D715E]">Chưa có vận đơn</span>}
 
                           </td>
 
@@ -854,14 +725,14 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                               )}
 
                               {/* Chờ gửi -> Tạo vận đơn GHN */}
-                              {['APPROVED', 'DELIVERY_ISSUE', 'SHIPPED'].includes(s.status) && (
+                              {['APPROVED', 'DELIVERY_ISSUE'].includes(s.status) && !isSandboxShipment(s) && (
                                 <button
                                   type="button"
                                   onClick={() => openTrackingModal(s)}
                                   className="flex cursor-pointer items-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-[11px] font-semibold text-[#8C6B32] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]"
                                 >
                                   <Truck className="w-3 h-3 text-[#C59B58]" />
-                                  <span>{isSandboxShipment(s) ? 'Đổi môi trường GHN' : s.status === 'SHIPPED' ? 'Tạo mã GHN sandbox' : 'Tạo vận đơn GHN'}</span>
+                                  <span>{s.status === 'DELIVERY_ISSUE' ? 'Tạo lại vận đơn' : 'Tạo vận đơn GHN'}</span>
                                 </button>
                               )}
 
@@ -909,16 +780,19 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                                 </div>
                               )}
 
-                              <button type="button" onClick={() => setDetailSampleId(s.id)} aria-label={`Chi tiết hàng mẫu ${s.product.title}`} title="Chi tiết hàng mẫu" className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58] hover:bg-[#FBF5EB]"><Eye size={15} /></button>
+                              <div className="ml-auto flex shrink-0 gap-1.5">
+                              <button type="button" onClick={() => setDetailSampleId(s.id)} aria-label={`Chi tiết hàng mẫu ${s.product.title}`} title="Chi tiết hàng mẫu" className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58] hover:bg-[#FBF5EB]"><Eye size={15} /></button>
                               {/* Nút Chat 1-1 */}
                               <button
                                 type="button"
                                 onClick={() => navigate(`/merchant/kol-hub?kol=${s.collaboratorId}`)}
-                                className="p-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[#7D715E] hover:text-[#B88E4F] transition cursor-pointer"
-                                title="Mở chat trao đổi 1-1 với KOL"
+                                className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58] hover:bg-[#FBF5EB]"
+                                aria-label="Nhắn tin với KOL"
+                                title="Nhắn tin với KOL"
                               >
-                                <MessageSquare className="w-3.5 h-3.5" />
+                                <MessageSquare className="size-4" aria-hidden="true" />
                               </button>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -929,7 +803,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
               </table>
             </div>
             <footer className="sample-table-footer">
-              <span>Cước Shop đã ghi nhận: <strong>{loading || sampleLoadError ? '—' : `${recordedFreight.toLocaleString('vi-VN')} ₫`}</strong></span>
+              <span>Cước Shop đã ghi nhận: <strong>{loading || sampleLoadError || recordedFreight == null ? '—' : `${recordedFreight.toLocaleString('vi-VN')} ₫`}</strong></span>
               <nav aria-label="Phân trang hàng mẫu">
                 <button type="button" disabled={loading || !!sampleLoadError || currentSamplePage <= 1} onClick={() => setSamplePage(currentSamplePage - 1)}>Trang trước</button>
                 <span aria-live="polite">{currentSamplePage}/{samplePageCount}</span>
@@ -939,126 +813,37 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
           </div>
         )}
 
-        {storeTab !== 'SAMPLES_QUEUE' && <ShopPartnerDataTab kind={storeTab} onInvite={() => setShowInviteModal(true)} />}
+        {storeTab !== 'SAMPLES_QUEUE' && <ShopPartnerDataTab key={storeTab} kind={storeTab} onInvite={() => setShowInviteModal(true)} />}
       </div>
 
       {showInviteModal && <InviteKolModal onClose={() => setShowInviteModal(false)} />}
-      {/* MODAL: TẠO VẬN ĐƠN GHN CHO HÀNG MẪU */}
       {trackingModalItem && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/35 p-3 backdrop-blur-[3px] animate-in fade-in sm:p-5"
-          onClick={() => setTrackingModalItem(null)}
-        >
-          <div
-            className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[680px] flex-col overflow-hidden rounded-[24px] border border-[#EAE4D7] bg-white text-left text-[#1A1612] shadow-2xl animate-in zoom-in-95 sm:max-h-[calc(100dvh-2.5rem)]"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="sample-shipping-title"
-          >
-            <div className="relative z-20 h-0 shrink-0">
-              <button
-                type="button"
-                aria-label="Đóng khung tạo vận đơn"
-                className="absolute right-4 top-5 flex h-9 w-9 items-center justify-center rounded-full border border-[#EAE4D7] bg-white text-[#7D715E] shadow-sm transition hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] cursor-pointer sm:right-6"
-                onClick={() => setTrackingModalItem(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitTracking} className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 overflow-y-auto overscroll-contain bg-[#FAF8F5]/50 p-5 sm:p-7">
-              <div className="-mx-5 -mt-5 mb-5 flex items-center gap-3 border-b border-[#EAE4D7] bg-white py-5 pl-5 pr-16 sm:-mx-7 sm:-mt-7 sm:mb-7 sm:pl-7 sm:pr-20">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                  <Truck className="h-5 w-5" />
-                </div>
-                <div className="min-w-0"><h3 id="sample-shipping-title" className="text-lg font-bold tracking-tight sm:text-xl">Tạo vận đơn hàng mẫu</h3><p className="mt-1 text-xs text-[#7D715E] sm:text-sm">Gửi sản phẩm đến nhà sáng tạo</p></div>
-              </div>
-              <div className="grid grid-cols-1 items-start gap-6">
-              <div className="min-w-0 space-y-4">
-              <h4 className="text-sm font-semibold">Thông tin gửi hàng</h4>
-              <section className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-sm">
-                <div className="flex items-center gap-3 border-b border-[#EAE4D7] px-4 py-4">
-                  <img src={getSafeProductImageUrl(trackingModalItem.product.thumbnail)} onError={handleProductImageError} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] object-cover" />
-                  <div className="min-w-0"><p className="text-[10px] font-medium uppercase tracking-wider text-[#7D715E]">Sản phẩm gửi mẫu</p><p className="mt-1 font-semibold leading-relaxed">{trackingModalItem.product.title}</p></div>
-                </div>
-                <div className="space-y-3 px-4 py-4">
-                  <div><p className="mb-1 text-xs text-[#7D715E]">Người nhận</p><div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1"><span className="font-semibold">{trackingModalItem.recipientName || 'Chưa cập nhật'}</span><span className="text-xs tabular-nums text-[#7D715E]">{trackingModalItem.recipientPhone || 'Chưa cập nhật'}</span></div></div>
-                  <div className="border-t border-[#EAE4D7] pt-3"><p className="mb-1 text-xs text-[#7D715E]">Địa chỉ giao hàng</p><p className="break-words text-[13px] leading-relaxed">{trackingModalItem.shippingAddress}</p></div>
-                </div>
-              </section>
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-4 text-xs">
-                <div><p className="font-semibold">Shop trả phí vận chuyển</p><p className="mt-1 text-[11px] leading-relaxed text-[#7D715E]">Cước GHN được lưu sau khi tạo vận đơn.</p></div>
-                <div className="shrink-0 border-l border-[#EEDFC6] pl-3 text-right"><p className="text-[10px] text-[#7D715E]">KOL thanh toán</p><p className="mt-0.5 text-base font-bold">0 đ</p></div>
-              </div>
-              </div>
-              <div className="min-w-0 space-y-4">
-              <h4 className="text-sm font-semibold">Thiết lập vận chuyển</h4>
-              <div>
-                <label htmlFor="sample-shipping-carrier" className="block text-xs font-semibold text-[#1A1612] mb-1.5">
-                  Đơn vị vận chuyển
-                </label>
-                <select
-                  id="sample-shipping-carrier"
-                  value={carrierInput}
-                  onChange={(e) => setCarrierInput(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]"
-                >
-                  <option value="GHN">Giao Hàng Nhanh (GHN Express)</option>
-                </select>
-              </div>
-
-              {carrierInput === 'GHN' && <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 [&_select]:h-12 [&_select]:rounded-xl [&_select]:py-2 [&_label]:font-semibold [&_p]:text-xs"><SampleGhnEnvironmentPicker value={sampleGhnEnvironment} onChange={setSampleGhnEnvironment} allowLive={trackingModalItem.status !== 'SHIPPED'} disabled={isSubmittingTracking} /></div>}
-              {carrierInput !== 'GHN' ? <div>
-                <label className="block text-xs font-bold text-[#1A1612] mb-1.5">
-                  Mã vận đơn bưu cục
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nhập mã vận đơn do bưu cục cấp"
-                  value={trackingCodeInput}
-                  onChange={(e) => setTrackingCodeInput(e.target.value)}
-                  className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-mono text-[#1A1612] outline-none focus:border-[#C59B58]"
-                  required
-                />
-                <p className="text-[11px] text-[#7D715E] mt-1">
-                  Mã vận đơn phục vụ đối soát giao nhận với đối tác bưu tá.
-                </p>
-              </div> : <p className="flex items-start gap-2 text-xs leading-relaxed text-[#7D715E]"><Clock size={15} className="mt-0.5 shrink-0 text-[#B88E4F]" />GHN cấp mã sau khi tạo thành công. Hạn nộp video bắt đầu khi GHN xác nhận giao hàng.</p>}
-              </div>
-              </div>
-
-              {sampleShippingError && (
-                <div role="alert" className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3.5 text-left">
-                  <p className="m-0 text-xs font-bold text-[#991B1B]">Chưa tạo được vận đơn gửi mẫu</p>
-                  <p className="mb-0 mt-1.5 whitespace-normal break-words text-xs leading-relaxed text-[#7F1D1D]">{sampleShippingError}</p>
-                </div>
-              )}
-              </div>
-              <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[#EAE4D7] bg-white px-5 py-4 sm:px-7">
-                <button
-                  type="button"
-                  onClick={() => setTrackingModalItem(null)}
-                  className="h-10 rounded-lg border border-[#EAE4D7] px-5 text-xs font-semibold text-[#7D715E] transition hover:bg-[#FAF8F5] cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingTracking || (carrierInput !== 'GHN' && !trackingCodeInput.trim())}
-                  className="h-10 rounded-lg bg-[#C59B58] px-5 text-xs font-semibold text-white transition hover:bg-[#B88E4F] cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmittingTracking ? 'Đang phát hành…' : 'Xác nhận tạo vận đơn'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <SampleWaybillDialog
+          sample={trackingModalItem}
+          environment={sampleGhnEnvironment}
+          onEnvironmentChange={value => {
+            setSampleGhnEnvironment(value);
+            setSampleShippingError('');
+          }}
+          manualTracking={carrierInput === 'GHN' ? undefined : { value: trackingCodeInput, onChange: setTrackingCodeInput }}
+          busy={isSubmittingTracking}
+          error={sampleShippingError}
+          onClose={() => {
+            setTrackingModalItem(null);
+            setSampleShippingError('');
+          }}
+          onSubmit={handleSubmitTracking}
+        />
       )}
+
       {detailSampleId && (() => {
         const selected = samples.find(sample => sample.id === detailSampleId);
         return selected ? <SampleRequestDetails sample={selected} onClose={closeSampleDetails}>
+          {(selected.status === 'SHIPPED' || isSandboxShipment(selected)) && <button type="button"
+            onClick={() => { closeSampleDetails(); openTrackingModal(selected); }}
+            className="mt-3 inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#79592C]">
+            <Truck size={15} aria-hidden="true" />{isSandboxShipment(selected) ? 'Đổi môi trường GHN' : 'Tạo mã GHN sandbox'}
+          </button>}
           <SampleSandboxWaybills charges={selected.shippingCharges} primary={isSandboxShipment(selected)} role="shop" />
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] pt-3"><SampleDeadlineExtension request={selected} onSuccess={() => void loadData()} /><SampleViolationAction request={selected} blocked={Boolean(selected.sampleRequestsBlockedAt)} onSuccess={() => void loadData()} /></div>
         </SampleRequestDetails> : null;

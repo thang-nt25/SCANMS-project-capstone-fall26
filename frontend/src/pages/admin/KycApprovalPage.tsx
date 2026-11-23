@@ -8,7 +8,6 @@ import {
   Search,
   CheckCircle2,
   Eye,
-  RefreshCw,
   ExternalLink,
   ShieldCheck,
   Clock,
@@ -25,6 +24,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
+import { kycReviewItems } from '../../utils/kyc-review-items';
 
 function readKycMetadata(value: unknown): Record<string, any> {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, any>;
@@ -69,6 +69,7 @@ export default function KycApprovalPage() {
   // Inspect modal
   const [inspectProfile, setInspectProfile] = useState<any | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [requestedItems, setRequestedItems] = useState<string[]>([]);
   const [reviewActionMode, setReviewActionMode] = useState<'NEEDS_INFO' | 'REJECTED' | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -77,8 +78,6 @@ export default function KycApprovalPage() {
   // TanStack Query: Caching danh sách hồ sơ nâng cấp
   const {
     data: applicationsData,
-    isLoading: loading,
-    refetch: loadApplications,
   } = useQuery({
     queryKey: ['upgrade-applications'],
     queryFn: async () => {
@@ -107,12 +106,14 @@ export default function KycApprovalPage() {
       profileId,
       status,
       reason,
+      items,
     }: {
       profileId: string;
       status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED';
       reason?: string;
+      items?: string[];
     }) => {
-      return kycService.reviewKolApplication(profileId, status, reason);
+      return kycService.reviewKolApplication(profileId, status, reason, items);
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['upgrade-applications'] });
@@ -141,10 +142,11 @@ export default function KycApprovalPage() {
     if (reviewActionMode !== status) {
       setReviewActionMode(status);
       setRejectReason('');
+      setRequestedItems(status === 'NEEDS_INFO' ? inspectProfile?.suggestedReviewItems ?? [] : []);
       return;
     }
 
-    if (!rejectReason.trim()) {
+    if (!rejectReason.trim() && (status === 'REJECTED' || requestedItems.length === 0)) {
       showToast(
         status === 'NEEDS_INFO'
           ? 'Vui lòng nêu rõ các mục cần đối tác bổ sung hoặc chỉnh sửa.'
@@ -154,7 +156,12 @@ export default function KycApprovalPage() {
       return;
     }
 
-    reviewKolMutation.mutate({ profileId, status, reason: rejectReason.trim() });
+    reviewKolMutation.mutate({
+      profileId,
+      status,
+      reason: rejectReason.trim() || 'Vui lòng cập nhật các mục được đánh dấu rồi gửi lại hồ sơ.',
+      items: requestedItems,
+    });
   };
 
   // Chuẩn hóa danh sách KOL
@@ -174,23 +181,51 @@ export default function KycApprovalPage() {
     const frontCardUrl = socialLinks.frontCardUrl || null;
     const backCardUrl = socialLinks.backCardUrl || null;
     const channelUrl = socialLinks.channelUrl || primaryChannel?.channelUrl || null;
+    const channelName = socialLinks.channelName || primaryChannel?.channelName;
+    const reportedFollowers = socialLinks.followerCount ?? primaryChannel?.followerCount;
 
     const idCard = p.idCardNumber?.trim() || '';
-    const isValidIdCardLength = idCard.length === 12;
+    const idCardPattern = p.user?.role === 'CUSTOMER' ? /^\d{12}$/ : /^\d{9,12}$/;
+    const idCardCheck = !idCard ? 'missing' : idCardPattern.test(idCard) ? 'valid' : 'invalid';
+    const bankName = p.bankName?.trim() || '';
+    const accountNumber = p.bankAccountNumber?.trim() || '';
     const accountHolder = (p.bankAccountName || '').trim();
-    const isNameMatched =
-      Boolean(accountHolder) &&
-      Boolean(fullName) &&
-      normalizeVietnameseName(fullName) === normalizeVietnameseName(accountHolder);
+    const profileName = normalizeVietnameseName(p.fullName?.trim() || p.user?.fullName || '');
+    const holderName = normalizeVietnameseName(accountHolder);
+    const bankCheck = !bankName || !accountNumber || !holderName
+      ? 'missing'
+      : !profileName
+        ? 'unchecked'
+        : profileName === holderName ? 'matched' : 'mismatch';
+    const bankCheckLabel = {
+      missing: 'Thiếu thông tin ngân hàng',
+      unchecked: 'Chưa đối chiếu tên',
+      matched: 'Khớp tên chủ tài khoản',
+      mismatch: 'Tên chủ tài khoản lệch',
+    }[bankCheck];
+    const bankCheckTone = bankCheck === 'mismatch'
+      ? 'border-rose-200 bg-rose-50 text-[#B91C1C]'
+      : bankCheck === 'matched'
+        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#795A2D]'
+        : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#655A49]';
 
     const missingRequiredFields = [
       !idCard && 'Số CCCD',
       !frontCardUrl && 'Ảnh CCCD mặt trước',
       !backCardUrl && 'Ảnh CCCD mặt sau',
-      !p.bankName?.trim() && 'Ngân hàng thụ hưởng',
-      !p.bankAccountNumber?.trim() && 'Số tài khoản',
+      !bankName && 'Ngân hàng thụ hưởng',
+      !accountNumber && 'Số tài khoản',
       !accountHolder && 'Tên chủ tài khoản',
       !channelUrl && 'Đường dẫn kênh nội dung',
+    ].filter(Boolean);
+    const suggestedReviewItems = [
+      idCardCheck !== 'valid' && 'Số CCCD',
+      !frontCardUrl && 'Ảnh CCCD mặt trước',
+      !backCardUrl && 'Ảnh CCCD mặt sau',
+      !channelName && 'Tên kênh chính',
+      !channelUrl && 'Liên kết kênh chính',
+      (reportedFollowers == null || (p.user?.role === 'CUSTOMER' && Number(reportedFollowers) <= 0)) && 'Số người theo dõi',
+      !socialLinks.channelProofUrl && 'Ảnh quản trị kênh',
     ].filter(Boolean);
 
     return {
@@ -217,12 +252,13 @@ export default function KycApprovalPage() {
           ? 'bg-rose-100 text-rose-800'
           : 'bg-[#F3EFE6] text-[#7D715E]',
       idCardNumber: idCard || 'Chưa cung cấp',
-      isValidIdCardLength,
+      idCardCheck,
       taxCode: p.taxCode || 'Chưa khai báo',
-      bankName: p.bankName || 'Chưa cung cấp',
-      accountNumber: p.bankAccountNumber || 'Chưa cung cấp',
+      bankName: bankName || 'Chưa cung cấp',
+      accountNumber: accountNumber || 'Chưa cung cấp',
       accountHolder: accountHolder || 'Chưa cung cấp',
-      isNameMatched,
+      bankCheckLabel,
+      bankCheckTone,
       bio: p.bio || '',
       frontCardUrl,
       backCardUrl,
@@ -233,6 +269,7 @@ export default function KycApprovalPage() {
       followerCount: socialLinks.followerCount ?? primaryChannel?.followerCount ?? p.totalFollowers ?? 0,
       socialChannels,
       missingRequiredFields,
+      suggestedReviewItems,
       channelsList:
         socialLinks.channels && socialLinks.channels.length > 0
           ? socialLinks.channels
@@ -390,40 +427,28 @@ export default function KycApprovalPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
+            label: 'Tổng hồ sơ',
+            value: totalCount,
+            filter: 'ALL' as const,
+            icon: <CreditCard className="h-4 w-4 text-[#8F682E]" />,
+          },
+          {
             label: 'Chờ thẩm định',
             value: pendingCount,
             filter: 'UNVERIFIED' as const,
             icon: <Clock className="h-4 w-4 text-[#D97706]" />,
-            accentBorder: 'border-l-4 border-l-[#D97706]',
-            iconBox: 'bg-amber-50 border-amber-200',
-            valueColor: 'text-[#D97706]',
           },
           {
             label: 'Đã xác minh',
             value: verifiedCount,
             filter: 'VERIFIED' as const,
             icon: <CheckCircle2 className="h-4 w-4 text-[#059669]" />,
-            accentBorder: 'border-l-4 border-l-[#059669]',
-            iconBox: 'bg-emerald-50 border-emerald-200',
-            valueColor: 'text-[#1A1612]',
           },
           {
             label: 'Cần bổ sung / Từ chối',
             value: rejectedCount,
             filter: 'REJECTED' as const,
             icon: <AlertCircle className="h-4 w-4 text-[#DC2626]" />,
-            accentBorder: 'border-l-4 border-l-[#DC2626]',
-            iconBox: 'bg-rose-50 border-rose-200',
-            valueColor: 'text-[#DC2626]',
-          },
-          {
-            label: 'Tổng hồ sơ',
-            value: totalCount,
-            filter: 'ALL' as const,
-            icon: <CreditCard className="h-4 w-4 text-[#B88E4F]" />,
-            accentBorder: 'border-l-4 border-l-[#C59B58]',
-            iconBox: 'bg-[#FBF5EB] border-[#EEDFC6]',
-            valueColor: 'text-[#1A1612]',
           },
         ].map((stat) => (
           <button
@@ -434,100 +459,79 @@ export default function KycApprovalPage() {
               setFilterStatus(stat.filter);
               setSearch('');
             }}
-            className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition cursor-pointer min-h-[88px] ${stat.accentBorder} ${
+            className={`flex min-h-24 min-w-0 cursor-pointer flex-col justify-between gap-2 rounded-2xl border p-3 text-left transition-colors sm:p-4 ${
               filterStatus === stat.filter
-                ? 'border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/25'
+                ? 'border-[#C59B58] bg-[#FBF5EB]'
                 : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">{stat.label}</span>
-              <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border ${stat.iconBox}`}>
+              <span className="min-w-0 text-xs font-semibold leading-snug text-[#655A49]">{stat.label}</span>
+              <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#FAF8F5]">
                 {stat.icon}
               </span>
             </div>
-            <div className="mt-2">
-              <strong className={`text-2xl font-bold tabular-nums ${stat.valueColor}`}>{stat.value}</strong>
-            </div>
+            <strong className="text-2xl font-bold tabular-nums text-[#1A1612]">{stat.value.toLocaleString('vi-VN')}</strong>
           </button>
         ))}
       </div>
 
       {/* Bộ Lọc Tìm Kiếm & Trạng Thái */}
-      <Card className="grid grid-cols-1 items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3.5 shadow-none sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_300px]">
+      <Card className="grid grid-cols-1 items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3 shadow-none sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_auto]">
         <div className="min-w-0 sm:col-span-2 xl:col-span-1">
         <Input
           aria-label="Tìm hồ sơ đối tác"
-          placeholder="Tìm theo tên đối tác, email, SĐT, số CCCD hoặc tên kênh..."
+          placeholder="Tìm hồ sơ đối tác"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           clearable
           onClear={() => setSearch('')}
           icon={<Search className="h-4 w-4 text-[#7D715E]" />}
-          className="border-[#EAE4D7] bg-white focus-within:border-[#C59B58] focus-within:ring-[#C59B58]/15"
+          className="h-11 rounded-lg border-[#EAE4D7] bg-white focus-within:border-[#C59B58] focus-within:ring-[#C59B58]/15 [&>button]:size-10"
         />
         </div>
 
         <Select
           aria-label="Lọc trạng thái thẩm định"
           portal
-          className="w-full"
+          className="h-11 w-full rounded-lg"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as any)}
           options={[
-            { value: 'ALL', label: 'Tất cả trạng thái hồ sơ' },
+            { value: 'ALL', label: 'Tất cả trạng thái' },
             { value: 'UNVERIFIED', label: 'Chờ thẩm định' },
             { value: 'VERIFIED', label: 'Đã xác minh' },
             { value: 'REJECTED', label: 'Cần bổ sung / Từ chối' },
           ]}
         />
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] cursor-pointer"
-          >
-            <Download className="h-4 w-4 shrink-0" />
-            <span>Xuất báo cáo</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => loadApplications()}
-            disabled={loading}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer"
-          >
-            <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6]"
+        >
+          <Download className="h-4 w-4 shrink-0" />
+          <span>Xuất báo cáo</span>
+        </button>
       </Card>
 
       {/* Bảng Danh Sách Hồ Sơ Đối Tác */}
       <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3 sm:px-5">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <h2 className="m-0 text-xs font-bold uppercase tracking-wider text-[#1A1612]">
-              Danh sách hồ sơ đối tác (KOL/KOC)
-            </h2>
-          </div>
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-[#D97706] whitespace-nowrap">
-            {pendingCount} chờ thẩm định
+          <h2 className="m-0 text-sm font-semibold text-[#1A1612]">Hồ sơ đối tác</h2>
+          <span className="whitespace-nowrap text-xs tabular-nums text-[#7D715E]" aria-live="polite">
+            {filteredKols.length.toLocaleString('vi-VN')} kết quả
           </span>
         </div>
 
         <div className="max-w-full overflow-x-auto" role="region" aria-label="Danh sách hồ sơ đối tác" tabIndex={0}>
-          <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-xs">
+          <table className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
             <colgroup>
-              <col className="w-[19%]" />
               <col className="w-[20%]" />
-              <col className="w-[18%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[12%]" />
+              <col className="w-[22%]" />
+              <col className="w-[19%]" />
               <col className="w-[11%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5]">
@@ -535,13 +539,10 @@ export default function KycApprovalPage() {
                   Đối tác tiếp thị
                 </th>
                 <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
-                  Định danh & Liên hệ
+                  Định danh & liên hệ
                 </th>
                 <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
                   Kênh truyền thông
-                </th>
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
-                  Followers
                 </th>
                 <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
                   Hạng khởi điểm
@@ -557,14 +558,11 @@ export default function KycApprovalPage() {
             <tbody className="divide-y divide-[#F1ECE3]">
               {filteredKols.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#7D715E]">
+                  <td colSpan={6} className="py-12 text-center text-[#7D715E]">
                     <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-[#FAF8F5] text-[#B88E4F]">
                       <Search className="h-5 w-5" />
                     </div>
                     <div className="font-bold text-[#1A1612]">Không tìm thấy hồ sơ đối tác</div>
-                    <div className="mt-1 text-[11px] text-[#7D715E]">
-                      Thử đổi từ khóa tìm kiếm hoặc chuyển bộ lọc trạng thái.
-                    </div>
                   </td>
                 </tr>
               ) : (
@@ -633,24 +631,20 @@ export default function KycApprovalPage() {
                           <span className="text-xs text-[#7D715E]">{u.channelName}</span>
                         )}
                       </div>
-                      
+                      <div className="mt-1 text-[11px] tabular-nums text-[#7D715E]">
+                        <span className="font-semibold text-[#1A1612]">{Number(u.followerCount).toLocaleString('vi-VN')}</span> người theo dõi
+                      </div>
                     </td>
 
-                    {/* Cột 4: Followers */}
-                    <td className="px-4 py-3.5 align-middle text-xs font-bold tabular-nums text-[#1A1612]">
-                      {Number(u.followerCount).toLocaleString('vi-VN')}
-                      <span className="block text-[10px] font-normal text-[#7D715E]">người theo dõi</span>
-                    </td>
-
-                    {/* Cột 5: Hạng khởi điểm */}
+                    {/* Hạng khởi điểm */}
                     <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 font-semibold text-[11px] text-[#8F682E]">
                         Đồng · {u.commissionRate}
                       </span>
                     </td>
 
-                    {/* Cột 6: Trạng thái */}
-                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                    {/* Trạng thái */}
+                    <td className="px-3 py-3.5 align-middle whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${
                           u.kycStatus === 'VERIFIED'
@@ -673,8 +667,8 @@ export default function KycApprovalPage() {
                       </span>
                     </td>
 
-                    {/* Cột 7: Thao tác */}
-                    <td className="px-4 py-3.5 align-middle text-right whitespace-nowrap">
+                    {/* Thao tác */}
+                    <td className="px-3 py-3.5 align-middle text-right whitespace-nowrap">
                       <Button
                         variant="gold"
                         size="sm"
@@ -718,9 +712,9 @@ export default function KycApprovalPage() {
         >
           <div className="flex flex-col gap-3 text-left text-xs overflow-y-auto pr-1">
             {/* Thanh thông tin đối tác & Kết quả đối soát gọn trên 1 hàng */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 shadow-2xs">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] font-bold text-sm text-[#8F682E]">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 sm:px-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-sm font-bold text-[#8F682E]">
                   {inspectProfile.avatarUrl ? (
                     <img src={inspectProfile.avatarUrl} onError={handleAvatarImageError} alt={inspectProfile.fullName} className="h-full w-full object-cover" />
                   ) : (
@@ -728,7 +722,7 @@ export default function KycApprovalPage() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <strong className="text-sm font-bold text-[#1A1612] truncate">{inspectProfile.fullName}</strong>
                     <span
                       className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ${
@@ -744,36 +738,20 @@ export default function KycApprovalPage() {
                       {inspectProfile.kycLabel}
                     </span>
                   </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#7D715E]">
-                    <span>SĐT: <strong className="text-[#1A1612]">{inspectProfile.phone}</strong></span>
-                    <span>·</span>
-                    <span>Hạng kích hoạt: <strong className="text-[#8F682E]">Đồng (10%)</strong></span>
-                  </div>
+                  <p className="mt-0.5 text-[11px] text-[#7D715E]">SĐT: {inspectProfile.phone}</p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap ${
-                  inspectProfile.isNameMatched
-                    ? 'bg-emerald-50 text-[#059669] border-emerald-200'
-                    : 'bg-rose-50 text-[#DC2626] border-rose-200'
-                }`}>
-                  {inspectProfile.isNameMatched ? 'Khớp tên ngân hàng' : 'Lệch tên ngân hàng'}
-                </span>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap ${
-                  inspectProfile.isValidIdCardLength
-                    ? 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
-                    : 'bg-amber-50 text-[#D97706] border-amber-200'
-                }`}>
-                  {inspectProfile.isValidIdCardLength ? 'CCCD hợp lệ' : 'Kiểm tra số CCCD'}
-                </span>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap ${
-                  inspectProfile.frontCardUrl && inspectProfile.backCardUrl
-                    ? 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
-                    : 'bg-rose-50 text-[#DC2626] border-rose-200'
-                }`}>
-                  {inspectProfile.frontCardUrl && inspectProfile.backCardUrl ? 'Đủ 2 mặt CCCD' : 'Thiếu ảnh CCCD'}
-                </span>
+              <div className="flex flex-wrap items-center gap-1.5 [&>span]:rounded-md [&>span]:border [&>span]:px-2 [&>span]:py-1 [&>span]:text-[11px] [&>span]:font-medium">
+                <span className={inspectProfile.bankCheckTone}>{inspectProfile.bankCheckLabel}</span>
+                {inspectProfile.idCardCheck !== 'valid' && (
+                  <span className="border-amber-200 bg-amber-50 text-[#92400E]">
+                    {inspectProfile.idCardCheck === 'missing' ? 'Thiếu số CCCD / CMND' : 'Số CCCD / CMND sai định dạng'}
+                  </span>
+                )}
+                {(!inspectProfile.frontCardUrl || !inspectProfile.backCardUrl) && (
+                  <span className="border-amber-200 bg-amber-50 text-[#92400E]">Thiếu ảnh giấy tờ</span>
+                )}
               </div>
             </div>
 
@@ -800,14 +778,14 @@ export default function KycApprovalPage() {
                         {inspectProfile.idCardNumber}
                       </strong>
                     </div>
-                    <button
+                    {inspectProfile.idCardCheck !== 'missing' && <button
                       type="button"
                       onClick={() => copyToClipboard(inspectProfile.idCardNumber, 'Số CCCD')}
                       className="p-1 rounded-md hover:bg-white text-[#7D715E] hover:text-[#1A1612] transition shrink-0 cursor-pointer"
                       title="Sao chép số CCCD"
                     >
                       {copiedText === 'Số CCCD' ? <Check className="w-3.5 h-3.5 text-[#059669]" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
+                    </button>}
                   </div>
 
                   <div id="kyc-review-tax" className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
@@ -949,13 +927,9 @@ export default function KycApprovalPage() {
                     </strong>
                   </div>
                   <span
-                    className={`shrink-0 whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
-                      inspectProfile.isNameMatched
-                        ? 'border-emerald-200 bg-emerald-50 text-[#059669]'
-                        : 'border-rose-200 bg-rose-50 text-[#DC2626]'
-                    }`}
+                    className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${inspectProfile.bankCheckTone}`}
                   >
-                    {inspectProfile.isNameMatched ? 'Khớp tên' : 'Lệch tên'}
+                    {inspectProfile.bankCheckLabel}
                   </span>
                 </div>
 
@@ -1033,23 +1007,38 @@ export default function KycApprovalPage() {
           {/* Khung nhập lý do GHIM CỐ ĐỊNH ngay trên footer (không bị trôi khi cuộn) */}
           {reviewActionMode && (
             <div
-              className={`mt-3 shrink-0 space-y-2 rounded-2xl border p-3.5 ${
+              className={`mt-3 max-h-[35dvh] shrink-0 space-y-2 overflow-y-auto rounded-2xl border p-3.5 ${
                 reviewActionMode === 'NEEDS_INFO'
                   ? 'border-[#EEDFC6] bg-[#FBF5EB]'
                   : 'border-rose-200 bg-rose-50/70'
               }`}
             >
+              <fieldset className="@container min-w-0">
+                <legend className="mb-2 text-xs font-semibold text-[#1A1612]">Mục cần đối tác chỉnh sửa</legend>
+                <div className="grid auto-rows-fr grid-cols-2 gap-2 @min-[820px]:grid-cols-5">
+                  {kycReviewItems.map(({ label }) => (
+                    <label key={label} className="flex min-h-9 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1.5 text-xs leading-snug text-[#655A49] transition-colors hover:border-[#C59B58] focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-[#B88E4F] has-[:checked]:border-[#C59B58] has-[:checked]:bg-[#FBF5EB] has-[:checked]:text-[#231D15]">
+                      <input type="checkbox" checked={requestedItems.includes(label)} onChange={event => {
+                        const checked = event.target.checked;
+                        setRequestedItems(items => checked ? [...items, label] : items.filter(item => item !== label));
+                      }} className="size-3.5 shrink-0 accent-[#B88E4F]" />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label
+                htmlFor="kyc-review-note"
                 className={`block text-xs font-bold ${
                   reviewActionMode === 'NEEDS_INFO' ? 'text-[#8F682E]' : 'text-[#DC2626]'
                 }`}
               >
                 {reviewActionMode === 'NEEDS_INFO'
-                  ? 'Nội dung yêu cầu đối tác bổ sung'
-                  : 'Lý do từ chối hồ sơ'}
+                  ? 'Ghi chú cho đối tác'
+                  : 'Lý do từ chối hồ sơ *'}
               </label>
               <textarea
-                autoFocus
+                id="kyc-review-note"
                 rows={2}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}

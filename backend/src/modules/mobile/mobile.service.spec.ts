@@ -84,6 +84,10 @@ describe('Mobile bootstrap HTTP contract', () => {
         role === UserRole.SYSTEM_ADMIN,
       );
       expect(response.body.data).not.toHaveProperty('passwordHash');
+      expect(response.body.data.capabilities).not.toContain('campaigns');
+      expect(response.body.data.capabilities.includes('kyc')).toBe(
+        role !== UserRole.SHOP_MANAGER,
+      );
       if (role !== UserRole.SHOP_MANAGER)
         expect(prisma.store.findMany).not.toHaveBeenCalled();
     },

@@ -146,7 +146,10 @@ describe('AffiliateDealsService', () => {
     expect(tx.exclusiveDealProposal.create).not.toHaveBeenCalled();
   });
 
-  it('sends a verified KOL proposal into the shop chat without auto-approving partnership', async () => {
+  it.each([
+    [{ targetRevenue: 10000000, targetOrders: 80 }, { targetRevenue: 10000000, targetOrders: null }],
+    [{ targetOrders: 80 }, { targetRevenue: null, targetOrders: 80 }],
+  ])('sends a verified KOL proposal with KPI %j into chat without auto-approving', async (input, kpi) => {
     prisma.user.findUnique.mockResolvedValue({
       id: collaboratorId,
       role: 'COLLABORATOR',
@@ -192,10 +195,9 @@ describe('AffiliateDealsService', () => {
     });
 
     const result = await service.createProposal(collaboratorId, {
-        targetRevenue: 10000000,
-        commitmentDays: 30,
+      ...input,
+      commitmentDays: 30,
       videoReviewCommitment: true,
-      targetOrders: 80,
       productId,
       proposedCommissionRate: 12,
       salesCommitment: 'Tạo 4 video, mục tiêu 80 đơn hàng.',
@@ -205,6 +207,7 @@ describe('AffiliateDealsService', () => {
     expect(tx.exclusiveDealProposal.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          ...kpi,
           proposedCommissionRate: expect.anything(),
         }),
       }),
@@ -214,6 +217,7 @@ describe('AffiliateDealsService', () => {
         data: expect.objectContaining({ conversationId }),
       }),
     );
+    expect(JSON.parse(tx.chatMessage.create.mock.calls[0][0].data.messageText)).toMatchObject(kpi);
     expect(chatGateway.broadcastNewMessage).toHaveBeenCalledWith(
       conversationId,
       expect.objectContaining({ id: 'message-1' }),

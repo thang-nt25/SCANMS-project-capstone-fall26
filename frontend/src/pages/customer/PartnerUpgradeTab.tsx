@@ -336,6 +336,7 @@ export const PartnerUpgradeTab: React.FC = () => {
               ? kolApp?.rejectionReason || kolApp?.socialLinksJson?.rejectionReason || 'Vui lòng kiểm tra lại thông tin'
               : undefined
           }
+          requestedItems={isNeedsInfo || isRejected ? kolApp?.socialLinksJson?.requestedItems : undefined}
           status={reviewStatus}
         />
       )}

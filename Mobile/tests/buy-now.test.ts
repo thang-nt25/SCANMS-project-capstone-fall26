@@ -143,7 +143,12 @@ test("quote uses server price and selected line only, then GHN and a manually en
         return Response.json({ success: true, data: { totalFee: 25000 } });
       }
       assert.equal(path, "/coupons/validate");
-      assert.equal(body.code, "KOL10");
+      assert.deepEqual(body, {
+        code: "KOL10",
+        storeId,
+        customerPhone: payload.customerPhone,
+        items: [line],
+      });
       return Response.json({
         success: true,
         data: { valid: true, code: "KOL10", discountAmount: 160000 },
@@ -172,6 +177,46 @@ test("quote uses server price and selected line only, then GHN and a manually en
     "/coupons/validate",
   ]);
 });
+test("without a manually entered code, checkout keeps the full GHN fee and never calls coupon APIs", async () => {
+  const paths: string[] = [];
+  const client = {
+    async request(path: string) {
+      paths.push(path);
+      if (path === "/orders/validate-cart")
+        return {
+          isValid: true,
+          warnings: [],
+          items: [{
+            productId,
+            currentPrice: 800000,
+            stockQuantity: 3,
+            isAvailable: true,
+            store: { id: storeId },
+          }],
+        };
+      assert.equal(path, "/shipping/ghn/quote-address");
+      return { totalFee: 25000 };
+    },
+  };
+  assert.deepEqual(await quotePurchase(client, {
+    line,
+    storeId,
+    address: payload.shippingAddress,
+    phone: payload.customerPhone,
+    couponCode: "   ",
+  }), {
+    subtotal: 1600000,
+    shippingFee: 25000,
+    discount: 0,
+    total: 1625000,
+    couponCode: undefined,
+  });
+  assert.deepEqual(paths, [
+    "/orders/validate-cart",
+    "/shipping/ghn/quote-address",
+  ]);
+});
+
 test("unavailable stock or wrong shop stops the quote before shipping/payment", async () => {
   let calls = 0;
   const client = {

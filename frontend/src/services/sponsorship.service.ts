@@ -45,12 +45,16 @@ export const sponsorshipService = {
     return unwrap(await api.get('/sponsored-placements/pricing', { headers: { 'x-skip-cache': 'true' } }));
   },
   async list(page: number, status: string): Promise<SponsorshipPage> {
-    return unwrap(
+    const history = unwrap<SponsorshipPage>(
       await api.get("/sponsored-placements", {
         params: { page, ...(status ? { status } : {}) },
         headers: { "x-skip-cache": "true" },
       }),
     );
+    if (!Array.isArray(history?.items) || !Number.isInteger(history.total) || !Number.isInteger(history.totalPages)) {
+      throw new Error('Không tải được lịch sử đăng ký.');
+    }
+    return history;
   },
   async request(data: SponsorshipRequest) {
     return unwrap<Sponsorship>(await api.post("/sponsored-placements", data));

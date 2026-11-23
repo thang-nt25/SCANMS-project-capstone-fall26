@@ -48,6 +48,12 @@ export interface MonthlyRewardOrders {
   totalOrders: number;
   items: { id: string; code: string; completedAt: string | null; revenue: string; products: { title: string; imageUrl: string | null; quantity: number }[] }[];
 }
+export interface RewardPolicyHistory {
+  items: { id: string; yearMonth: string; name: string; targetRevenue: string; rewardAmount: string; status: string; createdAt: string; reviewNote?: string | null }[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 const unwrap = <T>(response: { data?: unknown }): T =>
   ((response.data as { data?: unknown })?.data ??
     response.data ??
@@ -77,6 +83,9 @@ async function mutate(work: () => Promise<unknown>) {
   try { return await work(); } finally { invalidate(); }
 }
 export const monthlyRewards = {
+  async policyHistory(storeId: string, page = 1): Promise<RewardPolicyHistory> {
+    return unwrap<RewardPolicyHistory>(await api.get(`/monthly-rewards/stores/${storeId}/policies`, { params: { page }, headers: { 'x-skip-cache': 'true' } }));
+  },
   cached,
   invalidate,
   async myOrders(policyId: string): Promise<MonthlyRewardOrders> {

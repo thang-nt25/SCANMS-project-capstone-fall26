@@ -6,7 +6,13 @@ export const Sample = z.object({
   createdAt: z.string().optional(),
   contentType: z.string().nullish(),
   socialChannelId: z.string().nullish(),
-  socialChannel: z.object({ id: z.string(), channelName: z.string(), platformName: z.string() }).nullish(),
+  socialChannel: z
+    .object({
+      id: z.string(),
+      channelName: z.string().nullish(),
+      platformName: z.string(),
+    })
+    .nullish(),
   socialChannelNameSnapshot: z.string().nullish(),
   socialPlatformSnapshot: z.string().nullish(),
   productVariant: z.object({ id: z.string(), name: z.string() }).nullish(),
@@ -17,8 +23,23 @@ export const Sample = z.object({
   recipientPhone: z.string().nullish(),
   shippingAddress: z.string(),
   trackingNumber: z.string().nullish(),
+  ghnOrderCode: z.string().nullish(),
   carrier: z.string().nullish(),
   deadlineAt: z.string().nullish(),
+  revisionDeadlineAt: z.string().nullish(),
+  videoRejectionReason: z.string().nullish(),
+  appealReason: z.string().nullish(),
+  videoUrl: z.string().nullish(),
+  reviewVideoUrl: z.string().nullish(),
+  shippingCharges: z
+    .array(
+      z.object({
+        environment: z.string(),
+        trackingNumber: z.string(),
+        amount: z.union([z.string(), z.number()]).nullish(),
+      }),
+    )
+    .optional(),
   collaboratorId: z.string(),
   rejectedReason: z.string().nullish(),
   deliveryIssueReason: z.string().nullish(),

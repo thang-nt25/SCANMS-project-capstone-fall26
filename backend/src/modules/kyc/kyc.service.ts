@@ -83,6 +83,10 @@ export class KycService {
       const existingMeta = (profile?.socialLinksJson as any) || {};
       const updatedMeta = {
         ...existingMeta,
+        reviewStatus: 'PENDING_APPROVAL',
+        needsInfo: false,
+        rejectionReason: null,
+        requestedItems: [],
         ...(dto.frontCardUrl ? { frontCardUrl: dto.frontCardUrl } : {}),
         ...(dto.backCardUrl ? { backCardUrl: dto.backCardUrl } : {}),
         ...(dto.channelProofUrl ? { channelProofUrl: dto.channelProofUrl } : {}),
@@ -686,6 +690,7 @@ export class KycService {
             reviewStatus: 'VERIFIED',
             needsInfo: false,
             rejectionReason: null,
+            requestedItems: [],
             channelsVerified: true,
             verifiedAt: new Date().toISOString(),
           },
@@ -710,72 +715,46 @@ export class KycService {
       };
     }
 
-    if (dto.status === 'NEEDS_INFO') {
-      const reasonText =
-        dto.note?.trim() ||
-        'Vui lòng kiểm tra, bổ sung ảnh hoặc thông tin chính xác để hoàn tất thẩm định.';
+    const needsInfo = dto.status === 'NEEDS_INFO';
+    const requestedItems = [...new Set((dto.requestedItems ?? []).map(item => item.trim()).filter(Boolean))];
+    const note = dto.note?.trim() || (needsInfo
+      ? 'Vui lòng bổ sung thông tin để tiếp tục thẩm định.'
+      : 'Hồ sơ nâng cấp KOL chưa đáp ứng điều kiện của SCANMS.');
+    const message = requestedItems.length
+      ? `${note}\n\nMục cần chỉnh sửa:\n${requestedItems.map(item => `• ${item}`).join('\n')}`
+      : note;
 
-      const updatedProfile = await this.prisma.collaboratorProfile.update({
+    const updatedProfile = await this.prisma.$transaction(async tx => {
+      const updated = await tx.collaboratorProfile.update({
         where: { id: profileId },
         data: {
-          kycStatus: KycStatus.UNVERIFIED,
+          kycStatus: needsInfo ? KycStatus.UNVERIFIED : KycStatus.REJECTED,
           socialLinksJson: {
             ...currentJson,
-            reviewStatus: 'NEEDS_INFO',
-            needsInfo: true,
-            rejectionReason: reasonText,
+            reviewStatus: dto.status,
+            needsInfo,
+            rejectionReason: note,
+            requestedItems,
             reviewedAt: new Date().toISOString(),
           },
         },
       });
 
-      await this.prisma.notification.create({
+      await tx.notification.create({
         data: {
           userId: profile.userId,
-          title: 'Hồ sơ đối tác KOL cần bổ sung thông tin',
-          message: reasonText,
-          type: 'KOL_NEEDS_INFO',
+          title: needsInfo ? 'Hồ sơ đối tác KOL cần bổ sung thông tin' : 'Hồ sơ đối tác KOL đã bị từ chối',
+          message,
+          type: needsInfo ? 'KOL_NEEDS_INFO' : 'KOL_REJECTED',
         },
       });
 
-      return {
-        success: true,
-        message: 'Đã gửi yêu cầu bổ sung hồ sơ cho đối tác',
-        profile: updatedProfile,
-      };
-    }
-
-    // REJECTED (Từ chối vĩnh viễn)
-    const rejectText =
-      dto.note?.trim() ||
-      'Hồ sơ nâng cấp KOL chưa đáp ứng điều kiện tiêu chuẩn của hệ thống SCANMS.';
-
-    const updatedProfile = await this.prisma.collaboratorProfile.update({
-      where: { id: profileId },
-      data: {
-        kycStatus: KycStatus.REJECTED,
-        socialLinksJson: {
-          ...currentJson,
-          reviewStatus: 'REJECTED',
-          needsInfo: false,
-          rejectionReason: rejectText,
-          reviewedAt: new Date().toISOString(),
-        },
-      },
-    });
-
-    await this.prisma.notification.create({
-      data: {
-        userId: profile.userId,
-        title: 'Hồ sơ đối tác KOL đã bị từ chối',
-        message: rejectText,
-        type: 'KOL_REJECTED',
-      },
+      return updated;
     });
 
     return {
       success: true,
-      message: 'Đã từ chối hồ sơ KOL thành công',
+      message: needsInfo ? 'Đã gửi yêu cầu bổ sung hồ sơ cho đối tác' : 'Đã từ chối hồ sơ KOL thành công',
       profile: updatedProfile,
     };
   }

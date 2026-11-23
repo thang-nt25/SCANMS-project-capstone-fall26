@@ -6,15 +6,15 @@ import {
   Trophy,
   Plus,
   Search,
-  CheckCircle2,
   Copy,
   Check,
   X,
-  Clock,
-  Ticket,
   XCircle,
+  Ticket,
+  MoreHorizontal,
 } from 'lucide-react';
 import api from '../../services/api';
+import { Modal } from '../ui/Modal';
 import { storeService } from '../../services/store.service';
 import { couponService } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
@@ -28,6 +28,13 @@ interface CreatorCoupon {
   discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
   discountValue: number;
   usageCount: number;
+  usageLimitTotal?: number | null;
+  minimumOrderAmount?: number | string | null;
+  maximumDiscountAmount?: number | string | null;
+  scopeType?: string;
+  blockedReason?: string | null;
+  couponProducts?: { product: { title: string } }[];
+  couponCategories?: { categoryName: string }[];
   budgetTotal?: number;
   budgetUsed?: number;
   status: string;
@@ -39,6 +46,7 @@ interface CreatorCoupon {
     id: string;
     fullName: string;
     avatarUrl?: string;
+    collaboratorProfile?: { avatarUrl?: string | null };
     email?: string;
   };
   createdAt: string;
@@ -47,15 +55,20 @@ interface CreatorCoupon {
 let lastCreatorIncentivesSnapshot: { coupons: CreatorCoupon[]; partnerKols: any[]; currentStoreId: string; } | null = null;
 registerPrivateCacheReset(() => { lastCreatorIncentivesSnapshot = null; });
 
-export function ShopCreatorIncentivesTab() {
+export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCouponCount }: { section?: 'coupons' | 'milestones'; hideNavigation?: boolean; onCouponCount?: (count: number) => void } = {}) {
   const [searchParams] = useSearchParams();
-  const [activeSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
+  const [localSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
+  const activeSection = section ?? localSection;
   const [coupons, setCoupons] = useState<CreatorCoupon[]>(() => lastCreatorIncentivesSnapshot?.coupons || []);
   const [currentStoreId, setCurrentStoreId] = useState<string>(() => lastCreatorIncentivesSnapshot?.currentStoreId || '');
+  useEffect(() => { onCouponCount?.(coupons.filter(c => c.benefitType !== 'SHIPPING' && (c.collaborator || c.collaboratorId)).length); }, [coupons, onCouponCount]);
   const [loading, setLoading] = useState<boolean>(() => !lastCreatorIncentivesSnapshot);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [detailCoupon, setDetailCoupon] = useState<CreatorCoupon | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Modal states
@@ -247,11 +260,17 @@ export function ShopCreatorIncentivesTab() {
     }
   };
 
+  const couponState = (c: CreatorCoupon) => c.status === 'BLOCKED' && c.blockedReason?.startsWith('Đã thay thế bởi mã định danh mới:') ? 'REPLACED' : c.status === 'ACTIVE' && c.expiresAt && Date.parse(c.expiresAt) <= Date.now() ? 'EXPIRED' : c.status;
+  const statusNames: Record<string, string> = { REPLACED: 'Đã thay thế', ACTIVE: 'Đang hoạt động', PENDING_APPROVAL: 'Chờ duyệt', PAUSED: 'Tạm dừng', REJECTED: 'Đã từ chối', EXPIRED: 'Hết hạn', BLOCKED: 'Đã khóa', DELETED: 'Đã xóa' };
+  const scopeName = (c: CreatorCoupon) => c.scopeType === 'STORE_WIDE' ? 'Toàn Shop' : c.couponProducts?.length ? c.couponProducts.map(item => item.product.title).join(', ') : c.couponCategories?.length ? c.couponCategories.map(item => item.categoryName).join(', ') : 'Chưa có phạm vi';
+  const formatMoney = (value: number | string) => `${Number(value).toLocaleString('vi-VN')} ₫`;
+  useEffect(() => { setPage(1); }, [searchQuery, statusFilter]);
   // Filtered coupons: Lọc bỏ voucher freeship / voucher sàn rác cũ, chỉ hiển thị Coupon KOC Attribution hợp lệ
   const filteredCoupons = coupons.filter((c: any) => {
-    if (c.benefitType === 'SHIPPING' || Number(c.discountValue) >= 100) return false;
+    if (c.benefitType === 'SHIPPING' || (c.discountType === 'PERCENTAGE' && Number(c.discountValue) >= 100)) return false;
     if (!c.collaborator && !c.collaboratorId) return false;
 
+    if (statusFilter !== 'ALL' && couponState(c) !== statusFilter) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -261,13 +280,16 @@ export function ShopCreatorIncentivesTab() {
     );
   });
 
+  const pageCount = Math.max(1, Math.ceil(filteredCoupons.length / 10));
+  const currentPage = Math.min(page, pageCount);
+  const pageCoupons = filteredCoupons.slice((currentPage - 1) * 10, currentPage * 10);
   return (
     <div className="space-y-4 animate-in fade-in-50 duration-200">
       {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm text-[#DC2626]">
         {loadError}<button type="button" disabled={isRefreshing} onClick={() => void loadData(true)} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
       </div>}
       {/* Sub-navigation tabs: Chuẩn 2 Trụ Cột Đãi Ngộ KOC */}
-      <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+      {!hideNavigation && <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="w-full rounded-2xl border border-[#EAE4D7] bg-white p-2" role="group" aria-label="Chức năng đãi ngộ KOL">
         <div className="relative grid grid-cols-2 items-stretch gap-4 before:pointer-events-none before:absolute before:bottom-2 before:left-1/2 before:top-2 before:w-px before:-translate-x-1/2 before:bg-[#EAE4D7]">
           <button
@@ -278,7 +300,7 @@ export function ShopCreatorIncentivesTab() {
             <Tag className={`w-3.5 h-3.5 ${activeSection === 'coupons' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
             <span>Mã ưu đãi KOC</span>
             <span className="inline-flex min-w-5 items-center justify-center rounded-md bg-[#F3EFE6] px-1.5 py-0.5 text-[10px] leading-4 text-[#7D715E] tabular-nums">
-              {filteredCoupons.length}
+              {coupons.filter(c => c.benefitType !== 'SHIPPING' && (c.collaborator || c.collaboratorId)).length}
             </span>
           </button>
 
@@ -295,22 +317,27 @@ export function ShopCreatorIncentivesTab() {
       </div>
 
       </div>
+      }
       {/* SECTION 1: ATTRIBUTION COUPONS */}
       {activeSection === 'coupons' && (
         <div className="space-y-4">
           {/* Search Bar */}
-          <div className="grid grid-cols-1 items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid grid-cols-1 items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 lg:grid-cols-[minmax(0,1fr)_170px_auto]">
             <div className="relative min-w-0">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
               <input
                 type="text"
-                placeholder="Tìm theo mã coupon hoặc tên KOC..."
+                placeholder="Tìm mã, tên KOC…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Tìm theo mã coupon hoặc tên KOC" className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white pl-9 pr-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]"
+                aria-label="Tìm theo mã coupon hoặc tên KOC" className="h-10 w-full rounded-lg border border-[#EAE4D7] bg-white pl-9 pr-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]"
               />
             </div>
-            <button type="button" onClick={() => setIsIssueCouponOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-5 py-2.5 text-sm font-semibold text-[#715126] transition-colors hover:bg-[#F3EFE6]"><Plus size={16}/><span>Cấp mã cho KOL có deal toàn Shop</span></button>
+            <select aria-label="Lọc trạng thái mã ưu đãi" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="flex h-10 items-center rounded-lg border border-[#EAE4D7] bg-white px-3 py-0 text-[13px] leading-normal text-[#1A1612] [&::picker-icon]:self-center">
+              <option value="ALL">Tất cả trạng thái</option>
+              {Object.entries(statusNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+            <button type="button" onClick={() => setIsIssueCouponOpen(true)} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#C59B58] bg-[#C59B58] px-5 text-sm font-semibold text-[#715126] transition-colors hover:bg-[#F3EFE6]"><Plus size={16}/><span>Cấp mã</span></button>
           </div>
 
           {/* KHỐI YÊU CẦU ĐỀ XUẤT MÃ TỪ KOC CHỜ XÉT DUYỆT */}
@@ -349,7 +376,7 @@ export function ShopCreatorIncentivesTab() {
                             {p.collaborator?.fullName || 'KOC Đối Tác'}
                           </span>
                           <span className="text-[11px] text-[#7D715E] block truncate">
-                            {p.collaborator?.email || 'kol@scanms.vn'}
+                            {p.collaborator?.email || 'Chưa cập nhật email'}
                           </span>
                         </div>
                         <span className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
@@ -359,7 +386,7 @@ export function ShopCreatorIncentivesTab() {
 
                       <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[11px] flex items-center justify-between">
                         <span className="text-[#7D715E]">Phạm vi áp dụng:</span>
-                        <strong className="text-[#B88E4F] font-semibold">Toàn bộ sản phẩm của gian hàng</strong>
+                        <strong className="text-[#B88E4F] font-semibold">{scopeName(p)}</strong>
                       </div>
 
                       <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#EAE4D7]">
@@ -391,137 +418,49 @@ export function ShopCreatorIncentivesTab() {
             </div>
           )}
 
-          {/* BẢNG TỔNG HỢP MÃ ƯU ĐÃI ĐỊNH DANH KOC */}
-          <div className="overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-2xs">
-            <table className="w-full min-w-[700px] text-left text-xs">
-              <thead className="bg-[#F3EFE6] text-[#1A1612] font-semibold">
-                <tr>
-                  <th className="p-3.5 whitespace-nowrap">Mã Coupon</th>
-                  <th className="p-3.5 whitespace-nowrap">KOC sở hữu</th>
-                  <th className="p-3.5 whitespace-nowrap">Mức giảm cho fan</th>
-                  <th className="p-3.5 whitespace-nowrap">Lượt sử dụng</th>
-                  <th className="p-3.5 whitespace-nowrap">Thời hạn hiệu lực</th>
-                  <th className="p-3.5 whitespace-nowrap">Trạng thái</th>
-                  <th className="p-3.5 whitespace-nowrap text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EAE4D7]">
-                {filteredCoupons.map((c) => (
-                  <tr key={c.id} className="hover:bg-[#FAF8F5] transition">
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-extrabold text-[#B88E4F] text-sm px-2.5 py-1 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6]">
-                          {c.displayCode || c.codeNormalized}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(c.displayCode || c.codeNormalized)}
-                          className="p-1 rounded-md text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
-                          title="Sao chép mã"
-                        >
-                          {copiedCode === (c.displayCode || c.codeNormalized) ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0">
-                          {c.collaborator?.fullName?.charAt(0) || 'K'}
-                        </div>
-                        <span className="font-semibold text-[#1A1612]">
-                          {c.collaborator?.fullName || 'KOC Đối Tác'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="font-bold text-[#DC2626] font-mono">
-                        -{c.discountValue}%
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono text-[#1A1612]">
-                      <strong>{c.usageCount || 0}</strong> lượt
-                    </td>
-                    <td className="p-3.5 text-[#7D715E]">
-                      {c.expiresAt ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium">
-                          <Clock className="w-3 h-3 text-[#7D715E]" />
-                          {new Date(c.expiresAt).toLocaleDateString('vi-VN')}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-[#7D715E]">
-                          Theo Hợp đồng VIP
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      {c.status === 'ACTIVE' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Đang hoạt động
-                        </span>
-                      ) : c.status === 'PENDING_APPROVAL' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                          <Clock className="w-3 h-3 text-amber-600" />
-                          Chờ Shop duyệt
-                        </span>
-                      ) : c.status === 'REJECTED' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          <XCircle className="w-3 h-3 text-rose-600" />
-                          Đã từ chối
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
-                          <Clock className="w-3 h-3" />
-                          Đã thay thế / Hết hạn
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right">
-                      {c.status === 'PENDING_APPROVAL' ? (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReviewingProposal(c);
-                              setReviewDiscountPercent(c.discountValue <= 5 ? 5 : 10);
-                            }}
-                            className="px-2.5 py-1 rounded-md bg-[#C59B58] text-[#1A1612] text-[11px] font-bold hover:bg-[#B88E4F] transition cursor-pointer"
-                          >
-                            Duyệt
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRejectingProposal(c);
-                              setRejectReason('');
-                            }}
-                            className="px-2 py-1 rounded-md border border-[#EAE4D7] text-[#7D715E] text-[11px] font-semibold hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
-                          >
-                            Từ chối
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-[#7D715E]">
-                          {c.status === 'ACTIVE' ? 'Tự động ghi nhận' : 'Lưu trữ đối soát'}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!filteredCoupons.length && (
-              <div className="p-8 text-center text-xs text-[#7D715E]">
-                {loading ? 'Đang đồng bộ danh sách mã ưu đãi KOC...' : loadError ? 'Chưa xác định được danh sách mã ưu đãi.' : 'Chưa có mã ưu đãi định danh KOC nào được phát hành.'}
-              </div>
-            )}
+          <div className="overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[850px] text-left text-[13px]">
+                <thead className="bg-[#FAF8F5] text-xs font-medium text-[#7D715E]"><tr>
+                  {['Mã ưu đãi', 'KOC', 'Mức giảm', 'Đã dùng', 'Hết hạn', 'Trạng thái', ''].map(label => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}
+                </tr></thead>
+                <tbody className="divide-y divide-[#EAE4D7]">
+                  {pageCoupons.map(c => <tr key={c.id} className="h-[72px] hover:bg-[#FAF8F5]">
+                    <td className="px-4 py-3"><div className="flex items-center gap-1.5"><strong className="break-all font-mono text-[12px] text-[#1A1612]">{c.displayCode || c.codeNormalized}</strong><button type="button" aria-label={`Sao chép ${c.displayCode || c.codeNormalized}`} onClick={() => handleCopy(c.displayCode || c.codeNormalized)} className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-[#7D715E] hover:bg-[#F3EFE6]">{copiedCode === (c.displayCode || c.codeNormalized) ? <Check size={14}/> : <Copy size={14}/>}</button></div></td>
+                    <td className="max-w-[240px] px-4 py-3"><div className="flex items-center gap-2"><span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F3EFE6] text-xs text-[#7D715E]">{(c.collaborator?.avatarUrl || c.collaborator?.collaboratorProfile?.avatarUrl) ? <img src={c.collaborator.avatarUrl || c.collaborator.collaboratorProfile?.avatarUrl || ''} alt="" className="size-full object-cover"/> : c.collaborator?.fullName?.charAt(0) || 'K'}</span><div className="min-w-0"><strong className="font-semibold">{c.collaborator?.fullName || 'KOC'}</strong><p title={scopeName(c)} className="m-0 mt-0.5 max-w-[200px] truncate text-[11px] text-[#7D715E]">{scopeName(c)}</p></div></div></td>
+                    <td className="px-4 py-3 font-semibold tabular-nums text-[#715126]">{c.discountType === 'FIXED_AMOUNT' ? formatMoney(c.discountValue) : `${c.discountValue}%`}</td>
+                    <td className="px-4 py-3 tabular-nums">{c.usageCount ?? 0}{c.usageLimitTotal != null ? `/${c.usageLimitTotal}` : ''}</td>
+                    <td className="px-4 py-3 text-xs tabular-nums text-[#7D715E]">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa ghi nhận'}</td>
+                    <td className="px-4 py-3"><span className="inline-flex whitespace-nowrap rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1 text-[11px] text-[#715126]">{statusNames[couponState(c)] || c.status}</span></td>
+                    <td className="px-4 py-3 text-right"><button type="button" aria-label={`Chi tiết mã ${c.displayCode || c.codeNormalized}`} onClick={() => setDetailCoupon(c)} className="inline-flex size-8 items-center justify-center rounded-lg border border-[#EAE4D7] text-[#7D715E] hover:bg-[#FBF5EB]"><MoreHorizontal size={16}/></button></td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+            {!filteredCoupons.length && <p role="status" className="m-0 p-8 text-center text-sm text-[#7D715E]">{loading ? 'Đang tải mã ưu đãi…' : loadError ? 'Chưa tải được mã ưu đãi.' : 'Không có mã ưu đãi phù hợp.'}</p>}
+            {!!filteredCoupons.length && <div className="flex items-center justify-between gap-3 border-t border-[#EAE4D7] px-4 py-3 text-xs text-[#7D715E]"><span>{(currentPage - 1) * 10 + 1}–{Math.min(currentPage * 10, filteredCoupons.length)}/{filteredCoupons.length} mã</span><div className="flex items-center gap-3"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="h-8 rounded-lg border border-[#EAE4D7] px-3 disabled:opacity-40">Trước</button><span>{currentPage}/{pageCount}</span><button type="button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="h-8 rounded-lg border border-[#EAE4D7] px-3 disabled:opacity-40">Sau</button></div></div>}
           </div>
         </div>
       )}
+
+      {detailCoupon && <Modal isOpen title="Chi tiết mã ưu đãi" subtitle={detailCoupon.displayCode || detailCoupon.codeNormalized} maxWidth="lg" onClose={() => setDetailCoupon(null)}>
+        <dl className="m-0 grid grid-cols-2 gap-x-5 gap-y-4 text-sm">
+          {[
+            ['KOC', detailCoupon.collaborator?.fullName || 'Chưa ghi nhận'],
+            ['Trạng thái', statusNames[couponState(detailCoupon)] || detailCoupon.status],
+            ['Phạm vi', scopeName(detailCoupon)],
+            ['Mức giảm', detailCoupon.discountType === 'FIXED_AMOUNT' ? formatMoney(detailCoupon.discountValue) : `${detailCoupon.discountValue}%`],
+            ['Đơn tối thiểu', detailCoupon.minimumOrderAmount != null ? formatMoney(detailCoupon.minimumOrderAmount) : 'Chưa ghi nhận'],
+            ['Giảm tối đa', detailCoupon.maximumDiscountAmount != null ? formatMoney(detailCoupon.maximumDiscountAmount) : 'Không giới hạn'],
+            ['Ngân sách', detailCoupon.budgetTotal != null ? formatMoney(detailCoupon.budgetTotal) : 'Chưa ghi nhận'],
+            ['Đã sử dụng', `${detailCoupon.usageCount ?? 0}${detailCoupon.usageLimitTotal != null ? `/${detailCoupon.usageLimitTotal}` : ''} lượt`],
+            ['Bắt đầu', detailCoupon.startsAt ? new Date(detailCoupon.startsAt).toLocaleString('vi-VN') : 'Chưa ghi nhận'],
+            ['Hết hạn', detailCoupon.expiresAt ? new Date(detailCoupon.expiresAt).toLocaleString('vi-VN') : 'Chưa ghi nhận'],
+          ].map(([label, value]) => <div key={label}><dt className="text-xs text-[#7D715E]">{label}</dt><dd className="m-0 mt-1 break-words font-medium">{value}</dd></div>)}
+        </dl>
+        {detailCoupon.blockedReason && <p className="m-0 border-t border-[#EAE4D7] pt-3 text-sm">{detailCoupon.blockedReason}</p>}
+        {detailCoupon.status === 'PENDING_APPROVAL' && <div className="flex justify-end gap-2 border-t border-[#EAE4D7] pt-4"><button type="button" className="h-10 rounded-lg border border-[#EAE4D7] px-4 text-sm" onClick={() => { setRejectingProposal(detailCoupon); setRejectReason(''); setDetailCoupon(null); }}>Từ chối</button><button type="button" className="h-10 rounded-lg bg-[#C59B58] px-4 text-sm font-semibold" onClick={() => { setReviewingProposal(detailCoupon); setReviewDiscountPercent(detailCoupon.discountValue <= 5 ? 5 : 10); setDetailCoupon(null); }}>Duyệt mã</button></div>}
+      </Modal>}
 
       {/* SECTION 2: MONTHLY MILESTONE RULES (FR-09) - CHUẨN DOANH SỐ THÁNG */}
       {activeSection === 'milestones' && <ShopMonthlyBonusPanel storeId={currentStoreId} />}

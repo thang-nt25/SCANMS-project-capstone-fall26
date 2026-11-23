@@ -276,11 +276,17 @@ describe('SamplesService', () => {
     expect(prisma.sampleProductRequest.create).not.toHaveBeenCalled();
   });
 
-  it.each(['GHN', 'GHTK', null])('không cho KOL tự xác nhận nhận mẫu qua %s', async (carrier) => {
-    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, carrier });
+  it('không cho KOL tự xác nhận nhận mẫu qua GHN', async () => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, carrier: 'GHN' });
     await expect(service.confirmReceived(request.id, 'kol-1')).rejects.toThrow(BadRequestException);
     expect(prisma.sampleProductRequest.update).not.toHaveBeenCalled();
     expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['GHTK', null])('cho phép KOL xác nhận nhận mẫu đối với đơn ngoài GHN (%s)', async (carrier) => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, carrier });
+    await expect(service.confirmReceived(request.id, 'kol-1')).resolves.toBeDefined();
+    expect(prisma.sampleProductRequest.update).toHaveBeenCalled();
   });
 
   it.each(['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'])('không cho nộp video khi chưa nhận mẫu: %s', async (status) => {
@@ -540,6 +546,19 @@ describe('SamplesService', () => {
       }),
     ).rejects.toThrow(ConflictException);
     expect(prisma.sampleRequestEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('returns an already-approved sample without allocating quota or notifying twice', async () => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({
+      ...request,
+      status: SampleRequestStatus.APPROVED,
+    });
+    expect((await service.approveRequest(request.id, 'shop-1')).status).toBe('APPROVED');
+    expect((await service.approveRequest(request.id, 'shop-1')).status).toBe('APPROVED');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.sampleProductRequest.updateMany).not.toHaveBeenCalled();
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
   });
 
   it('Shop vẫn được xét duyệt mẫu mới khi có quá hạn nhưng Admin chưa khóa', async () => {

@@ -76,6 +76,7 @@ enum SampleRequestStatus {
   OVERDUE
   CANCELLED
   DELIVERY_ISSUE
+  APPEALED
 }
 
 enum AttributionMethod {
@@ -907,6 +908,8 @@ model SampleProductRequest {
   videoTitle                 String?             @map("video_title") @db.VarChar(255)
   videoSubmittedAt           DateTime?           @map("video_submitted_at") @db.Timestamptz(6)
   videoRejectionReason       String?             @map("video_rejection_reason") @db.VarChar(500)
+  appealReason               String?             @map("appeal_reason") @db.VarChar(1000)
+  appealedAt                 DateTime?           @map("appealed_at") @db.Timestamptz(6)
   status                     SampleRequestStatus @default(PENDING)
   createdAt                  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                  DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
