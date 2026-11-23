@@ -33,6 +33,7 @@ interface CreatorCoupon {
   minimumOrderAmount?: number | string | null;
   maximumDiscountAmount?: number | string | null;
   usageCount: number;
+  usageLimitTotal?: number | null;
   budgetTotal?: number;
   budgetUsed?: number;
   status: string;
@@ -41,6 +42,7 @@ interface CreatorCoupon {
   rejectedReason?: string | null;
   blockedReason?: string | null;
   benefitType?: string;
+  scopeType?: string;
   collaboratorId?: string;
   collaborator?: {
     id: string;
@@ -65,7 +67,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
   const handledReviewCouponRef = useRef<string | null>(null);
   const [localSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
   const activeSection = section ?? localSection;
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'HISTORY'>('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [expandedHistoryByKol, setExpandedHistoryByKol] = useState<Record<string, boolean>>({});
   const [avatarErrorByKol, setAvatarErrorByKol] = useState<Record<string, boolean>>({});
   const [coupons, setCoupons] = useState<CreatorCoupon[]>(() => (reviewCouponId ? [] : lastCreatorIncentivesSnapshot?.coupons || []));
@@ -346,7 +348,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
   const validKolCoupons = useMemo(
     () =>
       coupons.filter((c: any) => {
-        if (c.benefitType === 'SHIPPING' || Number(c.discountValue) >= 100) return false;
+        if (c.benefitType === 'SHIPPING' || (c.discountType === 'PERCENTAGE' && Number(c.discountValue) >= 100)) return false;
         if (!c.collaborator && !c.collaboratorId) return false;
         return true;
       }),
@@ -380,6 +382,8 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
         !['EXPIRED', 'REJECTED', 'BLOCKED'].includes(c.status)
       )
         return false;
+
+      if (['EXPIRED', 'BLOCKED', 'REJECTED'].includes(statusFilter) && c.status !== statusFilter) return false;
 
       if (!q) return true;
       return (
@@ -573,10 +577,24 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                   placeholder="Tìm theo tên KOC, email hoặc mã coupon..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Tìm theo tên KOC, email hoặc mã coupon"
+                  aria-label="Tìm theo mã coupon hoặc tên KOC"
                   className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white pl-9 pr-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]"
                 />
               </div>
+              <select
+                aria-label="Lọc trạng thái mã ưu đãi"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="h-11 shrink-0 rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] focus:border-[#C59B58]"
+              >
+                <option value="ALL">Tất cả trạng thái ({couponFilterCounts.all})</option>
+                <option value="PENDING">Chờ duyệt ({couponFilterCounts.pending})</option>
+                <option value="ACTIVE">Đang hiệu lực ({couponFilterCounts.active})</option>
+                <option value="HISTORY">Lịch sử ({couponFilterCounts.history})</option>
+                <option value="EXPIRED">Hết hạn</option>
+                <option value="BLOCKED">Đã khóa / thay thế</option>
+                <option value="REJECTED">Đã từ chối</option>
+              </select>
               <button
                 type="button"
                 onClick={() => {
@@ -590,36 +608,6 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {[
-                { key: 'ALL' as const, label: 'Tất cả', count: couponFilterCounts.all },
-                { key: 'PENDING' as const, label: 'Chờ duyệt', count: couponFilterCounts.pending },
-                { key: 'ACTIVE' as const, label: 'Đang chạy', count: couponFilterCounts.active },
-                { key: 'HISTORY' as const, label: 'Lịch sử', count: couponFilterCounts.history },
-              ].map((pill) => {
-                const active = statusFilter === pill.key;
-                return (
-                  <button
-                    key={pill.key}
-                    type="button"
-                    onClick={() => setStatusFilter(pill.key)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                      active
-                        ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-2xs'
-                        : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]/60 hover:text-[#1A1612]'
-                    }`}
-                  >
-                    {pill.key === 'PENDING' && pill.count > 0 && (
-                      <span className="h-2 w-2 rounded-full bg-[#D97706]" aria-hidden="true" />
-                    )}
-                    <span>{pill.label}</span>
-                    <span className="rounded-full bg-[#F3EFE6] px-1.5 py-0.5 text-[10px] font-bold text-[#7D715E] tabular-nums">
-                      {pill.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* KOC GROUP CARDS */}
@@ -636,7 +624,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                       c.codeNormalized?.toLowerCase().includes(searchLower),
                   );
                 const isHistoryExpanded =
-                  statusFilter === 'HISTORY' ||
+                  ['HISTORY', 'EXPIRED', 'BLOCKED', 'REJECTED'].includes(statusFilter) ||
                   searchMatchedHistory ||
                   Boolean(expandedHistoryByKol[group.kolId]);
                 const showRealAvatar = Boolean(group.avatarUrl) && !avatarErrorByKol[group.kolId];
@@ -797,14 +785,15 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                                         )}
                                       </button>
                                     </div>
+                                    {c.scopeType === 'STORE_WIDE' && <span className="mt-1 block text-[11px] text-[#7D715E]">Toàn Shop</span>}
                                   </td>
                                   <td className="px-4 py-3">
                                     <span className="font-bold text-[#DC2626] font-mono tabular-nums">
-                                      -{c.discountValue}%
+                                      {c.discountType === 'FIXED_AMOUNT' ? `-${Number(c.discountValue).toLocaleString('vi-VN')} ₫` : `-${c.discountValue}%`}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 font-mono text-[#1A1612] tabular-nums">
-                                    <strong>{c.usageCount || 0}</strong> lượt
+                                    <strong>{c.usageCount || 0}{c.usageLimitTotal ? `/${c.usageLimitTotal}` : ''}</strong> lượt
                                   </td>
                                   <td className="px-4 py-3 text-[#7D715E] tabular-nums">
                                     {c.expiresAt ? (
@@ -820,6 +809,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                                   <td className="px-4 py-3 text-right">
                                     <button
                                       type="button"
+                                      aria-label={`Chi tiết mã ${c.displayCode || c.codeNormalized}`}
                                       onClick={() => openCouponDetail(c)}
                                       className="px-2.5 py-1 rounded-md border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] text-[11px] font-semibold hover:bg-[#F3EFE6] transition cursor-pointer"
                                     >
@@ -872,10 +862,10 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                                         </span>
                                       </td>
                                       <td className="w-[14%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
-                                        -{c.discountValue}%
+                                        {c.discountType === 'FIXED_AMOUNT' ? `-${Number(c.discountValue).toLocaleString('vi-VN')} ₫` : `-${c.discountValue}%`}
                                       </td>
                                       <td className="w-[12%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
-                                        {c.usageCount || 0} lượt
+                                        {c.usageCount || 0}{c.usageLimitTotal ? `/${c.usageLimitTotal}` : ''} lượt
                                       </td>
                                       <td className="w-[16%] px-4 py-2.5 text-[11px] text-[#7D715E] tabular-nums">
                                         {c.expiresAt
@@ -886,6 +876,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                                       <td className="w-[14%] px-4 py-2.5 text-right">
                                         <button
                                           type="button"
+                                          aria-label={`Chi tiết mã ${c.displayCode || c.codeNormalized}`}
                                           onClick={() => openCouponDetail(c)}
                                           className="px-2.5 py-1 rounded-md border border-[#EAE4D7] bg-white text-[#7D715E] text-[11px] font-semibold hover:bg-[#FAF8F5] hover:text-[#1A1612] transition cursor-pointer"
                                         >

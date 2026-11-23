@@ -18,8 +18,9 @@ import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ShoppingScene } from '../../components/auth/ShoppingScene';
 import { AnimatedPasswordField, type PasswordAuthState } from '../../components/auth/AnimatedPasswordField';
-import { getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
+import { getRememberedIdentifier, getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
 import { safeLoginReturn } from '../../utils/login-return';
+import { getDemoLogin } from '../../utils/demo-login';
 
 type RoleType = 'customer' | 'kol' | 'shop' | 'manager' | 'admin';
 const showRoleSelector = import.meta.env.VITE_SHOW_LOGIN_ROLE_SELECTOR !== 'false';
@@ -29,16 +30,15 @@ interface RoleOption {
   label: string;
   icon: any;
   email: string;
-  defaultPassword: string;
   badge: string;
 }
 
 const ROLES: RoleOption[] = [
-  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer.an@scanms.vn', defaultPassword: 'Customer@123456', badge: 'Trần An (Ví 2.5Tr)' },
-  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol.bronze@scanms.vn', defaultPassword: 'Kol@123456', badge: 'Lê Hoàng Yến Nhi (TikTok 25K, Đồng)' },
-  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'manager.sora@scanms.vn', defaultPassword: 'Shop@123456', badge: 'Nguyễn Văn Minh (Sora Skin Tân Bình)' },
-  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', defaultPassword: 'Manager@123456', badge: 'Lê Thu Trang (Vận Hành & Tuân Thủ)' },
-  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', defaultPassword: 'Admin@123456', badge: 'Nguyễn Thành Thắng (Super Admin)' },
+  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer.an@scanms.vn', badge: 'Trần An (Ví 2.5Tr)' },
+  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol.bronze@scanms.vn', badge: 'Lê Hoàng Yến Nhi (TikTok 25K, Đồng)' },
+  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'manager.sora@scanms.vn', badge: 'Nguyễn Văn Minh (Sora Skin Tân Bình)' },
+  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', badge: 'Lê Thu Trang (Vận Hành & Tuân Thủ)' },
+  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', badge: 'Nguyễn Thành Thắng (Super Admin)' },
 ];
 
 export default function LoginPage() {
@@ -62,13 +62,11 @@ export default function LoginPage() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [identifier, setIdentifier] = useState(() => {
     if (registeredEmail) return registeredEmail;
-    const initialOption = ROLES.find((x) => x.id === role);
-    return initialOption?.email || '';
+    return (showRoleSelector ? getDemoLogin(role)?.identifier : undefined) || getRememberedIdentifier(role) || '';
   });
   const [password, setPassword] = useState(() => {
     if (registeredEmail) return '';
-    const initialOption = ROLES.find((x) => x.id === role);
-    return initialOption?.defaultPassword || '';
+    return (showRoleSelector ? getDemoLogin(role)?.password : undefined) || '';
   });
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
@@ -89,13 +87,13 @@ export default function LoginPage() {
 
   const handleRoleSelect = (selectedRole: RoleType) => {
     if (loading || passwordAuthState === 'success') return;
-    const nextOption = ROLES.find((x) => x.id === selectedRole);
-    if (selectedRole === role && identifier === nextOption?.email && password === nextOption?.defaultPassword) {
+    if (selectedRole === role) {
       setIsRoleDropdownOpen(false);
       return;
     }
-    setIdentifier(nextOption?.email || '');
-    setPassword(nextOption?.defaultPassword || '');
+    const demo = showRoleSelector ? getDemoLogin(selectedRole) : null;
+    setIdentifier(demo?.identifier || getRememberedIdentifier(selectedRole) || '');
+    setPassword(demo?.password || '');
     setPasswordAuthState('idle');
     setRole(selectedRole);
     setError(null);
