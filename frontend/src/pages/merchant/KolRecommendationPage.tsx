@@ -9,8 +9,6 @@ import {
   Gem,
   Award,
   Send,
-  BarChart3,
-  Package,
   X,
   MessageSquare,
   Info,
