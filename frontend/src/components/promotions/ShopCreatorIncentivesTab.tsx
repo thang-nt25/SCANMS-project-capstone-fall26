@@ -1,3 +1,4 @@
+import { Modal } from '../ui/Modal';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -473,7 +474,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
     setBlockReasonInput('');
   };
 
-  const renderStatusBadge = (status: string) => {
+  const renderStatusBadge = (status: string, blockedReason?: string | null) => {
     if (status === 'ACTIVE') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
@@ -518,7 +519,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-[#DC2626] border border-rose-200">
           <XCircle className="w-3 h-3 text-[#DC2626]" />
-          Đã khóa
+          {blockedReason?.startsWith('Đã thay thế bởi mã định danh mới:') ? 'Đã thay thế' : 'Đã khóa'}
         </span>
       );
     }
@@ -872,7 +873,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                                           ? new Date(c.expiresAt).toLocaleDateString('vi-VN')
                                           : 'Theo Hợp đồng VIP'}
                                       </td>
-                                      <td className="w-[16%] px-4 py-2.5">{renderStatusBadge(c.status)}</td>
+                                      <td className="w-[16%] px-4 py-2.5">{renderStatusBadge(c.status, c.blockedReason)}</td>
                                       <td className="w-[14%] px-4 py-2.5 text-right">
                                         <button
                                           type="button"
@@ -1129,31 +1130,13 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
       )}
       {/* Modal Xem Chi Tiết / Gia Hạn / Khóa Mã KOC */}
       {detailCoupon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2.5">
-                <span className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                  <Ticket className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="text-base font-bold text-[#1A1612] m-0">
-                    Chi tiết mã {detailCoupon.displayCode || detailCoupon.codeNormalized}
-                  </h3>
-                  <p className="text-xs text-[#7D715E] m-0 mt-0.5">
-                    KOC: {detailCoupon.collaborator?.fullName || 'KOC Đối Tác'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetailCoupon(null)}
-                className="w-8 h-8 rounded-lg text-[#7D715E] hover:bg-[#FAF8F5] flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+        <Modal
+          isOpen
+          onClose={() => setDetailCoupon(null)}
+          title={`Chi tiết mã ${detailCoupon.displayCode || detailCoupon.codeNormalized}`}
+          subtitle={`KOC: ${detailCoupon.collaborator?.fullName || 'KOC Đối Tác'}`}
+          maxWidth="md"
+        >
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
                 <div className="flex items-center justify-between">
@@ -1187,9 +1170,15 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                 <div className="flex items-center justify-between">
                   <span className="text-[#7D715E]">Lượt đã áp dụng:</span>
                   <span className="font-semibold text-[#1A1612]">
-                    {detailCoupon.usageCount || 0} lượt (Không giới hạn lượt trong hạn dùng)
+                    {detailCoupon.usageCount || 0}{detailCoupon.usageLimitTotal ? ` / ${detailCoupon.usageLimitTotal}` : ''} lượt
                   </span>
                 </div>
+                {detailCoupon.budgetTotal != null && <div className="flex items-center justify-between">
+                  <span className="text-[#7D715E]">Ngân sách:</span>
+                  <span className="font-semibold text-[#1A1612] tabular-nums">
+                    {Number(detailCoupon.budgetTotal).toLocaleString('vi-VN')} ₫
+                  </span>
+                </div>}
                 <div className="flex items-center justify-between">
                   <span className="text-[#7D715E]">Hết hạn hiệu lực:</span>
                   <span className="font-semibold text-[#1A1612]">
@@ -1324,8 +1313,7 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

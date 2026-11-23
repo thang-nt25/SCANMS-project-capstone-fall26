@@ -40,7 +40,9 @@ test('creator incentives preserve coupon data and distinguish unknown revenue fr
   assert.equal(await page.$$eval('tbody tr',els=>els.length),10);
   const first=await page.$eval('tbody tr',el=>el.textContent);
   assert.ok(first.includes('50.000'));assert.ok(!first.includes('50000%'));assert.ok(first.includes('1/20'));assert.ok(first.includes('Toàn Shop'));
-  assert.ok((await page.$eval('tbody',el=>el.textContent)).includes('Đã thay thế'));
+  await page.$$eval('button[aria-expanded="false"]',buttons=>buttons.find(button=>button.textContent.includes('Lịch sử mã trước đây')).click());
+  const historyRow=await page.$eval('[aria-label="Chi tiết mã QA1"]',button=>button.closest('tr').textContent);
+  assert.match(historyRow,/Đã thay thế/);
   await page.select('[aria-label="Lọc trạng thái mã ưu đãi"]','EXPIRED');assert.equal(await page.$$eval('tbody tr',els=>els.length),1);
   await page.select('[aria-label="Lọc trạng thái mã ưu đãi"]','ALL');
   await page.click('[aria-label="Chi tiết mã QA0"]');await page.waitForSelector('[role="dialog"]');assert.ok((await page.$eval('[role="dialog"]',el=>el.textContent)).includes('1.000.000'));

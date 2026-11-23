@@ -13,8 +13,8 @@ function channelUrl(value?: string) {
 }
 const number = (value?: number | null) => value == null ? '—' : value.toLocaleString('vi-VN');
 
-export function KolMatchAnalysisDialog({ kol, product, onClose, onMessage }: {
-  kol: KolMatchResult; product?: TargetProductSummary | null; onClose: () => void; onMessage: () => void;
+export function KolMatchAnalysisDialog({ kol, product, onClose, onMessage, onInvite }: {
+  kol: KolMatchResult; product?: TargetProductSummary | null; onClose: () => void; onMessage: () => void; onInvite?: () => void;
 }) {
   const cold = kol.scoringMode === 'COLD_START' || (!kol.scoringMode && (kol.lifetimeStats?.totalOrders ?? 0) < 5);
   const weights = kol.scoringWeights || (cold
@@ -34,7 +34,13 @@ export function KolMatchAnalysisDialog({ kol, product, onClose, onMessage }: {
     ['Giá bán TB', !cold && price.hasData ? `${price.formattedAvgPrice} · ${price.badgeText.replace('Cao hơn SP +', 'Cao hơn ').replace('Thấp hơn SP -', 'Thấp hơn ').replace('Ngang tầm giá SP', 'Ngang tầm sản phẩm')}` : '—'],
   ];
   return createPortal(<Modal isOpen onClose={onClose} title="Phân tích độ phù hợp" stickyHeader maxWidth="3xl" className="kol-match-analysis max-w-[720px]! max-h-[85dvh]!" bodyClassName="p-5! space-y-4"
-    footer={<div className="flex items-center justify-between gap-3"><span className="text-[11px] text-[#7D715E]">Điểm tham khảo.</span><button type="button" onClick={onMessage} className="inline-flex h-[38px]! items-center justify-center gap-1.5 rounded-lg! border border-[#B88E4F] bg-[#C59B58] px-4 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F]"><MessageSquare size={14}/>Nhắn tin</button></div>}>
+    footer={<div className="flex flex-wrap items-center justify-between gap-2">
+      <span className="text-[11px] text-[#7D715E]">Điểm tham khảo.</span>
+      <div className="flex flex-wrap gap-2">
+        {onInvite && <button type="button" onClick={onInvite} className="h-[38px]! rounded-lg! border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#715126]">Mời hợp tác</button>}
+        <button type="button" onClick={onMessage} className="inline-flex h-[38px]! items-center justify-center gap-1.5 rounded-lg! border border-[#B88E4F] bg-[#C59B58] px-4 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F]"><MessageSquare size={14}/>Nhắn tin</button>
+      </div>
+    </div>}>
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2.5"><span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] bg-[#F3EFE6] text-[#90682F]">{kol.avatarUrl ? <img src={kol.avatarUrl} onError={handleAvatarImageError} alt="" className="size-full object-cover"/> : kol.fullName.charAt(0)}</span><div className="min-w-0"><strong className="block break-words text-sm">{kol.fullName}</strong><span className="mt-0.5 flex items-center gap-1 text-[11px] text-[#90682F]">{/DIAMOND|KIM CƯƠNG/i.test(kol.tierName) ? <Gem size={14}/> : <Medal size={14}/>} {kol.tierName}</span></div></div>
       <strong className="shrink-0 text-2xl font-bold tabular-nums text-[#90682F]">{number(kol.matchScore)}<small className="text-xs font-normal text-[#7D715E]">/100</small></strong>

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { walletService, type WalletSummary, type LedgerEntry, type LedgerHistory } from '../../services/wallet.service';
 import CustomerWithdrawals, { CustomerWithdrawalHistory } from '../../components/wallet/CustomerWithdrawals';
+import TopUpAmountInput from '../../components/wallet/TopUpAmountInput';
 import CustomerPayosTopUp from './CustomerPayosTopUp';
 import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
@@ -272,12 +273,10 @@ export const CustomerWalletTab: React.FC = () => {
                         <span className="text-[11px] text-[#7D715E]">VNĐ</span>
                       </div>
                       <div className="flex items-center gap-2 min-h-[44px] px-3.5 border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/15 rounded-xl bg-white transition-all">
-                        <input
+                        <TopUpAmountInput
                           id="cw-demo-amount"
-                          type="text"
-                          inputMode="numeric"
-                          value={customAmount ? Number(customAmount).toLocaleString('vi-VN') : ''}
-                          onChange={(e) => setCustomAmount(e.target.value.replace(/\D/g, ''))}
+                          value={customAmount}
+                          onAmountChange={setCustomAmount}
                           placeholder="Tối thiểu 10.000"
                           className="w-full min-w-0 py-3 border-0 outline-none bg-transparent text-[#1A1612] text-2xl font-bold tabular-nums"
                         />

@@ -3,7 +3,6 @@ import { Modal } from '../../components/ui/Modal';
 import { handleProductImageError, handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  Radar,
   Search,
   Filter,
   Medal,
@@ -28,7 +27,6 @@ import {
 } from '../../services/ai-recommendation.service';
 import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
-import { AiRadarChart } from '../../components/ai/AiRadarChart';
 import { KolComparisonModal, KolComparisonDock } from '../../components/ai/KolComparisonPanel';
 import { getKolPriceComparison } from '../../utils/ai-price.utils';
 
@@ -107,7 +105,6 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [relations, setRelations] = useState<Record<string,string>>({});
   const [relationsReady, setRelationsReady] = useState(false);
-  const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
 
   // Comparison State
   const [compareKolIds, setCompareKolIds] = useState<string[]>([]);
@@ -134,18 +131,17 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   }, [productsReady, selectedProductId, autoScan]);
 
   useEffect(() => {
-    if (!invitingKol && !analyzingKol && !isCompareModalOpen && !filtersOpen && !Object.values(expandedEvidence).some(Boolean)) return;
+    if (!invitingKol && !analyzingKol && !isCompareModalOpen && !filtersOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || isSendingInvite) return;
       setInvitingKol(null);
       setAnalyzingKol(null);
-      setExpandedEvidence({});
       setFiltersOpen(false);
       setIsCompareModalOpen(false);
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [invitingKol, analyzingKol, isCompareModalOpen, isSendingInvite, expandedEvidence, filtersOpen]);
+  }, [invitingKol, analyzingKol, isCompareModalOpen, isSendingInvite, filtersOpen]);
 
   useEffect(() => {
     let active = true;
@@ -159,7 +155,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
     }).catch(() => { if (active) setRelationsReady(false); });
     return () => { active = false; };
   }, []);
-  useEffect(() => { setCompareKolIds([]); setExpandedEvidence({}); }, [activeMode, selectedProductId]);
+  useEffect(() => { setCompareKolIds([]); setAnalyzingKol(null); }, [activeMode, selectedProductId]);
 
   // 1. Fetch Merchant Products to populate dropdown
   useEffect(() => {
@@ -571,7 +567,6 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {displayedKols.map((kol, idx) => {
               const isComparing = compareKolIds.includes(kol.collaboratorId);
-              const isExpanded = Boolean(expandedEvidence[kol.collaboratorId]);
               const isColdStart =
                 kol.scoringMode === 'COLD_START' ||
                 Boolean(kol.isRisingStar) ||
@@ -739,10 +734,6 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                     )}
                   </div>
 
-                  {/* In-Card Slide-Up Details Overlay (Slides up and covers card cleanly with full reasoning and no ugly scrollbar) */}
-                  {isExpanded && <KolMatchAnalysisDialog kol={kol} product={targetProduct}
-                    onClose={() => setExpandedEvidence({})}
-                    onMessage={() => { setExpandedEvidence({}); handleNegotiateDeal(kol); }} />}
 
                 </div>
               );
@@ -764,7 +755,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
         onClose={() => setIsCompareModalOpen(false)}
         selectedKols={selectedCompareKols}
         onNegotiateDeal={handleNegotiateDeal}
-        onViewAnalysis={kol => setExpandedEvidence({ [kol.collaboratorId]: true })}
+        onViewAnalysis={setAnalyzingKol}
         productTitle={selectedProduct?.title || selectedProduct?.name}
       />
 
@@ -933,179 +924,22 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
 
       {/* 9. Detailed 1-on-1 Analysis Modal (Fits cleanly in 1 viewport, no cramped card scroll) */}
       {analyzingKol && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="relative w-full max-w-2xl space-y-3 rounded-3xl border border-[#EAE4D7] bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#1A1612]">Căn cứ &amp; Báo cáo Đối Sánh 1-1</h3>
-                  <p className="text-[11px] text-[#7D715E]">{analyzingKol.fullName} · {analyzingKol.tierName} · Điểm phù hợp {analyzingKol.matchScore}/100</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAnalyzingKol(null)}
-                className="w-8 h-8 rounded-full border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Top 2-column layout: Performance shows 4-Axis Radar; Cold Start shows 2-Criteria Bars (no 0-axis stick chart) */}
-            {(() => {
-              const isModalColdStart =
-                activeMode === 'COLD_START' ||
-                (analyzingKol.lifetimeStats?.totalOrders ?? 0) < 5;
-              const modalWeights = (analyzingKol.scoreBreakdown as any)?.weights;
-              const mCat = Math.round((modalWeights?.categoryScore ?? (isModalColdStart ? 0.7 : 0.35)) * 100);
-              const mSocial = Math.round((modalWeights?.tierAndSocialScore ?? (isModalColdStart ? 0.3 : 0.2)) * 100);
-
-              return (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
-                  {isModalColdStart ? (
-                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 flex flex-col justify-center space-y-3">
-                      <div>
-                        <span className="text-[10px] font-bold text-[#8C6226] uppercase tracking-wider block">
-                          Tiêu chí đánh giá KOC mới (Cold Start)
-                        </span>
-                        <p className="text-[11px] text-[#7D715E] mt-0.5 mb-0">
-                          Chưa đủ 5 đơn hoàn tất nên chỉ chấm theo độ khớp hồ sơ &amp; quy mô kênh.
-                        </p>
-                      </div>
-                      <div className="space-y-2.5">
-                        <div>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-[#7D715E]">Ngành &amp; Hồ sơ ({mCat}%)</span>
-                            <strong className="text-[#1A1612] tabular-nums">{analyzingKol.scoreBreakdown?.categoryScore || 0}/100</strong>
-                          </div>
-                          <div className="h-2 w-full bg-white rounded-full overflow-hidden border border-[#EAE4D7]">
-                            <div className="h-full bg-[#C59B58] rounded-full" style={{ width: `${analyzingKol.scoreBreakdown?.categoryScore || 0}%` }} />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-[#7D715E]">Quy mô Follower MXH ({mSocial}%)</span>
-                            <strong className="text-[#1A1612] tabular-nums">{analyzingKol.scoreBreakdown?.tierAndSocialScore || 0}/100</strong>
-                          </div>
-                          <div className="h-2 w-full bg-white rounded-full overflow-hidden border border-[#EAE4D7]">
-                            <div className="h-full bg-[#B88E4F] rounded-full" style={{ width: `${analyzingKol.scoreBreakdown?.tierAndSocialScore || 0}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 flex flex-col items-center justify-center">
-                      <span className="text-[10px] font-bold text-[#8C6226] uppercase tracking-wider mb-1">
-                        Đa giác năng lực KOC (Radar 4 Trục)
-                      </span>
-                      <AiRadarChart scores={analyzingKol.scoreBreakdown} size={155} showLabels={true} />
-                    </div>
-                  )}
-
-                  <div className="flex flex-col gap-2.5 justify-between">
-                    <div className="rounded-2xl bg-[#FBF5EB] p-3 border border-[#EEDFC6] flex items-center gap-3">
-                      {(selectedProduct?.imageUrl || selectedProduct?.images?.[0]?.url || (targetProduct as any)?.imageUrl) ? (
-                        <img
-                          src={selectedProduct?.imageUrl || selectedProduct?.images?.[0]?.url || (targetProduct as any)?.imageUrl}
-                          alt={targetProduct?.title || selectedProduct?.title || 'Sản phẩm'}
-                          onError={handleProductImageError}
-                          className="w-12 h-12 rounded-xl object-cover ring-1 ring-black/10 bg-white shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl border border-[#EEDFC6] bg-white text-[#B88E4F] flex items-center justify-center shrink-0">
-                          <Package size={18} />
-                        </div>
-                      )}
-                      <div className="min-w-0 space-y-1">
-                        <span className="text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider block">
-                          Sản Phẩm Mục Tiêu
-                        </span>
-                        <h4 className="text-xs font-bold text-[#1A1612] truncate">
-                          {targetProduct?.title || selectedProduct?.title || 'Tất cả sản phẩm gian hàng'}
-                        </h4>
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#7D715E]">
-                          <span>Giá: <strong className="text-[#1A1612]">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(targetProduct?.price || selectedProduct?.price || 0)}</strong></span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C6226] block">
-                        Kênh MXH đã xác thực {!isModalColdStart && '& Hiệu suất'}
-                      </span>
-                      {!isModalColdStart && (
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#7D715E]">
-                          <span>Thế mạnh: <strong className="text-[#1A1612]">{analyzingKol.lifetimeStats?.primaryCategory || 'Chung'}</strong></span>
-                          <span>CR%: <strong className="text-[#059669]">{analyzingKol.lifetimeStats?.conversionRate}%</strong></span>
-                        </div>
-                      )}
-                      {analyzingKol.socialChannels && analyzingKol.socialChannels.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          {analyzingKol.socialChannels.map((ch: any, idx: number) => (
-                            <span key={idx} className="inline-flex items-center gap-1 rounded-md border border-[#EAE4D7] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#1A1612] tabular-nums">
-                              {ch.platform}: {Number(ch.followerCount ?? ch.followers ?? 0).toLocaleString('vi-VN')} followers
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-[#7D715E]">Chưa liên kết kênh MXH</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* AI Reasoning Conclusion */}
-            <div className="rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] p-3 text-[#1A1612] text-xs space-y-1">
-              <div className="flex items-center gap-1.5 text-[#8C6226] font-bold text-[11px]">
-                <Radar className="h-3.5 w-3.5" />
-                <span>Căn cứ thuật toán đề xuất:</span>
-              </div>
-              <p className="text-[11px] text-[#7D715E] leading-relaxed m-0">{analyzingKol.aiReasoning}</p>
-            </div>
-
-            <div className="pt-1 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAnalyzingKol(null);
-                    handleNegotiateDeal(analyzingKol);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-xs transition cursor-pointer"
-                >
-                  <MessageSquare size={13} />
-                  <span>Nhắn tin</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const k = analyzingKol;
-                    setAnalyzingKol(null);
-                    setInviteMessage('');
-                    setInvitingKol(k);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#715126] text-xs font-bold transition cursor-pointer"
-                >
-                  <Send size={13} />
-                  <span>Mời hợp tác</span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setAnalyzingKol(null)}
-                className="rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] px-4 py-2 text-xs font-semibold text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
+        <KolMatchAnalysisDialog
+          kol={analyzingKol}
+          product={targetProduct}
+          onClose={() => setAnalyzingKol(null)}
+          onMessage={() => {
+            handleNegotiateDeal(analyzingKol);
+            setAnalyzingKol(null);
+          }}
+          onInvite={relationsReady && !relations[analyzingKol.collaboratorId]
+            ? () => {
+                setInviteMessage('');
+                setInvitingKol(analyzingKol);
+                setAnalyzingKol(null);
+              }
+            : undefined}
+        />
       )}
     </div>
   );
