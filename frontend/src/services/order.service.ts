@@ -95,10 +95,14 @@ interface ApiEnvelope<T> {
 }
 
 export interface StoreOrderItem {
+  id?: string;
   productId: string;
   title: string;
   sku: string;
   imageUrl?: string;
+  variantName?: string | null;
+  variantSku?: string | null;
+  variantImageUrl?: string | null;
   quantity: number;
   unitPrice: number;
   appliedCommissionRate: number;

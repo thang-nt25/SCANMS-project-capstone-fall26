@@ -212,8 +212,9 @@ export const kycService = {
     profileId: string,
     status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED',
     note?: string,
+    requestedItems?: string[],
   ) {
-    const res: any = await api.patch(`/kyc/admin/kol/${profileId}/review`, { status, note });
+    const res: any = await api.patch(`/kyc/admin/kol/${profileId}/review`, { status, note, requestedItems });
     return res.data;
   },
 

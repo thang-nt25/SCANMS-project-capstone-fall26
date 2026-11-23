@@ -18,26 +18,27 @@ import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ShoppingScene } from '../../components/auth/ShoppingScene';
 import { AnimatedPasswordField, type PasswordAuthState } from '../../components/auth/AnimatedPasswordField';
-import { getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
+import { getRememberedIdentifier, getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
 import { safeLoginReturn } from '../../utils/login-return';
+import { getDemoLogin } from '../../utils/demo-login';
 
 type RoleType = 'customer' | 'kol' | 'shop' | 'manager' | 'admin';
+const showRoleSelector = import.meta.env.VITE_SHOW_LOGIN_ROLE_SELECTOR !== 'false';
 
 interface RoleOption {
   id: RoleType;
   label: string;
   icon: any;
   email: string;
-  defaultPassword: string;
   badge: string;
 }
 
 const ROLES: RoleOption[] = [
-  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer.an@scanms.vn', defaultPassword: 'Customer@123456', badge: 'Trần An (Ví 2.5Tr)' },
-  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol.bronze@scanms.vn', defaultPassword: 'Kol@123456', badge: 'Lê Hoàng Yến Nhi (TikTok 25K, Đồng)' },
-  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'manager.sora@scanms.vn', defaultPassword: 'Shop@123456', badge: 'Nguyễn Văn Minh (Sora Skin Tân Bình)' },
-  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', defaultPassword: 'Manager@123456', badge: 'Lê Thu Trang (Vận Hành & Tuân Thủ)' },
-  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', defaultPassword: 'Admin@123456', badge: 'Nguyễn Thành Thắng (Super Admin)' },
+  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer.an@scanms.vn', badge: 'Trần An (Ví 2.5Tr)' },
+  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol.bronze@scanms.vn', badge: 'Lê Hoàng Yến Nhi (TikTok 25K, Đồng)' },
+  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'manager.sora@scanms.vn', badge: 'Nguyễn Văn Minh (Sora Skin Tân Bình)' },
+  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', badge: 'Lê Thu Trang (Vận Hành & Tuân Thủ)' },
+  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', badge: 'Nguyễn Thành Thắng (Super Admin)' },
 ];
 
 export default function LoginPage() {
@@ -61,13 +62,11 @@ export default function LoginPage() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [identifier, setIdentifier] = useState(() => {
     if (registeredEmail) return registeredEmail;
-    const initialOption = ROLES.find((x) => x.id === role);
-    return initialOption?.email || '';
+    return (showRoleSelector ? getDemoLogin(role)?.identifier : undefined) || getRememberedIdentifier(role) || '';
   });
   const [password, setPassword] = useState(() => {
     if (registeredEmail) return '';
-    const initialOption = ROLES.find((x) => x.id === role);
-    return initialOption?.defaultPassword || '';
+    return (showRoleSelector ? getDemoLogin(role)?.password : undefined) || '';
   });
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
@@ -88,13 +87,13 @@ export default function LoginPage() {
 
   const handleRoleSelect = (selectedRole: RoleType) => {
     if (loading || passwordAuthState === 'success') return;
-    const nextOption = ROLES.find((x) => x.id === selectedRole);
-    if (selectedRole === role && identifier === nextOption?.email && password === nextOption?.defaultPassword) {
+    if (selectedRole === role) {
       setIsRoleDropdownOpen(false);
       return;
     }
-    setIdentifier(nextOption?.email || '');
-    setPassword(nextOption?.defaultPassword || '');
+    const demo = showRoleSelector ? getDemoLogin(selectedRole) : null;
+    setIdentifier(demo?.identifier || getRememberedIdentifier(selectedRole) || '');
+    setPassword(demo?.password || '');
     setPasswordAuthState('idle');
     setRole(selectedRole);
     setError(null);
@@ -216,7 +215,7 @@ export default function LoginPage() {
             </div>
 
             {/* Role Dropdown */}
-            <div className="relative">
+            {showRoleSelector && <div className="relative">
               <label id="login-role-label" className="block text-xs font-bold text-[#1A1612] mb-1">
                 Vai trò đăng nhập:
               </label>
@@ -300,9 +299,10 @@ export default function LoginPage() {
                   </div>
                 </>
               )}
-            </div>
+            </div>}
 
             {/* Social sign-in options */}
+            {showRoleSelector && <>
             <div className="w-full">
               <GoogleOfficialButton
                 onSuccess={onGoogleTokenSuccess}
@@ -318,6 +318,7 @@ export default function LoginPage() {
                 hoặc email / số điện thoại
               </span>
             </div>
+            </>}
 
             {error && (
               <div role="alert" className="p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium">
@@ -328,7 +329,7 @@ export default function LoginPage() {
             {/* Form inputs */}
             {searchParams.get('sessionChanged') === '1' && (
               <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2.5 text-xs leading-relaxed text-[#7D715E]">
-                Tài khoản đã được thay đổi ở tab khác. Đăng nhập tài khoản {activeRole.label} để tiếp tục trang vừa mở.
+                Tài khoản đã được thay đổi ở tab khác. Đăng nhập {showRoleSelector ? `tài khoản ${activeRole.label} ` : ''}để tiếp tục trang vừa mở.
               </p>
             )}
             <form id="scanms-auth-form" name="scanms-auth-form" autoComplete="off" noValidate onSubmit={handleSubmit} className="space-y-3">
@@ -397,6 +398,19 @@ export default function LoginPage() {
                 <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
               </button>
             </form>
+
+            {!showRoleSelector && <div className="w-full space-y-4">
+              <div className="flex items-center gap-3 text-[11px] uppercase text-[#7D715E]">
+                <span className="h-px flex-1 bg-[#EAE4D7]" />
+                <span>hoặc</span>
+                <span className="h-px flex-1 bg-[#EAE4D7]" />
+              </div>
+              <GoogleOfficialButton
+                onSuccess={onGoogleTokenSuccess}
+                onError={(err) => setError(err)}
+                className="h-11"
+              />
+            </div>}
 
             {/* Bottom switch link */}
             <div className="login-register-link border-t border-line pt-3.5 text-center text-xs leading-[1.7] text-muted [&_a]:text-[#90682F]">

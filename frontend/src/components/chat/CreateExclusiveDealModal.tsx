@@ -11,7 +11,6 @@ import {
   Search,
   Lock,
   ShieldAlert,
-  Percent,
 } from 'lucide-react';
 import { referralLinksService } from '../../services/referral-links.service';
 import { formatMoney } from '../../utils/marketplace.utils';
@@ -27,6 +26,9 @@ interface Props {
 interface ProductItem {
   id: string;
   title: string;
+  sku?: string;
+  code?: string;
+  productCode?: string;
   imageUrl?: string;
   price: number;
   storeId: string;
@@ -57,9 +59,7 @@ export function CreateExclusiveDealModal({
   const [commissionRate, setCommissionRate] = useState<number | ''>(14);
   const [targetOrders, setTargetOrders] = useState<number | ''>(30);
   const [commitmentDays, setCommitmentDays] = useState<number | ''>(14);
-  const [salesCommitment, setSalesCommitment] = useState<string>(
-    'Đề xuất thỏa thuận phân phối độc quyền với mức thù lao ưu đãi.'
-  );
+  const [salesCommitment, setSalesCommitment] = useState('');
 
   const [showHelpPopover, setShowHelpPopover] = useState<boolean>(false);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
@@ -67,6 +67,7 @@ export function CreateExclusiveDealModal({
   const [error, setError] = useState<string | null>(null);
 
   const dialogRef = useRef<HTMLDivElement>(null);
+  const submitInFlight = useRef(false);
 
   // Load products with real-time deal & lock status
   useEffect(() => {
@@ -101,7 +102,7 @@ export function CreateExclusiveDealModal({
   const filteredProducts = products
     .filter((p) => (storeId ? p.storeId === storeId : true))
     .filter((p) =>
-      p.title.toLowerCase().includes(searchQuery.toLowerCase().trim())
+      [p.title, p.sku, p.code, p.productCode, p.id].filter(Boolean).join(' ').toLocaleLowerCase('vi').includes(searchQuery.toLocaleLowerCase('vi').trim())
     );
 
   const selectableProducts = products.filter((p) => !p.activeDeal?.isLocked);
@@ -128,12 +129,9 @@ export function CreateExclusiveDealModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const unlockedSelectedIds = selectedProductIds.filter((id) => {
-      const p = products.find((item) => item.id === id);
-      return p && !p.activeDeal?.isLocked;
-    });
-    if (unlockedSelectedIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một sản phẩm chưa bị khóa Deal.');
+    if (submitInFlight.current) return;
+    if (selectedProductIds.length === 0) {
+      setError('Vui lòng chọn ít nhất một sản phẩm áp dụng thỏa thuận.');
       return;
     }
     const numRate = Number(commissionRate) || 0;
@@ -155,6 +153,7 @@ export function CreateExclusiveDealModal({
       return;
     }
 
+    submitInFlight.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -176,6 +175,7 @@ export function CreateExclusiveDealModal({
           'Không thể gửi đề xuất thỏa thuận lúc này.'
       );
     } finally {
+      submitInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -189,449 +189,58 @@ export function CreateExclusiveDealModal({
   const isDaysInvalid = !Number.isFinite(numDays) || numDays < 7 || numDays > 90;
   const isEscalation = !isRateInvalid && numRate > 16;
 
+  const inputClass = 'h-[42px] w-full rounded-lg border border-[#EAE4D7] bg-white px-3 pr-12 text-sm font-semibold tabular-nums outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10';
   const modalContent = (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="deal-modal-title"
-      className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-[#1A1612]/60 backdrop-blur-xs animate-in fade-in duration-150"
-    >
-      <div
-        ref={dialogRef}
-        className="shop-deal-offer-dialog w-full max-w-[960px] max-h-[85dvh] flex flex-col rounded-2xl bg-[#FFFFFF] border border-[#EAE4D7] shadow-2xl overflow-hidden text-[#1A1612]"
-      >
-        {/* Header */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-[#EAE4D7] bg-[#FAF8F5] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-              <Handshake className="w-5 h-5 stroke-[1.75]" />
-            </div>
-            <div>
-              <h2
-                id="deal-modal-title"
-                className="text-base font-bold text-[#1A1612]"
-              >
-                Đề xuất thỏa thuận độc quyền
-              </h2>
-              <p className="text-xs text-[#7D715E]">
-                KOL:{' '}
-                <strong className="text-[#1A1612] font-semibold">
-                  {collaboratorName}
-                </strong>
-              </p>
-            </div>
+    <div role="dialog" aria-modal="true" aria-labelledby="deal-modal-title" className="fixed inset-0 z-[120] flex items-center justify-center bg-[#231D15]/50 p-3 backdrop-blur-xs sm:p-4">
+      <div ref={dialogRef} className="shop-deal-offer-dialog flex w-full max-w-[960px] max-h-[90dvh] flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-xl">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#EAE4D7] px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Handshake size={20}/></span>
+            <div className="min-w-0"><h2 id="deal-modal-title" className="text-base font-semibold">Đề xuất thỏa thuận độc quyền</h2><p className="mt-0.5 truncate text-xs text-[#7D715E]">{collaboratorName}</p></div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
-            aria-label="Đóng"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <button type="button" onClick={onClose} disabled={submitting} aria-label="Đóng" className="grid size-9 shrink-0 place-items-center rounded-lg text-[#7D715E] hover:bg-[#FAF8F5] disabled:opacity-40"><X size={20}/></button>
         </header>
-
-        {/* Global Error Banner */}
-        {error && (
-          <div className="mx-6 mt-3 flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs shrink-0">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Body: 2 Columns */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 overflow-hidden">
-          {/* LEFT COLUMN: Chọn sản phẩm áp dụng */}
-          <section className="md:col-span-6 flex flex-col border-b md:border-b-0 md:border-r border-[#EAE4D7] bg-[#FAF8F5] min-h-0">
-            {/* Top Toolbar */}
-            <div className="p-4 border-b border-[#EAE4D7] bg-white space-y-2.5 shrink-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
-                  <Package className="w-4 h-4 text-[#B88E4F]" />
-                  Sản phẩm áp dụng{' '}
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
-                    Đã chọn: {selectedProductIds.length} / {selectableProducts.length}
-                  </span>
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    disabled={selectableProducts.length === 0}
-                    className="text-[11px] font-semibold text-[#B88E4F] hover:text-[#8C6226] hover:underline disabled:opacity-40 cursor-pointer"
-                  >
-                    Chọn tất cả
-                  </button>
-                  <span className="text-xs text-[#EAE4D7]">|</span>
-                  <button
-                    type="button"
-                    onClick={handleClearAll}
-                    disabled={selectedProductIds.length === 0}
-                    className="text-[11px] font-medium text-[#7D715E] hover:text-[#1A1612] hover:underline disabled:opacity-40 cursor-pointer"
-                  >
-                    Bỏ chọn
-                  </button>
-                </div>
-              </div>
-
-              {/* Search Box */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm kiếm sản phẩm theo tên..."
-                  className="w-full pl-8.5 pr-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none placeholder-[#7D715E]/60 transition"
-                />
-              </div>
+        {error && <div role="alert" className="mx-5 mt-3 flex shrink-0 items-start gap-2 rounded-lg border border-[#FECACA] bg-[#FEF2F2] p-3 text-xs text-[#DC2626]"><AlertCircle size={16} className="shrink-0"/><span>{error}</span></div>}
+        <div className="deal-offer-body grid min-h-0 grid-cols-1 overflow-y-auto md:grid-cols-[minmax(0,45fr)_minmax(0,55fr)]">
+          <section className="deal-offer-catalog flex min-h-0 min-w-0 flex-col border-b border-[#EAE4D7] md:border-r md:border-b-0">
+            <div className="shrink-0 space-y-3 p-4">
+              <div className="flex items-center justify-between gap-2"><h3 className="text-xs font-semibold">Sản phẩm</h3><span className="text-xs tabular-nums text-[#7D715E]">Đã chọn {selectedProductIds.length}/{selectableProducts.length}</span></div>
+              <div className="relative"><Search size={15} className="absolute top-3.5 left-3 text-[#7D715E]"/><input aria-label="Tìm sản phẩm" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Tìm tên hoặc mã sản phẩm…" className="h-[42px] w-full rounded-lg border border-[#EAE4D7] bg-white pr-3 pl-9 text-xs outline-none focus:border-[#C59B58]"/></div>
+              <div className="flex items-center gap-3 text-xs"><button type="button" onClick={handleSelectAll} disabled={submitting || !selectableProducts.length} className="font-semibold text-[#90682F] hover:underline disabled:opacity-40">Chọn tất cả</button><span className="h-3 w-px bg-[#EAE4D7]"/><button type="button" onClick={handleClearAll} disabled={submitting || !selectedProductIds.length} className="text-[#7D715E] hover:underline disabled:opacity-40">Bỏ chọn</button></div>
             </div>
-
-            {/* Scrollable Product List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {loadingProducts ? (
-                <div className="flex flex-col items-center justify-center py-16 text-xs text-[#7D715E]">
-                  <Loader2 className="w-5 h-5 animate-spin mb-2 text-[#B88E4F]" />
-                  Đang tải danh mục sản phẩm của Nhãn hàng...
-                </div>
-              ) : filteredProducts.length === 0 ? (
-                <div className="p-8 text-xs text-[#7D715E] text-center">
-                  Không tìm thấy sản phẩm nào phù hợp.
-                </div>
-              ) : (
-                filteredProducts.map((p) => {
-                  const isLocked = Boolean(p.activeDeal?.isLocked);
-                  const isSelected = selectedProductIds.includes(p.id);
-
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => !isLocked && toggleProduct(p.id)}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl border transition ${
-                        isLocked
-                          ? 'border-[#EAE4D7] bg-[#F3EFE6]/70 opacity-70 cursor-not-allowed'
-                          : isSelected
-                          ? 'border-[#C59B58] bg-[#FFFFFF] shadow-2xs ring-1 ring-[#C59B58]/30 cursor-pointer'
-                          : 'border-[#EAE4D7] bg-[#FFFFFF] hover:border-[#C59B58]/60 cursor-pointer'
-                      }`}
-                    >
-                      {/* Checkbox Icon */}
-                      <div className="shrink-0">
-                        {isLocked ? (
-                          <div
-                            className="w-5 h-5 rounded-md bg-[#EAE4D7] text-[#7D715E] flex items-center justify-center"
-                            title="Sản phẩm đang trong cam kết KPI độc quyền trước đó"
-                          >
-                            <Lock className="w-3 h-3" />
-                          </div>
-                        ) : isSelected ? (
-                          <div className="w-5 h-5 rounded-md bg-[#C59B58] text-white flex items-center justify-center">
-                            <Check className="w-3.5 h-3.5 stroke-[3]" />
-                          </div>
-                        ) : (
-                          <div className="w-5 h-5 rounded-md border border-[#EAE4D7] bg-white" />
-                        )}
-                      </div>
-
-                      {/* Thumbnail */}
-                      <div className="w-12 h-12 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] overflow-hidden shrink-0 flex items-center justify-center">
-                        {p.imageUrl ? (
-                          <img
-                            src={p.imageUrl}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Package className="w-5 h-5 text-[#7D715E]" />
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-[#1A1612] truncate">
-                          {p.title}
-                        </div>
-                        <div className="text-[11px] text-[#7D715E] mt-0.5">
-                          Giá niêm yết:{' '}
-                          <strong className="text-[#1A1612] font-semibold">
-                            {formatMoney(p.price)}
-                          </strong>
-                        </div>
-
-                        {/* Rate Badge Indicator */}
-                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                          {isLocked ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800">
-                              <Lock className="w-2.5 h-2.5" />
-                              Đang có deal {p.activeDeal?.effectiveRate}% (
-                              {p.activeDeal?.remainingDays
-                                ? `còn ${p.activeDeal.remainingDays} ngày`
-                                : 'chờ duyệt'}
-                              )
-                            </span>
-                          ) : p.activeDeal ? (
-                            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[#8C6226]">
-                              Deal cũ: {p.activeDeal.effectiveRate}% (hết KPI)
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
-                              Thù lao cơ sở: 10%
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+            <div className="deal-offer-products min-h-0 space-y-2 overflow-y-auto px-4 pb-4">
+              {loadingProducts ? <p role="status" className="flex items-center justify-center gap-2 py-8 text-xs text-[#7D715E]"><Loader2 size={16} className="animate-spin"/>Đang tải sản phẩm…</p> : !filteredProducts.length ? <p className="py-8 text-center text-xs text-[#7D715E]">Không có sản phẩm phù hợp</p> : filteredProducts.map(product=>{
+                const locked = Boolean(product.activeDeal?.isLocked);
+                const selected = selectedProductIds.includes(product.id);
+                return <button key={product.id} type="button" aria-pressed={selected} disabled={locked || submitting} onClick={()=>toggleProduct(product.id)} className={`deal-offer-product flex min-h-[72px] w-full items-center gap-2.5 rounded-lg border p-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] ${locked ? 'cursor-not-allowed border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]' : selected ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'}`}>
+                  <span aria-hidden="true" className={`grid size-4 shrink-0 place-items-center rounded border ${selected ? 'border-[#C59B58] bg-[#C59B58] text-[#231D15]' : 'border-[#EAE4D7]'}`}>{locked ? <Lock size={11}/> : selected ? <Check size={12}/> : null}</span>
+                  <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] bg-white">{product.imageUrl ? <img src={product.imageUrl} alt="" className="size-full object-contain"/> : <Package size={20} className="text-[#B88E4F]"/>}</span>
+                  <span className="min-w-0 flex-1"><strong title={product.title} className="line-clamp-2 text-xs leading-[18px] font-semibold">{product.title}</strong><span className="mt-0.5 block text-xs font-semibold tabular-nums">{formatMoney(product.price)}</span>
+                    {product.activeDeal && <span className="mt-1 block text-[10px] leading-4 text-[#90682F]">{locked ? `Đang có Deal ${product.activeDeal.effectiveRate}% · ${product.activeDeal.remainingDays != null ? `Còn ${product.activeDeal.remainingDays} ngày` : 'Chờ duyệt'}` : `Deal trước: ${product.activeDeal.effectiveRate}% · Đã hết KPI`}</span>}
+                  </span>
+                </button>;
+              })}
             </div>
           </section>
-
-          {/* RIGHT COLUMN: Điều khoản thỏa thuận */}
-          <section className="md:col-span-6 flex flex-col bg-white overflow-y-auto p-5 space-y-3.5 min-h-0">
-            {/* 1. Mức thù lao độc quyền đề xuất */}
+          <section className="deal-offer-terms min-w-0 space-y-4 p-4 md:p-5">
+            <h3 className="text-xs font-semibold">Điều khoản</h3>
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1.5 whitespace-nowrap">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
-                    Thù lao tổng (%) *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowHelpPopover((prev) => !prev)}
-                    className="w-4 h-4 rounded-full text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#F3EFE6] flex items-center justify-center cursor-pointer transition"
-                    title="Xem quy định hạn mức phê duyệt"
-                    aria-label="Xem quy định hạn mức"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <span className="text-xs font-bold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] px-2 py-0.5 rounded-md tabular-nums whitespace-nowrap">
-                  {isEscalation ? 'Cần Admin duyệt' : 'Thù lao tổng'}
-                </span>
-              </div>
-
-              {/* Collapsible Info Popover */}
-              {showHelpPopover && (
-                <div className="mb-2.5 p-3 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-xs text-[#7D715E] leading-relaxed animate-in fade-in space-y-1">
-                  <div className="font-bold text-[#1A1612] flex items-center gap-1">
-                    <Percent className="w-3.5 h-3.5 text-[#B88E4F]" />
-                    Quy tắc hạn mức thẩm quyền (Governance):
-                  </div>
-                  <p>
-                    • <strong>11% – 16%:</strong> Khung tự trị của Quản lý Cửa hàng. Kích hoạt ngay khi Đối tác (KOC) chấp thuận.
-                  </p>
-                  <p>
-                    • <strong>Trên 16% (17% – 25%):</strong> Cơ chế leo thang thẩm duyệt. Yêu cầu Tổng Giám Đốc (System Admin) phê duyệt ngân sách ngoại lệ trước khi kích hoạt.
-                  </p>
-                </div>
-              )}
-
-              {/* Rate Input & Quick Presets on the SAME ROW */}
-              <div className="flex items-center gap-2">
-                <div className="relative w-28 shrink-0">
-                  <input
-                    type="number"
-                    step="0.5"
-                    min={11}
-                    max={25}
-                    value={commissionRate}
-                    onChange={(e) =>
-                      setCommissionRate(
-                        e.target.value === '' ? '' : Number(e.target.value)
-                      )
-                    }
-                    onBlur={() =>
-                      setCommissionRate((prev) =>
-                        prev === '' ? 14 : Math.min(25, Math.max(11, Number(prev)))
-                      )
-                    }
-                    className="w-full px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-sm font-bold text-[#1A1612] tabular-nums focus:border-[#C59B58] focus:outline-none shadow-2xs"
-                    placeholder="11 - 25%"
-                  />
-                  <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">
-                    %
-                  </span>
-                </div>
-
-                {/* Quick Selection Pills */}
-                <div className="flex items-center gap-1.5 flex-1 overflow-x-auto">
-                  <span className="text-xs text-[#7D715E] font-medium whitespace-nowrap">Gợi ý:</span>
-                  {[12, 14, 16, 18].map((rate) => {
-                    const isActive = commissionRate === rate;
-                    return (
-                      <button
-                        key={rate}
-                        type="button"
-                        onClick={() => setCommissionRate(rate)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap cursor-pointer tabular-nums ${
-                          isActive
-                            ? 'border-[#C59B58] bg-[#C59B58] text-white shadow-xs'
-                            : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#F3EFE6]'
-                        }`}
-                      >
-                        {rate}%
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Governance / Validation Alert Pill */}
-              {isRateInvalid && (
-                <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>
-                    {Number(commissionRate) > 25
-                      ? 'Vượt trần tối đa 25% của hệ thống SCANMS — không thể tạo Deal.'
-                      : 'Thù lao Deal phải từ 11% đến tối đa 25% (cao hơn mức cơ bản 10%).'}
-                  </span>
-                </div>
-              )}
-              {isEscalation && (
-                <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>
-                    Mức {commissionRate}% cần Admin phê duyệt.
-                  </span>
-                </div>
-              )}
+              <div className="mb-2 flex items-center gap-1.5"><label htmlFor="deal-offer-rate" className="text-[13px] font-medium">Thù lao tổng <span className="text-[#DC2626]">*</span></label><button type="button" aria-label="Quy định thù lao" aria-expanded={showHelpPopover} aria-controls="deal-offer-help" onClick={()=>setShowHelpPopover(value=>!value)} className="text-[#7D715E] hover:text-[#B88E4F]"><HelpCircle size={14}/></button></div>
+              {showHelpPopover && <p id="deal-offer-help" className="mb-2 rounded-lg bg-[#FBF5EB] p-2.5 text-xs leading-5 text-[#7D715E]">Mức Deal không cộng thêm bậc KOL. Trên 16% cần Admin phê duyệt; tối đa 25%.</p>}
+              <div className="relative"><input id="deal-offer-rate" type="number" min={11} max={25} step="0.5" value={commissionRate} disabled={submitting} onChange={e=>setCommissionRate(e.target.value===''?'':Number(e.target.value))} onBlur={()=>setCommissionRate(value=>value===''?14:Math.min(25,Math.max(11,Number(value))))} className={inputClass}/><span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-[#7D715E]">%</span></div>
+              <div className="mt-2 grid grid-cols-4 gap-2">{[12,14,16,18].map(rate=><button key={rate} type="button" aria-pressed={commissionRate===rate} disabled={submitting} onClick={()=>setCommissionRate(rate)} className={`h-8 rounded-lg border text-xs font-semibold tabular-nums ${commissionRate===rate?'border-[#C59B58] bg-[#FBF5EB] text-[#79592C]':'border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}>{rate}%</button>)}</div>
+              {isEscalation && <p className="mt-2 flex items-center gap-1.5 text-xs text-[#90682F]"><ShieldAlert size={14}/>Cần Admin phê duyệt.</p>}
             </div>
-
-            {/* 2. Cam kết KPI & Thời hạn */}
-            <div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
-                      KPI đơn hàng *
-                    </label>
-                    <span className="text-xs font-semibold text-[#1A1612] tabular-nums whitespace-nowrap">
-                      {targetOrders || 0} đơn
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min={1}
-                      max={10000}
-                      value={targetOrders}
-                      onChange={(e) =>
-                        setTargetOrders(
-                          e.target.value === '' ? '' : Number(e.target.value)
-                        )
-                      }
-                      onBlur={() =>
-                        setTargetOrders((prev) =>
-                          prev === '' ? 30 : Math.max(1, Number(prev))
-                        )
-                      }
-                      className="w-full pl-3 pr-12 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-bold text-[#1A1612] tabular-nums focus:border-[#C59B58] focus:outline-none shadow-2xs"
-                      placeholder="Ví dụ: 30"
-                    />
-                    <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">
-                      đơn
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
-                      Thời hạn *
-                    </label>
-                    <span className="text-xs font-semibold text-[#1A1612] tabular-nums whitespace-nowrap">
-                      {commitmentDays || 0} ngày
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min={7}
-                      max={90}
-                      value={commitmentDays}
-                      onChange={(e) =>
-                        setCommitmentDays(
-                          e.target.value === '' ? '' : Number(e.target.value)
-                        )
-                      }
-                      onBlur={() =>
-                        setCommitmentDays((prev) =>
-                          prev === '' ? 14 : Math.max(7, Math.min(90, Number(prev)))
-                        )
-                      }
-                      className="w-full pl-3 pr-12 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-bold text-[#1A1612] tabular-nums focus:border-[#C59B58] focus:outline-none shadow-2xs"
-                      placeholder="Ví dụ: 14"
-                    />
-                    <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">
-                      ngày
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {(isOrdersInvalid || isDaysInvalid) && (
-                <p className="mt-1.5 text-[11px] font-medium text-rose-600">
-                  {isOrdersInvalid
-                    ? 'Chỉ tiêu KPI đơn hàng hợp lệ từ 1 đến 10.000 đơn.'
-                    : 'Thời hạn cam kết hợp lệ từ 7 đến 90 ngày.'}
-                </p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div><div className="mb-2 flex items-center gap-1.5"><label htmlFor="deal-offer-orders" className="text-[13px] font-medium">KPI đơn hàng <span className="text-[#DC2626]">*</span></label><span tabIndex={0} title="KPI cho nhóm sản phẩm đã chọn" aria-label="KPI cho nhóm sản phẩm đã chọn" className="text-[#7D715E]"><HelpCircle size={13}/></span></div><div className="relative"><input id="deal-offer-orders" type="number" min={1} value={targetOrders} disabled={submitting} onChange={e=>setTargetOrders(e.target.value===''?'':Number(e.target.value))} onBlur={()=>setTargetOrders(value=>value===''?30:Math.max(1,Number(value)))} className={inputClass}/><span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-[#7D715E]">đơn</span></div></div>
+              <div><label htmlFor="deal-offer-days" className="mb-2 block text-[13px] font-medium">Thời hạn <span className="text-[#DC2626]">*</span></label><div className="relative"><input id="deal-offer-days" type="number" min={7} max={90} value={commitmentDays} disabled={submitting} onChange={e=>setCommitmentDays(e.target.value===''?'':Number(e.target.value))} onBlur={()=>setCommitmentDays(value=>value===''?14:Math.max(7,Math.min(90,Number(value))))} className={inputClass}/><span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-[#7D715E]">ngày</span></div></div>
             </div>
-
-            {/* 4. Ghi chú điều khoản hợp tác */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#7D715E] mb-1">
-                Ghi chú điều khoản
-              </label>
-              <textarea
-                rows={2}
-                value={salesCommitment}
-                onChange={(e) => setSalesCommitment(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none resize-none shadow-2xs placeholder-[#7D715E]"
-                placeholder="Ghi chú điều khoản video review, bài đăng hoặc kênh truyền thông cam kết..."
-              />
-            </div>
-
+            <div><label htmlFor="deal-offer-note" className="mb-2 block text-[13px] font-medium">Ghi chú điều khoản <span className="font-normal text-[#7D715E]">· Không bắt buộc</span></label><textarea id="deal-offer-note" value={salesCommitment} disabled={submitting} onChange={e=>setSalesCommitment(e.target.value)} placeholder="Nhập điều khoản bổ sung…" className="h-20 w-full resize-none rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs leading-5 outline-none focus:border-[#C59B58]"/></div>
           </section>
         </div>
-
-        {/* Footer Actions */}
-        <footer className="flex items-center justify-between px-6 py-3.5 border-t border-[#EAE4D7] bg-[#FAF8F5] shrink-0">
-          <div className="exclusive-deal-summary">{selectedProductIds.length} sản phẩm · {commissionRate}% · {targetOrders} đơn · {commitmentDays} ngày</div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
-            >
-              Quay lại
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting || selectedProductIds.length === 0 || isRateInvalid || isOrdersInvalid || isDaysInvalid}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-40 active:scale-[0.98]"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Đang gửi…</span>
-                </>
-              ) : (
-                <>
-                  <Handshake className="w-4 h-4 stroke-[2]" />
-                  <span>
-                    {isEscalation
-                      ? 'Gửi Admin duyệt'
-                      : 'Gửi đề xuất'}
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] bg-white px-5 py-4">
+          <div className="exclusive-deal-summary text-xs tabular-nums text-[#7D715E]">{selectedProductIds.length} sản phẩm · {commissionRate || 0}% · {targetOrders || 0} đơn · {commitmentDays || 0} ngày</div>
+          <div className="flex items-center gap-2"><button type="button" onClick={onClose} disabled={submitting} className="h-[42px] rounded-lg border border-[#EAE4D7] bg-white px-4 text-xs font-semibold hover:bg-[#FAF8F5] disabled:opacity-40">Quay lại</button><button type="button" onClick={handleSubmit} disabled={submitting || !selectedProductIds.length || loadingProducts || isRateInvalid || isOrdersInvalid || isDaysInvalid} className="flex h-[42px] items-center justify-center gap-2 rounded-lg border border-[#B88E4F] bg-[#C59B58] px-5 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-40">{submitting ? <Loader2 size={15} className="animate-spin"/> : <Handshake size={16}/>}<span>{submitting?'Đang gửi…':'Gửi đề xuất'}</span></button></div>
         </footer>
       </div>
     </div>

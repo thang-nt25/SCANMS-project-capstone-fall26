@@ -33,6 +33,15 @@ import {
 )
 export class StoreMonthlyRewardsController {
   constructor(private readonly rewards: StoreMonthlyRewardsService) {}
+  @Get('stores/:storeId/policies')
+  @Roles(UserRole.SHOP_MANAGER)
+  policyHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Query('page') page?: string,
+  ) {
+    return this.rewards.policyHistory(user, storeId, page === undefined ? 1 : Number(page));
+  }
   @Get() list(
     @CurrentUser() user: AuthenticatedUser,
     @Query('month') month?: string,

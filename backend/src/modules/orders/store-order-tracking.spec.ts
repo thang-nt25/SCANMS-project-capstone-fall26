@@ -29,10 +29,27 @@ function fixture(shipments: unknown[] = [], hasReturn = true) {
     prisma,
     cacheService: { get: jest.fn().mockResolvedValue(null), set: jest.fn() },
   }) as OrdersService;
-  return { service, prisma };
+  return { service, prisma, order };
 }
 
 describe('merchant order list exposes the replacement waybill separately', () => {
+  it('returns each purchased variant alongside its product image and quantity', async () => {
+    const { service, prisma, order } = fixture([], false);
+    const product = { title: 'Mặt nạ', sku: 'MASK', imageUrl: '/assets/mask.jpg' };
+    Object.assign(order, {
+      orderItems: [
+        { id: 'item-1', productId: 'product-1', product, quantity: 2, unitPrice: 12000, variant: { name: 'Gói 50 ml', sku: 'MASK-50', imageUrl: '/assets/mask-50.jpg' } },
+        { id: 'item-2', productId: 'product-1', product, quantity: 1, unitPrice: 10000, variant: null },
+      ],
+    });
+    const result = await service.getMyStoreOrders('shop-1', UserRole.SHOP_MANAGER, { storeId: 'store-1' }, true);
+    expect(prisma.order.findMany.mock.calls.at(-1)?.[0].include.orderItems.include.variant.select).toEqual({ name: true, sku: true, imageUrl: true });
+    expect(result.items[0].items).toMatchObject([
+      { id: 'item-1', quantity: 2, imageUrl: '/assets/mask.jpg', variantName: 'Gói 50 ml', variantSku: 'MASK-50', variantImageUrl: '/assets/mask-50.jpg' },
+      { id: 'item-2', quantity: 1, imageUrl: '/assets/mask.jpg', variantName: null, variantImageUrl: null },
+    ]);
+  });
+
   it('counts pending return work across pages and shares that condition with the pending tab', async () => {
     const { service, prisma } = fixture();
     prisma.order.count.mockReset()

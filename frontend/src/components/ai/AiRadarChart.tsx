@@ -17,6 +17,7 @@ interface MultiRadarDataset {
 }
 
 interface MultiRadarProps {
+  axisLabels?: [string, string, string, string];
   datasets: MultiRadarDataset[];
   size?: number;
   showLabels?: boolean;
@@ -145,6 +146,7 @@ export function AiRadarChart({
  * Multi-Dataset Overlaid Radar Chart for Direct 1-on-1 / 1-on-2 Comparison
  */
 export function MultiAiRadarChart({
+  axisLabels,
   datasets,
   size = 280,
   showLabels = true,
@@ -156,7 +158,7 @@ export function MultiAiRadarChart({
   const vbPadX = 64;
   const vbPadY = 10;
 
-  const clamp = (val?: number) => Math.max(5, Math.min(100, val || 0));
+  const clamp = (val?: number) => Math.max(0, Math.min(100, val || 0));
   const gridLevels = [0.25, 0.5, 0.75, 1.0];
 
   return (
@@ -229,16 +231,16 @@ export function MultiAiRadarChart({
         {showLabels && (
           <g className="text-xs font-semibold fill-[#1A1612]">
             <text x={cx} y={cy - r - 8} textAnchor="middle" className="text-xs font-bold fill-[#1A1612]">
-              1. Ngành hàng (35%)
+              {axisLabels?.[0] ?? '1. Ngành hàng (35%)'}
             </text>
             <text x={cx + r + 8} y={cy + 4} textAnchor="start" className="text-xs font-bold fill-[#1A1612]">
-              2. CR% (25%)
+              {axisLabels?.[1] ?? '2. CR% (25%)'}
             </text>
             <text x={cx} y={cy + r + 18} textAnchor="middle" className="text-xs font-bold fill-[#1A1612]">
-              4. Cấp bậc & MXH (20%)
+              {axisLabels?.[2] ?? '4. Cấp bậc & MXH (20%)'}
             </text>
             <text x={cx - r - 8} y={cy + 4} textAnchor="end" className="text-xs font-bold fill-[#1A1612]">
-              3. Giá bán (20%)
+              {axisLabels?.[3] ?? '3. Giá bán (20%)'}
             </text>
           </g>
         )}

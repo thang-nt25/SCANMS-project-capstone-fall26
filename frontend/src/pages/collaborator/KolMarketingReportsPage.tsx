@@ -39,7 +39,7 @@ export default function KolMarketingReportsPage() {
 
 
   return <section id="kol-overview" className="kol-marketing-reports flex min-w-0 flex-col gap-4 pb-8" aria-label="Báo cáo tiếp thị">
-    <header className="kol-report-page-heading"><Link to="/collaborator/dashboard"><ArrowLeft size={16}/>Tổng quan</Link><h1>Báo cáo tiếp thị</h1><span>Lũy kế mọi thời gian</span></header>
+    <header className="kol-report-page-heading"><Link to="/collaborator/dashboard"><ArrowLeft size={16}/>Tổng quan</Link><span>Lũy kế mọi thời gian</span></header>
       <div className="flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
         {/* Khay tab điều hướng */}
         <div className="px-3 py-3 border-b border-[#EAE4D7] bg-white">

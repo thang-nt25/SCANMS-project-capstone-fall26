@@ -15,33 +15,38 @@ import { Icon, Wordmark } from "../../components/commerce";
 import { colors } from "../../theme/tokens";
 import { useAuth } from "./AuthProvider";
 import { useRouter } from "expo-router";
+import { GoogleAuthButton } from "./GoogleAuthButton";
 
 export function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [identifier, setIdentifier] = useState(""),
     [password, setPassword] = useState(""),
     [visible, setVisible] = useState(false),
-    [busy, setBusy] = useState(false),
+    [pending, setPending] = useState<"password" | "google" | null>(null),
     [error, setError] = useState<unknown>(null);
+  const busy = pending !== null;
   const lock = useRef(false);
-  const submit = async () => {
+  const submit = async (method: "password" | "google" = "password") => {
     if (lock.current) return;
-    if (!identifier.trim() || !password) {
+    if (method === "password" && (!identifier.trim() || !password)) {
       setError("Nhập email/số điện thoại và mật khẩu đã đăng ký.");
       return;
     }
     lock.current = true;
-    setBusy(true);
+    setPending(method);
     setError(null);
     try {
-      await login(identifier, password);
-      setPassword("");
+      if (method === "google") await loginWithGoogle("login");
+      else {
+        await login(identifier, password);
+        setPassword("");
+      }
     } catch (caught) {
       setError(caught);
     } finally {
       lock.current = false;
-      setBusy(false);
+      setPending(null);
     }
   };
   return (
@@ -131,8 +136,15 @@ export function LoginScreen() {
             <ErrorNotice error={error} />
             <Button
               title="Đăng nhập"
-              loading={busy}
+              loading={pending === "password"}
+              disabled={busy}
               onPress={() => void submit()}
+            />
+            <GoogleAuthButton
+              intent="login"
+              busy={pending === "google"}
+              disabled={busy}
+              onPress={() => void submit("google")}
             />
             <View style={styles.registerRow}>
               <Text style={styles.subtitle}>Chưa có tài khoản?</Text>

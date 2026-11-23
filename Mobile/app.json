@@ -2,7 +2,7 @@
   "expo": {
     "name": "SCANMS",
     "slug": "scanms-mobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/scanms-logo-badge.png",
     "scheme": "scanms",
@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "vn.scanms.mobile",
-      "versionCode": 3,
+      "versionCode": 4,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",

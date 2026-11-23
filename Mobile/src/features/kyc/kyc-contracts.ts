@@ -85,6 +85,7 @@ export const ProfileMeta = z.object({
   submittedAt: z.string().nullish(),
   reviewStatus: z.string().nullish(),
   rejectionReason: z.string().nullish(),
+  requestedItems: z.array(z.string()).nullish(),
   needsInfo: z.boolean().optional(),
   channels: z.array(ChannelRecord).optional(),
   specialtyCategories: z.array(z.string()).optional(),

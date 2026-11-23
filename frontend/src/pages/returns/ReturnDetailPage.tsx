@@ -301,7 +301,16 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
   const navigate = useNavigate();
   const detail = useReturnDetail(id);
   const user = authService.getCurrentUser();
-  const back = mode === 'shop' ? '/merchant/orders' : mode === 'admin' ? '/admin/return-disputes' : '/customer/orders';
+  const location = useLocation();
+  const shopReturnFrom = location.state?.shopReturnFrom;
+  const shopBackPath = ['/merchant/orders', '/merchant/returns', '/merchant/return-requests'].includes(shopReturnFrom?.pathname)
+    ? shopReturnFrom.pathname as string
+    : '/merchant/returns';
+  const shopBackSearch = shopBackPath === shopReturnFrom?.pathname && typeof shopReturnFrom.search === 'string'
+    ? shopReturnFrom.search
+    : '';
+  const back = mode === 'shop' ? { pathname: shopBackPath, search: shopBackSearch } : mode === 'admin' ? '/admin/return-disputes' : '/customer/orders';
+  const backLabel = mode === 'shop' && shopBackPath !== '/merchant/orders' ? 'Quay lại danh sách hồ sơ' : 'Quay lại đơn hàng';
 
   if (!user) return <div className="min-h-screen bg-[#FAF8F5] p-6"><p>Bạn cần đăng nhập để xem hồ sơ.</p>
     <button onClick={() => navigate('/login')} className={`${primary} mt-3`}>Đăng nhập</button></div>;
@@ -315,7 +324,7 @@ function LegacyReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' 
       <div className={`mx-auto space-y-4 ${mode === 'customer' ? 'shrink-0 min-w-0 w-full border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-[0_8px_30px_rgba(110,84,39,.06)] [&>div]:p-4 sm:[&>div]:p-4 [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0' : mode === 'shop' ? 'shop-return-detail' : 'max-w-5xl'}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
-            <ArrowLeft className="h-4 w-4" /> Quay lại đơn hàng
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {backLabel}
           </Link>
           {mode === 'customer' && detail.data && <div className="ml-auto min-w-0 text-right">
             <h1 className="text-base font-bold">Hồ sơ đổi trả</h1>

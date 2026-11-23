@@ -85,6 +85,27 @@ describe('Store monthly rewards review workflow', () => {
     expect(rewardMonth(new Date('2026-11-30T18:00:00Z'))).toBe('2026-12');
     expect(rewardMonth(new Date('2026-12-20T00:00:00Z'), 1)).toBe('2027-01');
   });
+  it('lists saved policies across months only after checking the managed store', async () => {
+    db.storeMonthlyRewardPolicy.findMany = jest.fn().mockResolvedValue([{id:'saved', yearMonth:'2026-12'}]);
+    db.storeMonthlyRewardPolicy.count = jest.fn().mockResolvedValue(8);
+    const result = await service.policyHistory(shop, 'store', 2);
+    expect(result).toMatchObject({page:2,pageSize:5,total:8,items:[{id:'saved',yearMonth:'2026-12'}]});
+    expect(db.storeMonthlyRewardPolicy.findMany).toHaveBeenCalledWith(expect.objectContaining({where:{storeId:'store'},skip:5,take:5}));
+    db.storeMonthlyRewardPolicy.findMany.mockClear();
+    db.store.findFirst.mockResolvedValue(null);
+    await expect(service.policyHistory(shop,'other')).rejects.toThrow('Không có quyền');
+    expect(db.storeMonthlyRewardPolicy.findMany).not.toHaveBeenCalled();
+    await expect(service.policyHistory(manager,'store')).rejects.toThrow('Chỉ quản lý');
+  });
+  it('rejects invalid history pages without reading policy records', async () => {
+    db.storeMonthlyRewardPolicy.findMany = jest.fn();
+    for (const page of [0,-1,1.2,NaN,Infinity]) await expect(service.policyHistory(shop,'store',page)).rejects.toThrow('Trang không hợp lệ');
+    expect(db.storeMonthlyRewardPolicy.findMany).not.toHaveBeenCalled();
+  });
+  it('confirms successful submission to the shop with the correct reward-tab link', async () => {
+    await service.create(shop,'store',{yearMonth:rewardMonth(),name:'Monthly KPI',targetRevenue:'50000000',rewardAmount:'2000000'});
+    expect(tx.notification.create).toHaveBeenCalledWith({data:expect.objectContaining({userId:shop.id,title:'Đã tạo mốc thưởng tháng',data:expect.objectContaining({actionUrl:expect.stringContaining('section=milestones')})})});
+  });
   function historyFixture() {
     const savedRule = { id: 'legacy-rule', name: 'Old 50m policy', minMonthlyRevenue: '50000000', achievementBonus: '2000000', bonusPercentage: '0', isActive: true, effectiveFrom: '2026-09-30T17:00:00Z', effectiveTo: '2026-10-31T16:59:59Z' };
     return { id: 'old-paid', storeId: 'store', collaboratorId: 'kol', collaborator: { fullName: 'Nhi' }, yearMonth: '2026-10', validRevenue: new Prisma.Decimal(51871862), bonusAmount: new Prisma.Decimal(2000000), appliedRuleName: savedRule.name, status: 'PAID', ruleSnapshot: { rules: [savedRule] }, settledAt: new Date('2026-11-01T00:00:00Z'), paidAt: new Date('2026-11-02T00:00:00Z') };

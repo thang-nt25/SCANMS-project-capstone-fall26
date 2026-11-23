@@ -87,6 +87,9 @@ function Dossier({ item }: { item: KolApplication }) {
           value={item.rejectionReason || meta?.rejectionReason}
         />
       )}
+      {meta?.requestedItems?.map((field) => (
+        <Caption key={field}>• {field}</Caption>
+      ))}
     </>
   );
 }

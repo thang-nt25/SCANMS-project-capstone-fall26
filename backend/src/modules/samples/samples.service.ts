@@ -699,7 +699,7 @@ export class SamplesService {
     const receivedAt = new Date();
     const deadlineAt = new Date(receivedAt.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000);
     const updated = await this.prisma.sampleProductRequest.update({
-      where: { id: requestId },
+      where: { id: requestId, status: SampleRequestStatus.SHIPPED, carrier: req.carrier },
       data: {
         status: SampleRequestStatus.RECEIVED,
         receivedAt,
@@ -1310,7 +1310,7 @@ export class SamplesService {
         throw new BadRequestException('Chỉ có thể phán quyết hoàn thành cho đơn đang khiếu nại hoặc chờ duyệt video.');
       }
       const updated = await this.prisma.sampleProductRequest.update({
-        where: { id: requestId },
+        where: { id: requestId, status: req.status },
         data: { status: SampleRequestStatus.COMPLETED, videoRejectionReason: null, overdueAt: null },
         include: this.includeRelations(),
       });
@@ -1332,8 +1332,14 @@ export class SamplesService {
       }
       const revisionDeadlineAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const updated = await this.prisma.sampleProductRequest.update({
-        where: { id: requestId },
-        data: { status: SampleRequestStatus.REVISION_REQUIRED, revisionDeadlineAt, overdueAt: null },
+        where: { id: requestId, status: SampleRequestStatus.APPEALED },
+        data: {
+          status: SampleRequestStatus.REVISION_REQUIRED,
+          revisionDeadlineAt,
+          revisionReminderSentAt: null,
+          revisionShopReminderSentAt: null,
+          overdueAt: null,
+        },
         include: this.includeRelations(),
       });
       await this.invalidateShopSamplesCache();
@@ -1914,8 +1920,11 @@ export class SamplesService {
       throw new BadRequestException('Chỉ có thể yêu cầu trọng tài khi đơn đang bị yêu cầu chỉnh sửa.');
     }
     const reason = dto.reason.trim();
+    if (reason.length < 15) {
+      throw new BadRequestException('Giải trình cần ít nhất 15 ký tự.');
+    }
     const updated = await this.prisma.sampleProductRequest.update({
-      where: { id: requestId },
+      where: { id: requestId, status: SampleRequestStatus.REVISION_REQUIRED },
       data: {
         status: SampleRequestStatus.APPEALED,
         appealReason: reason,
@@ -1924,13 +1933,19 @@ export class SamplesService {
       include: this.includeRelations(),
     });
     await this.invalidateShopSamplesCache();
-    await this.notify({
-      userId: req.product.store.ownerId,
-      title: 'KOL yêu cầu trọng tài video mẫu',
-      message: `KOL đã gửi khiếu nại trọng tài lên System Manager cho mẫu ${req.product.title}. Đồng hồ SLA được tạm đóng băng chờ phân xử.`,
-      type: 'SAMPLE_REVISION_APPEALED',
-      requestId,
+    const reviewers = await this.prisma.user.findMany({
+      where: { role: { in: ['SYSTEM_MANAGER', 'SYSTEM_ADMIN'] }, isActive: true },
+      select: { id: true },
     });
+    for (const userId of new Set([req.product.store.ownerId, ...reviewers.map(({ id }) => id)])) {
+      await this.notify({
+        userId,
+        title: 'KOL yêu cầu trọng tài video mẫu',
+        message: `KOL đã gửi khiếu nại cho mẫu ${req.product.title}. Hạn thực hiện được tạm dừng chờ vận hành xử lý.`,
+        type: 'SAMPLE_REVISION_APPEALED',
+        requestId,
+      });
+    }
     await this.audit(collaboratorId, 'SAMPLE_REVISION_APPEALED', requestId, { reason });
     return updated;
   }

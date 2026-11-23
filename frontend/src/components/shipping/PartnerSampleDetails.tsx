@@ -1,46 +1,67 @@
+import { useState } from 'react';
 import type { SampleRequestItem } from '../../pages/merchant/ShopKolHubPage';
 import { SampleSandboxWaybills } from './SampleGhnEnvironmentPicker';
-import { ExternalLink, Truck, Video } from 'lucide-react';
-import SampleSubmittedVideo from '../affiliate/SampleSubmittedVideo';
+import { ExternalLink, Truck, Play, Copy, Check } from 'lucide-react';
+import { sampleVideoLink } from '../../utils/sample-video';
+
+function videoThumbnail(url: string): string | undefined {
+  try {
+    const parsed = new URL(url);
+    const id = parsed.hostname === 'youtu.be' ? parsed.pathname.slice(1) : /^(www\.)?youtube\.com$/.test(parsed.hostname) ? parsed.searchParams.get('v') || parsed.pathname.match(/^\/(?:shorts|embed)\/([\w-]+)/)?.[1] : null;
+    return id && /^[\w-]{11}$/.test(id) ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : undefined;
+  } catch { return undefined; }
+}
 
 export function PartnerSampleDetails({ item }: { item: SampleRequestItem }) {
+  const [copied, setCopied] = useState(false);
   const channelUrl = item.socialChannelUrlSnapshot || item.socialChannel?.channelUrl;
-  const previousAssets = (item.videoAssets || []).filter(asset => asset.urlOrContent !== item.reviewVideoUrl);
+  const assets = item.videoAssets || [];
+  // Keep the current submission first, even when its media record is delayed.
+  const current = assets.find(asset => asset.urlOrContent === item.reviewVideoUrl);
+  const videos = item.reviewVideoUrl
+    ? [current || {id:item.id,title:item.videoTitle || 'Video review đã nộp',urlOrContent:item.reviewVideoUrl,status:'',createdAt:item.videoSubmittedAt,rejectionReason:null}, ...assets.filter(asset => asset.urlOrContent !== item.reviewVideoUrl)]
+    : assets;
   const liveCharges = item.shippingCharges?.filter(charge => charge.environment !== 'TEST') || [];
+  const testTracking = item.shippingCharges?.some(charge => charge.environment === 'TEST' && charge.trackingNumber === item.trackingCode);
+  const copyTracking = async () => { try { await navigator.clipboard.writeText(item.trackingCode || ''); setCopied(true); setTimeout(()=>setCopied(false),2000); } catch { setCopied(false); } };
   return <div className="partner-sample-details">
     <div className="partner-sample-columns">
       <section aria-label="Vận chuyển mẫu">
-        <h5><Truck size={14} />Vận chuyển</h5>
-        <SampleSandboxWaybills charges={item.shippingCharges} role="shop" compact
-          productId={item.product.id} productTitle={item.product.title} sampleRequestId={item.id} />
-        {item.trackingCode && <div className="partner-live-waybill">
-          <strong>{item.carrier || 'Vận chuyển'} · {item.trackingCode}</strong>
-          <dl><div><dt>Cước Shop trả</dt><dd>{liveCharges.some(charge => charge.amount != null)
-            ? `${liveCharges.filter(charge => charge.amount != null).reduce((sum, charge) => sum + Number(charge.amount), 0).toLocaleString('vi-VN')} ₫${liveCharges.some(charge => charge.amount == null) ? ' · Chưa đủ cước' : ''}`
-            : 'Chưa ghi nhận'}</dd></div><div><dt>Thu hộ từ KOL</dt><dd>0 ₫</dd></div></dl>
+        <h5><Truck size={14}/>Vận chuyển</h5>
+        <SampleSandboxWaybills charges={item.shippingCharges} role="shop" compact productId={item.product.id} productTitle={item.product.title} sampleRequestId={item.id}/>
+        {item.trackingCode && !testTracking && <div className="partner-live-waybill">
+          <div className="flex min-w-0 items-center gap-2"><strong className="min-w-0 break-all">{item.carrier || 'Vận chuyển'} · {item.trackingCode}</strong><button type="button" title="Sao chép vận đơn" aria-label="Sao chép vận đơn" onClick={()=>void copyTracking()} className="grid size-7 shrink-0 place-items-center rounded text-[#90682F] hover:bg-[#FBF5EB]">{copied?<Check size={14}/>:<Copy size={14}/>}</button></div>
+          <dl><div><dt>Cước Shop trả</dt><dd>{liveCharges.some(charge=>charge.amount!=null) ? `${liveCharges.filter(charge=>charge.amount!=null).reduce((sum,charge)=>sum+Number(charge.amount),0).toLocaleString('vi-VN')} ₫${liveCharges.some(charge=>charge.amount==null)?' · Chưa đủ cước':''}`:'Chưa ghi nhận'}</dd></div><div><dt>Thu hộ KOL</dt><dd>{Math.max(0,...liveCharges.map(charge=>Number(charge.codAmount || 0))).toLocaleString('vi-VN')} ₫</dd></div></dl>
         </div>}
-        {!item.trackingCode && !item.shippingCharges?.some(charge => charge.environment === 'TEST') && <p className="partner-sample-muted">Chưa có vận đơn</p>}
+        {!item.trackingCode && !item.shippingCharges?.some(charge=>charge.environment==='TEST') && <p className="partner-sample-muted">Chưa có vận đơn</p>}
       </section>
-      <section aria-label="Nhận mẫu và nội dung cam kết">
-        <h5>Nhận mẫu & nội dung</h5>
-        <strong>{item.recipientName || item.collaboratorInfo?.fullName || 'Chưa có người nhận'}{item.recipientPhone ? ` · ${item.recipientPhone}` : ''}</strong>
+      <section aria-label="Người nhận mẫu">
+        <h5>Người nhận</h5>
+        <strong>{item.recipientName || item.collaboratorInfo?.fullName || 'Chưa có người nhận'}</strong>
+        {item.recipientPhone && <p className="partner-recipient-phone">{item.recipientPhone}</p>}
         <p>{item.shippingAddress || 'Chưa có địa chỉ nhận mẫu'}</p>
         {(item.socialPlatformSnapshot || item.socialChannel) && <div className="partner-sample-channel">
-          {channelUrl ? <a href={channelUrl} target="_blank" rel="noreferrer">{item.socialPlatformSnapshot || item.socialChannel?.platformName} · {item.socialChannelNameSnapshot || item.socialChannel?.channelName || 'Kênh đã chọn'} <ExternalLink size={12} /></a>
-            : <strong>{item.socialPlatformSnapshot || item.socialChannel?.platformName} · {item.socialChannelNameSnapshot || item.socialChannel?.channelName}</strong>}
+          {channelUrl?<a href={channelUrl} target="_blank" rel="noreferrer">{item.socialPlatformSnapshot || item.socialChannel?.platformName} · {item.socialChannelNameSnapshot || item.socialChannel?.channelName || 'Kênh đã chọn'}<ExternalLink size={12}/></a>:<strong>{item.socialPlatformSnapshot || item.socialChannel?.platformName} · {item.socialChannelNameSnapshot || item.socialChannel?.channelName}</strong>}
           <span>{Number(item.socialFollowerSnapshot ?? item.socialChannel?.followerCount ?? 0).toLocaleString('vi-VN')} người theo dõi</span>
         </div>}
-        {item.note && <div><span className="partner-sample-muted">Cam kết nội dung</span><p>{item.note}</p></div>}
+        {item.note && <div className="partner-content-commitment"><span className="partner-sample-muted">Cam kết nội dung</span><p>{item.note}</p></div>}
       </section>
     </div>
-    <SampleSubmittedVideo sample={item} />
-    {previousAssets.length > 0 && <section className="partner-sample-videos" aria-label="Lịch sử video đã nộp">
-      <h5><Video size={14} />Lịch sử video</h5>
-      {previousAssets.map(asset => <div key={asset.id}>
-        <a href={asset.urlOrContent} target="_blank" rel="noreferrer"><Video size={14} />{asset.title || 'Xem video'}<ExternalLink size={12} /></a>
-        <span>{asset.status === 'APPROVED' ? 'Đã duyệt' : asset.status === 'REJECTED' ? 'Cần chỉnh sửa' : 'Chờ duyệt'}</span>
-        {asset.rejectionReason && <p>{asset.rejectionReason}</p>}
-      </div>)}
+    {videos.length>0 && <section className="partner-sample-videos" aria-label="Video đã nộp">
+      {videos.map(asset=>{
+        const submitted = asset.createdAt || (videos.length===1 || asset.urlOrContent===item.reviewVideoUrl ? item.videoSubmittedAt : undefined);
+        const date = submitted ? new Date(submitted) : null;
+        const invalid = date && (!Number.isFinite(date.getTime()) || date.getTime()<new Date(item.createdAt).getTime());
+        const poster = videoThumbnail(asset.urlOrContent);
+        const href = sampleVideoLink(asset.urlOrContent);
+        const directVideo = /\.(mp4|webm|mov)(?:[?#]|$)|cloudinary\.com\/.*\/video\//i.test(asset.urlOrContent);
+        return <div key={asset.id} className="partner-video-row">
+          <div className="partner-video-thumbnail" aria-hidden="true">{poster?<img src={poster} alt="" onError={event=>{event.currentTarget.style.display='none';}}/>:directVideo?<video src={asset.urlOrContent} preload="metadata" muted playsInline/>:null}<Play size={17} className="absolute"/></div>
+          <div className="partner-video-info"><strong title={asset.title}>{asset.title || 'Video review đã nộp'}</strong><div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[#7D715E]">{invalid?<span title={`Ngày nộp đã lưu: ${submitted}; trước ngày yêu cầu ${item.createdAt}`}>Ngày nộp cần đối chiếu</span>:date?<time dateTime={submitted}>Đã nộp: {date.toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</time>:<span>Chưa ghi nhận ngày nộp</span>}{asset.status && <span>{asset.status==='APPROVED'?'Đã nghiệm thu':asset.status==='REJECTED'?'Cần chỉnh sửa':'Chờ duyệt'}</span>}</div>{asset.rejectionReason && <p className="text-xs text-[#DC2626]">{asset.rejectionReason}</p>}</div>
+          {href ? <a href={href} target="_blank" rel="noopener noreferrer" data-sample-current-video={asset.urlOrContent === item.reviewVideoUrl ? '' : undefined} className="partner-video-open">Xem video<ExternalLink size={13}/></a>
+            : <span className="text-xs text-[#DC2626]">Link video không hợp lệ</span>}
+        </div>;
+      })}
     </section>}
   </div>;
 }

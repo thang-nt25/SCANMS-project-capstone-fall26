@@ -1,28 +1,9 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { CheckCircle2, ChevronDown, CreditCard, FlaskConical, Loader2, Truck } from 'lucide-react';
 import api from '../../services/api';
 import { SandboxSampleReceipt } from './SandboxSampleReceipt';
 import { sandboxSampleStatusLabel, useSandboxSampleState } from './useSandboxSampleState';
 export { useSandboxSampleState, sandboxSampleStatusLabel };
-
-export function SampleGhnEnvironmentPicker({ value, onChange, allowLive = true, disabled = false }: {
-  value: 'LIVE' | 'TEST';
-  onChange: (value: 'LIVE' | 'TEST') => void;
-  allowLive?: boolean;
-  disabled?: boolean;
-}) {
-  const id = useId();
-  return <div className="space-y-2">
-    <label htmlFor={id} className="block text-xs font-bold text-[#1A1612]">Môi trường vận đơn GHN</label>
-    <select id={id} disabled={disabled} value={value} onChange={event => onChange(event.target.value as 'LIVE' | 'TEST')} className="w-full rounded-xl border border-[#EEDFC6] bg-white px-3 py-3 text-sm text-[#1A1612]">
-      <option value="LIVE" disabled={!allowLive}>GHN thật</option>
-      <option value="TEST">GHN sandbox</option>
-    </select>
-    <p className="text-xs leading-relaxed text-[#7D715E]">{value === 'TEST'
-      ? 'Tạo mã vận đơn mẫu. Shop có thể xác nhận nhận hàng trên thẻ mẫu để KOL nộp video; trạng thái và hạn nộp được quản lý trong SCANMS.'
-      : 'Tạo yêu cầu vận chuyển thật. Shop chịu phí ship; chỉ bấm nếu có kiện hàng để bàn giao.'}</p>
-  </div>;
-}
 
 export interface SampleWaybillCharge { environment?: string; trackingNumber: string; amount?: string | number | null }
 

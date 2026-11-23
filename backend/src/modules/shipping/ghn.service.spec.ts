@@ -76,8 +76,9 @@ describe('GHN customer order notifications', () => {
       ghnDistrictId: 1, ghnWardCode: '001',
       product: { title: 'Sample', price: 100000, packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5, store: { id: 'store-1', ownerId: 'shop-1', name: 'Shop', onboardingData: { warehouseAddress: 'Actual warehouse', contactPhone: '0987654321' }, returnWarehouse: {} } },
     };
+    const store = { findFirst: jest.fn().mockResolvedValue(null) };
     const tx = {
-      store: { findFirst: jest.fn().mockResolvedValue(null) },
+      store,
       sampleProductRequest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUnique: jest.fn().mockResolvedValue(sample) },
       sampleRequestEvent: { create: jest.fn() }, notification: { create: jest.fn() },
       sampleShippingCharge: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
@@ -86,6 +87,7 @@ describe('GHN customer order notifications', () => {
     const prisma = {
       store: tx.store,
       sampleProductRequest: { findUnique: jest.fn().mockResolvedValue(sample) },
+      store,
       $transaction: jest.fn((callback: any) => callback(tx)),
     };
     const service = new GhnService(prisma as any, {} as ConfigService);

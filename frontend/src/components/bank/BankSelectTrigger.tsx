@@ -11,6 +11,7 @@ export interface BankSelectTriggerProps {
   label?: string;
   placeholder?: string;
   className?: string;
+  compact?: boolean;
 }
 
 export const BankSelectTrigger: React.FC<BankSelectTriggerProps> = ({
@@ -21,6 +22,7 @@ export const BankSelectTrigger: React.FC<BankSelectTriggerProps> = ({
   label,
   placeholder = '-- Chọn ngân hàng từ danh sách VietQR --',
   className,
+  compact = false,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [failedLogo, setFailedLogo] = useState<string | null>(null);
@@ -56,10 +58,10 @@ export const BankSelectTrigger: React.FC<BankSelectTriggerProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsModalOpen(true)}
-        className={`w-full h-11 px-3.5 rounded-xl border transition-all flex items-center justify-between gap-2.5 text-left cursor-pointer shadow-2xs ${
+        className={`w-full h-11 px-3.5 border transition-all flex items-center justify-between gap-2.5 text-left cursor-pointer shadow-2xs ${compact ? 'rounded-lg!' : 'rounded-xl'} ${
           disabled
             ? 'opacity-50 cursor-not-allowed bg-[#FAF8F5] border-[#EAE4D7]'
-            : currentBank
+            : currentBank && !compact
             ? 'bg-[#FAF8F5] hover:bg-white border-[#C59B58] ring-1 ring-[#C59B58]/20'
             : 'bg-[#FAF8F5] hover:bg-white border-[#EAE4D7] hover:border-[#C59B58]/60'
         }`}
@@ -80,9 +82,9 @@ export const BankSelectTrigger: React.FC<BankSelectTriggerProps> = ({
                   <strong className="text-xs font-black text-[#1A1612] truncate">
                     {currentBank.shortName}
                   </strong>
-                  <span className="text-[9.5px] font-mono font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] px-1 py-0.2 rounded">
+                  {!compact && <span className="text-[9.5px] font-mono font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] px-1 py-0.2 rounded">
                     BIN {currentBank.bin}
-                  </span>
+                  </span>}
                 </div>
                 <p className="text-[10.5px] text-[#7D715E] truncate leading-none mt-0.5">
                   {currentBank.name}

@@ -77,6 +77,7 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
               "RECEIVED",
               "VIDEO_SUBMITTED",
               "REVISION_REQUIRED",
+              "APPEALED",
               "OVERDUE",
             ].includes(item.status)
           : status === "closed"
@@ -496,6 +497,9 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
               {row.videoRejectionReason && (
                 <Caption>Yêu cầu sửa: {row.videoRejectionReason}</Caption>
               )}
+              {row.status === "APPEALED" && (
+                <DetailLine label="Giải trình khiếu nại" value={row.appealReason} />
+              )}
               {koc &&
                 row.status === "PENDING" &&
                 action(row.id, "cancel", "Hủy yêu cầu xin mẫu")}
@@ -535,7 +539,7 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
                       fields: [
                         {
                           key: "reason",
-                          label: "Giải trình khiếu nại (tối thiểu 10 ký tự)",
+                          label: "Giải trình khiếu nại (tối thiểu 15 ký tự)",
                           multiline: true,
                         },
                       ],
@@ -543,7 +547,7 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
                         reason: z
                           .string()
                           .trim()
-                          .min(10, "Nhập tối thiểu 10 ký tự")
+                          .min(15, "Nhập tối thiểu 15 ký tự")
                           .max(1000),
                       }),
                     })
@@ -762,7 +766,10 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
                           {
                             key: "action",
                             label: "Quyết định",
-                            options: [
+                            options: row.status === "APPEALED" ? [
+                              { value: "FORCE_COMPLETE", label: "Nghiệm thu video" },
+                              { value: "UPHOLD_REVISION", label: "Giữ yêu cầu sửa" },
+                            ] : [
                               { value: "EXTEND_DEADLINE", label: "Gia hạn" },
                               {
                                 value: "CANCEL_OBLIGATION",
@@ -793,6 +800,8 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
                               "RESOLVE_DELIVERY_ISSUE",
                               "BLOCK_SAMPLE_REQUESTS",
                               "DISMISS_REPORT",
+                              "FORCE_COMPLETE",
+                              "UPHOLD_REVISION",
                             ]),
                             reason: required.max(500),
                             deadlineAt: z.union([

@@ -15,7 +15,8 @@ function render(path, exported) {
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   const module = { exports: {} };
   vm.runInNewContext(code, { module, exports: module.exports, require: name => {
-    if (name === 'react-router-dom') return { useSearchParams: () => [new URLSearchParams(), () => {}] };
+    if (name === 'react-router-dom') return { useSearchParams: () => [new URLSearchParams(), () => {}], useNavigate: () => () => {} };
+    if (name === '../ui/Modal') return { Modal: ({ isOpen, children }) => isOpen ? children : null };
     if (['react', 'react/jsx-runtime', 'lucide-react'].includes(name)) return require(name);
     return { registerPrivateCacheReset() {}, analyticsService: {}, referralLinksService: {}, toast: {} };
   } });

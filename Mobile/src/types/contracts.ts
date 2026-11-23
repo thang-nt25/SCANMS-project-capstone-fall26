@@ -294,6 +294,7 @@ export const statusLabels: Record<string, string> = {
   RECEIVED: "Đã nhận hàng mẫu",
   VIDEO_SUBMITTED: "Chờ nghiệm thu video",
   REVISION_REQUIRED: "Cần sửa video",
+  APPEALED: "Đang chờ trọng tài",
   OVERDUE: "Quá hạn",
   DELIVERY_ISSUE: "Sự cố giao nhận",
   EXPIRED: "Hết hạn",

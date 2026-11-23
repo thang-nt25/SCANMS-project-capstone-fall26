@@ -28,6 +28,7 @@ export const Sample = z.object({
   deadlineAt: z.string().nullish(),
   revisionDeadlineAt: z.string().nullish(),
   videoRejectionReason: z.string().nullish(),
+  appealReason: z.string().nullish(),
   videoUrl: z.string().nullish(),
   reviewVideoUrl: z.string().nullish(),
   shippingCharges: z

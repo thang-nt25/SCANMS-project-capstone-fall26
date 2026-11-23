@@ -8,6 +8,10 @@
 
 ### Kiểm thử Main Flow 1–3
 
+**Đăng nhập Google trên Mobile:** Dùng cùng Web OAuth Client ID cho `GOOGLE_CLIENT_ID` trên backend và `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` trong cấu hình Mobile. Trong cùng dự án Google Cloud, tạo OAuth client Android cho package `vn.scanms.mobile` với SHA-1 của chứng thư ký APK đang dùng. Nếu kiểm thử APK demo, đăng ký riêng package `vn.scanms.mobile.demo` cùng SHA-1 tương ứng. Build lại app native sau khi cài thư viện. Trên iOS, cấu hình thêm `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` và rebuild để thêm URL scheme.
+
+Thử nút **Đăng nhập bằng Google** với một tài khoản có sẵn. Sau đó dùng một email Google khác tại màn hình **Đăng ký**, chọn đồng ý điều khoản và tạo tài khoản khách hàng. Đăng xuất và chọn lại cùng tài khoản Google để xác nhận hệ thống mở đúng hồ sơ vừa tạo.
+
 1. **Admin — khởi tạo nội bộ:** Công cụ → Nhân sự & gian hàng → Gian hàng → Tạo cửa hàng nội bộ. Nhập ngành hàng, liên hệ kho, địa chỉ GHN đủ cấp. Tạo/phân công Shop Manager tại tab Nhân sự. Customer không có chức năng tự mở Shop.
 2. **Customer — đăng ký KOL:** đăng ký tài khoản bằng OTP email nếu chưa có → đăng nhập → Tôi → Đăng ký KOL/KOC. Nộp CCCD hai mặt, 1–5 kênh chính chủ và ảnh quản trị từng kênh. Ngân hàng là nhóm tùy chọn nhưng phải điền đủ ba trường nếu sử dụng. Hồ sơ đang thẩm định bị khóa chỉnh sửa; yêu cầu bổ sung khôi phục lại dữ liệu cũ. Ảnh phải tải xong trước khi gửi.
 3. **Manager/Admin — thẩm định:** Công cụ → Hồ sơ xác minh KYC → mở hồ sơ, xem CCCD, kênh và bằng chứng → duyệt/yêu cầu bổ sung/từ chối kèm ghi chú. Không tự duyệt hồ sơ của mình. Customer quay lại hồ sơ, chọn Cập nhật quyền KOL sau khi được duyệt; client không tự cấp role.

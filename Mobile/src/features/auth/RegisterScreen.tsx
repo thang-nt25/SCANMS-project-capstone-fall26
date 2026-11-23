@@ -9,6 +9,8 @@ import { api } from "../../services/api";
 import { ApiError } from "../../services/api/client";
 import { createRegistrationService } from "./registration-service";
 import { registrationInput, type RegistrationDraft } from "./registration-input";
+import { useAuth } from "./AuthProvider";
+import { GoogleAuthButton } from "./GoogleAuthButton";
 
 const service = createRegistrationService(api);
 const emptyDraft: RegistrationDraft = { fullName: "", email: "", phoneNumber: "", password: "", confirmPassword: "", agreeTerms: false };
@@ -30,11 +32,14 @@ function RegistrationPassword({ label, value, onChange, disabled }: { label: str
 
 export function RegisterScreen() {
   const router = useRouter();
+  const { loginWithGoogle } = useAuth();
   const [form, setForm] = useState<RegistrationDraft>({ ...emptyDraft });
   const [pending, setPending] = useState<RegistrationDraft | null>(null);
   const [step, setStep] = useState<"details" | "otp" | "success">("details");
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleError, setGoogleError] = useState<unknown>(null);
   const [error, setError] = useState<unknown>(null);
   const [resendAt, setResendAt] = useState(0);
   const [now, setNow] = useState(Date.now);
@@ -51,6 +56,7 @@ export function RegisterScreen() {
   const change = <K extends keyof RegistrationDraft>(key: K, value: RegistrationDraft[K]) => {
     setForm(previous => ({ ...previous, [key]: value }));
     setError(null);
+    if (key === "agreeTerms") setGoogleError(null);
   };
   async function sendCode(resend = false) {
     if (lock.current || (resend && Date.now() < resendAt)) return;
@@ -90,6 +96,29 @@ export function RegisterScreen() {
       if (mounted.current) setBusy(false);
     }
   }
+  async function registerWithGoogle() {
+    if (lock.current) return;
+    if (!form.agreeTerms) {
+      setGoogleError("Đồng ý điều khoản sử dụng SCANMS để đăng ký bằng Google.");
+      return;
+    }
+    lock.current = true;
+    setBusy(true);
+    setGoogleBusy(true);
+    setError(null);
+    setGoogleError(null);
+    try {
+      await loginWithGoogle("register");
+    } catch (caught) {
+      if (mounted.current) setGoogleError(caught);
+    } finally {
+      lock.current = false;
+      if (mounted.current) {
+        setBusy(false);
+        setGoogleBusy(false);
+      }
+    }
+  }
   return <SafeAreaView style={s.screen}>
     <View style={s.header}>
       <Pressable accessibilityRole="button" accessibilityLabel="Quay lại đăng nhập" disabled={busy} onPress={() => router.replace("/login")} style={s.back}>
@@ -115,18 +144,20 @@ export function RegisterScreen() {
             <Text style={[s.step, step === "otp" && s.activeStep]}>2. Xác thực email</Text>
           </View>
           {step === "details" ? <View style={s.fields}>
+            <Pressable accessibilityRole="checkbox" accessibilityLabel="Đồng ý điều khoản sử dụng SCANMS" accessibilityState={{ checked: form.agreeTerms, disabled: busy }} disabled={busy} onPress={() => change("agreeTerms", !form.agreeTerms)} style={s.terms}>
+              <View style={[s.checkbox, form.agreeTerms && s.checked]}>{form.agreeTerms && <Icon name="check" size={15} color={colors.ink} />}</View>
+              <Text style={s.termsText}>Tôi đồng ý với điều khoản sử dụng SCANMS.</Text>
+            </Pressable>
+            <ErrorNotice error={googleError} />
+            <GoogleAuthButton intent="register" busy={googleBusy} disabled={busy} onPress={() => void registerWithGoogle()} />
             <Field label="Họ và tên" placeholder="Nhập họ tên của bạn" value={form.fullName} onChangeText={value => change("fullName", value)} editable={!busy} maxLength={100} autoComplete="name" />
             <Field label="Email" placeholder="email@example.com" value={form.email} onChangeText={value => change("email", value)} editable={!busy} maxLength={254} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" />
             <Field label="Số điện thoại (tùy chọn)" placeholder="09xxxxxxxx" value={form.phoneNumber} onChangeText={value => change("phoneNumber", value)} editable={!busy} maxLength={40} keyboardType="phone-pad" autoComplete="tel" />
             <RegistrationPassword label="Mật khẩu" value={form.password} onChange={value => change("password", value)} disabled={busy} />
             <Text style={s.hint}>Tối thiểu 8 ký tự.</Text>
             <RegistrationPassword label="Xác nhận mật khẩu" value={form.confirmPassword} onChange={value => change("confirmPassword", value)} disabled={busy} />
-            <Pressable accessibilityRole="checkbox" accessibilityLabel="Đồng ý điều khoản sử dụng SCANMS" accessibilityState={{ checked: form.agreeTerms, disabled: busy }} disabled={busy} onPress={() => change("agreeTerms", !form.agreeTerms)} style={s.terms}>
-              <View style={[s.checkbox, form.agreeTerms && s.checked]}>{form.agreeTerms && <Icon name="check" size={15} color={colors.ink} />}</View>
-              <Text style={s.termsText}>Tôi đồng ý với điều khoản sử dụng SCANMS.</Text>
-            </Pressable>
             <ErrorNotice error={error} />
-            <Button title="Tiếp tục · Gửi mã OTP" loading={busy} onPress={() => void sendCode()} />
+            <Button title="Tiếp tục · Gửi mã OTP" loading={busy && !googleBusy} disabled={busy} onPress={() => void sendCode()} />
           </View> : <View style={s.fields}>
             <Field label="Mã OTP" value={otp} onChangeText={value => { setOtp(value.replace(/\D/g, "").slice(0, 6)); setError(null); }} placeholder="Nhập mã gồm 6 số" keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="one-time-code" maxLength={6} editable={!busy} style={s.otp} />
             <ErrorNotice error={error} />

@@ -1,3 +1,4 @@
+import { Modal } from '../ui/Modal';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -33,6 +34,7 @@ interface CreatorCoupon {
   minimumOrderAmount?: number | string | null;
   maximumDiscountAmount?: number | string | null;
   usageCount: number;
+  usageLimitTotal?: number | null;
   budgetTotal?: number;
   budgetUsed?: number;
   status: string;
@@ -41,6 +43,7 @@ interface CreatorCoupon {
   rejectedReason?: string | null;
   blockedReason?: string | null;
   benefitType?: string;
+  scopeType?: string;
   collaboratorId?: string;
   collaborator?: {
     id: string;
@@ -58,13 +61,14 @@ interface CreatorCoupon {
 let lastCreatorIncentivesSnapshot: { coupons: CreatorCoupon[]; partnerKols: any[]; currentStoreId: string; } | null = null;
 registerPrivateCacheReset(() => { lastCreatorIncentivesSnapshot = null; });
 
-export function ShopCreatorIncentivesTab() {
+export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCouponCount }: { section?: 'coupons' | 'milestones'; hideNavigation?: boolean; onCouponCount?: (count: number) => void } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reviewCouponId = searchParams.get('reviewCouponId');
   const handledReviewCouponRef = useRef<string | null>(null);
-  const [activeSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'HISTORY'>('ALL');
+  const [localSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
+  const activeSection = section ?? localSection;
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [expandedHistoryByKol, setExpandedHistoryByKol] = useState<Record<string, boolean>>({});
   const [avatarErrorByKol, setAvatarErrorByKol] = useState<Record<string, boolean>>({});
   const [coupons, setCoupons] = useState<CreatorCoupon[]>(() => (reviewCouponId ? [] : lastCreatorIncentivesSnapshot?.coupons || []));
@@ -345,13 +349,14 @@ export function ShopCreatorIncentivesTab() {
   const validKolCoupons = useMemo(
     () =>
       coupons.filter((c: any) => {
-        if (c.benefitType === 'SHIPPING' || Number(c.discountValue) >= 100) return false;
+        if (c.benefitType === 'SHIPPING' || (c.discountType === 'PERCENTAGE' && Number(c.discountValue) >= 100)) return false;
         if (!c.collaborator && !c.collaboratorId) return false;
         return true;
       }),
     [coupons],
   );
 
+  useEffect(() => { onCouponCount?.(validKolCoupons.length); }, [onCouponCount, validKolCoupons.length]);
   const couponFilterCounts = useMemo(() => {
     let pending = 0;
     let active = 0;
@@ -378,6 +383,8 @@ export function ShopCreatorIncentivesTab() {
         !['EXPIRED', 'REJECTED', 'BLOCKED'].includes(c.status)
       )
         return false;
+
+      if (['EXPIRED', 'BLOCKED', 'REJECTED'].includes(statusFilter) && c.status !== statusFilter) return false;
 
       if (!q) return true;
       return (
@@ -467,7 +474,7 @@ export function ShopCreatorIncentivesTab() {
     setBlockReasonInput('');
   };
 
-  const renderStatusBadge = (status: string) => {
+  const renderStatusBadge = (status: string, blockedReason?: string | null) => {
     if (status === 'ACTIVE') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
@@ -512,7 +519,7 @@ export function ShopCreatorIncentivesTab() {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-[#DC2626] border border-rose-200">
           <XCircle className="w-3 h-3 text-[#DC2626]" />
-          Đã khóa
+          {blockedReason?.startsWith('Đã thay thế bởi mã định danh mới:') ? 'Đã thay thế' : 'Đã khóa'}
         </span>
       );
     }
@@ -530,7 +537,7 @@ export function ShopCreatorIncentivesTab() {
         {loadError}<button type="button" disabled={isRefreshing} onClick={() => void loadData(true)} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
       </div>}
       {/* Sub-navigation tabs: Chuẩn 2 Trụ Cột Đãi Ngộ KOC */}
-      <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+      {!hideNavigation && <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="w-full rounded-2xl border border-[#EAE4D7] bg-white p-2" role="group" aria-label="Chức năng đãi ngộ KOL">
         <div className="relative grid grid-cols-2 items-stretch gap-4 before:pointer-events-none before:absolute before:bottom-2 before:left-1/2 before:top-2 before:w-px before:-translate-x-1/2 before:bg-[#EAE4D7]">
           <button
@@ -557,7 +564,7 @@ export function ShopCreatorIncentivesTab() {
 
       </div>
 
-      </div>
+      </div>}
       {/* SECTION 1: ATTRIBUTION COUPONS (GROUPED BY KOC) */}
       {activeSection === 'coupons' && (
         <div className="space-y-4">
@@ -571,10 +578,24 @@ export function ShopCreatorIncentivesTab() {
                   placeholder="Tìm theo tên KOC, email hoặc mã coupon..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Tìm theo tên KOC, email hoặc mã coupon"
+                  aria-label="Tìm theo mã coupon hoặc tên KOC"
                   className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white pl-9 pr-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]"
                 />
               </div>
+              <select
+                aria-label="Lọc trạng thái mã ưu đãi"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="h-11 shrink-0 rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] focus:border-[#C59B58]"
+              >
+                <option value="ALL">Tất cả trạng thái ({couponFilterCounts.all})</option>
+                <option value="PENDING">Chờ duyệt ({couponFilterCounts.pending})</option>
+                <option value="ACTIVE">Đang hiệu lực ({couponFilterCounts.active})</option>
+                <option value="HISTORY">Lịch sử ({couponFilterCounts.history})</option>
+                <option value="EXPIRED">Hết hạn</option>
+                <option value="BLOCKED">Đã khóa / thay thế</option>
+                <option value="REJECTED">Đã từ chối</option>
+              </select>
               <button
                 type="button"
                 onClick={() => {
@@ -588,36 +609,6 @@ export function ShopCreatorIncentivesTab() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {[
-                { key: 'ALL' as const, label: 'Tất cả', count: couponFilterCounts.all },
-                { key: 'PENDING' as const, label: 'Chờ duyệt', count: couponFilterCounts.pending },
-                { key: 'ACTIVE' as const, label: 'Đang chạy', count: couponFilterCounts.active },
-                { key: 'HISTORY' as const, label: 'Lịch sử', count: couponFilterCounts.history },
-              ].map((pill) => {
-                const active = statusFilter === pill.key;
-                return (
-                  <button
-                    key={pill.key}
-                    type="button"
-                    onClick={() => setStatusFilter(pill.key)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                      active
-                        ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-2xs'
-                        : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]/60 hover:text-[#1A1612]'
-                    }`}
-                  >
-                    {pill.key === 'PENDING' && pill.count > 0 && (
-                      <span className="h-2 w-2 rounded-full bg-[#D97706]" aria-hidden="true" />
-                    )}
-                    <span>{pill.label}</span>
-                    <span className="rounded-full bg-[#F3EFE6] px-1.5 py-0.5 text-[10px] font-bold text-[#7D715E] tabular-nums">
-                      {pill.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* KOC GROUP CARDS */}
@@ -634,7 +625,7 @@ export function ShopCreatorIncentivesTab() {
                       c.codeNormalized?.toLowerCase().includes(searchLower),
                   );
                 const isHistoryExpanded =
-                  statusFilter === 'HISTORY' ||
+                  ['HISTORY', 'EXPIRED', 'BLOCKED', 'REJECTED'].includes(statusFilter) ||
                   searchMatchedHistory ||
                   Boolean(expandedHistoryByKol[group.kolId]);
                 const showRealAvatar = Boolean(group.avatarUrl) && !avatarErrorByKol[group.kolId];
@@ -795,14 +786,15 @@ export function ShopCreatorIncentivesTab() {
                                         )}
                                       </button>
                                     </div>
+                                    {c.scopeType === 'STORE_WIDE' && <span className="mt-1 block text-[11px] text-[#7D715E]">Toàn Shop</span>}
                                   </td>
                                   <td className="px-4 py-3">
                                     <span className="font-bold text-[#DC2626] font-mono tabular-nums">
-                                      -{c.discountValue}%
+                                      {c.discountType === 'FIXED_AMOUNT' ? `-${Number(c.discountValue).toLocaleString('vi-VN')} ₫` : `-${c.discountValue}%`}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 font-mono text-[#1A1612] tabular-nums">
-                                    <strong>{c.usageCount || 0}</strong> lượt
+                                    <strong>{c.usageCount || 0}{c.usageLimitTotal ? `/${c.usageLimitTotal}` : ''}</strong> lượt
                                   </td>
                                   <td className="px-4 py-3 text-[#7D715E] tabular-nums">
                                     {c.expiresAt ? (
@@ -818,6 +810,7 @@ export function ShopCreatorIncentivesTab() {
                                   <td className="px-4 py-3 text-right">
                                     <button
                                       type="button"
+                                      aria-label={`Chi tiết mã ${c.displayCode || c.codeNormalized}`}
                                       onClick={() => openCouponDetail(c)}
                                       className="px-2.5 py-1 rounded-md border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] text-[11px] font-semibold hover:bg-[#F3EFE6] transition cursor-pointer"
                                     >
@@ -870,20 +863,21 @@ export function ShopCreatorIncentivesTab() {
                                         </span>
                                       </td>
                                       <td className="w-[14%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
-                                        -{c.discountValue}%
+                                        {c.discountType === 'FIXED_AMOUNT' ? `-${Number(c.discountValue).toLocaleString('vi-VN')} ₫` : `-${c.discountValue}%`}
                                       </td>
                                       <td className="w-[12%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
-                                        {c.usageCount || 0} lượt
+                                        {c.usageCount || 0}{c.usageLimitTotal ? `/${c.usageLimitTotal}` : ''} lượt
                                       </td>
                                       <td className="w-[16%] px-4 py-2.5 text-[11px] text-[#7D715E] tabular-nums">
                                         {c.expiresAt
                                           ? new Date(c.expiresAt).toLocaleDateString('vi-VN')
                                           : 'Theo Hợp đồng VIP'}
                                       </td>
-                                      <td className="w-[16%] px-4 py-2.5">{renderStatusBadge(c.status)}</td>
+                                      <td className="w-[16%] px-4 py-2.5">{renderStatusBadge(c.status, c.blockedReason)}</td>
                                       <td className="w-[14%] px-4 py-2.5 text-right">
                                         <button
                                           type="button"
+                                          aria-label={`Chi tiết mã ${c.displayCode || c.codeNormalized}`}
                                           onClick={() => openCouponDetail(c)}
                                           className="px-2.5 py-1 rounded-md border border-[#EAE4D7] bg-white text-[#7D715E] text-[11px] font-semibold hover:bg-[#FAF8F5] hover:text-[#1A1612] transition cursor-pointer"
                                         >
@@ -1136,31 +1130,13 @@ export function ShopCreatorIncentivesTab() {
       )}
       {/* Modal Xem Chi Tiết / Gia Hạn / Khóa Mã KOC */}
       {detailCoupon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2.5">
-                <span className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                  <Ticket className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="text-base font-bold text-[#1A1612] m-0">
-                    Chi tiết mã {detailCoupon.displayCode || detailCoupon.codeNormalized}
-                  </h3>
-                  <p className="text-xs text-[#7D715E] m-0 mt-0.5">
-                    KOC: {detailCoupon.collaborator?.fullName || 'KOC Đối Tác'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetailCoupon(null)}
-                className="w-8 h-8 rounded-lg text-[#7D715E] hover:bg-[#FAF8F5] flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+        <Modal
+          isOpen
+          onClose={() => setDetailCoupon(null)}
+          title={`Chi tiết mã ${detailCoupon.displayCode || detailCoupon.codeNormalized}`}
+          subtitle={`KOC: ${detailCoupon.collaborator?.fullName || 'KOC Đối Tác'}`}
+          maxWidth="md"
+        >
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
                 <div className="flex items-center justify-between">
@@ -1194,9 +1170,15 @@ export function ShopCreatorIncentivesTab() {
                 <div className="flex items-center justify-between">
                   <span className="text-[#7D715E]">Lượt đã áp dụng:</span>
                   <span className="font-semibold text-[#1A1612]">
-                    {detailCoupon.usageCount || 0} lượt (Không giới hạn lượt trong hạn dùng)
+                    {detailCoupon.usageCount || 0}{detailCoupon.usageLimitTotal ? ` / ${detailCoupon.usageLimitTotal}` : ''} lượt
                   </span>
                 </div>
+                {detailCoupon.budgetTotal != null && <div className="flex items-center justify-between">
+                  <span className="text-[#7D715E]">Ngân sách:</span>
+                  <span className="font-semibold text-[#1A1612] tabular-nums">
+                    {Number(detailCoupon.budgetTotal).toLocaleString('vi-VN')} ₫
+                  </span>
+                </div>}
                 <div className="flex items-center justify-between">
                   <span className="text-[#7D715E]">Hết hạn hiệu lực:</span>
                   <span className="font-semibold text-[#1A1612]">
@@ -1331,8 +1313,7 @@ export function ShopCreatorIncentivesTab() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

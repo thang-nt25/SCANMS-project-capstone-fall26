@@ -1,6 +1,55 @@
 import { BadRequestException } from '@nestjs/common';
-import { ShopOnboardingStatus, UserRole } from '@prisma/client';
+import { KycStatus, ShopOnboardingStatus, UserRole } from '@prisma/client';
 import { KycService } from '../kyc.service';
+
+describe('KycService collaborator review feedback', () => {
+  it.each([
+    ['NEEDS_INFO', KycStatus.UNVERIFIED, 'KOL_NEEDS_INFO'],
+    ['REJECTED', KycStatus.REJECTED, 'KOL_REJECTED'],
+  ] as const)('sends the selected items with a %s decision', async (status, kycStatus, type) => {
+    const profile = {
+      id: 'profile-1',
+      userId: 'user-1',
+      socialLinksJson: { backCardUrl: '/original-back.jpg' },
+    };
+    const update = jest.fn().mockResolvedValue(profile);
+    const create = jest.fn().mockResolvedValue({});
+    const transaction = jest.fn(async callback =>
+      callback({ collaboratorProfile: { update }, notification: { create } }),
+    );
+    const service = new KycService({
+      collaboratorProfile: { findUnique: jest.fn().mockResolvedValue(profile) },
+      $transaction: transaction,
+    } as any);
+
+    await service.reviewKolApplication(profile.id, {
+      status,
+      note: 'Ảnh mặt trước bị mờ.',
+      requestedItems: ['Ảnh CCCD mặt trước', 'Ảnh CCCD mặt trước'],
+    });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: profile.id },
+      data: {
+        kycStatus,
+        socialLinksJson: expect.objectContaining({
+          backCardUrl: '/original-back.jpg',
+          requestedItems: ['Ảnh CCCD mặt trước'],
+          rejectionReason: 'Ảnh mặt trước bị mờ.',
+          reviewStatus: status,
+          needsInfo: status === 'NEEDS_INFO',
+        }),
+      },
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: profile.userId,
+        type,
+        message: 'Ảnh mặt trước bị mờ.\n\nMục cần chỉnh sửa:\n• Ảnh CCCD mặt trước',
+      }),
+    });
+  });
+});
 
 describe('KycService shop onboarding', () => {
   let service: KycService;

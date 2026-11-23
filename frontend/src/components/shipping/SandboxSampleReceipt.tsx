@@ -176,7 +176,7 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
             <PackageCheck size={17} className="mt-0.5 shrink-0 text-[#B88E4F]" aria-hidden="true" />
             <div>
               <p className="m-0 text-xs font-semibold text-[#231D15]">Sẵn sàng bắt đầu hành trình</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-[#7D715E]">Các mốc giao hàng và thời hạn video sẽ tính từ lúc Shop bắt đầu.</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[#7D715E]">KOL có thể nộp video kiểm thử sau khi mẫu giao thành công.</p>
             </div>
           </div>
         )}
