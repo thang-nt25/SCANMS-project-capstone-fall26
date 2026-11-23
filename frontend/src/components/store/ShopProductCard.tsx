@@ -1,18 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
-import { LiveSessionDealBadge } from '../product/LiveSessionDealBadge';
 import type { ShopProduct } from '../../types/storefront.types';
-import type { ComponentProps } from 'react';
 
 const money = (value: number) => `${Number(value).toLocaleString('vi-VN')} ₫`;
 export function ShopProductCard({
   product,
-  deal,
-  now,
 }: {
   product: ShopProduct;
-  deal: ComponentProps<typeof LiveSessionDealBadge>['deal'];
-  now: number;
 }) {
   return (
     <Link
@@ -21,7 +15,6 @@ export function ShopProductCard({
       className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white transition hover:border-[#C59B58] hover:shadow-md"
     >
       <div className="relative aspect-square overflow-hidden bg-[#F3EFE6]">
-        <LiveSessionDealBadge deal={deal} now={now} />
         <img
           src={product.imageUrl || '/assets/product-placeholder.svg'}
           alt={product.title}
@@ -43,12 +36,6 @@ export function ShopProductCard({
           <p className="whitespace-nowrap text-sm font-bold text-[#B88E4F] sm:text-lg">
             {money(product.price)}
           </p>
-          {product.originalPrice &&
-            Number(product.originalPrice) > Number(product.price) && (
-              <p className="text-xs text-[#7D715E] line-through">
-                {money(product.originalPrice)}
-              </p>
-            )}
         </div>
         <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-3 text-[11px] text-[#7D715E]">
           {Number(product.reviewCount) > 0 &&

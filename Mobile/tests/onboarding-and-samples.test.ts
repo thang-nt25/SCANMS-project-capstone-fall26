@@ -22,6 +22,11 @@ import { StoreInput } from "../src/features/admin/store-input";
 import { canOpenModule } from "../src/features/workspace/policy";
 import { parseDealCard } from "../src/features/chat/deal-card";
 import { ExceptionQueueSchema } from "../src/types/contracts";
+test("VIP chat cards retain the new order KPI and legacy nullable fields", () => {
+  const card = { type: "EXCLUSIVE_DEAL_PROPOSAL", proposalId: "6bbe91f1-8038-4c1b-b563-df05e53d69c2", targetOrders: 30 };
+  assert.equal(parseDealCard(JSON.stringify(card))?.targetOrders, 30);
+  assert.equal(parseDealCard(JSON.stringify({ ...card, targetOrders: null, targetRevenue: 1000000 }))?.targetRevenue, 1000000);
+});
 
 const id = "6bbe91f1-8038-4c1b-b563-df05e53d69c2";
 test("Admin exception queue accepts the real items/stats response and rejects malformed payloads", () => {

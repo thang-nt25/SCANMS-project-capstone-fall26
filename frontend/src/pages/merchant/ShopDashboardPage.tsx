@@ -242,7 +242,6 @@ export default function ShopDashboardPage() {
         samplesRes,
         dealsRes,
         returnsRes,
-        pendingOrdersData,
       ] = await Promise.all([
         analyticsService.getRealtimeOverview(params, showIndicator),
         analyticsService.getTimeSeries(params, showIndicator),
@@ -252,7 +251,6 @@ export default function ShopDashboardPage() {
         samplesPromise,
         dealsPromise,
         returnsPromise,
-        orderService.getMyStoreOrders({storeId:store.id,status:"PENDING",page:1,limit:1},showIndicator).catch(() => null),
       ]);
 
       if (request !== requestSequence.current) return;
@@ -270,7 +268,7 @@ export default function ShopDashboardPage() {
       setStoreKols(sortedKols);
 
       // Operational pending counts
-      const pendingOrdersTotal = pendingOrdersData?.pagination?.total ?? null;
+      const pendingOrdersTotal = ordersData?.metrics?.pending ?? null;
       setPendingOrdersCount(pendingOrdersTotal);
 
       const samplesList = (samplesRes as any)?.data || samplesRes || [];

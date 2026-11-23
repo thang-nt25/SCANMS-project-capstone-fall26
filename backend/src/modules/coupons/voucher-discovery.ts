@@ -6,9 +6,6 @@ export function voucherMatchesProduct(
     couponProducts: { product: { id: string } }[];
     couponCategories: { categoryName: string }[];
     campaign?: { campaignProducts: { productId: string }[] } | null;
-    liveSession?: {
-      products: { productId: string; variantId?: string | null }[];
-    } | null;
   },
   product: { id: string; categoryName?: string | null },
 ) {
@@ -29,11 +26,7 @@ export function voucherMatchesProduct(
         coupon.campaign.campaignProducts.some(
           (item) => item.productId === product.id,
         ));
-  return (
-    matches &&
-    (!coupon.liveSession ||
-      coupon.liveSession.products.some((item) => item.productId === product.id))
-  );
+  return matches;
 }
 
 /** Public discovery must obey the same product boundaries as redemption. */
@@ -44,7 +37,6 @@ export function voucherProductWhere(coupon: {
   campaignId?: string | null;
   campaign?: { campaignProducts: { productId: string }[] } | null;
   couponCategories: { categoryName: string }[];
-  liveSessionId?: string | null;
 }): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = {
     storeId: coupon.storeId,
@@ -71,7 +63,5 @@ export function voucherProductWhere(coupon: {
     if (!coupon.campaignId) where.id = { in: [] };
     else if (ids.length) where.id = { in: ids };
   }
-  if (coupon.liveSessionId)
-    where.liveSessionProducts = { some: { sessionId: coupon.liveSessionId } };
   return where;
 }

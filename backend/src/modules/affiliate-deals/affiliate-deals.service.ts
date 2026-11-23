@@ -10,6 +10,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   CommissionStatus,
   CouponStatus,
@@ -101,6 +102,7 @@ export class AffiliateDealsService {
       deal = { ...deal, tierBonus };
     }
     if (
+      !deal.targetOrders &&
       deal.targetRevenue &&
       (!deal.commitmentStartedAt ||
         !deal.commitmentEndsAt ||
@@ -108,6 +110,7 @@ export class AffiliateDealsService {
     )
       return evaluateRevenueKpi(deal, 0, 0);
     if (
+      !deal.targetOrders &&
       deal.targetRevenue &&
       deal.commitmentStartedAt &&
       deal.commitmentEndsAt &&
@@ -749,6 +752,7 @@ export class AffiliateDealsService {
     return products.map((product) => {
       const deal = activeDeals.find(
         (d) =>
+          d.scopeType === 'STORE_WIDE' ||
           d.productId === product.id ||
           d.scopeProducts.some((sp) => sp.productId === product.id),
       );
@@ -892,6 +896,7 @@ export class AffiliateDealsService {
             closedAt: null,
             status: { in: ['APPROVED', 'PENDING', 'PENDING_ADMIN_APPROVAL'] },
             OR: [
+              { scopeType: 'STORE_WIDE' },
               { productId: { in: targetProductIds } },
               {
                 scopeProducts: {
@@ -1229,6 +1234,7 @@ export class AffiliateDealsService {
             ],
           },
           select: {
+            targetOrders: true,
             targetRevenue: true,
             proposedCommissionRate: true,
             approvedCommissionRate: true,
@@ -1236,6 +1242,10 @@ export class AffiliateDealsService {
         }),
       ]);
 
+    const totalTargetOrders = escalatedProposals.reduce(
+      (sum, p) => sum + Number(p.targetOrders || 0),
+      0,
+    );
     const totalTargetRevenue = escalatedProposals.reduce(
       (sum, p) => sum + Number(p.targetRevenue || 0),
       0,
@@ -1259,6 +1269,7 @@ export class AffiliateDealsService {
         pendingCount,
         approvedCount,
         rejectedCount,
+        totalTargetOrders,
         totalTargetRevenue,
         avgRate: Math.round(avgRate * 10) / 10,
       },
@@ -1467,6 +1478,8 @@ export class AffiliateDealsService {
           select: {
             id: true,
             socialLinksJson: true,
+            dealViolationCount: true,
+            dealCooldownUntil: true,
             sampleRequestsBlockedAt: true,
           },
         });
@@ -1476,7 +1489,10 @@ export class AffiliateDealsService {
           );
 
         const meta = (profile?.socialLinksJson as any) || {};
-        const prevCount = Number(meta.dealViolations?.count || 0);
+        const prevCount = Math.max(
+          Number(profile.dealViolationCount || 0),
+          Number(meta.dealViolations?.count || 0),
+        );
         const newCount = prevCount + 1;
         // Level 3 sanctions: 1 week (1st), 2 weeks (2nd), 3 weeks (3rd), 4 weeks (4th+)
         const cooldownWeeks = Math.min(newCount, 4);
@@ -1493,6 +1509,8 @@ export class AffiliateDealsService {
         };
 
         const updateData: any = {
+          dealViolationCount: newCount,
+          dealCooldownUntil: cooldownUntil,
           socialLinksJson: meta,
         };
 
@@ -1686,6 +1704,7 @@ export class AffiliateDealsService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM collaborator_profiles WHERE user_id = ${proposal.collaboratorId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM commissions WHERE deal_proposal_id = ${proposalId}::uuid AND deal_bonus_status = 'PENDING_KPI' ORDER BY id ASC FOR UPDATE`;
       const fresh = await tx.exclusiveDealProposal.findUnique({
         where: { id: proposalId },
       });
@@ -1780,7 +1799,7 @@ export class AffiliateDealsService {
                     walletId: wallet.id,
                     referenceId: comm.id,
                     referenceType: 'COMMISSION',
-                    bucket: WalletBalanceBucket.AVAILABLE,
+                    balanceBucket: WalletBalanceBucket.AVAILABLE,
                     transactionType: TransactionType.COMMISSION_APPROVED,
                     amount: comm.dealBonusAmount,
                     balanceBefore: wallet.availableBalance,
@@ -1827,6 +1846,43 @@ export class AffiliateDealsService {
       );
     }
 
+    AffiliateDealsService.dealsMemoryCache.clear();
+    await Promise.all([
+      this.cache.delPrefix('affiliate:deals:active_partners:'),
+      this.cache.delPrefix(`deals:shop:${proposal.storeId}:`),
+      this.cache.delPrefix(`deals:mine:${proposal.collaboratorId}:`),
+    ]).catch(() => {});
+
     return result;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async autoSettleExpiredDeals() {
+    const now = new Date();
+    const candidates = await this.prisma.exclusiveDealProposal.findMany({
+      where: {
+        status: ExclusiveDealStatus.APPROVED,
+        closedAt: null,
+        settlementEndsAt: { lte: now },
+      },
+      include: {
+        store: { select: { ownerId: true } },
+      },
+      take: 100,
+    });
+    for (const deal of candidates) {
+      try {
+        const progress = await this.calculateProgress(deal);
+        if (progress.state === 'ACHIEVED' || (progress.percent || 0) >= 100) {
+          await this.settleSuccessfulDeal(
+            deal.id,
+            deal.store?.ownerId || deal.collaboratorId,
+            UserRole.SYSTEM_ADMIN,
+          );
+        }
+      } catch {
+        // Skip deals not yet ready for auto-settlement
+      }
+    }
   }
 }

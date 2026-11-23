@@ -804,7 +804,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     : null);
 
   useEffect(() => {
-    if (!isOpen || !selectedProvince || !selectedDistrict || !selectedWard || shippingAddress.trim().length < 5 || !itemsGroupedByShop.length) {
+    if (!isOpen || !selectedProvince || !selectedDistrict || !selectedWard || !itemsGroupedByShop.length) {
       setShippingFee(null);
       setShippingFeesByStore({});
       setShippingFeeError(null);
@@ -812,7 +812,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
     let active = true;
-    const address = [shippingAddress.trim(), selectedWard.name, selectedDistrict.name, selectedProvince.name].join(', ');
+    const street = shippingAddress.trim().length >= 5 ? shippingAddress.trim() : 'Địa chỉ giao hàng';
+    const address = [street, selectedWard.name, selectedDistrict.name, selectedProvince.name].join(', ');
     setShippingFee(null);
     setShippingFeesByStore({});
     setShippingFeeError(null);
@@ -839,7 +840,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       .catch((error: any) => { if (active) setShippingFeeError(error?.message || 'Chưa lấy được cước GHN. Vui lòng thử lại sau.'); })
       .finally(() => { if (active) setShippingFeeLoading(false); }); }, 350);
     return () => { active = false; clearTimeout(timer); controller.abort(); };
-  }, [isOpen, shippingAddress, selectedProvince?.name, selectedDistrict?.name, selectedWard?.name, itemsGroupedByShop, shippingQuoteRetry]);
+  }, [isOpen, selectedProvince?.name, selectedDistrict?.name, selectedWard?.name, itemsGroupedByShop, shippingQuoteRetry]);
 
   // Remove an address validation message as soon as its field is corrected.
   useEffect(() => {
@@ -1204,7 +1205,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const normalizedItems = await Promise.all(
         activeItems.map(async (item) => ({
           productId: item.productId,
-          liveSessionId: item.liveSessionId,
           variantId: await resolveOrderVariantId(item),
           quantity: item.quantity,
         })),
@@ -1625,7 +1625,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                     )}
                                   </div>
                                   <p className="text-gray-600 pl-5.5 leading-relaxed text-[11px]">
-                                    {a.detailAddress}, {a.wardName}, {a.districtName}, {a.provinceName}
+                                    {[a.detailAddress, a.wardName, a.districtName, a.provinceName]
+                                      .filter(Boolean)
+                                      .filter((part, idx, arr) => idx === 0 || !String(arr[0] || '').toLowerCase().includes(String(part).toLowerCase()))
+                                      .join(', ')}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0 self-center">

@@ -23,11 +23,13 @@ export const Sample = z.object({
   recipientPhone: z.string().nullish(),
   shippingAddress: z.string(),
   trackingNumber: z.string().nullish(),
+  ghnOrderCode: z.string().nullish(),
   carrier: z.string().nullish(),
   deadlineAt: z.string().nullish(),
   revisionDeadlineAt: z.string().nullish(),
   videoRejectionReason: z.string().nullish(),
   videoUrl: z.string().nullish(),
+  reviewVideoUrl: z.string().nullish(),
   shippingCharges: z
     .array(
       z.object({

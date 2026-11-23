@@ -28,8 +28,3 @@ export function priceVoucherLines(gross: number[], eligible: boolean[], shopDisc
 export function goodsDiscount(order: { couponDiscountAmount?: unknown; discountAmount?: unknown }): number {
   return Math.max(0, Number(order.couponDiscountAmount ?? order.discountAmount ?? 0));
 }
-
-export function liveVoucherActive(session: { status: string; inviteStatus: string; startsAt?: Date; endsAt?: Date } | null | undefined, now = new Date()): boolean {
-  return !session || (session.status === 'LIVE' && session.inviteStatus === 'ACCEPTED'
-    && (!session.startsAt || session.startsAt <= now) && (!session.endsAt || session.endsAt > now));
-}

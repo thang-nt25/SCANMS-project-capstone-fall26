@@ -7,6 +7,7 @@ const Card = z.object({
   storeName: z.string().optional(),
   proposedCommissionRate: number.max(25).optional(),
   targetRevenue: number.optional(),
+  targetOrders: z.coerce.number().int().nonnegative().nullish(),
   commitmentDays: z.number().int().positive().optional(),
   salesCommitment: z.string().optional(),
   scopeType: z.string().optional(),

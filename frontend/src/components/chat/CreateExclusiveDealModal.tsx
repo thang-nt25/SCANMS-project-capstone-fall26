@@ -128,8 +128,12 @@ export function CreateExclusiveDealModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedProductIds.length === 0) {
-      setError('Vui lòng chọn ít nhất một sản phẩm áp dụng thỏa thuận.');
+    const unlockedSelectedIds = selectedProductIds.filter((id) => {
+      const p = products.find((item) => item.id === id);
+      return p && !p.activeDeal?.isLocked;
+    });
+    if (unlockedSelectedIds.length === 0) {
+      setError('Vui lòng chọn ít nhất một sản phẩm chưa bị khóa Deal.');
       return;
     }
     const numRate = Number(commissionRate) || 0;
@@ -176,7 +180,14 @@ export function CreateExclusiveDealModal({
     }
   };
 
-  const isEscalation = (Number(commissionRate) || 0) > 16;
+  const numRate = commissionRate === '' ? NaN : Number(commissionRate);
+  const numOrders = targetOrders === '' ? NaN : Number(targetOrders);
+  const numDays = commitmentDays === '' ? NaN : Number(commitmentDays);
+
+  const isRateInvalid = !Number.isFinite(numRate) || numRate < 11 || numRate > 25;
+  const isOrdersInvalid = !Number.isFinite(numOrders) || numOrders < 1 || numOrders > 10000;
+  const isDaysInvalid = !Number.isFinite(numDays) || numDays < 7 || numDays > 90;
+  const isEscalation = !isRateInvalid && numRate > 16;
 
   const modalContent = (
     <div
@@ -467,7 +478,17 @@ export function CreateExclusiveDealModal({
                 </div>
               </div>
 
-              {/* Governance Alert Pill */}
+              {/* Governance / Validation Alert Pill */}
+              {isRateInvalid && (
+                <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    {Number(commissionRate) > 25
+                      ? 'Vượt trần tối đa 25% của hệ thống SCANMS — không thể tạo Deal.'
+                      : 'Thù lao Deal phải từ 11% đến tối đa 25% (cao hơn mức cơ bản 10%).'}
+                  </span>
+                </div>
+              )}
               {isEscalation && (
                 <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
@@ -549,6 +570,13 @@ export function CreateExclusiveDealModal({
                   </div>
                 </div>
               </div>
+              {(isOrdersInvalid || isDaysInvalid) && (
+                <p className="mt-1.5 text-[11px] font-medium text-rose-600">
+                  {isOrdersInvalid
+                    ? 'Chỉ tiêu KPI đơn hàng hợp lệ từ 1 đến 10.000 đơn.'
+                    : 'Thời hạn cam kết hợp lệ từ 7 đến 90 ngày.'}
+                </p>
+              )}
             </div>
 
             {/* 4. Ghi chú điều khoản hợp tác */}
@@ -561,7 +589,7 @@ export function CreateExclusiveDealModal({
                 value={salesCommitment}
                 onChange={(e) => setSalesCommitment(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none resize-none shadow-2xs placeholder-[#7D715E]"
-                placeholder="Ghi chú về video review, livestream hoặc kênh truyền thông..."
+                placeholder="Ghi chú điều khoản video review, bài đăng hoặc kênh truyền thông cam kết..."
               />
             </div>
 
@@ -584,7 +612,7 @@ export function CreateExclusiveDealModal({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || selectedProductIds.length === 0}
+              disabled={submitting || selectedProductIds.length === 0 || isRateInvalid || isOrdersInvalid || isDaysInvalid}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-40 active:scale-[0.98]"
             >
               {submitting ? (

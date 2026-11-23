@@ -1,10 +1,11 @@
 import type { SampleRequestItem } from '../../pages/merchant/ShopKolHubPage';
 import { SampleSandboxWaybills } from './SampleGhnEnvironmentPicker';
 import { ExternalLink, Truck, Video } from 'lucide-react';
+import SampleSubmittedVideo from '../affiliate/SampleSubmittedVideo';
 
 export function PartnerSampleDetails({ item }: { item: SampleRequestItem }) {
   const channelUrl = item.socialChannelUrlSnapshot || item.socialChannel?.channelUrl;
-  const assets = item.videoAssets || [];
+  const previousAssets = (item.videoAssets || []).filter(asset => asset.urlOrContent !== item.reviewVideoUrl);
   const liveCharges = item.shippingCharges?.filter(charge => charge.environment !== 'TEST') || [];
   return <div className="partner-sample-details">
     <div className="partner-sample-columns">
@@ -32,13 +33,14 @@ export function PartnerSampleDetails({ item }: { item: SampleRequestItem }) {
         {item.note && <div><span className="partner-sample-muted">Cam kết nội dung</span><p>{item.note}</p></div>}
       </section>
     </div>
-    {(assets.length > 0 || item.reviewVideoUrl) && <section className="partner-sample-videos" aria-label="Video đã nộp">
-      <h5><Video size={14} />Video đã nộp{item.videoSubmittedAt && <time>{new Date(item.videoSubmittedAt).toLocaleDateString('vi-VN')}</time>}</h5>
-      {assets.length ? assets.map(asset => <div key={asset.id}>
+    <SampleSubmittedVideo sample={item} />
+    {previousAssets.length > 0 && <section className="partner-sample-videos" aria-label="Lịch sử video đã nộp">
+      <h5><Video size={14} />Lịch sử video</h5>
+      {previousAssets.map(asset => <div key={asset.id}>
         <a href={asset.urlOrContent} target="_blank" rel="noreferrer"><Video size={14} />{asset.title || 'Xem video'}<ExternalLink size={12} /></a>
         <span>{asset.status === 'APPROVED' ? 'Đã duyệt' : asset.status === 'REJECTED' ? 'Cần chỉnh sửa' : 'Chờ duyệt'}</span>
         {asset.rejectionReason && <p>{asset.rejectionReason}</p>}
-      </div>) : <a href={item.reviewVideoUrl} target="_blank" rel="noreferrer"><Video size={14} />{item.videoTitle || 'Xem video đã nộp'}<ExternalLink size={12} /></a>}
+      </div>)}
     </section>}
   </div>;
 }

@@ -276,11 +276,17 @@ describe('SamplesService', () => {
     expect(prisma.sampleProductRequest.create).not.toHaveBeenCalled();
   });
 
-  it.each(['GHN', 'GHTK', null])('không cho KOL tự xác nhận nhận mẫu qua %s', async (carrier) => {
-    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, carrier });
+  it('không cho KOL tự xác nhận nhận mẫu qua GHN', async () => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, carrier: 'GHN' });
     await expect(service.confirmReceived(request.id, 'kol-1')).rejects.toThrow(BadRequestException);
     expect(prisma.sampleProductRequest.update).not.toHaveBeenCalled();
     expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['GHTK', null])('cho phép KOL xác nhận nhận mẫu đối với đơn ngoài GHN (%s)', async (carrier) => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, carrier });
+    await expect(service.confirmReceived(request.id, 'kol-1')).resolves.toBeDefined();
+    expect(prisma.sampleProductRequest.update).toHaveBeenCalled();
   });
 
   it.each(['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'])('không cho nộp video khi chưa nhận mẫu: %s', async (status) => {

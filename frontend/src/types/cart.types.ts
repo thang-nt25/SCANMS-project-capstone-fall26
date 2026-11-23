@@ -10,8 +10,6 @@ export interface CartVariantInfo {
 export interface CartItem {
   cartItemId: string; // `${productId}_${variantId || 'base'}`
   productId: string;
-  liveSessionId?: string;
-  liveCouponCode?: string;
   variantId?: string;
   variantName?: string;
   title: string;
@@ -48,8 +46,6 @@ export interface StoreCartGroup {
 }
 
 export interface AddItemParams {
-  liveSessionId?: string;
-  liveCouponCode?: string;
   product: {
     id: string;
     title?: string;

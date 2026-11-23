@@ -21,7 +21,6 @@ const ROUTE_LOADERS: Record<string, ComponentLoader> = {
   '/merchant/customer-messages': () => import('@/pages/chat/ChatBoxPage'),
   '/merchant/kol-hub': () => import('@/pages/merchant/ShopKolHubPage'),
   '/merchant/promotions': () => import('@/pages/merchant/ShopPromotionsHubPage'),
-  '/merchant/live-sessions': () => import('@/pages/merchant/LiveSessionsPage'),
   '/merchant/settings': () => import('@/pages/merchant/ShopSettingsPage'),
 
   // Collaborator / KOL
@@ -29,7 +28,6 @@ const ROUTE_LOADERS: Record<string, ComponentLoader> = {
   '/collaborator/reports': () => import('@/pages/collaborator/KolMarketingReportsPage'),
   '/collaborator/marketing': () => import('@/pages/collaborator/MarketingToolkitPage'),
   '/collaborator/collaboration': () => import('@/pages/collaborator/ShopCollaborationPage'),
-  '/collaborator/live-sessions': () => import('@/pages/collaborator/LiveSessionsPage'),
   '/collaborator/wallet': () => import('@/pages/collaborator/WalletPage'),
   '/collaborator/profile': () => import('@/pages/collaborator/CreatorProfilePage'),
 

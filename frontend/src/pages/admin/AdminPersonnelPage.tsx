@@ -1549,17 +1549,24 @@ export const AdminPersonnelPage: React.FC = () => {
                         />
                       </div>
 
-                      {/* Edit Store Category (Locked to 4 In-House Core Categories) */}
+                      {/* Edit Store Category (Locked after store creation) */}
                       <div>
                         <label className="block text-xs font-semibold text-[#1A1612] mb-1">
                           Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
                         </label>
 
                         <select
+                          disabled
                           value={editStoreForm.categoryName}
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, categoryName: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-[#F3EFE6] text-[#7D715E] cursor-not-allowed focus:outline-none"
+                          title="Ngành hàng kinh doanh được khóa cố định theo cửa hàng nội bộ"
                         >
+                          {editStoreForm.categoryName && !categories.includes(editStoreForm.categoryName) && (
+                            <option value={editStoreForm.categoryName}>
+                              {editStoreForm.categoryName}
+                            </option>
+                          )}
                           {categories.map((cat) => (
                             <option key={cat} value={cat}>
                               {cat}
@@ -1795,7 +1802,7 @@ export const AdminPersonnelPage: React.FC = () => {
                           <div className="text-[11px] text-[#059669] font-medium">Sản phẩm mở bán tiếp thị</div>
                         </div>
                         <span className="px-3 py-1.5 rounded-lg bg-white border border-[#EEDFC6] text-xs font-mono font-bold text-[#8F682E]">
-                          10.0% Base Rate
+                          10% Hoa hồng gốc
                         </span>
                       </div>
                     </div>

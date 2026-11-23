@@ -80,7 +80,6 @@ const defaultVipTerms = {
   budgetTotal: 1000000,
   validDays: 30,
 };
-type VipTerms = typeof defaultVipTerms;
 
 export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   // Main Tab: 'ACTIVE' | 'PENDING' | 'HISTORY'
@@ -112,7 +111,6 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   // Processing & Terminate states
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [voucherTermsById, setVoucherTermsById] = useState<Record<string, VipTerms>>({});
   const [selectedDealToTerminate, setSelectedDealToTerminate] = useState<any | null>(null);
   const [terminateReason, setTerminateReason] = useState('KOL không đạt chỉ tiêu đơn hàng/doanh số sau chu kỳ cam kết');
   const [escalateDispute, setEscalateDispute] = useState(false);
@@ -163,8 +161,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
     setBusyId(proposalId);
     try {
       if (approve) {
-        const terms = voucherTermsById[proposalId] || defaultVipTerms;
-        await referralLinksService.approveExclusiveDeal(proposalId, terms);
+        await referralLinksService.approveExclusiveDeal(proposalId, defaultVipTerms);
         toast.success('Đã chấp thuận Thỏa thuận Độc quyền và kích hoạt link tiếp thị.');
       } else {
         await referralLinksService.rejectExclusiveDeal(proposalId);
@@ -522,8 +519,8 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                   </div>
 
                   {/* Products under this Creator */}
-                  <div className="p-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3.5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                       {deals.map((deal) => {
                         const p = deal.progress;
                         const revenueKpi = Boolean(deal.targetRevenue || p.targetRevenue);
@@ -789,196 +786,127 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
             </div>
           ) : (
             <div className="space-y-3">
-              {pendingProposals.map((item) => {
-                const terms = voucherTermsById[item.id] || defaultVipTerms;
+              {pendingProposals.map((item: any) => {
+                const proposedRate = Number(item.proposedCommissionRate || 0);
+                const needsAdmin = proposedRate > 16;
+                const floorPrice = Number(item.product?.floorPrice || 0);
+                const sellingPrice = Number(item.product?.price || 0);
                 return (
                   <div
                     key={item.id}
                     className="rounded-xl border border-[#EEDFC6] bg-white p-4 space-y-3 shadow-2xs"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0 flex items-center justify-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0 flex items-center justify-center">
                           {item.product?.imageUrl ? (
                             <img src={item.product.imageUrl} onError={handleProductImageError} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
                           )}
                         </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-[#1A1612] m-0">
+                        <div className="min-w-0">
+                          <h4 className="text-xs sm:text-sm font-bold text-[#1A1612] m-0 truncate">
                             {item.product?.title || 'Sản phẩm'}
                           </h4>
-                          <span className="text-[11px] text-[#7D715E]">
-                            KOL: <strong className="text-[#1A1612]">{item.collaborator?.fullName}</strong> · Giá: {item.product?.price?.toLocaleString('vi-VN')} ₫
-                          </span>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#7D715E] mt-0.5 tabular-nums">
+                            <span>KOL: <strong className="text-[#1A1612]">{item.collaborator?.fullName}</strong></span>
+                            <span>·</span>
+                            <span>Giá bán: <strong className="text-[#1A1612]">{sellingPrice.toLocaleString('vi-VN')} ₫</strong></span>
+                            {floorPrice > 0 && (
+                              <>
+                                <span>·</span>
+                                <span>Giá sàn: <strong className="text-[#8C6226]">{floorPrice.toLocaleString('vi-VN')} ₫</strong></span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-[#7D715E]">Đề xuất:</span>
-                        <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-black text-[#B88E4F]">
-                          {item.proposedCommissionRate}%
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <span className="px-2.5 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-black text-[#B88E4F] tabular-nums">
+                          Đề xuất {proposedRate}%
                         </span>
+                        {needsAdmin && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-[#92400E]">
+                            &gt;16%: Cần Admin duyệt tiếp
+                          </span>
+                        )}
                         <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-700">
                           Chờ duyệt
                         </span>
                       </div>
                     </div>
 
-                    {item.salesCommitment && (
-                      <div className="text-xs text-[#7D715E] bg-[#FAF8F5] p-2.5 rounded-lg border border-[#EAE4D7]">
-                        <strong className="text-[#1A1612]">Cam kết: </strong>
-                        <em>"{item.salesCommitment}"</em>
+                    {/* KPI & Commitment Summary */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                      <div className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#7D715E] block">KPI cam kết</span>
+                        <strong className="text-[#1A1612] tabular-nums">
+                          {item.targetRevenue
+                            ? `Doanh số ${Number(item.targetRevenue).toLocaleString('vi-VN')} ₫`
+                            : item.targetOrders
+                            ? `${Number(item.targetOrders)} đơn hoàn tất`
+                            : 'Theo thỏa thuận chat'}
+                        </strong>
                       </div>
-                    )}
-
-                    {/* Voucher Terms Config */}
-                    <div className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]/40 p-3 space-y-2">
-                      <span className="text-xs font-bold text-[#1A1612] block">
-                        Cấu hình Voucher độc quyền đi kèm:
-                      </span>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Giảm (%)
-                          <input
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={terms.discountPercent === 0 ? '' : (terms.discountPercent ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, discountPercent: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Đơn tối thiểu (₫)
-                          <input
-                            type="number"
-                            min={0}
-                            step={10000}
-                            value={terms.minimumOrderAmount === 0 ? '' : (terms.minimumOrderAmount ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, minimumOrderAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Giảm tối đa (₫)
-                          <input
-                            type="number"
-                            min={1000}
-                            step={5000}
-                            value={terms.maximumDiscountAmount === 0 ? '' : (terms.maximumDiscountAmount ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, maximumDiscountAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Lượt dùng
-                          <input
-                            type="number"
-                            min={1}
-                            value={terms.usageLimitTotal === 0 ? '' : (terms.usageLimitTotal ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, usageLimitTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Ngân sách (₫)
-                          <input
-                            type="number"
-                            min={10000}
-                            step={100000}
-                            value={terms.budgetTotal === 0 ? '' : (terms.budgetTotal ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, budgetTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
-
-                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
-                          Hiệu lực (ngày)
-                          <input
-                            type="number"
-                            min={1}
-                            max={365}
-                            value={terms.validDays === 0 ? '' : (terms.validDays ?? '')}
-                            onChange={(e) =>
-                              setVoucherTermsById((curr) => ({
-                                ...curr,
-                                [item.id]: { ...terms, validDays: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
-                              }))
-                            }
-                            className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
-                          />
-                        </label>
+                      <div className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#7D715E] block">Hiệu lực chiến dịch</span>
+                        <strong className="text-[#1A1612] tabular-nums">
+                          {item.expiresAt ? `Đến ${new Date(item.expiresAt).toLocaleDateString('vi-VN')}` : '30 ngày từ khi kích hoạt'}
+                        </strong>
+                      </div>
+                      <div className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#7D715E] block">Ghi chú KOL</span>
+                        <span className="text-[#1A1612] line-clamp-1" title={item.salesCommitment || ''}>
+                          {item.salesCommitment || 'Không có ghi chú thêm'}
+                        </span>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      {onSelectKolForChat && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#EAE4D7]">
+                      <span className="text-[11px] text-[#7D715E]">
+                        {needsAdmin
+                          ? 'Sau khi Shop duyệt, đề xuất >16% sẽ chuyển System Admin phê duyệt trước khi hiệu lực.'
+                          : 'Thù lao tính trên giá thực thu; phần chênh lệch Deal giải ngân khi KOL đạt KPI.'}
+                      </span>
+                      <div className="flex items-center gap-2 ml-auto">
+                        {onSelectKolForChat && (
+                          <button
+                            type="button"
+                            onClick={() => item.collaboratorId && onSelectKolForChat(item.collaboratorId)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-bold text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Chat</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
-                          onClick={() => item.collaboratorId && onSelectKolForChat(item.collaboratorId)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-bold text-[#7D715E] hover:text-[#1A1612]"
+                          disabled={busyId === item.id}
+                          onClick={() => handleDecideProposal(item.id, false)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-600 text-xs font-bold hover:bg-neutral-50 cursor-pointer"
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Chat</span>
+                          <X className="w-3.5 h-3.5" />
+                          <span>Từ chối</span>
                         </button>
-                      )}
 
-                      <button
-                        type="button"
-                        disabled={busyId === item.id}
-                        onClick={() => handleDecideProposal(item.id, false)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-600 text-xs font-bold hover:bg-neutral-50 cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        <span>Từ chối</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={busyId === item.id}
-                        onClick={() => handleDecideProposal(item.id, true)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-2xs cursor-pointer"
-                      >
-                        {busyId === item.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5" />
-                        )}
-                        <span>Phê duyệt</span>
-                      </button>
+                        <button
+                          type="button"
+                          disabled={busyId === item.id}
+                          onClick={() => handleDecideProposal(item.id, true)}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-2xs cursor-pointer"
+                        >
+                          {busyId === item.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          <span>Phê duyệt</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

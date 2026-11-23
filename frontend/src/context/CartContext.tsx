@@ -56,7 +56,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartSyncing, setIsCartSyncing] = useState(false);
   const [cartSyncedAt, setCartSyncedAt] = useState<string | null>(null);
   const hydratedUserRef = useRef<string | null>(null);
-  const skipNextPushRef = useRef(false);
   const cartRef = useRef(cart);
   const selectedRef = useRef(selectedItemIds);
   const userIdRef = useRef(activeUserId);
@@ -90,7 +89,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.getItem('token') === token && !session?.signal.aborted;
 
       if (previousId !== nextId) {
-        skipNextPushRef.current = false;
         setIsCartOpen(false);
         setIsValidatingStock(false);
         if (previousId) {
@@ -141,7 +139,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Persist the server-reconciled basket without remounting the checkout form.
         localStorage.setItem(getCartStorageKey(nextId), JSON.stringify(next));
         cartRef.current = next;
-        skipNextPushRef.current = true;
         setCart(next);
         setSelectedItemIds((previous) => {
           const selected = new Set(previous);
@@ -176,7 +173,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('scanms_auth_changed', syncIdentity);
     window.addEventListener('auth-user-updated', syncIdentity);
     window.addEventListener('storage', syncIdentity);
-    window.addEventListener('focus', syncIdentity);
     return () => {
       mounted = false;
       sessionController?.abort();
@@ -197,13 +193,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   })));
 
   useEffect(() => {
-    if (!activeUserId || hydratedUserRef.current !== activeUserId) return;
+    if (!activeUserId || hydratedUserRef.current !== activeUserId || loadingUserRef.current === activeUserId) return;
     const session = sessionRef.current;
     if (!session || session.signal.aborted) return;
-    if (skipNextPushRef.current) {
-      skipNextPushRef.current = false;
-      return;
-    }
+    // Hydration can keep the same persisted key, so a one-shot skip flag
+    // would suppress the customer's first edit instead of the hydration.
+    // Comparing the actual server key avoids both echoes and dropped edits.
     const syncKey = cartSyncKey(cart);
     if (syncKey === lastSyncedCartRef.current) return;
     const userId = activeUserId;
@@ -435,7 +430,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Add Item to Cart
   const addItem = useCallback(
-    ({ product, variantId, quantity = 1, store, openCartAfterAdd = false, liveSessionId, liveCouponCode }: AddItemParams) => {
+    ({ product, variantId, quantity = 1, store, openCartAfterAdd = false }: AddItemParams) => {
       const prodTitle = product.title || product.name || 'Sản phẩm';
       const prodImage = getSafeProductImageUrl(product.imageUrl || product.image, prodTitle);
       const availableVariants = product.variants || [];
@@ -487,16 +482,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: newQty,
             stockQuantity: availableStock,
             price: finalPrice,
-            liveSessionId,
-            liveCouponCode,
           };
           return next;
         }
 
         // Add new item
         const newItem: CartItem = {
-          liveSessionId,
-          liveCouponCode,
           cartItemId,
           productId: product.id,
           variantId,
@@ -737,8 +728,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const qty = params.quantity || 1;
 
       const directItem: CartItem = {
-        liveSessionId: params.liveSessionId,
-        liveCouponCode: params.liveCouponCode,
         cartItemId,
         productId: params.product.id,
         variantId,

@@ -403,7 +403,9 @@ describe('GHN customer order notifications', () => {
   });
 
   it('does not contact GHN for an unconfirmed order', async () => {
-    const prisma = { order: { findUnique: jest.fn().mockResolvedValue({ status: OrderStatus.PENDING, rawPayload: {} }) } };
+    const order = { status: OrderStatus.PENDING, rawPayload: {} };
+    const tx = { $executeRaw: jest.fn(), order: { findUnique: jest.fn().mockResolvedValue(order) } };
+    const prisma = { order: tx.order, $transaction: jest.fn((cb: any) => cb(tx)) };
     const service = new GhnService(prisma as any, {} as ConfigService);
     const send = jest.spyOn(service as any, 'ghnFetch');
     await expect(service.createShippingOrder('order')).rejects.toThrow('xác nhận đơn');
@@ -419,15 +421,15 @@ describe('GHN customer order notifications', () => {
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 2, unitPrice: 100000, product: { title: 'Sản phẩm A' } }],
     };
-    const tx = { order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: jest.fn().mockResolvedValue({ ...order, status: OrderStatus.SHIPPING }) } };
-    const prisma = { order: { findUnique: jest.fn().mockResolvedValue(order) }, $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)) };
+    const tx = { $executeRaw: jest.fn(), order: { findUnique: jest.fn().mockResolvedValue(order), updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: jest.fn().mockResolvedValue({ ...order, status: OrderStatus.SHIPPING }) } };
+    const prisma = { order: tx.order, $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)) };
     const service = new GhnService(prisma as any, {} as ConfigService);
     jest.spyOn(service as any, 'resolveGhnLocation').mockResolvedValue({ districtId: 1, wardCode: '001' });
     const send = jest.spyOn(service as any, 'ghnFetch').mockResolvedValue({ code: 200, data: { order_code: 'GHN123', total_fee: 25000 } });
     const cacheService = { delPrefix: jest.fn().mockResolvedValue(undefined) };
     Object.assign(service, { cacheService });
     await service.createShippingOrder(order.id);
-    expect(cacheService.delPrefix).toHaveBeenCalledWith('orders:store:');
+    expect(cacheService.delPrefix).toHaveBeenCalledWith('orders:store:store-1:');
     expect(send).toHaveBeenCalledWith('/v2/shipping-order/create', expect.objectContaining({ body: expect.objectContaining({ weight: 1000, insurance_value: 200000, cod_amount: 225000, payment_type_id: 1 }) }));
   });
 
@@ -441,13 +443,15 @@ describe('GHN customer order notifications', () => {
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
     };
     const tx = {
+      $executeRaw: jest.fn(),
       order: {
+        findUnique: jest.fn().mockResolvedValue(order),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUniqueOrThrow: jest.fn().mockResolvedValue({ ...order, status: OrderStatus.SHIPPING }),
       },
     };
     const prisma = {
-      order: { findUnique: jest.fn().mockResolvedValue(order) },
+      order: tx.order,
       $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
     };
     const config = {
@@ -489,9 +493,13 @@ describe('GHN customer order notifications', () => {
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
     };
+    const tx = {
+      $executeRaw: jest.fn(),
+      order: { findUnique: jest.fn().mockResolvedValue(order), updateMany: jest.fn() },
+    };
     const prisma = {
-      order: { findUnique: jest.fn().mockResolvedValue(order) },
-      $transaction: jest.fn(),
+      order: tx.order,
+      $transaction: jest.fn((cb: any) => cb(tx)),
     };
     const service = new GhnService(prisma as any, {} as ConfigService);
     jest.spyOn(service as any, 'resolveGhnLocation').mockResolvedValue({ districtId: 1, wardCode: '001' });
@@ -504,7 +512,7 @@ describe('GHN customer order notifications', () => {
     await expect(service.createShippingOrder(order.id)).rejects.toThrow(
       'GHN từ chối tạo vận đơn vì tài khoản đã đạt giới hạn tạo đơn.',
     );
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
   });
 
   it('identifies a disabled sender ward without changing the order to shipping', async () => {
@@ -516,9 +524,13 @@ describe('GHN customer order notifications', () => {
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
     };
+    const tx = {
+      $executeRaw: jest.fn(),
+      order: { findUnique: jest.fn().mockResolvedValue(order), updateMany: jest.fn() },
+    };
     const prisma = {
-      order: { findUnique: jest.fn().mockResolvedValue(order) },
-      $transaction: jest.fn(),
+      order: tx.order,
+      $transaction: jest.fn((cb: any) => cb(tx)),
     };
     const service = new GhnService(prisma as any, {} as ConfigService);
     jest.spyOn(service as any, 'resolveGhnLocation').mockResolvedValue({ districtId: 1, wardCode: '001' });
@@ -529,7 +541,7 @@ describe('GHN customer order notifications', () => {
     });
 
     await expect(service.createShippingOrder(order.id, { environment: GhnEnvironment.TEST })).rejects.toThrow('SEND_WARD_IS_DISABLED');
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
   });
 
   it('allows replacing an existing internal test code with a real GHN waybill', async () => {
@@ -542,13 +554,15 @@ describe('GHN customer order notifications', () => {
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
     };
     const tx = {
+      $executeRaw: jest.fn(),
       order: {
+        findUnique: jest.fn().mockResolvedValue(order),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUniqueOrThrow: jest.fn().mockResolvedValue({ ...order, rawPayload: { ...order.rawPayload, ghnOrderCode: 'GHN123' } }),
       },
     };
     const prisma = {
-      order: { findUnique: jest.fn().mockResolvedValue(order) },
+      order: tx.order,
       $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
     };
     const service = new GhnService(prisma as any, {} as ConfigService);

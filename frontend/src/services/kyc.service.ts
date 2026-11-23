@@ -185,11 +185,6 @@ export const kycService = {
     return res.data;
   },
 
-  async applyShopUpgrade(data: ApplyShopData) {
-    const res: any = await api.post('/kyc/upgrade/shop', data);
-    return res.data;
-  },
-
   async getMyUpgradeStatus(): Promise<UpgradeStatusResponse> {
     const res: any = await api.get('/kyc/upgrade/my-status');
     return res.data;

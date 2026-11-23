@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import { Button, Caption } from "../../components/ui";
-import { money } from "../../types/contracts";
+import { dealKpiDisplay } from "../deals/deal-policy";
 import { parseDealCard } from "./deal-card";
 import { useMobileNavigation } from "../../navigation/router";
 export function DealMessageCard({ text }: { text: string }) {
@@ -22,8 +22,10 @@ export function DealMessageCard({ text }: { text: string }) {
       {card.proposedCommissionRate != null && (
         <Text>Thù lao đề nghị: {card.proposedCommissionRate}%</Text>
       )}
-      {card.targetRevenue != null && (
-        <Caption>KPI doanh thu: {money(card.targetRevenue)}</Caption>
+      {(card.targetOrders != null || card.targetRevenue != null) && (
+        <Caption>
+          {dealKpiDisplay(card).label}: {dealKpiDisplay(card).value}
+        </Caption>
       )}
       {card.commitmentDays != null && (
         <Caption>Kỳ cam kết: {card.commitmentDays} ngày</Caption>

@@ -362,7 +362,7 @@ describe('CommissionsService', () => {
     );
   });
 
-  it('keeps Live bonus in ordinary escrow when the purchase also has a KPI Deal', async () => {
+  it('keeps the captured uplift conditional without a separate legacy Live bonus', async () => {
     const f = historicalDealFixture();
     Object.assign(f.order.orderItems[0], {
       appliedCommissionRate: new Prisma.Decimal(18),
@@ -374,9 +374,10 @@ describe('CommissionsService', () => {
     };
     await f.service.createPendingCommission(orderId, f.now);
     const data = (f.getCommissionCreateInput() as any).data;
-    // Historical fixture uses a 10% tier base: 10% + Live 2% versus Deal 6%.
-    expect(Number(data.baseCommissionAmount)).toBe(54000);
-    expect(Number(data.dealBonusAmount)).toBe(27000);
+    // Dev removed the Live bonus: a legacy regularCommissionRate must not
+    // release part of the captured Deal uplift outside its KPI condition.
+    expect(Number(data.baseCommissionAmount)).toBe(45000);
+    expect(Number(data.dealBonusAmount)).toBe(36000);
     expect(data.dealBonusStatus).toBe(DealBonusStatus.PENDING_KPI);
   });
 

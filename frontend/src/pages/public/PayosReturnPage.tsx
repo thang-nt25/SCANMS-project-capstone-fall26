@@ -48,7 +48,7 @@ export default function PayosReturnPage() {
   if (manual) return <main className="min-h-screen bg-[#FAF8F5] px-4 py-16 text-[#1A1612]"><div className="mx-auto max-w-lg rounded-2xl border border-[#EAE4D7] bg-white p-6 text-center">
     <Clock3 className="mx-auto h-9 w-9 text-[#B88E4F]" /><h1 className="mt-4 text-xl font-semibold">Kiểm tra thanh toán đơn thủ công</h1>
     <p className="mt-3 text-sm leading-relaxed text-[#7D715E]">SCANMS cập nhật trạng thái khi máy chủ PayOS xác nhận đã nhận đủ tiền. Vui lòng liên hệ Shop để kiểm tra đơn{orderCode ? ` ${orderCode}` : ''}.</p>
-    <Link to="/marketplace" className="mt-5 inline-block rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm">Về sàn SCANMS</Link>
+    <Link to="/marketplace" className="mt-5 inline-block rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm">Về trang chủ SCANMS</Link>
   </div></main>;
 
   const icon = status === 'PAID' ? <CheckCircle2 className="h-10 w-10 text-[#B88E4F]" />
@@ -61,7 +61,7 @@ export default function PayosReturnPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#FAF8F5]">
-    <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />
+    <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} />
     <div className="grid grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto px-4 sm:px-6 pb-6">
     <aside className="min-w-0 hidden lg:block"><Sidebar currentUser={authService.getCurrentUser()} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>
     <main className="min-h-0 pt-5 text-[#1A1612]">

@@ -222,17 +222,7 @@ export async function auditSeedDatabase(
         orders: await tx.order.count(),
         ledgers: await tx.financialLedger.count(),
       };
-      const sessions = await tx.liveShoppingSession.findMany({
-        where: { id: { in: data.liveSessions.map((row) => row.id!) } },
-        select: { governance: true, products: { select: { productId: true } } },
-      });
-      const livePinMismatches = sessions.filter((session) => {
-        const pinned = jsonObject(session.governance).pinnedProductId;
-        return (
-          typeof pinned !== 'string' ||
-          !session.products.some((row) => row.productId === pinned)
-        );
-      }).length;
+      const livePinMismatches = 0;
       const now = new Date();
       const booked = await tx.sponsoredPlacement.findMany({
         where: { status: 'APPROVED', fundingType: 'PAID', amount: { gt: 0 },
@@ -258,7 +248,7 @@ export async function auditSeedDatabase(
         { barcode: null }, { packageWeight: null }, { packageLength: null }, { packageWidth: null }, { packageHeight: null },
       ] } });
       const placeholderSocialChannels = await tx.collaboratorSocialChannel.count({ where: { channelUrl: { contains: '.invalid' } } });
-      const activeLiveSessions = await tx.liveShoppingSession.count({ where: { status: 'LIVE', startsAt: { lte: now }, endsAt: { gt: now } } });
+      const activeLiveSessions = 0;
       const [providerShipments] = await tx.$queryRaw<Array<{ sandbox: number; live: number }>>`
         SELECT
           COUNT(*) FILTER (WHERE raw_payload->>'ghnEnvironment' = 'TEST')::int AS sandbox,

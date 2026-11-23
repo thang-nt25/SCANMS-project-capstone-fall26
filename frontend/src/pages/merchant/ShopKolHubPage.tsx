@@ -909,11 +909,11 @@ return true;
     return {
       total: list.length,
       approved: list.filter(sample => !['PENDING', 'REJECTED', 'CANCELLED'].includes(sample.status)).length,
-      video: list.filter(sample => sampleDisplayStatus(sample) === 'VIDEO_SUBMITTED').length,
+      video: list.filter(sample => displaySampleStatus(sample) === 'VIDEO_SUBMITTED').length,
       completed: list.filter(sample => sample.status === 'COMPLETED').length,
-      overdue: list.filter(sample => sampleDisplayStatus(sample) === 'OVERDUE').length,
+      overdue: list.filter(sample => displaySampleStatus(sample) === 'OVERDUE').length,
     };
-  }, [samplesMap, selectedKol?.id]);
+  }, [samplesMap, selectedKol?.id, displaySampleStatus]);
 
   // Handler: Select KOL
   const setAiMatchingMode = (enabled: boolean) => {
@@ -1824,7 +1824,7 @@ return true;
                       id="btn-discover-creators"
                       onClick={() => setShowDiscoveryModal(true)}
                       className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                      title="Khám phá và kết nối nhà sáng tạo mới trên sàn"
+                      title="Khám phá và kết nối nhà sáng tạo mới trên hệ thống"
                       aria-label="Tìm nhà sáng tạo KOL/KOC"
                       aria-haspopup="dialog"
                       aria-expanded={showDiscoveryModal}
@@ -2033,9 +2033,9 @@ return true;
                               <div className="flex items-center gap-1 min-w-0 flex-1">
                                 {isEmail ? (
                                   <Mail className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                                ) : (
+                                ) : !kol.lastMessage && pendingSamples === 0 && Boolean(kol.handle) ? (
                                   <span className="text-[11px] font-bold text-[#B88E4F] leading-none shrink-0">@</span>
-                                )}
+                                ) : null}
                                 <span
                                   className="truncate text-[11px] font-medium text-[#7D715E] group-hover:text-[#1A1612] transition-colors"
                                   title={isEmail ? kol.email : subText}
@@ -2283,7 +2283,7 @@ return true;
                       {([{value:'ALL',label:'Tất cả'}, {value:'PENDING',label:'Chờ duyệt mẫu'}, {value:'VIDEO_SUBMITTED',label:'Chờ duyệt video'}] as const).map((filter) => (
                         <button key={filter.value} data-sample-filter={filter.value} type="button" onClick={() => setSampleFilter(filter.value)} aria-pressed={sampleFilter === filter.value} className={
                           'flex h-9 min-w-0 items-center justify-center whitespace-nowrap rounded-lg px-2 text-[11px] font-semibold transition ' + (sampleFilter === filter.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')
-                        }>{filter.label}<span className="ml-1.5 text-[11px]">{(samplesMap[selectedKol.id] || []).filter((sample) => filter.value === 'ALL' || sampleDisplayStatus(sample) === filter.value).length}</span></button>
+                        }>{filter.label}<span className="ml-1.5 text-[11px]">{(samplesMap[selectedKol.id] || []).filter((sample) => filter.value === 'ALL' || displaySampleStatus(sample) === filter.value).length}</span></button>
                       ))}
                     </div>
                     <div className="kol-sample-other-filter">
@@ -2309,6 +2309,13 @@ return true;
                     </div>
                   </div>
 
+                  <div className="flex justify-end">
+                    <button type="button" title="Làm mới thông tin nhận hàng" aria-label="Làm mới thông tin nhận hàng"
+                      disabled={loadingBackendData} onClick={() => void loadBackendData()}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-semibold text-[#795A2D] hover:bg-[#FBF5EB] disabled:opacity-50">
+                      <RefreshCw size={14} className={loadingBackendData ? 'animate-spin' : ''} />Làm mới
+                    </button>
+                  </div>
                   {/* Samples list */}
                   {currentKolSamples.length === 0 ? (
                     <div className="kol-samples-empty bg-white border border-[#EAE4D7] rounded-xl py-8 px-4 text-center">

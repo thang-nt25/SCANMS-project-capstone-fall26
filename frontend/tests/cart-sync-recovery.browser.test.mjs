@@ -15,10 +15,11 @@ test('cart only persists item changes, keeps failed writes locally and shows one
   const origin = new URL(base).origin;
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
   const browser = await puppeteer.launch({ executablePath, headless: true });
+  const errors = [];
   try {
     const page = await browser.newPage();
     page.setDefaultTimeout(10000);
-    const writes = [], errors = [];
+    const writes = [];
     let failing = false;
     page.on('pageerror', error => {
       if (!error.message.includes('WebSocket closed without opened')) errors.push(error.message);
@@ -85,5 +86,8 @@ test('cart only persists item changes, keeps failed writes locally and shows one
     await page.waitForFunction(() => document.querySelector('#syncing')?.textContent === 'false' && ![...document.querySelectorAll('[data-sonner-toast]')].some(el => el.textContent.includes('Chưa thể đồng bộ giỏ hàng')));
     assert.equal(writes.at(-1).items[0].quantity, 4);
     assert.deepEqual(errors, []);
+  } catch (error) {
+    if (errors.length) console.error('Cart browser errors:', errors);
+    throw error;
   } finally { await browser.close(); }
 });

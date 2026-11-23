@@ -1,7 +1,6 @@
 import {
   precedenceCommissionRate,
   campaignBonusRate,
-  liveBonusRate,
   tierBonusByName,
 } from '../../src/modules/commissions/commission-policy';
 import { exclusiveDealBonus } from '../../src/modules/orders/exclusive-deal-bonus';
@@ -48,18 +47,6 @@ export function seedCommissionBreakdown(
       row.joinedAt &&
       new Date(row.joinedAt) <= input.at,
   );
-  const session = data.liveSessions.find(
-    (row) =>
-      row.id === input.liveSessionId &&
-      row.storeId === input.storeId &&
-      row.creatorId === input.collaboratorId &&
-      (row.status === 'LIVE' || row.status === 'ENDED') &&
-      row.inviteStatus === 'ACCEPTED' &&
-      data.liveProducts.some(
-        (product) =>
-          product.sessionId === row.id && product.productId === input.productId,
-      ),
-  );
   const tierBonus = tierBonusByName(tier?.name);
   const dealBonus = exclusiveDealBonus(
     deal
@@ -88,19 +75,6 @@ export function seedCommissionBreakdown(
           input.at,
         )
       : 0;
-  // ENDED is the current state. Reconstruct LIVE only inside its historical time window.
-  const liveBonus = session
-    ? liveBonusRate(
-        {
-          ...session,
-          status: 'LIVE',
-          startsAt: new Date(session.startsAt),
-          endsAt: new Date(session.endsAt),
-          commissionRate: amount(session.commissionRate),
-        },
-        input.at,
-      )
-    : 0;
   const campaignRate = campaignBonus ? 10 + campaignBonus : 0;
   const campaignWins = campaignRate > Math.max(dealRate, 10 + tierBonus);
   return {
@@ -108,12 +82,10 @@ export function seedCommissionBreakdown(
     tier: tierBonus,
     deal: dealRate,
     campaign: campaignWins ? campaignBonus : 0,
-    live: liveBonus,
     rate: precedenceCommissionRate(
       tierBonus,
       dealRate,
       campaignRate,
-      liveBonus,
     ),
     campaignId: campaignWins ? campaign!.id! : null,
   };

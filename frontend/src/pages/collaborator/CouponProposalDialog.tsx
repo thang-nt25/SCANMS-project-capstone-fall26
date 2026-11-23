@@ -6,7 +6,8 @@ import { Select } from '../../components/ui/Select';
 type Partner = { id?: string; storeId?: string; name?: string; storeName?: string; logoUrl?: string | null };
 export function CouponProposalDialog({ open, onClose, stores, storeId, setStoreId, code, setCode, note, setNote, valid, validationError, error, success, busy, onSubmit }: {
   open: boolean; onClose: () => void; stores: Partner[]; storeId: string; setStoreId: (id: string) => void;
-  code: string; setCode: (code: string) => void; note: string; setNote: (note: string) => void;
+  code: string; setCode: (code: string) => void;
+  note: string; setNote: (note: string) => void;
   valid: boolean; validationError: string; error: string | null; success: string | null; busy: boolean; onSubmit: (event: FormEvent) => void;
 }) {
   const selected = stores.find(s => (s.id || s.storeId) === storeId);
@@ -23,8 +24,8 @@ export function CouponProposalDialog({ open, onClose, stores, storeId, setStoreI
         <p id="coupon-code-feedback" className={code && !valid ? 'kc-proposal-error' : 'kc-proposal-help'}>{code && !valid ? validationError : '4–20 ký tự, gồm chữ và số; có ít nhất một chữ cái.'}</p>
         <div className="kc-proposal-suggestions" aria-label="Gợi ý tên mã">{['GOCREVIEW', 'CHONCUATOI', 'KENHCUATOI'].map(value => <button key={value} type="button" onClick={() => setCode(value)} disabled={busy}>{value}</button>)}</div>
       </div>
-      <div><label htmlFor="coupon-proposal-note">Ghi chú <small>Không bắt buộc</small></label><textarea id="coupon-proposal-note" value={note} onChange={event => setNote(event.target.value)} placeholder="Lời nhắn cho cửa hàng…" rows={3} disabled={busy} /></div>
-      <p className="kc-proposal-notice">Shop xác nhận điều kiện ưu đãi trước khi kích hoạt.</p>
+      <div><label htmlFor="coupon-proposal-note">Ghi chú <small>Không bắt buộc</small></label><textarea id="coupon-proposal-note" value={note} onChange={event => setNote(event.target.value)} placeholder="Lời nhắn đề xuất mức ưu đãi hoặc chiến dịch gửi cửa hàng…" rows={3} disabled={busy} /></div>
+      <p className="kc-proposal-notice">Shop Manager sẽ thiết lập mức giảm (3%–20%), trần giảm tối đa và thời hạn hiệu lực khi duyệt mã (trên 10% sẽ qua System Admin duyệt).</p>
     </form>
   </Modal>;
 }

@@ -80,10 +80,10 @@ describe('Audited Flow 5 regressions', () => {
       approvedCommissionRate: 16,
     };
     const bonus = exclusiveDealBonus(deal, 'p', 'c', 's');
-    expect(precedenceCommissionRate(0, 10 + bonus, 12, 0)).toBe(16);
-    expect(precedenceCommissionRate(3, 10 + bonus, 12, 3)).toBe(19);
-    expect(precedenceCommissionRate(3, 25, 12, 3)).toBe(25);
-    expect(precedenceCommissionRate(3, 11, 12, 0)).toBe(13);
+    expect(precedenceCommissionRate(0, 10 + bonus, 12)).toBe(16);
+    expect(precedenceCommissionRate(3, 10 + bonus, 12)).toBe(16);
+    expect(precedenceCommissionRate(3, 25, 12)).toBe(25);
+    expect(precedenceCommissionRate(3, 11, 12)).toBe(13);
   });
   it('does not pay the beneficiary captured before an account edit', async () => {
     const tx: any = {

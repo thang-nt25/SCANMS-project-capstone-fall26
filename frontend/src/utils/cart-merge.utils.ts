@@ -9,8 +9,6 @@ export function mergeCartItems(account: CartItem[], incoming: CartItem[], addQua
     const quantity = addQuantities ? existing.quantity + item.quantity : Math.max(existing.quantity, item.quantity);
     merged.set(item.cartItemId, {
       ...item, ...existing,
-      liveSessionId: item.liveSessionId || existing.liveSessionId,
-      liveCouponCode: item.liveCouponCode || existing.liveCouponCode,
       quantity: existing.stockQuantity > 0 ? Math.min(quantity, existing.stockQuantity) : quantity,
     });
   }

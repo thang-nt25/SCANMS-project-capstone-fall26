@@ -366,15 +366,17 @@ export function SubmitKolVideoModal({
         ? { title: title.trim(), videoUrl: videoUrl.trim(), caption: caption.trim() }
         : { productId: selectedProductId, title: title.trim(), videoUrl: videoUrl.trim() };
 
-      if (posterUrl.trim()) {
-        payload.posterUrl = posterUrl.trim();
+      if (!sampleRequestId) {
+        if (posterUrl.trim()) {
+          payload.posterUrl = posterUrl.trim();
+        }
+        if (isCampaignVideo && campaignId.trim()) {
+          payload.campaignId = campaignId.trim();
+          payload.requiresCampaignParticipation = true;
+        }
       }
       if (caption.trim()) {
         payload.caption = caption.trim();
-      }
-      if (isCampaignVideo && campaignId.trim()) {
-        payload.campaignId = campaignId.trim();
-        payload.requiresCampaignParticipation = true;
       }
 
       const res = sandboxOrderCode
@@ -454,7 +456,7 @@ export function SubmitKolVideoModal({
               </Button>
             </div>
           </div>}>
-        <form id="kol-review-form" onSubmit={handleSubmit} className="kol-review-form">
+        <form id="kol-review-form" noValidate onSubmit={handleSubmit} className="kol-review-form">
 
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
@@ -670,7 +672,7 @@ export function SubmitKolVideoModal({
             </div>
 
             {/* Chuyển đổi phương thức: Dán link vs Tải file */}
-            <div className="kol-review-modes" role="group" aria-label="C?ch n?p video">
+            <div className="kol-review-modes" role="group" aria-label="Cách nộp video">
               <button
                 type="button"
                 aria-pressed={videoInputMode === 'link'}

@@ -199,6 +199,7 @@ export const DealSchema = z.object({
   proposedCommissionRate: MoneySchema,
   approvedCommissionRate: MoneySchema.nullish(),
   targetRevenue: MoneySchema.nullish(),
+  targetOrders: z.number().int().nonnegative().nullish(),
   commitmentDays: z.number().optional(),
   scopeType: z.string().optional(),
   scopeProducts: z.array(z.object({ productId: z.string() })).optional(),

@@ -22,6 +22,7 @@ export interface SandboxSampleState {
 type Snapshot = { state: SandboxSampleState | null; error: string };
 type Entry = { snapshot: Snapshot; listeners: Set<() => void>; revision: number; stop?: () => void };
 const entries = new Map<string, Entry>();
+let sandboxEndpointDisabled = false;
 function entryFor(code: string): Entry {
   let entry = entries.get(code);
   if (!entry) {
@@ -37,22 +38,33 @@ function publish(entry: Entry, snapshot: Snapshot) {
 function subscribe(code: string, listener: () => void) {
   const entry = entryFor(code);
   entry.listeners.add(listener);
-  if (!entry.stop) {
+  if (!entry.stop && !sandboxEndpointDisabled) {
     let active = true, loading = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const stopPolling = () => {
+      active = false;
+      if (timer) clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
     const refresh = async () => {
-      if (loading || !active) return;
+      if (loading || !active || sandboxEndpointDisabled) return;
       loading = true;
       const revision = entry.revision;
       try {
         const response: any = await api.get(`/shipping/ghn/sandbox-sample/${encodeURIComponent(code)}`, { headers: { 'x-skip-cache': 'true' } });
         if (active && revision === entry.revision) publish(entry, { state: response?.data?.data || response?.data || response, error: '' });
-      } catch {
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 400 || status === 403 || status === 404) {
+          if (status === 400) sandboxEndpointDisabled = true;
+          stopPolling();
+        }
         if (active && revision === entry.revision) publish(entry, { ...entry.snapshot, error: 'Chưa tải được trạng thái đơn. Vui lòng tải lại trang.' });
       } finally { loading = false; }
     };
-    const timer = setInterval(refresh, 5000);
+    timer = setInterval(refresh, 5000);
     window.addEventListener('focus', refresh);
-    entry.stop = () => { active = false; clearInterval(timer); window.removeEventListener('focus', refresh); };
+    entry.stop = stopPolling;
     void refresh();
   }
   return () => {

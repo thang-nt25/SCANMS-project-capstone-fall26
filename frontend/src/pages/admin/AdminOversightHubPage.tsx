@@ -1,13 +1,12 @@
 import { Navigate } from 'react-router-dom';
-import { Link2, Tag, Radio } from 'lucide-react';
+import { Link2, Tag } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import { KolCouponManagement } from '../../components/coupons/KolCouponManagement';
-import AdminLiveSessionsPage from './AdminLiveSessionsPage';
 
-const ADMIN_OVERSIGHT_TABS = ['links', 'coupons', 'live-sessions'] as const;
+const ADMIN_OVERSIGHT_TABS = ['links', 'coupons'] as const;
 type AdminOversightTab = (typeof ADMIN_OVERSIGHT_TABS)[number];
 
 export default function AdminOversightHubPage() {
@@ -41,11 +40,6 @@ export default function AdminOversightHubPage() {
       label: 'Mã ưu đãi KOL',
       icon: Tag,
     },
-    {
-      id: 'live-sessions',
-      label: 'Phiên Live',
-      icon: Radio,
-    },
   ];
 
   return (
@@ -56,7 +50,7 @@ export default function AdminOversightHubPage() {
         activeTab={activeTab}
         onChange={(id) => setActiveTab(id as AdminOversightTab)}
         stretchTabs
-        stretchTabColumns={3}
+        stretchTabColumns={2}
         tone="white"
       />
 
@@ -70,12 +64,6 @@ export default function AdminOversightHubPage() {
         {visitedTabs['coupons'] && (
           <div className={activeTab === 'coupons' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <KolCouponManagement shop={false} />
-          </div>
-        )}
-
-        {visitedTabs['live-sessions'] && (
-          <div className={activeTab === 'live-sessions' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
-            <AdminLiveSessionsPage />
           </div>
         )}
       </div>

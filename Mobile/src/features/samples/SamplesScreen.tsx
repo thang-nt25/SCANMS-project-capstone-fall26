@@ -511,7 +511,9 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
               )}
               {koc && row.status === "SHIPPED" && (
                 <>
-                  {action(row.id, "receive", "Tôi đã nhận hàng mẫu")}
+                  {!row.ghnOrderCode &&
+                    !(row.carrier || "").toUpperCase().includes("GHN") &&
+                    action(row.id, "receive", "Tôi đã nhận hàng mẫu")}
                   <Button
                     title="Báo sự cố giao nhận"
                     secondary
@@ -520,6 +522,33 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
                     }
                   />
                 </>
+              )}
+              {koc && row.status === "REVISION_REQUIRED" && (
+                <Button
+                  title="Yêu cầu Trọng tài"
+                  secondary
+                  onPress={() =>
+                    setForm({
+                      title: "Yêu cầu Trọng tài (Vận hành)",
+                      path: `/sample-requests/${row.id}/appeal`,
+                      method: "POST",
+                      fields: [
+                        {
+                          key: "reason",
+                          label: "Giải trình khiếu nại (tối thiểu 10 ký tự)",
+                          multiline: true,
+                        },
+                      ],
+                      schema: z.object({
+                        reason: z
+                          .string()
+                          .trim()
+                          .min(10, "Nhập tối thiểu 10 ký tự")
+                          .max(1000),
+                      }),
+                    })
+                  }
+                />
               )}
               {koc &&
                 ["RECEIVED", "REVISION_REQUIRED", "OVERDUE"].includes(
@@ -673,7 +702,12 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
                   <Evidence urls={[asset.urlOrContent]} />
                   <Text>{asset.rejectionReason}</Text>
                   {(shop || reviewer) &&
-                    canReviewVideo(row.status, asset.status, row.videoUrl, asset.urlOrContent) && (
+                    canReviewVideo(
+                      row.status,
+                      asset.status,
+                      row.reviewVideoUrl || row.videoUrl,
+                      asset.urlOrContent,
+                    ) && (
                       <>
                         <Button
                           title="Nghiệm thu video"

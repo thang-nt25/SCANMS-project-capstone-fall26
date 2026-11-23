@@ -20,10 +20,8 @@ import type { Product } from '@/types/marketplace.types';
 import { HOME_CATEGORY_GROUPS, matchesHomeCategory } from '@/utils/marketplace-category.utils';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
-import { useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
 import { MarketplaceProductCard } from '../../components/marketplace/MarketplaceProductCard';
 import { QuickCustomerAuth } from '../../components/marketplace/QuickCustomerAuth';
-import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 
 interface CategoryItem {
   name: string;
@@ -85,7 +83,6 @@ export default function SearchPage() {
   // Cart & Modals
   const { openCart, addItem, buyNow, cart, startCheckout } = useCart();
   const [pendingPurchase, setPendingPurchase] = useState<{ productId: string; variantId?: string; intent: 'cart' | 'buy' } | null>(null);
-  const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
   const isKolUser = currentUser?.role === 'COLLABORATOR';
@@ -430,7 +427,6 @@ export default function SearchPage() {
   const displayedProducts = useMemo(() => {
     return sortBy === 'relevance' ? filteredProducts : sortCatalogProducts(filteredProducts, sortBy);
   }, [filteredProducts, sortBy]);
-  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(displayedProducts.map((product) => product.id));
 
   // Active filter count
   const activeFilterCount = useMemo(() => {
@@ -1014,8 +1010,6 @@ export default function SearchPage() {
                 choosing={choosingProductId === p.id}
                 onChoosingChange={open => setChoosingProductId(open ? p.id : null)}
                       onPurchase={(intent, variantId, quantity) => handlePurchase(p, intent, variantId, quantity)}
-                      deal={liveDeals[p.id]}
-                      now={liveDealsNow}
                     />
                       {/* Optional discreet Chat Shop for KOL partners */}
                       {isKolUser && (
@@ -1084,11 +1078,6 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* KOC LIVE COMMERCE PREVIEW MODAL */}
-      <LiveCommerceHubModal
-        isOpen={isLiveModalOpen}
-        onClose={() => setIsLiveModalOpen(false)}
-      />
       {pendingPurchase && <QuickCustomerAuth onClose={() => setPendingPurchase(null)} onSuccess={finishAuthentication} />}
     </div>
   );

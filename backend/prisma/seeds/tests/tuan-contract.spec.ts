@@ -18,11 +18,8 @@ describe('Tuan checkout contracts in seed v3', () => {
       (row) => row.externalOrderSn === 'SEED-DH-03-1',
     )!;
     const items = data.orderItems.filter((row) => row.orderId === order.id);
-    // Bronze 0, VIP +2 only on first product, campaign +1, historical Live +2.
+    // Bronze 0, VIP +2 only on first product, campaign +1.
     expect(items.map((row) => amount(row.appliedCommissionRate))).toEqual([
-      14, 13,
-    ]);
-    expect(items.map((row) => amount(row.regularCommissionRate))).toEqual([
       12, 11,
     ]);
     expect(
@@ -39,23 +36,18 @@ describe('Tuan checkout contracts in seed v3', () => {
     ).toBe(true);
   });
 
-  it('does not award a foreign VIP or Live bonus outside its historical window', () => {
+  it('applies deal bonus without live bonus after Livestream removal', () => {
     const data = buildDataset(context);
     const input = {
       collaboratorId: seedId('creator:2'),
       productId: seedId('product:6'),
       storeId: seedId('store:2'),
       referralLinkId: seedId('campaign-link:2'),
-      liveSessionId: seedId('live:2'),
-      at: new Date(data.liveSessions[2].startsAt),
+      at: context.referenceDate,
     };
     expect(seedCommissionBreakdown(data, input)).toMatchObject({
       deal: 12,
-      live: 2,
     });
-    expect(
-      seedCommissionBreakdown(data, { ...input, at: context.referenceDate }),
-    ).toMatchObject({ live: 0 });
     expect(
       seedCommissionBreakdown(data, {
         ...input,
@@ -159,12 +151,6 @@ describe('Tuan checkout contracts in seed v3', () => {
   });
 
   it.each([
-    [
-      'Live total instead of bonus',
-      (data: ReturnType<typeof buildDataset>) => {
-        data.liveSessions[0].commissionRate = 12;
-      },
-    ],
     [
       'campaign overspend',
       (data: ReturnType<typeof buildDataset>) => {

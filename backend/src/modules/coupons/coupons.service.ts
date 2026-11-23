@@ -2,6 +2,7 @@ import {
   isKolExclusiveCoupon,
   retiredVoucherFeature,
 } from './kol-coupon.policy';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   Injectable,
   BadRequestException,
@@ -40,12 +41,12 @@ import {
   CacheService,
   NOOP_CACHE_SERVICE,
 } from '../../core/cache/cache.service';
-import { liveVoucherActive } from './voucher-pricing';
 import { ProductCouponQueryDto } from './dto/product-coupon-query.dto';
 import {
   voucherMatchesProduct,
   voucherProductWhere,
 } from './voucher-discovery';
+import { calculateMinSafePrice } from '../pricing/pricing-math';
 
 // Banned words list as per Section 10
 const BANNED_CODE_WORDS = [
@@ -84,7 +85,7 @@ export class CouponsService {
     client: Pick<Prisma.TransactionClient, 'coupon'> = this.prisma,
   ) {
     try {
-      return await client.coupon.update({
+      const updated = await client.coupon.update({
         // PostgreSQL stores microseconds; JS Dates retain only milliseconds.
         where: {
           id: coupon.id,
@@ -99,6 +100,8 @@ export class CouponsService {
         },
         data,
       });
+      await this.cacheService?.delPrefix?.('coupons:');
+      return updated;
     } catch (error: any) {
       if (error?.code === 'P2025')
         throw new ConflictException(
@@ -192,7 +195,7 @@ export class CouponsService {
         fundingSource: CouponFundingSource.SHOP_FUNDED,
         benefitType: 'GOODS',
         collaborator: { role: UserRole.COLLABORATOR },
-        status: CouponStatus.ACTIVE,
+        status: { in: [CouponStatus.ACTIVE, CouponStatus.PENDING_BLOCK_APPROVAL] },
         deletedAt: null,
         store: { isActive: true, isDeleted: false },
         AND: [
@@ -218,14 +221,6 @@ export class CouponsService {
         campaign: {
           select: { isActive: true, startDate: true, endDate: true },
         },
-        liveSession: {
-          select: {
-            status: true,
-            inviteStatus: true,
-            startsAt: true,
-            endsAt: true,
-          },
-        },
         store: { select: { id: true, name: true, slug: true } },
       },
       orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
@@ -238,7 +233,6 @@ export class CouponsService {
             coupon.usageCount < coupon.usageLimitTotal) &&
           (coupon.budgetTotal === null ||
             Number(coupon.budgetUsed) < Number(coupon.budgetTotal)) &&
-          liveVoucherActive(coupon.liveSession, now) &&
           (coupon.scopeType !== CouponScope.CAMPAIGN ||
             (coupon.campaign?.isActive &&
               coupon.campaign.startDate <= now &&
@@ -343,11 +337,6 @@ export class CouponsService {
         couponCategories: true,
         campaign: {
           include: { campaignProducts: { select: { productId: true } } },
-        },
-        liveSession: {
-          include: {
-            products: { select: { productId: true, variantId: true } },
-          },
         },
       },
       orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
@@ -468,7 +457,6 @@ export class CouponsService {
       where: {
         status: CouponStatus.ACTIVE,
         deletedAt: null,
-        liveSessionId: null,
         storeId,
         fundingSource: CouponFundingSource.SHOP_FUNDED,
         benefitType: 'GOODS',
@@ -497,7 +485,6 @@ export class CouponsService {
         budgetUsed: true,
         storeId: true,
         campaignId: true,
-        liveSessionId: true,
         expiresAt: true,
         scopeType: true,
         fundingSource: true,
@@ -508,15 +495,6 @@ export class CouponsService {
             startDate: true,
             endDate: true,
             campaignProducts: { select: { productId: true } },
-          },
-        },
-        liveSession: {
-          select: {
-            status: true,
-            inviteStatus: true,
-            startsAt: true,
-            endsAt: true,
-            products: { select: { productId: true, variantId: true } },
           },
         },
         couponProducts: {
@@ -538,7 +516,6 @@ export class CouponsService {
             Number(coupon.budgetUsed) < Number(coupon.budgetTotal)) &&
           (coupon.usageLimitTotal === null ||
             coupon.usageCount < coupon.usageLimitTotal) &&
-          liveVoucherActive(coupon.liveSession, now) &&
           (coupon.scopeType !== CouponScope.CAMPAIGN ||
             (coupon.campaign?.isActive &&
               coupon.campaign.startDate <= now &&
@@ -858,7 +835,7 @@ export class CouponsService {
         where: {
           collaboratorId,
           storeId: dto.storeId,
-          status: CouponStatus.PENDING_APPROVAL,
+          status: { in: [CouponStatus.PENDING_APPROVAL, CouponStatus.PENDING_ADMIN_APPROVAL] },
         },
       }),
       this.prisma.coupon.count({
@@ -871,7 +848,7 @@ export class CouponsService {
         where: {
           collaboratorId,
           storeId: dto.storeId,
-          status: CouponStatus.ACTIVE,
+          status: { in: [CouponStatus.ACTIVE, CouponStatus.PAUSED, CouponStatus.PENDING_BLOCK_APPROVAL] },
         },
       }),
       this.prisma.coupon.count({
@@ -882,9 +859,9 @@ export class CouponsService {
       }),
     ]);
 
-    if (pendingStoreCount >= 5) {
+    if (pendingStoreCount >= 1) {
       throw new BadRequestException(
-        'Bạn đang có tối đa 5 mã chờ duyệt tại Gian hàng này. Vui lòng đợi Shop xử lý.',
+        'Bạn đã có đề xuất mã đang chờ duyệt tại Cửa hàng này. Mỗi KOC chỉ được phép có 1 mã tồn tại trên mỗi cửa hàng.',
       );
     }
     if (pendingGlobalCount >= 20) {
@@ -892,9 +869,9 @@ export class CouponsService {
         'Bạn đang có tối đa 20 mã chờ duyệt trên toàn hệ thống.',
       );
     }
-    if (activeStoreCount >= 10) {
+    if (activeStoreCount >= 1) {
       throw new BadRequestException(
-        'Bạn đã đạt giới hạn tối đa 10 mã hoạt động tại Gian hàng này.',
+        'Đã có mã ưu đãi của bạn đang tồn tại tại Cửa hàng này. Mỗi KOC chỉ được phép có 1 mã trên mỗi cửa hàng.',
       );
     }
     if (activeGlobalCount >= 100) {
@@ -964,18 +941,77 @@ export class CouponsService {
       },
     });
 
-    // 10. Gửi thông báo cho Chủ shop (Store Owner)
+    // 10. Tự động gửi thẻ COUPON_PROPOSAL vào hộp thoại Chat 1-1 giữa KOL & Shop
+    let conversationId: string | undefined;
+    let chatMessage: any = undefined;
+    try {
+      let conversation = await this.prisma.conversation.findFirst({
+        where: {
+          storeId: dto.storeId,
+          collaboratorId,
+        },
+        select: { id: true },
+      });
+
+      if (!conversation) {
+        conversation = await this.prisma.conversation.create({
+          data: {
+            storeId: dto.storeId,
+            collaboratorId,
+          },
+          select: { id: true },
+        });
+      }
+
+      conversationId = conversation.id;
+
+      const cardPayload = {
+        type: 'COUPON_PROPOSAL',
+        couponId: coupon.id,
+        code: coupon.displayCode,
+        scopeType: 'STORE_WIDE',
+        storeId: dto.storeId,
+        storeName: store.name,
+        note: (dto as any).note || undefined,
+        status: 'PENDING_APPROVAL',
+      };
+
+      chatMessage = await this.prisma.chatMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: collaboratorId,
+          messageText: JSON.stringify(cardPayload),
+        },
+        include: {
+          sender: {
+            select: { id: true, fullName: true, avatarUrl: true, role: true },
+          },
+        },
+      });
+
+      await this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { lastMessageAt: new Date() },
+      });
+    } catch {
+      // Không chặn luồng tạo mã nếu chat notification phụ trợ gặp sự cố tạm thời
+    }
+
+    // 11. Gửi thông báo cho Chủ shop (Store Owner)
     await this.createNotification(
       store.ownerId,
       'Đề xuất mã giảm giá mới từ KOL',
       `KOL ${collaborator.fullName} vừa đề xuất mã giảm giá "${codeNormalized}" cho gian hàng ${store.name}. Vui lòng phê duyệt chính sách ưu đãi.`,
       'COUPON_PROPOSED',
-      { couponId: coupon.id, code: coupon.codeNormalized, collaboratorId },
+      { couponId: coupon.id, code: coupon.codeNormalized, collaboratorId, conversationId },
     );
 
+    await this.cacheService?.delPrefix?.('coupons:');
     return {
       message: 'Đề xuất mã giảm giá thành công. Đang chờ Shop phê duyệt.',
       coupon,
+      conversationId,
+      chatMessage,
     };
   }
 
@@ -986,10 +1022,12 @@ export class CouponsService {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
+    const cacheKey = `coupons:kol:${collaboratorId}:${page}:${limit}:${query.status || 'ALL'}:${query.storeId || 'ALL'}:${query.search?.trim() || ''}`;
+    const cached = await this.cacheService?.get<any>(cacheKey);
+    if (cached) return cached;
 
     const where: Prisma.CouponWhereInput = {
       collaboratorId,
-      liveSessionId: null,
       benefitType: 'GOODS',
       fundingSource: CouponFundingSource.SHOP_FUNDED,
       collaborator: { role: UserRole.COLLABORATOR },
@@ -1106,7 +1144,7 @@ export class CouponsService {
       }
     }
 
-    return {
+    const payload = {
       data: enrichedCoupons,
       summary: {
         totalSales: overallTotalSales,
@@ -1121,6 +1159,8 @@ export class CouponsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+    await this.cacheService?.set(cacheKey, payload, 45);
+    return payload;
   }
 
   /**
@@ -1182,12 +1222,6 @@ export class CouponsService {
       where: { id, collaboratorId },
     });
 
-    if (coupon?.liveSessionId) {
-      throw new BadRequestException(
-        'Hãy quản lý voucher này trong trang Phiên Livestream.',
-      );
-    }
-
     if (!coupon || coupon.status === CouponStatus.DELETED) {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
@@ -1222,6 +1256,22 @@ export class CouponsService {
       throw new BadRequestException(
         'Voucher đã hết hạn, không thể kích hoạt lại.',
       );
+    }
+    if (nextStatus === CouponStatus.ACTIVE) {
+      const existingActive = await this.prisma.coupon.findFirst({
+        where: {
+          id: { not: coupon.id },
+          collaboratorId,
+          storeId: coupon.storeId,
+          status: { in: [CouponStatus.ACTIVE, CouponStatus.PENDING_BLOCK_APPROVAL] },
+        },
+        select: { id: true, displayCode: true },
+      });
+      if (existingActive && existingActive.id !== coupon.id) {
+        throw new BadRequestException(
+          `Đã có mã "${existingActive.displayCode}" đang tồn tại và hoạt động tại cửa hàng này. Mỗi KOC chỉ được dùng 1 mã trên mỗi cửa hàng.`,
+        );
+      }
     }
 
     let inFlightOrdersCount = 0;
@@ -1360,10 +1410,12 @@ export class CouponsService {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
+    const cacheKey = `coupons:store:${storeId}:${page}:${limit}:${query.status || 'ALL'}:${query.search?.trim() || ''}`;
+    const cached = await this.cacheService?.get<any>(cacheKey);
+    if (cached) return cached;
 
     const where: Prisma.CouponWhereInput = {
       storeId,
-      liveSessionId: null,
       status: query.status ? query.status : { not: CouponStatus.DELETED },
     };
 
@@ -1396,6 +1448,7 @@ export class CouponsService {
               fullName: true,
               email: true,
               phoneNumber: true,
+              avatarUrl: true,
               collaboratorProfile: {
                 select: {
                   avatarUrl: true,
@@ -1427,7 +1480,7 @@ export class CouponsService {
       }),
     ]);
 
-    return {
+    const payload = {
       data: coupons,
       meta: {
         total,
@@ -1436,6 +1489,8 @@ export class CouponsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+    await this.cacheService?.set(cacheKey, payload, 45);
+    return payload;
   }
 
   /**
@@ -1505,15 +1560,13 @@ export class CouponsService {
       );
     }
 
-    // Validate percentage (default KOL voucher cap <= 10% to preserve minSafePrice margin)
-    if (
-      dto.discountType === DiscountType.PERCENTAGE &&
-      (dto.discountValue <= 0 || dto.discountValue > 10)
-    ) {
-      throw new BadRequestException(
-        'Voucher KOL mặc định tối đa 10% để bảo vệ ngưỡng giá sàn an toàn.',
-      );
-    }
+    // Validate KOL Exclusive Voucher Min/Max bounds & 2-tier approval
+    const { requiresAdminApproval } = this.validateKolCouponBounds(
+      dto.discountType,
+      Number(dto.discountValue),
+      Number(dto.minimumOrderAmount || 0),
+      Number(dto.maximumDiscountAmount || 0),
+    );
 
     // Validate dates
     const startsAt: Date | null = dto.startsAt
@@ -1530,6 +1583,9 @@ export class CouponsService {
     const shopFundingRate = 100;
     const platformFundingRate = 0;
     const fundingSource = CouponFundingSource.SHOP_FUNDED;
+    const targetStatus = requiresAdminApproval
+      ? CouponStatus.PENDING_ADMIN_APPROVAL
+      : CouponStatus.ACTIVE;
 
     // Execute approval inside transaction
     const approvedCoupon = await this.prisma.$transaction(async (tx) => {
@@ -1537,7 +1593,7 @@ export class CouponsService {
       const updated = await this.updateCurrentCoupon(
         coupon,
         {
-          status: CouponStatus.ACTIVE,
+          status: targetStatus,
           discountType: dto.discountType,
           discountValue: new Prisma.Decimal(dto.discountValue),
           minimumOrderAmount: dto.minimumOrderAmount
@@ -1547,7 +1603,7 @@ export class CouponsService {
             ? new Prisma.Decimal(dto.maximumDiscountAmount)
             : null,
           usageLimitTotal: dto.usageLimitTotal || null,
-          usageLimitPerCustomer: dto.usageLimitPerCustomer || 1,
+          usageLimitPerCustomer: dto.usageLimitPerCustomer ?? undefined,
           budgetTotal: dto.budgetTotal
             ? new Prisma.Decimal(dto.budgetTotal)
             : null,
@@ -1570,8 +1626,9 @@ export class CouponsService {
         tx,
       );
 
-      // 1b. Tự động thu hồi/hết hạn các mã cũ của KOL tại Store này (Đảm bảo 1 KOL = 1 mã active)
+      // 1b. Chỉ thu hồi mã cũ của KOL tại Store nếu mã mới kích hoạt ngay (ACTIVE)
       if (
+        targetStatus === CouponStatus.ACTIVE &&
         coupon.collaboratorId &&
         typeof tx.coupon?.updateMany === 'function'
       ) {
@@ -1580,7 +1637,13 @@ export class CouponsService {
             collaboratorId: coupon.collaboratorId,
             storeId: coupon.storeId,
             id: { not: coupon.id },
-            status: CouponStatus.ACTIVE,
+            status: {
+              in: [
+                CouponStatus.ACTIVE,
+                CouponStatus.PAUSED,
+                CouponStatus.PENDING_BLOCK_APPROVAL,
+              ],
+            },
           },
           data: {
             status: CouponStatus.EXPIRED,
@@ -1648,6 +1711,7 @@ export class CouponsService {
       { couponId, code: coupon.codeNormalized, storeId },
     );
 
+    await this.cacheService?.delPrefix?.('coupons:');
     return {
       message: 'Phê duyệt và áp dụng chính sách ưu đãi thành công',
       coupon: approvedCoupon,
@@ -1730,10 +1794,87 @@ export class CouponsService {
 
     const coupon = await this.prisma.coupon.findFirst({
       where: { id: couponId, storeId },
+      include: {
+        store: { select: { id: true, name: true, ownerId: true } },
+        collaborator: { select: { id: true, fullName: true } },
+      },
     });
 
     if (!coupon || coupon.status === CouponStatus.DELETED) {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
+    }
+
+    if (role === UserRole.SHOP_MANAGER) {
+      if (coupon.status === CouponStatus.PENDING_BLOCK_APPROVAL) {
+        throw new BadRequestException(
+          'Mã này đang chờ Bộ phận Vận hành (System Manager) xét duyệt ngừng.',
+        );
+      }
+      if (coupon.status === CouponStatus.BLOCKED) {
+        throw new BadRequestException('Mã giảm giá đã bị khóa trước đó.');
+      }
+      if (
+        coupon.status !== CouponStatus.ACTIVE &&
+        coupon.status !== CouponStatus.PAUSED
+      ) {
+        throw new BadRequestException(
+          'Chỉ có thể gửi yêu cầu ngừng cho mã đang hoạt động hoặc tạm dừng.',
+        );
+      }
+
+      const updated = await this.updateCurrentCoupon(coupon, {
+        status: CouponStatus.PENDING_BLOCK_APPROVAL,
+        statusBeforeBlock: coupon.status,
+        blockedReason: dto.reason,
+      });
+
+      await this.prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'COUPON_BLOCK_REQUESTED',
+          details: {
+            couponId,
+            code: coupon.codeNormalized,
+            storeId,
+            reason: dto.reason,
+          },
+          ipAddress: ipAddress || null,
+        },
+      });
+
+      const opsUsers = await this.prisma.user.findMany({
+        where: {
+          role: UserRole.SYSTEM_MANAGER,
+          isActive: true,
+        },
+        select: { id: true },
+        take: 10,
+      });
+
+      await Promise.all([
+        ...opsUsers.map((ops) =>
+          this.createNotification(
+            ops.id,
+            'Yêu cầu ngừng mã ưu đãi KOC',
+            `Cửa hàng ${coupon.store?.name || ''} đề nghị ngừng mã "${coupon.displayCode}" của KOC ${coupon.collaborator?.fullName || ''}. Lý do: ${dto.reason}`,
+            'COUPON_BLOCK_REQUESTED',
+            { couponId, code: coupon.codeNormalized, storeId, reason: dto.reason },
+          ),
+        ),
+        this.createNotification(
+          coupon.collaboratorId,
+          'Cửa hàng đề nghị ngừng mã ưu đãi của bạn',
+          `Cửa hàng ${coupon.store?.name || ''} đã gửi yêu cầu ngừng mã "${coupon.displayCode}" tới Bộ phận Vận hành xét duyệt. Mã vẫn giữ hiệu lực cho đến khi có quyết định chính thức.`,
+          'COUPON_BLOCK_REQUESTED',
+          { couponId, code: coupon.codeNormalized, storeId, reason: dto.reason },
+        ),
+      ]);
+
+      return {
+        message:
+          'Đã gửi yêu cầu ngừng mã tới Bộ phận Vận hành (System Manager) xét duyệt. Mã vẫn giữ hiệu lực cho đến khi có quyết định.',
+        coupon: updated,
+      };
     }
 
     const updated = await this.blockCurrentCoupon(coupon, dto.reason);
@@ -1792,6 +1933,24 @@ export class CouponsService {
       );
     }
 
+    if (
+      role === UserRole.SHOP_MANAGER &&
+      coupon.status === CouponStatus.ACTIVE
+    ) {
+      const touchesLockedTerms =
+        (dto.discountType !== undefined && dto.discountType !== coupon.discountType) ||
+        (dto.discountValue !== undefined && Number(dto.discountValue) !== Number(coupon.discountValue)) ||
+        (dto.minimumOrderAmount !== undefined && Number(dto.minimumOrderAmount || 0) !== Number(coupon.minimumOrderAmount || 0)) ||
+        (dto.maximumDiscountAmount !== undefined && Number(dto.maximumDiscountAmount || 0) !== Number(coupon.maximumDiscountAmount || 0)) ||
+        (dto.scopeType !== undefined && dto.scopeType !== coupon.scopeType) ||
+        (dto.expiresAt !== undefined && coupon.expiresAt && new Date(dto.expiresAt) < coupon.expiresAt);
+      if (touchesLockedTerms) {
+        throw new ForbiddenException(
+          'Mã ưu đãi đang hoạt động đã khóa cam kết để bảo vệ uy tín KOL. Shop Manager chỉ được tăng ngân sách, tăng lượt dùng hoặc gia hạn thêm; mọi điều chỉnh thay đổi điều kiện phải qua Vận hành/Admin.',
+        );
+      }
+    }
+
     const data: Prisma.CouponUpdateInput = {};
 
     if ((dto.scopeType ?? coupon.scopeType) === CouponScope.CAMPAIGN) {
@@ -1817,20 +1976,38 @@ export class CouponsService {
       data.maximumDiscountAmount = dto.maximumDiscountAmount
         ? new Prisma.Decimal(dto.maximumDiscountAmount)
         : null;
-    if (dto.usageLimitTotal !== undefined)
-      data.usageLimitTotal = dto.usageLimitTotal || null;
-    if (dto.usageLimitPerCustomer !== undefined)
-      data.usageLimitPerCustomer = dto.usageLimitPerCustomer;
     if (dto.budgetTotal !== undefined)
       data.budgetTotal = dto.budgetTotal
         ? new Prisma.Decimal(dto.budgetTotal)
         : null;
-    if (dto.startsAt !== undefined)
-      data.startsAt = dto.startsAt ? new Date(dto.startsAt) : null;
-    if (dto.expiresAt !== undefined)
-      data.expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
+
+    const effectiveType = dto.discountType ?? coupon.discountType;
+    const effectiveValue =
+      dto.discountValue !== undefined
+        ? Number(dto.discountValue)
+        : Number(coupon.discountValue);
+    const effectiveMinOrder =
+      dto.minimumOrderAmount !== undefined
+        ? Number(dto.minimumOrderAmount || 0)
+        : Number(coupon.minimumOrderAmount || 0);
+    const effectiveMaxDiscount =
+      dto.maximumDiscountAmount !== undefined
+        ? Number(dto.maximumDiscountAmount || 0)
+        : Number(coupon.maximumDiscountAmount || 0);
+    const { requiresAdminApproval: policyNeedsAdmin } =
+      this.validateKolCouponBounds(
+        effectiveType,
+        effectiveValue,
+        effectiveMinOrder,
+        effectiveMaxDiscount,
+      );
     const isAdmin =
       role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER;
+    if (policyNeedsAdmin && role !== UserRole.SYSTEM_ADMIN) {
+      throw new ForbiddenException(
+        'Voucher KOL vượt ngưỡng 10% (tối đa 20%) cần SYSTEM_ADMIN phê duyệt ngoại lệ.',
+      );
+    }
 
     if (!isAdmin) {
       if (
@@ -1883,6 +2060,17 @@ export class CouponsService {
       },
     });
 
+    if (coupon.collaboratorId) {
+      await this.createNotification(
+        coupon.collaboratorId,
+        'Chính sách mã ưu đãi đã được cập nhật',
+        `Mã ưu đãi "${coupon.codeNormalized}" vừa được cập nhật thông tin ngân sách/thời hạn.`,
+        'COUPON_POLICY_UPDATED',
+        { couponId, storeId },
+      );
+    }
+
+    await this.cacheService?.delPrefix?.('coupons:');
     return {
       message: 'Cập nhật chính sách mã giảm giá thành công',
       coupon: updated,
@@ -2200,6 +2388,9 @@ export class CouponsService {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
+    const cacheKey = `coupons:admin:${page}:${limit}:${query.status || 'ALL'}:${query.storeId || 'ALL'}:${query.search?.trim() || ''}`;
+    const cached = await this.cacheService?.get<any>(cacheKey);
+    if (cached) return cached;
 
     const where: Prisma.CouponWhereInput = {
       benefitType: 'GOODS',
@@ -2229,7 +2420,7 @@ export class CouponsService {
       }),
     ]);
 
-    return {
+    const payload = {
       data: coupons,
       meta: {
         total,
@@ -2238,6 +2429,8 @@ export class CouponsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+    await this.cacheService?.set(cacheKey, payload, 45);
+    return payload;
   }
 
   async couponOversight(id: string, userId: string, role: UserRole, storeId?: string, page = 1) {
@@ -2275,6 +2468,134 @@ export class CouponsService {
     ]);
     const total = count[0]?.total ?? 0;
     return { coupon, history, meta: { page, total, totalPages: Math.max(1, Math.ceil(total / 20)) } };
+  }
+
+  async adminReviewBlockRequest(
+    couponId: string,
+    reviewerId: string,
+    approve: boolean,
+    reason?: string,
+    ipAddress?: string,
+  ) {
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { id: couponId },
+      include: {
+        store: { select: { id: true, name: true, ownerId: true } },
+        collaborator: { select: { id: true, fullName: true } },
+      },
+    });
+
+    if (!coupon || coupon.status === CouponStatus.DELETED) {
+      throw new NotFoundException('Không tìm thấy mã giảm giá');
+    }
+
+    if (coupon.status !== CouponStatus.PENDING_BLOCK_APPROVAL) {
+      throw new BadRequestException(
+        'Chỉ có thể xét duyệt yêu cầu ngừng cho mã đang ở trạng thái chờ duyệt ngừng.',
+      );
+    }
+
+    if (approve) {
+      const shopReason = coupon.blockedReason || 'Đề nghị ngừng từ cửa hàng';
+      const note = reason?.trim();
+      const finalReason = (
+        note ? `${shopReason} | Vận hành duyệt: ${note}` : shopReason
+      ).slice(0, 255);
+
+      const updated = await this.updateCurrentCoupon(coupon, {
+        status: CouponStatus.BLOCKED,
+        statusBeforeBlock: coupon.statusBeforeBlock || CouponStatus.ACTIVE,
+        blockedReason: finalReason,
+      });
+
+      await this.prisma.auditLog.create({
+        data: {
+          userId: reviewerId,
+          action: 'COUPON_BLOCK_APPROVED',
+          details: {
+            couponId,
+            code: coupon.codeNormalized,
+            storeId: coupon.storeId,
+            reason: finalReason,
+          },
+          ipAddress: ipAddress || null,
+        },
+      });
+
+      await Promise.all([
+        coupon.store?.ownerId
+          ? this.createNotification(
+              coupon.store.ownerId,
+              'Yêu cầu ngừng mã KOC đã được chấp thuận',
+              `Bộ phận Vận hành đã chấp thuận ngừng mã "${coupon.displayCode}" của KOC ${coupon.collaborator?.fullName || ''}.${note ? ` Ghi chú: ${note}` : ''}`,
+              'COUPON_BLOCK_APPROVED',
+              { couponId, code: coupon.codeNormalized, storeId: coupon.storeId },
+            )
+          : Promise.resolve(),
+        this.createNotification(
+          coupon.collaboratorId,
+          'Mã ưu đãi của bạn đã ngừng áp dụng',
+          `Bộ phận Vận hành đã chấp thuận yêu cầu ngừng mã "${coupon.displayCode}" từ cửa hàng ${coupon.store?.name || ''}. Lý do: ${finalReason}`,
+          'COUPON_BLOCK_APPROVED',
+          { couponId, code: coupon.codeNormalized, storeId: coupon.storeId },
+        ),
+      ]);
+
+      return {
+        message: `Đã chấp thuận ngừng mã "${coupon.displayCode}".`,
+        coupon: updated,
+      };
+    }
+
+    const restoredStatus = coupon.statusBeforeBlock || CouponStatus.ACTIVE;
+    const rejectNote =
+      reason?.trim() ||
+      'Bộ phận Vận hành từ chối yêu cầu ngừng để bảo vệ cam kết chiến dịch cho KOC.';
+
+    const updated = await this.updateCurrentCoupon(coupon, {
+      status: restoredStatus,
+      statusBeforeBlock: null,
+      blockedReason: null,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: reviewerId,
+        action: 'COUPON_BLOCK_REJECTED',
+        details: {
+          couponId,
+          code: coupon.codeNormalized,
+          storeId: coupon.storeId,
+          restoredStatus,
+          reason: rejectNote,
+        },
+        ipAddress: ipAddress || null,
+      },
+    });
+
+    await Promise.all([
+      coupon.store?.ownerId
+        ? this.createNotification(
+            coupon.store.ownerId,
+            'Yêu cầu ngừng mã KOC bị từ chối',
+            `Bộ phận Vận hành đã từ chối yêu cầu ngừng mã "${coupon.displayCode}" (mã tiếp tục hoạt động). Lý do: ${rejectNote}`,
+            'COUPON_BLOCK_REJECTED',
+            { couponId, code: coupon.codeNormalized, storeId: coupon.storeId },
+          )
+        : Promise.resolve(),
+      this.createNotification(
+        coupon.collaboratorId,
+        'Mã ưu đãi của bạn tiếp tục được bảo vệ & giữ hiệu lực',
+        `Bộ phận Vận hành đã từ chối yêu cầu ngừng mã "${coupon.displayCode}" từ ${coupon.store?.name || 'cửa hàng'}. Mã vẫn đang hoạt động bình thường.`,
+        'COUPON_BLOCK_REJECTED',
+        { couponId, code: coupon.codeNormalized, storeId: coupon.storeId },
+      ),
+    ]);
+
+    return {
+      message: `Đã từ chối yêu cầu ngừng và giữ nguyên hiệu lực mã "${coupon.displayCode}" cho KOC.`,
+      coupon: updated,
+    };
   }
 
   async adminBlockCoupon(
@@ -2343,6 +2664,33 @@ export class CouponsService {
       coupon.expiresAt <= new Date()
     )
       restoredStatus = CouponStatus.EXPIRED;
+
+    if (
+      (restoredStatus === CouponStatus.ACTIVE ||
+        restoredStatus === CouponStatus.PAUSED) &&
+      coupon.collaboratorId
+    ) {
+      const existingActive = await this.prisma.coupon.findFirst({
+        where: {
+          id: { not: coupon.id },
+          collaboratorId: coupon.collaboratorId,
+          storeId: coupon.storeId,
+          status: {
+            in: [
+              CouponStatus.ACTIVE,
+              CouponStatus.PAUSED,
+              CouponStatus.PENDING_BLOCK_APPROVAL,
+            ],
+          },
+        },
+        select: { id: true, displayCode: true },
+      });
+      if (existingActive && existingActive.id !== coupon.id) {
+        throw new BadRequestException(
+          `Không thể mở khóa vì KOC này đã có mã "${existingActive.displayCode}" đang tồn tại tại cửa hàng. Mỗi KOC chỉ được phép có 1 mã hoạt động trên mỗi cửa hàng.`,
+        );
+      }
+    }
 
     const updated = await this.updateCurrentCoupon(coupon, {
       status: restoredStatus,
@@ -2432,17 +2780,6 @@ export class CouponsService {
           collaborator: {
             select: { id: true, role: true, fullName: true },
           },
-          liveSession: {
-            select: {
-              id: true,
-              status: true,
-              inviteStatus: true,
-              commissionRate: true,
-              startsAt: true,
-              endsAt: true,
-              products: { select: { productId: true, variantId: true } },
-            },
-          },
         },
       }));
 
@@ -2506,13 +2843,6 @@ export class CouponsService {
         message: 'Mã giảm giá đã hết hạn sử dụng.',
       });
     }
-    if (!liveVoucherActive(coupon.liveSession, now)) {
-      await this.recordValidationFailure(rateLimitKey);
-      throw new BadRequestException({
-        errorCode: 'LIVE_SESSION_NOT_ACTIVE',
-        message: 'Voucher của phiên live hiện không được mở.',
-      });
-    }
 
     // 3. Check Total Usage Limit (Section 15)
     if (
@@ -2566,18 +2896,40 @@ export class CouponsService {
       (variantIds.length
         ? await this.prisma.productVariant.findMany({
             where: { id: { in: variantIds }, isActive: true },
-            select: { id: true, productId: true, price: true },
+            select: { id: true, productId: true, price: true, floorPrice: true },
           })
         : []);
     const dbVariantMap = new Map(
       dbVariants.map((variant) => [variant.id, variant]),
     );
 
-    // Filter items that belong to the coupon's store
     const storeItems = dto.items.filter((item) => {
       const prod = dbProductMap.get(item.productId);
       return prod && prod.storeId === coupon.storeId;
     });
+
+    const activeClearancePromos =
+      storeItems.length && this.prisma.productPricePromotion
+        ? await this.prisma.productPricePromotion.findMany({
+            where: {
+              productId: { in: storeItems.map((item) => item.productId) },
+              status: 'ACTIVE',
+              startsAt: { lte: now },
+              endsAt: { gt: now },
+            },
+            select: { productId: true, variantId: true, proposedPrice: true },
+          })
+        : [];
+    const clearanceKeys = new Set<string>();
+    for (const promo of activeClearancePromos) {
+      const prod = dbProductMap.get(promo.productId);
+      const vFloor = promo.variantId
+        ? Number(dbVariantMap.get(promo.variantId)?.floorPrice ?? prod?.floorPrice ?? 0)
+        : Number(prod?.floorPrice ?? 0);
+      if (vFloor > 0 && Number(promo.proposedPrice) < calculateMinSafePrice(vFloor)) {
+        clearanceKeys.add(`${promo.productId}:${promo.variantId || '*'}`);
+      }
+    }
 
     if (storeItems.length === 0) {
       await this.recordValidationFailure(rateLimitKey);
@@ -2657,13 +3009,12 @@ export class CouponsService {
           campaignProductIds.size > 0 ? campaignProductIds.has(prod.id) : true;
       }
 
-      if (isEligible && coupon.liveSession) {
-        isEligible = coupon.liveSession.products.some(
-          (liveProduct) =>
-            liveProduct.productId === prod.id &&
-            (!liveProduct.variantId ||
-              liveProduct.variantId === item.variantId),
-        );
+      if (
+        isEligible &&
+        (clearanceKeys.has(`${prod.id}:*`) ||
+          (item.variantId && clearanceKeys.has(`${prod.id}:${item.variantId}`)))
+      ) {
+        isEligible = false;
       }
 
       if (isEligible) {
@@ -2682,14 +3033,8 @@ export class CouponsService {
       });
     }
 
-    // 6.5. Kiểm tra chính sách cộng dồn (Issue 6)
-    const hasDirectDiscount = storeItems.some((item) => {
-      const product = dbProductMap.get(item.productId)!;
-      const price = item.variantId
-        ? (dbVariantMap.get(item.variantId)?.price ?? product.price)
-        : product.price;
-      return Number(product.originalPrice || 0) > Number(price);
-    });
+    // 6.5. Kiểm tra chính sách cộng dồn (chỉ còn price & floorPrice; không còn giá gạch ngang originalPrice)
+    const hasDirectDiscount = false;
     const isKolCoupon = coupon.collaborator?.role === UserRole.COLLABORATOR;
     if (
       (dto.hasProductDiscount || hasDirectDiscount) &&
@@ -2813,10 +3158,134 @@ export class CouponsService {
       eligibleSubtotal,
       eligibleProductIds,
       collaboratorId: coupon.collaboratorId,
-      sessionCommissionRate: coupon.liveSession
-        ? Number(coupon.liveSession.commissionRate)
-        : null,
       message: 'Áp dụng mã giảm giá thành công',
     };
+  }
+
+  private validateKolCouponBounds(
+    discountType: DiscountType,
+    discountValue: number,
+    minimumOrderAmount: number,
+    maximumDiscountAmount: number,
+  ): { requiresAdminApproval: boolean } {
+    if (discountType === DiscountType.PERCENTAGE) {
+      if (!Number.isFinite(discountValue) || discountValue < 3 || discountValue > 20) {
+        throw new BadRequestException(
+          'Voucher KOL theo % phải nằm trong khoảng tối thiểu 3% và tối đa 20%.',
+        );
+      }
+      if (!Number.isFinite(maximumDiscountAmount) || maximumDiscountAmount <= 0) {
+        throw new BadRequestException(
+          'Voucher KOL theo % bắt buộc phải thiết lập mức giảm tối đa (VNĐ) > 0 để tránh lỗ.',
+        );
+      }
+      return { requiresAdminApproval: discountValue > 10 };
+    }
+
+    if (!Number.isFinite(discountValue) || discountValue < 10000) {
+      throw new BadRequestException(
+        'Voucher KOL giảm tiền cố định tối thiểu là 10.000 ₫.',
+      );
+    }
+    if (!Number.isFinite(minimumOrderAmount) || minimumOrderAmount <= 0) {
+      throw new BadRequestException(
+        'Voucher giảm tiền cố định bắt buộc có Giá trị đơn tối thiểu > 0 để bảo vệ biên lợi nhuận.',
+      );
+    }
+    const effectivePct = discountValue / minimumOrderAmount;
+    if (effectivePct > 0.2) {
+      throw new BadRequestException(
+        `Mức giảm cố định (${discountValue.toLocaleString('vi-VN')} ₫) không được vượt quá 20% đơn tối thiểu (${minimumOrderAmount.toLocaleString('vi-VN')} ₫).`,
+      );
+    }
+    return { requiresAdminApproval: effectivePct > 0.1 };
+  }
+
+  async adminApproveExceptionCoupon(
+    couponId: string,
+    adminId: string,
+    approve: boolean,
+    reason?: string,
+  ) {
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { id: couponId },
+      include: { store: { select: { name: true } } },
+    });
+    if (!coupon || coupon.status === CouponStatus.DELETED) {
+      throw new NotFoundException('Không tìm thấy mã giảm giá');
+    }
+    if (coupon.status !== CouponStatus.PENDING_ADMIN_APPROVAL) {
+      throw new BadRequestException(
+        'Chỉ có thể phê duyệt ngoại lệ cho voucher đang ở trạng thái PENDING_ADMIN_APPROVAL.',
+      );
+    }
+    if (!approve) {
+      const rejected = await this.prisma.coupon.update({
+        where: { id: couponId },
+        data: {
+          status: CouponStatus.REJECTED,
+          rejectedReason: reason?.trim() || 'System Admin từ chối mức ưu đãi vượt 10%.',
+          approvedBy: adminId,
+          approvedAt: new Date(),
+        },
+      });
+      await this.cacheService?.delPrefix?.('coupons:');
+      return rejected;
+    }
+    const updatedResult = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.coupon.update({
+        where: { id: couponId },
+        data: {
+          status: CouponStatus.ACTIVE,
+          approvedBy: adminId,
+          approvedAt: new Date(),
+          rejectedReason: null,
+        },
+      });
+      if (coupon.collaboratorId) {
+        await tx.coupon.updateMany({
+          where: {
+            collaboratorId: coupon.collaboratorId,
+            storeId: coupon.storeId,
+            id: { not: coupon.id },
+            status: {
+              in: [
+                CouponStatus.ACTIVE,
+                CouponStatus.PAUSED,
+                CouponStatus.PENDING_BLOCK_APPROVAL,
+              ],
+            },
+          },
+          data: { status: CouponStatus.EXPIRED },
+        });
+      }
+      return updated;
+    });
+    await this.cacheService?.delPrefix?.('coupons:');
+    return updatedResult;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async notifyExpiringCoupons() {
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const expiring = await this.prisma.coupon.findMany({
+      where: {
+        status: CouponStatus.ACTIVE,
+        collaborator: { role: UserRole.COLLABORATOR },
+        expiresAt: { gt: now, lte: tomorrow },
+      },
+      select: { id: true, collaboratorId: true, codeNormalized: true, expiresAt: true },
+    });
+    for (const coupon of expiring) {
+      if (!coupon.collaboratorId || !coupon.expiresAt) continue;
+      await this.createNotification(
+        coupon.collaboratorId,
+        'Mã ưu đãi KOL sắp hết hạn trong 24 giờ',
+        `Mã "${coupon.codeNormalized}" sẽ hết hạn vào ${coupon.expiresAt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}. Vui lòng thông báo cho người theo dõi hoặc liên hệ Shop gia hạn nếu cần.`,
+        'COUPON_EXPIRING_SOON',
+        { couponId: coupon.id },
+      );
+    }
   }
 }

@@ -29,7 +29,7 @@ export function PartnerRemunerationSummary({ storeId, collaboratorId, tier, role
       const controller = new AbortController();
       pending = controller;
       try {
-        const response: any = await api.get(`/affiliate-deals/${role === 'SHOP_MANAGER' ? 'shop' : 'mine'}`, { signal: controller.signal, headers: { 'x-skip-cache': '1' } });
+        const response: any = await api.get(`/affiliate-deals/${role === 'SHOP_MANAGER' ? 'shop' : 'mine'}`, { signal: controller.signal });
         const body = response?.data?.data || response?.data || response;
         if (!Array.isArray(body)) throw new Error('Invalid deal collection');
         if (!active || controller.signal.aborted) return;

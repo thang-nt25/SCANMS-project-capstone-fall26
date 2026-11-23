@@ -34,7 +34,6 @@ const ShoppingDiscoverPage = lazyRetry(() => import('../pages/public/ShoppingDis
 const ShopPage = lazyRetry(() => import('../pages/public/ShopPage'));
 const SearchPage = lazyRetry(() => import('../pages/public/SearchPage'));
 const PayosReturnPage = lazyRetry(() => import('../pages/public/PayosReturnPage'));
-const LiveStreamRoomPage = lazyRetry(() => import('../pages/public/LiveStreamRoomPage'));
 const CartPage = lazyRetry(() => import('../pages/public/CartPage'));
 
 const ProductManagementPage = lazyRetry(() => import('../pages/merchant/ProductManagementPage'));
@@ -59,8 +58,6 @@ const MarketingToolkitPage = lazy(() => import('../pages/collaborator/MarketingT
 const CreatorProfilePage = lazy(() => import('../pages/collaborator/CreatorProfilePage'));
 const ShopKolHubPage = lazy(() => import('../pages/merchant/ShopKolHubPage'));
 const ShopPromotionsHubPage = lazy(() => import('../pages/merchant/ShopPromotionsHubPage'));
-const LiveSessionsPage = lazy(() => import('../pages/merchant/LiveSessionsPage'));
-const CollaboratorLiveSessionsPage = lazy(() => import('../pages/collaborator/LiveSessionsPage'));
 const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHubPage'));
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
 const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
@@ -132,7 +129,6 @@ function AppRoutes() {
               <Route path="*" element={<NotFoundPage />} />
               <Route path="/marketplace" element={<MarketplacePage />} />
               <Route path="/stores" element={<ShoppingDiscoverPage />} />
-              <Route path="/discover/live" element={<ShoppingDiscoverPage />} />
               <Route path="/shops/:shopId" element={<ShopPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/marketplace/search" element={<SearchPage />} />
@@ -145,9 +141,6 @@ function AppRoutes() {
               <Route path="/shop/:shopId" element={<ShopPage />} />
               <Route path="/stores/:shopId" element={<ShopPage />} />
               <Route path="/leaderboard" element={<PublicLeaderboardPage />} />
-              <Route path="/live/:slug" element={<LiveStreamRoomPage />} />
-              <Route path="/live/:id" element={<LiveStreamRoomPage />} />
-              <Route path="/live" element={<LiveStreamRoomPage />} />
 
         <Route path="/prototype" element={<Navigate to="/" replace />} />
         <Route path="/ui-reference" element={<Navigate to="/" replace />} />
@@ -208,8 +201,6 @@ function AppRoutes() {
               <Route path="merchant/kol-hub" element={<ShopKolHubPage />} />
               <Route path="merchant/customer-messages" element={<ChatBoxPage />} />
               <Route path="merchant/promotions" element={<ShopPromotionsHubPage />} />
-              <Route path="merchant/live-sessions" element={<LiveSessionsPage />} />
-              <Route path="merchant/livestream" element={<Navigate to="/merchant/live-sessions" replace />} />
               <Route path="merchant/fraud-sentinel" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/ai-fraud" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/audit-logs" element={<Navigate to="/admin/audit-logs" replace />} />
@@ -250,7 +241,6 @@ function AppRoutes() {
               {/* Collaborator Consolidated Hubs */}
               <Route path="collaborator/marketing" element={<MarketingToolkitPage />} />
               <Route path="collaborator/marketing-toolkit" element={<Navigate to="/collaborator/marketing" replace />} />
-              <Route path="collaborator/live-sessions" element={<CollaboratorLiveSessionsPage />} />
               <Route path="collaborator/collaboration" element={<ShopCollaborationPage />} />
               <Route path="collaborator/profile" element={<CreatorProfilePage />} />
 

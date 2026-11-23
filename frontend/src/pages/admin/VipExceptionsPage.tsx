@@ -21,6 +21,7 @@ interface ExceptionStats {
   pendingCount: number;
   approvedCount: number;
   rejectedCount: number;
+  totalTargetOrders?: number;
   totalTargetRevenue: number;
   avgRate: number;
 }
@@ -36,6 +37,7 @@ export default function VipExceptionsPage() {
     pendingCount: 0,
     approvedCount: 0,
     rejectedCount: 0,
+    totalTargetOrders: 0,
     totalTargetRevenue: 0,
     avgRate: 17.5,
   });
@@ -252,12 +254,14 @@ export default function VipExceptionsPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-[#EAE4D7] p-3.5 shadow-2xs">
-          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Pipeline cam kết</p>
+          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Tổng đơn cam kết</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold text-[#1A1612] tabular-nums">
-              {stats.totalTargetRevenue > 0
+              {Number(stats.totalTargetOrders || 0) > 0
+                ? `${Number(stats.totalTargetOrders).toLocaleString("vi-VN")} đơn`
+                : stats.totalTargetRevenue > 0
                 ? `${Math.round(stats.totalTargetRevenue / 1000000)}M`
-                : "0₫"}
+                : "0 đơn"}
             </span>
             <span className="text-xs text-[#7D715E]">TB {stats.avgRate}%</span>
           </div>
@@ -388,6 +392,7 @@ export default function VipExceptionsPage() {
         <div className="space-y-4">
           {filteredItems.map((item) => {
             const proposedRate = Number(item.proposedCommissionRate || 0);
+            const targetOrders = Number(item.targetOrders || 0);
             const targetRev = Number(item.targetRevenue || 0);
             const tierName = item.collaborator?.collaboratorProfile?.tier?.name || "Đồng";
             const tierBonus = Number(item.collaborator?.collaboratorProfile?.tier?.extraBonusPercentage || 0);
@@ -469,9 +474,13 @@ export default function VipExceptionsPage() {
 
                     <div className="flex items-center gap-4">
                       <div>
-                        <span className="text-[#7D715E] mr-1.5">Cam kết doanh thu:</span>
+                        <span className="text-[#7D715E] mr-1.5">Cam kết KPI:</span>
                         <strong className="text-[#B88E4F] font-bold tabular-nums">
-                          {targetRev > 0 ? formatMoney(targetRev) : "Theo thỏa thuận"}
+                          {targetOrders > 0
+                            ? `${targetOrders.toLocaleString("vi-VN")} đơn`
+                            : targetRev > 0
+                            ? formatMoney(targetRev)
+                            : "Theo thỏa thuận"}
                         </strong>
                       </div>
                       <div>
@@ -577,7 +586,7 @@ export default function VipExceptionsPage() {
                           Giai đoạn 2 • Treo thưởng KPI
                         </span>
                         <span className="text-xs text-[#7D715E] mt-0.5 block">
-                          Giải ngân khi đạt 100% doanh thu
+                          Giải ngân khi đạt 100% KPI đơn hàng
                         </span>
                       </div>
                       <div className="text-right shrink-0">
@@ -600,11 +609,19 @@ export default function VipExceptionsPage() {
                   )}
 
                   {/* 4.6 Audit Trail Decision Note */}
-                  {item.exceptionNote && (
-                    <div className="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs flex items-start gap-2">
-                      <span className="font-semibold text-[#475569] shrink-0 text-[11px]">Căn cứ phê duyệt:</span>
+                  {(item.exceptionNote || (item.status === "REJECTED" && item.shopResponse)) && (
+                    <div className={`p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
+                      item.status === "REJECTED"
+                        ? "bg-[#FEF2F2] border-[#FECACA]"
+                        : "bg-[#F8FAFC] border-[#E2E8F0]"
+                    }`}>
+                      <span className={`font-semibold shrink-0 text-[11px] ${
+                        item.status === "REJECTED" ? "text-[#B91C1C]" : "text-[#475569]"
+                      }`}>
+                        {item.status === "REJECTED" ? "Lý do từ chối:" : "Căn cứ phê duyệt:"}
+                      </span>
                       <p className="text-[#1E293B] leading-relaxed">
-                        {item.exceptionNote}
+                        {item.exceptionNote || item.shopResponse}
                       </p>
                     </div>
                   )}
@@ -784,9 +801,11 @@ export default function VipExceptionsPage() {
                 </strong>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#7D715E]">Cam kết doanh thu:</span>
+                <span className="text-[#7D715E]">Cam kết KPI:</span>
                 <strong className="text-[#1A1612] font-bold tabular-nums">
-                  {Number(selected.targetRevenue || 0).toLocaleString("vi-VN")}₫
+                  {Number(selected.targetOrders || 0) > 0
+                    ? `${Number(selected.targetOrders).toLocaleString("vi-VN")} đơn`
+                    : `${Number(selected.targetRevenue || 0).toLocaleString("vi-VN")}₫`}
                 </strong>
               </div>
             </div>
@@ -807,8 +826,8 @@ export default function VipExceptionsPage() {
                 onChange={(e) => setNote(e.target.value)}
                 placeholder={
                   approve
-                    ? "Nhập căn cứ chấp thuận: Đánh giá tiềm năng doanh số của KOL, tỷ lệ tương thích tệp khán giả..."
-                    : "Nhập lý do từ chối: Cam kết doanh thu chưa tương xứng với mức thù lao đề xuất..."
+                    ? "Nhập căn cứ chấp thuận: Đánh giá năng lực chốt đơn của KOL, tỷ lệ tương thích tệp khán giả..."
+                    : "Nhập lý do từ chối: Cam kết số đơn hàng chưa tương xứng với mức thù lao đề xuất..."
                 }
                 className="w-full rounded-lg border border-[#EAE4D7] p-2.5 text-xs text-[#1A1612] placeholder:text-[#7D715E] focus:outline-none focus:border-[#C59B58] transition"
               />
@@ -859,8 +878,8 @@ export default function VipExceptionsPage() {
             <div className="p-3 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] space-y-1">
               <strong className="text-[#8F682E] font-bold text-sm block">1. Cơ chế phân cấp thẩm quyền phê duyệt:</strong>
               <ul className="list-disc list-inside space-y-1 text-[#7D715E]">
-                <li><strong className="text-[#1A1612]">&lt;= 16%:</strong> Quản lý Cửa hàng (<code>SHOP_MANAGER</code>) có toàn quyền chủ động đàm phán và duyệt thỏa thuận với KOL qua Chat realtime.</li>
-                <li><strong className="text-[#1A1612]">&gt; 16% đến 25%:</strong> Bắt buộc leo thang lên Ban Giám Đốc (<code>SYSTEM_ADMIN</code>) thẩm định dựa trên cam kết doanh số và tiềm năng của KOL.</li>
+                <li><strong className="text-[#1A1612]">&lt;= 16%:</strong> Quản lý Cửa hàng có toàn quyền chủ động đàm phán và duyệt thỏa thuận với KOL qua Chat realtime.</li>
+                <li><strong className="text-[#1A1612]">&gt; 16% đến 25%:</strong> Bắt buộc leo thang lên Ban Giám Đốc (Quản trị viên Hệ thống) thẩm định dựa trên cam kết số đơn hàng và tiềm năng của KOL.</li>
                 <li><strong className="text-[#1A1612]">Trần tuyệt đối 25%:</strong> Toàn hệ thống khóa cứng mức trần 25% (kể cả khi cộng phụ trợ Livestream +2%), ngăn chặn nguy cơ ăn mòn lợi nhuận doanh nghiệp.</li>
               </ul>
             </div>
@@ -872,14 +891,14 @@ export default function VipExceptionsPage() {
               </p>
               <div className="p-2.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] space-y-1 text-[11px]">
                 <p><strong>Giai đoạn 1:</strong> Trả trước <code>10% Gốc + Bậc KOL</code> ngay sau khi đơn hàng giao thành công qua hạn 14 ngày đổi trả.</p>
-                <p><strong>Giai đoạn 2:</strong> Phần chênh lệch <code>Deal% - (10% + Bậc%)</code> được giam giữ trong Giỏ Escrow. Chỉ giải ngân khi đạt đủ 100% KPI doanh số đã cam kết.</p>
+                <p><strong>Giai đoạn 2:</strong> Phần chênh lệch <code>Deal% - (10% + Bậc%)</code> được giam giữ trong Giỏ Escrow. Chỉ giải ngân khi đạt đủ 100% KPI đơn hàng đã cam kết.</p>
               </div>
             </div>
 
             <div className="p-3 rounded-lg bg-white border border-[#EAE4D7] space-y-1">
-              <strong className="text-[#1A1612] font-bold text-sm block">3. Trách nhiệm Kiểm toán & Audit Trail:</strong>
+              <strong className="text-[#1A1612] font-bold text-sm block">3. Trách nhiệm Kiểm toán & Lưu vết:</strong>
               <p className="text-[#7D715E]">
-                Mọi hành động phê duyệt hoặc từ chối thỏa thuận đặc cách đều được mã hóa và ghi vĩnh viễn vào sổ cái <code>AuditLog</code> kèm lý do thẩm định của Admin, đảm bảo tính minh bạch tuyệt đối trước Ban Giám Đốc và Hội đồng kiểm toán.
+                Mọi hành động phê duyệt hoặc từ chối thỏa thuận đặc cách đều được mã hóa và ghi vĩnh viễn vào Nhật ký Kiểm toán kèm lý do thẩm định của Admin, đảm bảo tính minh bạch tuyệt đối trước Ban Giám Đốc và Hội đồng kiểm toán.
               </p>
             </div>
 
