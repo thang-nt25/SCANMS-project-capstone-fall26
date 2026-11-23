@@ -508,6 +508,7 @@ export default function ProductManagementPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<any | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [savingProduct, setSavingProduct] = useState(false);
   const saveLocked = useRef(false);
   const submittedForm = useRef<HTMLFormElement | null>(null);
@@ -534,7 +535,7 @@ export default function ProductManagementPage() {
     try {
       await productService.moderateProduct(product.id, 'APPROVED');
       toast.success(`Đã phê duyệt sản phẩm "${product.title || product.name}"!`, {
-        description: 'Sản phẩm đã được mở bán công khai trên sàn SCANMS cho khách và KOL.',
+        description: 'Sản phẩm đã được mở bán công khai trên hệ thống SCANMS cho khách và KOL.',
       });
       setProducts((prev) =>
         prev.map((item) =>
@@ -658,7 +659,7 @@ export default function ProductManagementPage() {
   const [formFloorPrice, setFormFloorPrice] = useState<number | ''>('');
   const [discountModalProduct, setDiscountModalProduct] = useState<any>(null);
   const [bulkDiscountProducts, setBulkDiscountProducts] = useState<any[] | null>(null);
-  const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
+  const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(true);
   const [formStock, setFormStock] = useState<number | ''>('');
   const [formPackageWeight, setFormPackageWeight] = useState<number | ''>('');
   const [formPackageLength, setFormPackageLength] = useState<number | ''>('');
@@ -762,9 +763,8 @@ export default function ProductManagementPage() {
         errors.push(`${vLabel}: Nhập giá niêm yết bán lẻ > 0.`);
       }
       if (Number(v.floorPrice) > 0 && Number(v.price) > 0) {
-        const minSafe = calculateMinSafePrice(Number(v.floorPrice));
-        if (Number(v.price) < minSafe) {
-          errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) phải >= ${minSafe.toLocaleString('vi-VN')}₫ (đã gánh Voucher 10% + KOL 25%).`);
+        if (Number(v.price) < Number(v.floorPrice)) {
+          errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) không được thấp hơn giá sàn (${Number(v.floorPrice).toLocaleString('vi-VN')}₫).`);
         }
       }
       if (v.stockQuantity === '' || v.stockQuantity === undefined || Number(v.stockQuantity) < 0 || !Number.isInteger(Number(v.stockQuantity))) {
@@ -824,7 +824,7 @@ export default function ProductManagementPage() {
       const v1 = validateStep1();
       if (!v1.valid) {
         setSaveError(v1.errors.join('\n'));
-        showToast(v1.errors[0]);
+        showToast(v1.errors[0], 'error');
         return;
       }
       // Đảm bảo Phân loại 1 có SKU từ formSku nếu chưa có
@@ -836,7 +836,7 @@ export default function ProductManagementPage() {
       const v2 = validateStep2();
       if (!v2.valid) {
         setSaveError(v2.errors.join('\n'));
-        showToast(v2.errors[0]);
+        showToast(v2.errors[0], 'error');
         return;
       }
       // Tự động gán fallback nếu trống để đồng bộ
@@ -1135,10 +1135,15 @@ export default function ProductManagementPage() {
     }
   }, [isAdminOrManager, isKol, currentStoreId]);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToastType(type);
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
   };
+
+  useEffect(() => {
+    if (saveError) setSaveError(null);
+  }, [formTitle, formPrice, formFloorPrice, formVariants]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -1956,7 +1961,7 @@ export default function ProductManagementPage() {
         const stepErrors = !v1.valid ? v1.errors : (!v2.valid ? v2.errors : v3.errors);
         setSaveError(stepErrors.join('\n'));
         setModalStep(stepToFocus);
-        showToast(stepErrors[0]);
+        showToast(stepErrors[0], 'error');
         return;
       }
     }
@@ -1964,26 +1969,26 @@ export default function ProductManagementPage() {
     if (!formImage) {
       const message = 'Vui lòng tải lên ảnh chính (ảnh bìa) cho sản phẩm.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
     if (!formTitle.trim()) {
       const message = 'Vui lòng nhập tên sản phẩm.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
     if (!formCategory) {
       const message = 'Chọn loại sản phẩm để hiện đúng màu, size, dung tích hoặc quy cách phân loại.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
 
     if (!formSku.trim()) {
       const message = 'Vui lòng nhập mã SKU sản phẩm.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
@@ -1991,7 +1996,7 @@ export default function ProductManagementPage() {
     if (effectivePrice <= 0) {
       const message = 'Giá bán lẻ phải lớn hơn 0 ₫.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
@@ -2000,36 +2005,36 @@ export default function ProductManagementPage() {
       if (hasInvalidStock) {
         const message = 'Vui lòng nhập số lượng tồn kho hợp lệ (≥ 0) cho tất cả các phân loại SKU.';
         setSaveError(message);
-        showToast(message);
+        showToast(message, 'error');
         return;
       }
     } else if (formStock === '' || Number(formStock) < 0) {
       const message = 'Vui lòng nhập số lượng tồn kho hợp lệ.';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
 
     if (formVariants.some((variant) => !variant.name.trim() || !variant.sku.trim() || (!variant.imageUrl?.trim() && !formImage))) {
       const message = 'Mỗi phân loại cần có tên và mã SKU riêng (ảnh phân loại tự kế thừa từ ảnh bìa).';
       setSaveError(message);
-      showToast(message);
+      showToast(message, 'error');
       return;
     }
     if (formVariants.some((variant) => variant.name.trim().length > 150 || variant.sku.trim().length > 100)) {
       const message = 'Tên phân loại tối đa 150 ký tự và SKU tối đa 100 ký tự.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
     if (formVariants.some((variant) => !variant.id && !getVariantFields(formCategory).some((field) => variant.attributes[field.key]?.trim()))) {
       const message = 'Mỗi phân loại mới cần ít nhất một thuộc tính phù hợp với danh mục.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
     const optionKeys = formVariants.map((variant) => getVariantFields(formCategory)
       .map((field) => variant.attributes[field.key]?.trim().toLocaleLowerCase('vi-VN') || '').join('|'));
     const filledKeys = optionKeys.filter((key) => key.replace(/\|/g, '').trim());
     if (new Set(filledKeys).size !== filledKeys.length) {
       const message = 'Có phân loại trùng tổ hợp thuộc tính. Hãy nhập màu, size hoặc quy cách khác nhau cho từng SKU.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
 
     const proofLinks = [...formOriginProofLinks, ...formLabelProofLinks].map((url) => url.trim()).filter(Boolean);
@@ -2038,7 +2043,7 @@ export default function ProductManagementPage() {
       catch { return true; }
     })) {
       const message = 'Link minh chứng cần là địa chỉ bắt đầu bằng http:// hoặc https://.';
-      setSaveError(message); showToast(message); return;
+      setSaveError(message); showToast(message, 'error'); return;
     }
 
     const effectiveCategory =
@@ -2167,8 +2172,8 @@ export default function ProductManagementPage() {
   return (
     <div className="product-management @container/product-management space-y-4 text-left w-full min-w-0 text-[#1A1612]">
       {toastMsg && (
-        <div role={toastMsg === saveError ? 'alert' : 'status'} className={`fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${toastMsg === saveError ? 'border-[#FECACA]' : 'border-[#EEDFC6]'}`}>
-          {toastMsg === saveError
+        <div role={toastType === 'error' ? 'alert' : 'status'} className={`fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${toastType === 'error' ? 'border-[#FECACA]' : 'border-[#EEDFC6]'}`}>
+          {toastType === 'error'
             ? <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0" />
             : <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />}
           <span>{toastMsg}</span>
@@ -3447,8 +3452,11 @@ export default function ProductManagementPage() {
                     <tbody className="divide-y divide-[#EAE4D7]">
                       {formVariants.map((variant, index) => {
                         const isPrimary = index === 0;
-                        const minSafePrice = Number(variant.floorPrice) > 0 ? calculateMinSafePrice(Number(variant.floorPrice)) : 0;
-                        const isBelowFloor = minSafePrice > 0 && Number(variant.price) > 0 && Number(variant.price) < minSafePrice;
+                        const floorNum = Number(variant.floorPrice || 0);
+                        const priceNum = Number(variant.price || 0);
+                        const minSafePrice = floorNum > 0 ? calculateMinSafePrice(floorNum) : 0;
+                        const isBelowHardFloor = floorNum > 0 && priceNum > 0 && priceNum < floorNum;
+                        const isBelowSafeMargin = minSafePrice > 0 && priceNum >= floorNum && priceNum < minSafePrice;
 
                         return (
                           <Fragment key={variant.id || `variant-${index}`}>
@@ -3590,12 +3598,25 @@ export default function ProductManagementPage() {
                                   }}
                                   placeholder="200.000"
                                   className={`h-8.5 w-full rounded-lg border px-2 text-xs font-bold tabular-nums outline-none transition focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 ${
-                                    isBelowFloor
+                                    isBelowHardFloor
                                       ? 'border-rose-400 bg-rose-50 text-rose-700 ring-1 ring-rose-300'
+                                      : isBelowSafeMargin
+                                      ? 'border-[#D97706] bg-[#FEF3C7]/45 text-[#92400E]'
                                       : 'border-[#EAE4D7] bg-white text-[#1A1612]'
                                   }`}
-                                  title={isBelowFloor ? 'Cảnh báo: Giá niêm yết không được thấp hơn giá sàn bảo vệ!' : 'Giá bán niêm yết'}
+                                  title={
+                                    isBelowHardFloor
+                                      ? 'Lỗi: Giá niêm yết không được thấp hơn giá sàn!'
+                                      : isBelowSafeMargin
+                                      ? `Cảnh báo biên mỏng: Giá thấp hơn ngưỡng an toàn (${minSafePrice.toLocaleString('vi-VN')}₫). Hệ thống sẽ gắn cờ để System Manager lưu ý khi duyệt.`
+                                      : 'Giá bán niêm yết'
+                                  }
                                 />
+                                {isBelowSafeMargin && (
+                                  <span className="mt-1 block text-[10px] font-semibold text-[#B45309]">
+                                    Biên mỏng (&lt; {minSafePrice.toLocaleString('vi-VN')}₫)
+                                  </span>
+                                )}
                               </td>
 
                               {/* 7. Tồn kho */}
@@ -4063,22 +4084,17 @@ export default function ProductManagementPage() {
                     </strong>
                   </div>
 
-                  {/* Cột 2: Kích hoạt kênh Tiếp thị liên kết */}
-                  <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 flex flex-col justify-center">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formAffiliateEnabled}
-                        onChange={(e) => setFormAffiliateEnabled(e.target.checked)}
-                        className="mt-0.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] h-4 w-4 cursor-pointer"
-                      />
+                  {/* Cột 2: Kênh Tiếp thị liên kết (Mặc định bật cho SP nội bộ) */}
+                  <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 flex flex-col justify-center">
+                    <div className="flex items-start gap-2.5">
+                      <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#B88E4F]" />
                       <div>
                         <span className="text-xs font-bold text-[#1A1612] flex items-center">
-                          Kích hoạt Tiếp thị Liên kết (Affiliate)
-                          <InfoTooltip text="Cho phép CTV/KOL sinh Link, QR và đề xuất Deal độc quyền cho sản phẩm này." />
+                          Tiếp thị Liên kết: Tự động Bật
+                          <InfoTooltip text="Toàn bộ sản phẩm nội bộ sau khi duyệt đều sẵn sàng cho CTV/KOL tạo Link, QR, Deal độc quyền và áp Voucher." />
                         </span>
                       </div>
-                    </label>
+                    </div>
                   </div>
 
                   {/* Cột 3: Hàng mẫu cho KOL */}
@@ -4371,7 +4387,7 @@ export default function ProductManagementPage() {
             </div>
 
             <p className="text-xs text-[#7D715E] leading-relaxed mb-4">
-              Sau khi phê duyệt, sản phẩm sẽ được mở bán chính thức trên sàn SCANMS, khách hàng có thể đặt mua và KOL có thể lấy link tiếp thị liên kết để nhận hoa hồng.
+              Sau khi phê duyệt, sản phẩm sẽ được mở bán chính thức trên hệ thống SCANMS, khách hàng có thể đặt mua và KOL có thể lấy link tiếp thị liên kết để nhận hoa hồng.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#EAE4D7]">

@@ -258,10 +258,21 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   async delPrefix(prefix: string): Promise<void> {
     if (this.isRedisActive() && this.redisClient) {
       try {
-        const keys = await this.redisClient.keys(`${prefix}*`);
-        if (keys.length > 0) {
-          await this.redisClient.del(...keys);
-        }
+        let cursor = '0';
+        const matchPattern = `${prefix}*`;
+        do {
+          const [nextCursor, keys] = await this.redisClient.scan(
+            cursor,
+            'MATCH',
+            matchPattern,
+            'COUNT',
+            200,
+          );
+          cursor = nextCursor;
+          if (keys.length > 0) {
+            await this.redisClient.del(...keys);
+          }
+        } while (cursor !== '0');
       } catch (err) {
         this.logger.warn(`Lỗi Redis delPrefix(${prefix}): ${err}`);
       }

@@ -6,8 +6,10 @@ import { referralLinksService, type ExclusiveDealProposal } from '../../services
 
 interface Props {
   partners: { id?: string; userId?: string; collaboratorId?: string; fullName?: string; email?: string; collaborator?: { id: string; fullName: string; email?: string } }[];
-  storeId: string; selectedId: string; code: string; discount: number; busy: boolean;
+  storeId: string; selectedId: string; code: string; discount: number;
+  maxDiscount: number; expiresAt: string; busy: boolean;
   onSelect: (id: string) => void; onCode: (value: string) => void; onDiscount: (value: number) => void;
+  onMaxDiscount: (value: number) => void; onExpiresAt: (value: string) => void;
   onClose: () => void; onSubmit: (event: FormEvent) => void;
 }
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
@@ -49,8 +51,13 @@ export function IssueDealCouponModal(props: Props) {
           </div>
         </div>}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Tên mã ưu đãi *<input required disabled={props.busy} value={props.code} onChange={event => props.onCode(event.target.value.toUpperCase().replace(/\s/g, ''))} placeholder="Ví dụ: THAONHI10" className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-semibold outline-none focus:border-[#C59B58]"/></label><fieldset disabled={props.busy} className="m-0 min-w-0 border-0 p-0"><legend className="mb-2 text-sm font-medium">Mức giảm giá *</legend><div className="grid grid-cols-2 gap-2">{[5, 10].map(value => <button key={value} type="button" aria-pressed={props.discount === value} onClick={() => props.onDiscount(value)} className={`h-11 rounded-xl border text-sm font-medium ${props.discount === value ? 'border-[#D7BD94] bg-[#FBF5EB] text-[#715126]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>{value}%</button>)}</div></fieldset></div>
-      <p className="m-0 text-xs leading-relaxed text-[#7D715E]">Cấp mã mới sẽ thay thế mã hiện tại của KOL tại cửa hàng.</p>
+      <div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-2 text-sm font-medium">Tên mã ưu đãi *<input required disabled={props.busy} value={props.code} onChange={event => props.onCode(event.target.value.toUpperCase().replace(/\s/g, ''))} placeholder="Ví dụ: THAONHI10" className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-semibold outline-none focus:border-[#C59B58]"/></label><fieldset disabled={props.busy} className="m-0 min-w-0 border-0 p-0"><legend className="mb-2 text-sm font-medium">Mức giảm giá (3% – 20%) *</legend><div className="grid grid-cols-5 gap-1.5">{[5, 10, 15, 20].map(value => <button key={value} type="button" aria-pressed={props.discount === value} onClick={() => props.onDiscount(value)} className={`h-11 rounded-xl border text-xs font-medium ${props.discount === value ? 'border-[#D7BD94] bg-[#FBF5EB] text-[#715126]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>{value}%</button>)}<input type="number" min={3} max={20} required value={props.discount} onChange={event => props.onDiscount(Math.min(20, Math.max(3, Number(event.target.value) || 3)))} className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-2 text-center text-sm font-semibold outline-none focus:border-[#C59B58]" aria-label="Nhập phần trăm giảm"/></div></fieldset></div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-2 text-sm font-medium">Giảm tối đa / đơn (₫) *<input required type="number" min={10000} step={10000} disabled={props.busy} value={props.maxDiscount} onChange={event => props.onMaxDiscount(Math.max(10000, Number(event.target.value) || 10000))} className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-semibold outline-none focus:border-[#C59B58]"/></label>
+        <label className="grid gap-2 text-sm font-medium">Ngày hết hạn chiến dịch *<input required type="datetime-local" disabled={props.busy} value={props.expiresAt} onChange={event => props.onExpiresAt(event.target.value)} className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-semibold outline-none focus:border-[#C59B58]"/></label>
+      </div>
+      {props.discount > 10 && <p className="m-0 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs font-semibold text-[#D97706]">Mức giảm {props.discount}% (&gt; 10%): Sau khi cấp sẽ tự động chuyển System Admin duyệt ngoại lệ.</p>}
+      <p className="m-0 text-xs leading-relaxed text-[#7D715E]">Mã hoạt động không giới hạn lượt dùng trong suốt thời hạn hiệu lực (hạch toán trừ doanh thu đơn hàng). Cấp mã mới sẽ thay thế mã hiện tại của KOL tại cửa hàng.</p>
     </form>
   </Modal>;
 }

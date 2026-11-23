@@ -638,36 +638,11 @@ export default function CustomerPortalPage() {
       if (getNotificationSection(type) === 'ORDER') {
         navigate('/customer/orders');
       } else if (getNotificationSection(type) === 'PROMOTION') {
-        const liveUrl = notif.data?.liveUrl;
-        if (typeof liveUrl === 'string' && liveUrl.startsWith('/')) {
-          navigate(liveUrl);
-        } else if (typeof liveUrl === 'string' && /^https?:\/\//i.test(liveUrl)) {
-          try {
-            const target = new URL(liveUrl);
-            if (target.origin === window.location.origin) {
-              navigate(`${target.pathname}${target.search}${target.hash}`);
-            } else {
-              window.open(liveUrl, '_blank', 'noopener,noreferrer');
-            }
-          } catch {
-            navigate('/customer/vouchers');
-          }
-        } else if (type.startsWith('LIVE_SESSION_') && notif.data?.sessionId) {
-          navigate(`/live/${encodeURIComponent(notif.data.sessionId)}`);
-        } else {
-          navigate('/customer/vouchers');
-        }
+        navigate('/customer/orders');
       } else if (type.startsWith('WALLET_') || type.startsWith('COMMISSION_') || type.startsWith('PAYOUT_')) {
         navigate('/customer/orders');
       } else if (type.startsWith('KYC_') || type.startsWith('IDENTITY_')) {
         navigate('/customer/upgrade');
-      } else if (type.startsWith('LIVE_') || type.includes('LIVE')) {
-        const sId = (notif.data as any)?.sessionId;
-        if (sId) {
-          navigate(`/live/${sId}`);
-        } else {
-          navigate('/marketplace');
-        }
       } else if (type.startsWith('UPGRADE_') || type.startsWith('PARTNER_')) {
         navigate('/customer/upgrade');
       } else {
@@ -1062,7 +1037,6 @@ export default function CustomerPortalPage() {
         <MarketplaceHeader
           showShortcuts={false}
           onOpenTracking={() => navigate('/tracking')}
-          onOpenLive={() => navigate('/marketplace#live')}
         />
       </div>
 
@@ -1241,7 +1215,17 @@ export default function CustomerPortalPage() {
                           ? `Không có đơn mua nào của bạn khớp với “${appliedOrderSearch}” trong bộ lọc hiện tại. Hãy kiểm tra số điện thoại người nhận đã lưu trên đơn hoặc chọn mục Tất cả.`
                           : orderStatusFilter === 'ALL'
                           ? 'Bạn chưa có đơn mua nào trên SCANMS. Hãy khám phá ngay các sản phẩm chính hãng với nhiều ưu đãi nhé!'
-                          : `Không tìm thấy đơn hàng nào ở mục "${orderStatusFilter}".`}
+                          : `Không tìm thấy đơn hàng nào ở mục "${
+                              ({
+                                PENDING: 'Chờ xác nhận',
+                                CONFIRMED: 'Đã xác nhận',
+                                SHIPPING: 'Đang giao',
+                                DELIVERED: 'Đã giao hàng',
+                                COMPLETED: 'Hoàn thành',
+                                CANCELLED: 'Đã hủy',
+                                RETURNED: 'Đã trả hàng',
+                              } as Record<string, string>)[orderStatusFilter] || orderStatusFilter
+                            }".`}
                       </p>
                     </div>
                     <Link

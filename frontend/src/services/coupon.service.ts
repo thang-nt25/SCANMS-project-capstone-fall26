@@ -2,6 +2,8 @@ import api from './api';
 
 export type CouponStatus =
   | 'PENDING_APPROVAL'
+  | 'PENDING_ADMIN_APPROVAL'
+  | 'PENDING_BLOCK_APPROVAL'
   | 'ACTIVE'
   | 'PAUSED'
   | 'REJECTED'
@@ -365,6 +367,16 @@ export const couponService = {
 
   adminUnblockCoupon: async (id: string) => {
     const res = await api.patch(`/admin/coupons/${id}/unblock`);
+    return res.data;
+  },
+
+  reviewBlockRequest: async (id: string, approve: boolean, reason?: string) => {
+    const res = await api.patch(`/admin/coupons/${id}/review-block`, { approve, reason });
+    return res.data;
+  },
+
+  adminApproveException: async (id: string, approve: boolean, reason?: string) => {
+    const res = await api.patch(`/admin/coupons/${id}/approve-exception`, { approve, reason });
     return res.data;
   },
 };

@@ -10,7 +10,7 @@ describe('product voucher suggestions use Apply eligibility without its side eff
       budgetTotal: null, budgetUsed: 0, usageLimitPerCustomer: 1, startsAt: null, expiresAt: null,
       collaborator: { role: 'COLLABORATOR' },
       stackableWithProductDiscount: false, store: { id: 'shop', name: 'Shop', isDeleted: false },
-      couponProducts: [], couponCategories: [], liveSession: null, ...extra };
+      couponProducts: [], couponCategories: [], ...extra };
   }
   function fixture(coupons: any[]) {
     const product = { id: productId, storeId: 'shop', categoryName: 'Serum', price: 250000, originalPrice: 280000, stockQuantity: 20,
@@ -28,7 +28,6 @@ describe('product voucher suggestions use Apply eligibility without its side eff
       coupon('CATEGORY', { scopeType: 'CATEGORIES', couponCategories: [{ categoryName: 'Other' }] }),
       coupon('MINIMUM', { minimumOrderAmount: 500000 }), coupon('BUDGET', { budgetTotal: 10000, budgetUsed: 10000 }),
       coupon('USES', { usageLimitTotal: 1, usageCount: 1 }), coupon('EXPIRED', { expiresAt: new Date('2000-01-01') }),
-      coupon('LIVE', { liveSession: { status: 'ENDED', inviteStatus: 'ACCEPTED', products: [] } }),
       coupon('SHIP', { benefitType: 'SHIPPING' }), coupon('PLATFORM', { fundingSource: 'PLATFORM_FUNDED' }),
       coupon('CAMPAIGN', { scopeType: 'CAMPAIGN', campaignId: 'c', campaign: { isActive: true, storeId: 'shop', startDate: new Date('2000-01-01'), endDate: new Date('2099-01-01'), campaignProducts: [{ productId: 'other' }] } }),
     ];

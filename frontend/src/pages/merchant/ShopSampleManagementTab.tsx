@@ -1,17 +1,12 @@
 import { ShopWorkspaceToolbar } from '../../components/affiliate/ShopWorkspaceToolbar';
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { SampleRequestDetails } from '../../components/orders/SampleRequestDetails';
-import { InviteKolModal } from '../../components/affiliate/InviteKolModal';
-import { ShopPartnerDataTab, useShopPartnerTeam } from '../../components/affiliate/ShopPartnerDataTabs';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Package,
   Clock,
   Video,
   AlertTriangle,
-  PackageCheck,
-  Award,
-  Handshake,
   Search,
   Truck,
   CheckCircle2,
@@ -30,6 +25,9 @@ import { SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDi
 import { SampleWaybillDialog } from '../../components/shipping/SampleWaybillDialog';
 import { toast } from '../../utils/toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Award, Handshake, PackageCheck } from 'lucide-react';
+import { InviteKolModal } from '../../components/affiliate/InviteKolModal';
+import { ShopPartnerDataTab, useShopPartnerTeam } from '../../components/affiliate/ShopPartnerDataTabs';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
 import { Select } from '../../components/ui/Select';
 
@@ -119,17 +117,17 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   onLoadingChange?: (loading: boolean) => void;
 } = {}) {
   const navigate = useNavigate();
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [searchParams] = useSearchParams();
+  const partnerTeam = useShopPartnerTeam();
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [storeTab, setStoreTab] = useState<'SAMPLES_QUEUE' | 'LEADERBOARD' | 'DEALS'>(() => searchParams.get('section') === 'deals' ? 'DEALS' : 'SAMPLES_QUEUE');
   const [detailSampleId, setDetailSampleId] = useState<string | null>(null);
   const closeSampleDetails = useCallback(() => setDetailSampleId(null), []);
   const [loading, setLoading] = useState(true);
   useEffect(() => { onLoadingChange?.(loading); }, [loading, onLoadingChange]);
   const [samples, setSamples] = useState<SampleRequestItem[]>([]);
   const [sampleLoadError,setSampleLoadError] = useState('');
-  const partnerTeam = useShopPartnerTeam();
   const sampleLoadSequence = useRef(0);
-  const [storeTab, setStoreTab] = useState<'SAMPLES_QUEUE' | 'LEADERBOARD' | 'DEALS'>(() => searchParams.get('section') === 'deals' ? 'DEALS' : 'SAMPLES_QUEUE');
   const [selectedSampleIds, setSelectedSampleIds] = useState<string[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'OVERDUE' | 'COMPLETED'>('ALL');
@@ -384,16 +382,22 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   };
 
   const handleReviewSampleVideo = async (sample: SampleRequestItem, status: 'APPROVED' | 'REJECTED') => {
-    const asset = sample.videoAssets?.find((item) => item.status === 'PENDING');
     const rejectionReason = status === 'REJECTED'
-      ? window.prompt('Nhập lý do cần chỉnh sửa video:')?.trim()
+      ? window.prompt('Nhập lý do cần chỉnh sửa video (tối thiểu 15 ký tự):')?.trim()
       : undefined;
-    if (status === 'REJECTED' && !rejectionReason) return;
+    if (status === 'REJECTED') {
+      if (!rejectionReason) return;
+      if (rejectionReason.length < 15) {
+        toast.error('Lý do yêu cầu chỉnh sửa phải có ít nhất 15 ký tự.');
+        return;
+      }
+    }
 
     try {
-      if (asset?.id) {
-        await api.patch(`/media/${asset.id}/review`, { status, rejectionReason });
-      }
+      await api.patch(`/sample-requests/${sample.id}/review-video`, {
+        approve: status === 'APPROVED',
+        ...(rejectionReason ? { rejectionReason } : {}),
+      });
       toast.success(status === 'APPROVED' ? 'Đã nghiệm thu video và hoàn tất yêu cầu mẫu.' : 'Đã gửi yêu cầu chỉnh sửa video cho KOL.');
       await loadData();
     } catch (err: any) {
@@ -458,7 +462,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
             type="button"
             onClick={loadData}
             disabled={loading}
-            className="mb-3 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            className="px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium flex items-center gap-1 transition cursor-pointer"
             title="Làm mới danh sách mẫu"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />

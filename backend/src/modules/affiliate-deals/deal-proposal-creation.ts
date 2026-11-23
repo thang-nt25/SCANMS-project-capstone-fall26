@@ -72,27 +72,70 @@ export async function createDealProposal(
       const violations = (
         collaborator.collaboratorProfile.socialLinksJson as any
       )?.dealViolations;
-      if (
-        violations?.cooldownUntil &&
-        new Date(violations.cooldownUntil) > new Date()
-      )
+      const cooldownUntil =
+        collaborator.collaboratorProfile.dealCooldownUntil ??
+        (violations?.cooldownUntil ? new Date(violations.cooldownUntil) : null);
+      if (cooldownUntil && cooldownUntil > new Date())
         throw new BadRequestException(
           'KOC đang trong thời gian tạm khóa quyền đề xuất Deal.',
         );
       const scopeFilter = sameDealScope(scope.scopeKey, product.id);
+      const overlapFilter =
+        scope.scopeType === 'STORE_WIDE'
+          ? {}
+          : {
+              OR: [
+                { scopeType: 'STORE_WIDE' as const },
+                { productId: { in: scope.productIds } },
+                {
+                  scopeProducts: {
+                    some: { productId: { in: scope.productIds } },
+                  },
+                },
+              ],
+            };
       const pending = await tx.exclusiveDealProposal.findFirst({
         where: {
           collaboratorId,
           storeId: product.storeId,
-          ...scopeFilter,
+          ...overlapFilter,
           status: { in: ['PENDING', 'PENDING_ADMIN_APPROVAL'] },
           closedAt: null,
         },
       });
       if (pending)
         throw new BadRequestException(
-          'Phạm vi này đã có đề nghị đang chờ xử lý.',
+          'Sản phẩm trong phạm vi này đã có đề nghị đang chờ xử lý.',
         );
+      const now = new Date();
+      const currentOverlap = await tx.exclusiveDealProposal.findFirst({
+        where: {
+          collaboratorId,
+          storeId: product.storeId,
+          status: 'APPROVED',
+          closedAt: null,
+          AND: [
+            overlapFilter,
+            {
+              OR: [
+                { commitmentEndsAt: null },
+                { commitmentEndsAt: { gt: now } },
+              ],
+            },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (
+        currentOverlap &&
+        currentOverlap.scopeKey &&
+        scope.scopeKey &&
+        currentOverlap.scopeKey !== scope.scopeKey
+      ) {
+        throw new BadRequestException(
+          'Sản phẩm đã chọn đang có thỏa thuận độc quyền còn thời hạn KPI. Không thể tạo thỏa thuận mới.',
+        );
+      }
       const current = await tx.exclusiveDealProposal.findFirst({
         where: {
           collaboratorId,
@@ -104,7 +147,7 @@ export async function createDealProposal(
             {
               OR: [
                 { commitmentEndsAt: null },
-                { commitmentEndsAt: { gt: new Date() } },
+                { commitmentEndsAt: { gt: now } },
               ],
             },
           ],

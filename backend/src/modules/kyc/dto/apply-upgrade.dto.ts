@@ -44,6 +44,7 @@ export class SocialChannelItemDto {
     example: 45000,
     description: 'Số lượng người theo dõi (Followers)',
   })
+  @Type(() => Number)
   @IsNumber({}, { message: 'Số lượng người theo dõi phải là số' })
   followerCount: number;
 

@@ -366,6 +366,10 @@ export class CustomerService {
    * 4. Lấy danh sách đơn mua của khách hàng (lọc theo trạng thái & tìm kiếm)
    */
   async getOrders(userId: string, query: CustomerOrdersQueryDto) {
+    const cacheKey = `customer:orders:${userId}:${query.status || 'ALL'}:${query.search?.trim() || ''}`;
+    const cached = await this.cacheService?.get<any>(cacheKey);
+    if (cached) return cached;
+
     const orderFilterOr = [{ customerId: userId }];
 
     const where: any = {
@@ -452,13 +456,15 @@ export class CustomerService {
       },
     });
 
-    return {
+    const result = {
       total: orders.length,
       orders: orders.map((order) => ({
         ...order,
         returnRequest: order.returnRequests?.[0] ?? null,
       })),
     };
+    await this.cacheService?.set(cacheKey, result, 30);
+    return result;
   }
 
   /**

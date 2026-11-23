@@ -56,7 +56,6 @@ import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemuner
 import { CampaignCardBubble } from '../../components/chat/CampaignCardBubble';
 import { parseCampaignCard } from '@/utils/chat-explorer';
 import { ExclusiveDealCardBubble } from '../../components/chat/ExclusiveDealCardBubble';
-import { LiveInviteMessage, parseLiveInvite } from '../../components/chat/LiveInviteMessage';
 import { ProductInquiryCardBubble, type ProductInquiryCardData } from '../../components/chat/ProductInquiryCardBubble';
 import { CouponProposalCardBubble } from '../../components/chat/CouponProposalCardBubble';
 import { ProposeCouponInChatModal } from '../../components/chat/ProposeCouponInChatModal';
@@ -2727,6 +2726,7 @@ export default function ChatBoxPage({
             </div>
             <h2 className="text-lg font-bold text-[#1A1612]">
               {conversationError
+
                 ? 'Chưa mở được hội thoại'
                 : targetCollaboratorId
                 ? `Hội thoại với ${_targetCollaboratorName || 'Đối tác'}`
@@ -2969,8 +2969,7 @@ export default function ChatBoxPage({
                 const isMine = msg.senderId === currentUser?.id;
                 const exclusiveDealCard = tryParseExclusiveDealCard(msg.messageText);
                 const inquiryCard = tryParseProductInquiryCard(msg.messageText);
-                const liveInvitation = embedded && hideHeaderInChat && !msg.mediaUrl ? parseLiveInvite(msg.messageText) : null;
-                const hasSenderHeader = !!exclusiveDealCard || !!inquiryCard || !!liveInvitation;
+                const hasSenderHeader = !!exclusiveDealCard || !!inquiryCard;
                 const showDate =
                   idx === 0 ||
                   new Date(visibleMessages[idx - 1].createdAt).toDateString() !==
@@ -3038,10 +3037,6 @@ export default function ChatBoxPage({
 
                           if (inquiryCard) {
                             return <ProductInquiryCardBubble card={inquiryCard} isMine={isMine} />;
-                          }
-
-                          if (liveInvitation) {
-                            return <LiveInviteMessage invitation={liveInvitation} />;
                           }
 
                           const couponProposalCard = tryParseCouponProposalCard(msg.messageText);
@@ -3209,7 +3204,7 @@ export default function ChatBoxPage({
                     {[
                       {
                         label: 'Xin mẫu thử trải nghiệm',
-                        text: 'Chào Shop, mình quan tâm đến sản phẩm này và muốn đăng ký xin hàng mẫu trải nghiệm để quay video review/livestream.',
+                        text: 'Chào Shop, mình quan tâm đến sản phẩm này và muốn đăng ký xin hàng mẫu trải nghiệm để quay video review.',
                       },
                       {
                         label: 'Thỏa thuận thù lao Deal VIP',

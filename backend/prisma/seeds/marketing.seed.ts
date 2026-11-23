@@ -185,58 +185,6 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
     );
   });
 
-  for (let index = 0; index < 5; index++) {
-    const storeIndex = index % SHOPS.length;
-    const sessionId = seedId(`live:${index}`);
-    const active = index < 2;
-    const startsAt = daysFrom(context, active ? -1 / 48 : -40 - index);
-    const endsAt = new Date(startsAt.getTime() + 2 * 3_600_000);
-    data.liveSessions.push({
-      id: sessionId,
-      storeId: seedId(`store:${storeIndex}`),
-      creatorId: seedId(`creator:${index}`),
-      createdBy: seedId(`shop-owner:${storeIndex}`),
-      title: `${SHOPS[storeIndex].name} — Chia sẻ trải nghiệm cùng KOC`,
-      coverImageUrl: data.products[storeIndex * 3].imageUrl,
-      description:
-        'Phòng minh họa Capstone; KOC cần mở phát sóng để có tín hiệu video trực tiếp.',
-      platform: 'SCANMS',
-      liveUrl: new URL(`/live/${sessionId}`, context.frontendUrl).toString(),
-      status: active ? 'LIVE' : 'ENDED',
-      inviteStatus: 'ACCEPTED',
-      respondedAt: new Date(startsAt.getTime() - 3_600_000),
-      startsAt,
-      endsAt,
-      commissionRate: 2,
-      governance: {
-        seedSource: 'SYNTHETIC_CAPSTONE',
-        intendedBonusPercentage: 2,
-        pinnedProductId: seedId(`product:${storeIndex * 3}`),
-      },
-      createdAt: new Date(startsAt.getTime() - 86_400_000),
-    });
-    for (let slot = 0; slot < 2; slot++) {
-      const pIdx = storeIndex * 3 + slot;
-      data.liveProducts.push({
-        id: seedId(`live-product:${index}:${slot}`),
-        sessionId,
-        productId: seedId(`product:${pIdx}`),
-        variantId: seedId(`variant:${pIdx}:0`),
-        createdAt: startsAt,
-      });
-    }
-    // Historical attendance is stored as rows; active rooms start at zero real viewers.
-    if (!active)
-      for (let viewer = 0; viewer < 5 + index; viewer++)
-        data.liveViewers.push({
-          sessionId,
-          clientId: `seed-viewer-${viewer}`,
-          firstSeenAt: startsAt,
-          lastSeenAt: new Date(endsAt.getTime() - 60_000),
-          leftAt: endsAt,
-        });
-  }
-
   data.users
     .filter((user) => user.role === 'CUSTOMER')
     .forEach((customer, index) => {

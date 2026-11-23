@@ -11,6 +11,7 @@ import {
   Award,
   Send,
   BarChart3,
+  Package,
   X,
   MessageSquare,
   Info,
@@ -188,9 +189,9 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   }, [urlProductId]);
 
   // 2. Fetch recommendations whenever product or filters change
-  const fetchRecommendations = useCallback(async () => {
-    const scanKey = JSON.stringify([selectedProductId, selectedPriceRange, selectedMinTier, minConversionRate, limit, activeMode]);
+  const fetchRecommendations = useCallback(async (isManualRefresh = false) => {
     const version = ++scanVersion.current;
+    const scanKey = JSON.stringify([selectedProductId, selectedPriceRange, selectedMinTier, minConversionRate, limit, activeMode]);
     scanBusy.current = true;
     setScanError('');
     setLoading(true);
@@ -219,7 +220,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
       if (selectedProductId && res.targetProduct?.productId !== selectedProductId) {
         throw new Error('Kết quả chưa đúng sản phẩm đang chọn. Vui lòng quét lại.');
       }
-      setCalculatedAt(res.calculatedAt || '');
+      setCalculatedAt(isManualRefresh ? new Date().toISOString() : (res.calculatedAt || new Date().toISOString()));
       setTotalScanned(res.totalKolsScanned || 0);
       setKols(res.recommendedKols || []);
       if (res.summaryCounts) {
@@ -702,17 +703,40 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
 
                       <button
                         type="button"
-                        onClick={() =>
-                          setExpandedEvidence((prev) => ({
-                            ...prev,
-                            [kol.collaboratorId]: !prev[kol.collaboratorId],
-                          }))
-                        }
-                        className="inline-flex items-center gap-1 py-2 px-3 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58]/50 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] active:scale-[0.96] transition-[transform,background-color,border-color,color] duration-150 cursor-pointer shadow-2xs"
+                        onClick={() => setAnalyzingKol(kol)}
+                        className="inline-flex items-center gap-1 py-2 px-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-semibold text-[#715126] active:scale-[0.96] transition-[transform,background-color,border-color,color] duration-150 cursor-pointer shadow-2xs"
                       >
                         <span>Xem phân tích ↗</span>
                       </button>
                     </div>
+
+                    {/* Compact On-Card Radar Breakdown (At-a-glance without opening overlay) */}
+                    {isColdStart ? (
+                      <div className="grid grid-cols-2 gap-2 pt-1 text-[10px]">
+                        <div className="rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] px-2 py-1 flex items-center justify-between">
+                          <span className="text-[#7D715E]">Ngành &amp; Hồ sơ</span>
+                          <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.categoryScore || 0}</strong>
+                        </div>
+                        <div className="rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] px-2 py-1 flex items-center justify-between">
+                          <span className="text-[#7D715E]">Follower MXH</span>
+                          <strong className="text-[#1A1612] tabular-nums">{kol.scoreBreakdown?.tierAndSocialScore || 0}</strong>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-1.5 pt-1 text-[10px]">
+                        {[
+                          { label: 'Ngành', val: kol.scoreBreakdown?.categoryScore || 0 },
+                          { label: 'CR%', val: kol.scoreBreakdown?.conversionRateScore || 0 },
+                          { label: 'Giá', val: kol.scoreBreakdown?.priceFitScore || 0 },
+                          { label: 'Hạng', val: kol.scoreBreakdown?.tierAndSocialScore || 0 },
+                        ].map((ax) => (
+                          <div key={ax.label} className="rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] px-1.5 py-1 text-center">
+                            <span className="text-[#7D715E] block leading-tight">{ax.label}</span>
+                            <strong className="text-[#1A1612] tabular-nums">{ax.val}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* In-Card Slide-Up Details Overlay (Slides up and covers card cleanly with full reasoning and no ugly scrollbar) */}
@@ -907,18 +931,18 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
         </div>
       )}
 
-      {/* 9. Detailed 1-on-1 Analysis Modal */}
+      {/* 9. Detailed 1-on-1 Analysis Modal (Fits cleanly in 1 viewport, no cramped card scroll) */}
       {analyzingKol && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="relative max-h-[90vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-3xl border border-[#EAE4D7] bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
+          <div className="relative w-full max-w-2xl space-y-3 rounded-3xl border border-[#EAE4D7] bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5" />
+                <div className="w-9 h-9 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#1A1612]">Báo cáo Đối Sánh 1-1 Chuyên Sâu</h3>
-                  <p className="text-xs text-[#7D715E]">Mức độ phù hợp giữa sản phẩm và nhà sáng tạo {analyzingKol.fullName}</p>
+                  <h3 className="text-sm font-bold text-[#1A1612]">Căn cứ &amp; Báo cáo Đối Sánh 1-1</h3>
+                  <p className="text-[11px] text-[#7D715E]">{analyzingKol.fullName} · {analyzingKol.tierName} · Điểm phù hợp {analyzingKol.matchScore}/100</p>
                 </div>
               </div>
               <button
@@ -930,71 +954,147 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
               </button>
             </div>
 
-            {/* Radar chart in 1-1 modal */}
-            <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 flex flex-col items-center">
-              <span className="text-xs font-bold text-[#8C6226] uppercase tracking-wider mb-2">
-                Đa giác năng lực KOC (Radar 4 Trục)
-              </span>
-              <AiRadarChart scores={analyzingKol.scoreBreakdown} size={200} showLabels={true} />
-            </div>
+            {/* Top 2-column layout: Performance shows 4-Axis Radar; Cold Start shows 2-Criteria Bars (no 0-axis stick chart) */}
+            {(() => {
+              const isModalColdStart =
+                activeMode === 'COLD_START' ||
+                (analyzingKol.lifetimeStats?.totalOrders ?? 0) < 5;
+              const modalWeights = (analyzingKol.scoreBreakdown as any)?.weights;
+              const mCat = Math.round((modalWeights?.categoryScore ?? (isModalColdStart ? 0.7 : 0.35)) * 100);
+              const mSocial = Math.round((modalWeights?.tierAndSocialScore ?? (isModalColdStart ? 0.3 : 0.2)) * 100);
 
-            {/* Comparison Cards Header */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-[#FBF5EB] p-4 border border-[#EEDFC6] space-y-1.5">
-                <span className="text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider">
-                  Sản Phẩm Mục Tiêu
-                </span>
-                <h4 className="text-xs font-bold text-[#1A1612] truncate">
-                  {targetProduct?.title || selectedProduct?.title || 'Sản phẩm đang chọn'}
-                </h4>
-                <div className="space-y-0.5 text-[11px] text-[#7D715E]">
-                  <div>Ngành hàng: <strong className="text-[#1A1612]">{targetProduct?.category || selectedProduct?.categoryName}</strong></div>
-                  <div>
-                    Giá bán:{' '}
-                    <strong className="text-[#1A1612]">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                        targetProduct?.price || selectedProduct?.price || 0,
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
+                  {isModalColdStart ? (
+                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 flex flex-col justify-center space-y-3">
+                      <div>
+                        <span className="text-[10px] font-bold text-[#8C6226] uppercase tracking-wider block">
+                          Tiêu chí đánh giá KOC mới (Cold Start)
+                        </span>
+                        <p className="text-[11px] text-[#7D715E] mt-0.5 mb-0">
+                          Chưa đủ 5 đơn hoàn tất nên chỉ chấm theo độ khớp hồ sơ &amp; quy mô kênh.
+                        </p>
+                      </div>
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-[#7D715E]">Ngành &amp; Hồ sơ ({mCat}%)</span>
+                            <strong className="text-[#1A1612] tabular-nums">{analyzingKol.scoreBreakdown?.categoryScore || 0}/100</strong>
+                          </div>
+                          <div className="h-2 w-full bg-white rounded-full overflow-hidden border border-[#EAE4D7]">
+                            <div className="h-full bg-[#C59B58] rounded-full" style={{ width: `${analyzingKol.scoreBreakdown?.categoryScore || 0}%` }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-[#7D715E]">Quy mô Follower MXH ({mSocial}%)</span>
+                            <strong className="text-[#1A1612] tabular-nums">{analyzingKol.scoreBreakdown?.tierAndSocialScore || 0}/100</strong>
+                          </div>
+                          <div className="h-2 w-full bg-white rounded-full overflow-hidden border border-[#EAE4D7]">
+                            <div className="h-full bg-[#B88E4F] rounded-full" style={{ width: `${analyzingKol.scoreBreakdown?.tierAndSocialScore || 0}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 flex flex-col items-center justify-center">
+                      <span className="text-[10px] font-bold text-[#8C6226] uppercase tracking-wider mb-1">
+                        Đa giác năng lực KOC (Radar 4 Trục)
+                      </span>
+                      <AiRadarChart scores={analyzingKol.scoreBreakdown} size={155} showLabels={true} />
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2.5 justify-between">
+                    <div className="rounded-2xl bg-[#FBF5EB] p-3 border border-[#EEDFC6] flex items-center gap-3">
+                      {(selectedProduct?.imageUrl || selectedProduct?.images?.[0]?.url || (targetProduct as any)?.imageUrl) ? (
+                        <img
+                          src={selectedProduct?.imageUrl || selectedProduct?.images?.[0]?.url || (targetProduct as any)?.imageUrl}
+                          alt={targetProduct?.title || selectedProduct?.title || 'Sản phẩm'}
+                          onError={handleProductImageError}
+                          className="w-12 h-12 rounded-xl object-cover ring-1 ring-black/10 bg-white shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl border border-[#EEDFC6] bg-white text-[#B88E4F] flex items-center justify-center shrink-0">
+                          <Package size={18} />
+                        </div>
                       )}
-                    </strong>
-                  </div>
-                  <div>Hoa hồng: <strong className="text-[#8C6226]">{targetProduct?.commissionRate || 10}%</strong></div>
-                </div>
-              </div>
+                      <div className="min-w-0 space-y-1">
+                        <span className="text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider block">
+                          Sản Phẩm Mục Tiêu
+                        </span>
+                        <h4 className="text-xs font-bold text-[#1A1612] truncate">
+                          {targetProduct?.title || selectedProduct?.title || 'Tất cả sản phẩm gian hàng'}
+                        </h4>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#7D715E]">
+                          <span>Giá: <strong className="text-[#1A1612]">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(targetProduct?.price || selectedProduct?.price || 0)}</strong></span>
+                        </div>
+                      </div>
+                    </div>
 
-              <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C6226]">
-                  Hồ sơ nhà sáng tạo
-                </span>
-                <h4 className="text-xs font-bold text-[#1A1612] truncate">{analyzingKol.fullName}</h4>
-                <div className="space-y-0.5 text-[11px] text-[#7D715E]">
-                  <div>Cấp bậc: <strong className="text-[#1A1612]">{analyzingKol.tierName}</strong></div>
-                  <div>Ngành thế mạnh: <strong className="text-[#1A1612]">{analyzingKol.lifetimeStats?.primaryCategory || 'Chung'}</strong></div>
-                  <div>Tỷ lệ CR%: <strong className="text-[#059669]">{analyzingKol.lifetimeStats?.conversionRate}%</strong></div>
+                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C6226] block">
+                        Kênh MXH đã xác thực {!isModalColdStart && '& Hiệu suất'}
+                      </span>
+                      {!isModalColdStart && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#7D715E]">
+                          <span>Thế mạnh: <strong className="text-[#1A1612]">{analyzingKol.lifetimeStats?.primaryCategory || 'Chung'}</strong></span>
+                          <span>CR%: <strong className="text-[#059669]">{analyzingKol.lifetimeStats?.conversionRate}%</strong></span>
+                        </div>
+                      )}
+                      {analyzingKol.socialChannels && analyzingKol.socialChannels.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {analyzingKol.socialChannels.map((ch: any, idx: number) => (
+                            <span key={idx} className="inline-flex items-center gap-1 rounded-md border border-[#EAE4D7] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#1A1612] tabular-nums">
+                              {ch.platform}: {Number(ch.followerCount ?? ch.followers ?? 0).toLocaleString('vi-VN')} followers
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-[#7D715E]">Chưa liên kết kênh MXH</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* AI Reasoning Conclusion */}
-            <div className="rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] p-4 text-[#1A1612] text-xs space-y-2">
-              <div className="flex items-center gap-2 text-[#8C6226] font-bold">
-                <Radar className="h-4 w-4" />
-                <span>Căn cứ thuật toán:</span>
+            <div className="rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] p-3 text-[#1A1612] text-xs space-y-1">
+              <div className="flex items-center gap-1.5 text-[#8C6226] font-bold text-[11px]">
+                <Radar className="h-3.5 w-3.5" />
+                <span>Căn cứ thuật toán đề xuất:</span>
               </div>
-              <p className="text-[#7D715E] leading-relaxed">{analyzingKol.aiReasoning}</p>
+              <p className="text-[11px] text-[#7D715E] leading-relaxed m-0">{analyzingKol.aiReasoning}</p>
             </div>
 
-            <div className="pt-2 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  setAnalyzingKol(null);
-                  handleNegotiateDeal(analyzingKol);
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-xs transition cursor-pointer"
-              >
-                <MessageSquare size={13} />
-                <span>Nhắn tin</span>
-              </button>
+            <div className="pt-1 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAnalyzingKol(null);
+                    handleNegotiateDeal(analyzingKol);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-xs transition cursor-pointer"
+                >
+                  <MessageSquare size={13} />
+                  <span>Nhắn tin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const k = analyzingKol;
+                    setAnalyzingKol(null);
+                    setInviteMessage('');
+                    setInvitingKol(k);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#715126] text-xs font-bold transition cursor-pointer"
+                >
+                  <Send size={13} />
+                  <span>Mời hợp tác</span>
+                </button>
+              </div>
 
               <button
                 type="button"

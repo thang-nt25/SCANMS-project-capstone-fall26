@@ -48,7 +48,7 @@ export function DealProductPicker({ storeId, storeName, onSelect, onClose }: {
   useEffect(() => {
     const controller = new AbortController();
     setBusy(true); setError('');
-    void api.get('/products', { params: { storeId, page, limit: 50, search: search || undefined }, signal: controller.signal, headers: { 'x-skip-cache': '1' } })
+    void api.get('/products', { params: { storeId, page, limit: 50, search: search || undefined }, signal: controller.signal })
       .then((response: any) => {
         if (controller.signal.aborted) return;
         const payload = response?.data?.data ?? response?.data ?? response;

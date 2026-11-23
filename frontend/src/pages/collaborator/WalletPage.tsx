@@ -308,7 +308,8 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
     !walletSyncError && wallet?.canWithdraw &&
       toMinorUnits(wallet.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)
   );
-  const taxMinor = grossMinor > 0n ? (grossMinor * 10n + 50n) / 100n : 0n;
+  const taxVnd = grossMinor > 0n ? Math.round((Number(grossMinor) / 100) * 0.1) : 0;
+  const taxMinor = BigInt(taxVnd) * 100n;
   const previewMoney = (minorUnits: bigint) =>
     formatMoney(
       `${minorUnits / 100n}.${(minorUnits % 100n).toString().padStart(2, "0")}`,
@@ -485,9 +486,9 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
               <span className="wallet-balance-icon"><Icon size={19} aria-hidden="true" /></span>
               <span className="wallet-balance-badge">
                 {key === 'available' && <><CheckCircle2 size={13} aria-hidden="true" />{loading ? 'Đang tải' : wallet?.canWithdraw && !walletSyncError ? 'Sẵn sàng rút' : 'Chờ đủ điều kiện'}</>}
-                {key === 'pending' && '10% gốc + Bậc'}
-                {key === 'deal' && 'Deal% − (10% + Bậc)'}
-                {key === 'locked' && 'Khấu trừ thuế TNCN 10%'}
+                {key === 'pending' && 'Chờ hết hạn 14 ngày'}
+                {key === 'deal' && 'Thưởng thêm theo KPI'}
+                {key === 'locked' && 'Khấu trừ thuế 10%'}
               </span>
             </div>
             <div className="wallet-balance-label"><span>{label}</span>
@@ -767,18 +768,21 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
               <div className="wallet-available-line"><span>Có thể rút</span><strong>{wallet ? formatMoney(wallet.availableBalance) : '—'}</strong></div>
               {/* Quick shortcut pills */}
               <div className="wallet-quick-amounts">
-                {[200000, 500000, 1000000].map((quickVal) => (
-                  <button
-                    key={quickVal}
-                    type="button"
-                    onClick={() => setAmount(quickVal.toString())}
-                    disabled={submitting || loading}
-                    aria-pressed={amount === quickVal.toString()}
-                    className="px-2 py-0.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[10.5px] font-mono font-semibold text-[#1A1612] transition cursor-pointer disabled:opacity-40"
-                  >
-                    {new Intl.NumberFormat("vi-VN").format(quickVal)} ₫
-                  </button>
-                ))}
+                {[200000, 500000, 1000000].map((quickVal) => {
+                  const exceedsAvailable = !wallet || quickVal > Number(wallet.availableBalance || 0);
+                  return (
+                    <button
+                      key={quickVal}
+                      type="button"
+                      onClick={() => setAmount(quickVal.toString())}
+                      disabled={submitting || loading || exceedsAvailable}
+                      aria-pressed={amount === quickVal.toString()}
+                      className="px-2 py-0.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[10.5px] font-mono font-semibold text-[#1A1612] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {new Intl.NumberFormat("vi-VN").format(quickVal)} ₫
+                    </button>
+                  );
+                })}
               </div>
               </div>
 

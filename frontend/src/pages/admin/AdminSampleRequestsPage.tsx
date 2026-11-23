@@ -80,6 +80,13 @@ const STATUS_CONFIGS: Record<string, StatusConfig> = {
     badgeBorder: 'border-[#FED7AA]',
     icon: AlertTriangle,
   },
+  APPEALED: {
+    label: 'Chờ Trọng tài',
+    badgeBg: 'bg-[#FBF5EB]',
+    badgeText: 'text-[#8C6226]',
+    badgeBorder: 'border-[#C59B58]',
+    icon: AlertTriangle,
+  },
   OVERDUE: {
     label: 'Quá hạn nộp video',
     badgeBg: 'bg-[#FEF2F2]',
@@ -117,7 +124,7 @@ const STATUS_CONFIGS: Record<string, StatusConfig> = {
   },
 };
 
-type ResolutionAction = 'EXTEND_DEADLINE' | 'CANCEL_OBLIGATION' | 'RESOLVE_DELIVERY_ISSUE' | 'BLOCK_SAMPLE_REQUESTS' | 'DISMISS_REPORT';
+type ResolutionAction = 'EXTEND_DEADLINE' | 'CANCEL_OBLIGATION' | 'RESOLVE_DELIVERY_ISSUE' | 'BLOCK_SAMPLE_REQUESTS' | 'DISMISS_REPORT' | 'FORCE_COMPLETE' | 'UPHOLD_REVISION' | 'CONFIRM_VIOLATION';
 
 function localDateAfter(days: number) {
   const date = new Date();
@@ -204,7 +211,7 @@ export default function AdminSampleRequestsPage() {
     const total = requests.length;
     const shipping = requests.filter((r) => ['APPROVED', 'SHIPPED', 'RECEIVED'].includes(r.status)).length;
     const videoReview = requests.filter((r) => r.status === 'VIDEO_SUBMITTED').length;
-    const risk = requests.filter((r) => ['OVERDUE', 'DELIVERY_ISSUE', 'REVISION_REQUIRED'].includes(r.status)).length;
+    const risk = requests.filter((r) => ['OVERDUE', 'DELIVERY_ISSUE', 'REVISION_REQUIRED', 'APPEALED'].includes(r.status)).length;
     const completed = requests.filter((r) => r.status === 'COMPLETED').length;
     const blocked = blockedCreators.length;
     return { total, shipping, videoReview, risk, completed, blocked };
@@ -217,7 +224,7 @@ export default function AdminSampleRequestsPage() {
       if (statusFilter === 'REPORTS') {
         list = list.filter((r) => getPendingSampleReport(r));
       } else if (statusFilter === 'RISK_GROUP') {
-        list = list.filter((r) => ['OVERDUE', 'DELIVERY_ISSUE', 'REVISION_REQUIRED'].includes(r.status));
+        list = list.filter((r) => ['OVERDUE', 'DELIVERY_ISSUE', 'REVISION_REQUIRED', 'APPEALED'].includes(r.status));
       } else if (statusFilter === 'IN_PROGRESS') {
         list = list.filter((r) => ['APPROVED', 'SHIPPED', 'RECEIVED'].includes(r.status));
       } else {
@@ -317,6 +324,12 @@ export default function AdminSampleRequestsPage() {
       ? 'Khóa quyền nhận mẫu của KOL'
       : resolution?.action === 'DISMISS_REPORT'
       ? 'Không chấp nhận đề nghị khóa'
+      : resolution?.action === 'FORCE_COMPLETE'
+      ? 'Trọng tài: Chấp nhận video (Bảo vệ KOL)'
+      : resolution?.action === 'UPHOLD_REVISION'
+      ? 'Trọng tài: Giữ nguyên yêu cầu chỉnh sửa'
+      : resolution?.action === 'CONFIRM_VIOLATION'
+      ? 'Trọng tài: Xác nhận vi phạm quá hạn'
       : 'Mở gửi bù hàng mẫu';
 
   return (
@@ -409,7 +422,9 @@ export default function AdminSampleRequestsPage() {
                     <option value="VIDEO_SUBMITTED">Chờ duyệt video ({stats.videoReview})</option>
                     <option value="RISK_GROUP">Cần xử lý ({stats.risk})</option>
                     <option value="REPORTS">Chờ xét báo cáo ({requests.filter(r => getPendingSampleReport(r)).length})</option>
-                    {Object.entries(STATUS_CONFIGS).map(([status, config]) => (
+                    {Object.entries(STATUS_CONFIGS)
+                      .filter(([status]) => status !== 'VIDEO_SUBMITTED')
+                      .map(([status, config]) => (
                       <option key={status} value={status}>
                         {config.label}
                       </option>
@@ -597,6 +612,32 @@ export default function AdminSampleRequestsPage() {
                             </button>
                           )}
 
+                          {request.status === 'APPEALED' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openResolution(request, 'FORCE_COMPLETE')}
+                                className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Nghiệm thu (Bảo vệ KOL)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openResolution(request, 'UPHOLD_REVISION')}
+                                className="px-2.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#8C6226] transition cursor-pointer"
+                              >
+                                Giữ yêu cầu sửa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openResolution(request, 'CONFIRM_VIOLATION')}
+                                className="px-2.5 py-1.5 rounded-lg border border-[#FECACA] bg-[#FEF2F2] hover:bg-[#FEE2E2] text-xs font-bold text-[#DC2626] transition cursor-pointer"
+                              >
+                                Chốt vi phạm
+                              </button>
+                            </>
+                          )}
                           {request.status === 'DELIVERY_ISSUE' && (
                             <button
                               type="button"
@@ -793,7 +834,7 @@ export default function AdminSampleRequestsPage() {
             </div>
 
             <p className="text-xs text-[#7D715E] leading-relaxed">
-              Sau khi mở khóa, KOL sẽ được khôi phục quyền gửi yêu cầu xin sản phẩm mẫu tới các gian hàng đối tác trên sàn SCANMS.
+              Sau khi mở khóa, KOL sẽ được khôi phục quyền gửi yêu cầu xin sản phẩm mẫu tới các cửa hàng trực thuộc hệ thống SCANMS.
             </p>
 
             <div>

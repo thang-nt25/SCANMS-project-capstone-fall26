@@ -4362,7 +4362,7 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
 .kol-links-toolbar [aria-haspopup="listbox"] > svg { @apply absolute; @apply [right:9px]; @apply [width:14px]; }
 .kol-create-link-button { @apply inline-flex; @apply items-center; @apply justify-center; @apply [gap:6px]; @apply [min-height:44px]; @apply [padding:0_14px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:12px]; @apply [background:#FBF5EB]; @apply [color:#855F2D]; @apply [font-size:13px]; @apply [font-weight:600]; @apply whitespace-nowrap; @apply cursor-pointer; }
 .kol-referral-page .kol-link-table { @apply [box-shadow:none]; @apply [border-radius:16px]; @apply [background:#fff]; }
-.kol-referral-page .kol-link-table table { @apply [min-width:1050px]; }
+.kol-referral-page .kol-link-table table { @apply [min-width:860px]; }
 .kol-referral-page .kol-link-table thead { @apply [background:#FAF8F5]; }
 .kol-referral-page .kol-link-table th { @apply [background:#FAF8F5]; @apply [font-size:13px]; @apply [font-weight:500]; @apply [height:48px]; }
 .kol-referral-page .kol-link-status { @apply [width:110px]; @apply [height:28px]; @apply [min-height:28px]; @apply justify-center; @apply [border-radius:8px]; @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:500]; @apply [box-shadow:none]; @apply [background:#fff]; @apply [border-color:#EAE4D7]; @apply [color:#855F2D]; }
@@ -4384,13 +4384,13 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
 .kol-referral-page .kol-link-table td[data-label="Trạng thái"] > span { @apply [min-width:102px]; @apply [min-height:28px]; @apply justify-center; @apply [font-size:12px]; }
 .kol-referral-page .kol-link-table td[data-label="Lượt nhấp"] > div { @apply [min-height:42px]; }
 .kol-referral-page .kol-link-product-name:hover { @apply [color:#B88E4F]; }
-.kol-referral-page .kol-link-table th:nth-child(1) { @apply [width:29%]; }
+.kol-referral-page .kol-link-table th:nth-child(1) { @apply [width:28%]; }
 .kol-referral-page .kol-link-table th:nth-child(2) { @apply [width:16%]; }
 .kol-referral-page .kol-link-table th:nth-child(3) { @apply [width:8%]; }
 .kol-referral-page .kol-link-table th:nth-child(4) { @apply [width:12%]; }
 .kol-referral-page .kol-link-table th:nth-child(5) { @apply [width:8%]; }
 .kol-referral-page .kol-link-table th:nth-child(6) { @apply [width:7%]; }
-.kol-referral-page .kol-link-table th:nth-child(7) { @apply [width:20%]; }
+.kol-referral-page .kol-link-table th:nth-child(7) { @apply [width:21%]; }
 .kol-referral-page .kol-link-table th:first-child > div { @apply justify-between; @apply text-left; @apply [flex-wrap:nowrap]; }
 .kol-referral-page .kol-link-table th:first-child > div > span:last-child { @apply [flex-shrink:0]; }
 .kol-referral-page .kol-link-table th:nth-child(2) { @apply text-left; }
@@ -4429,7 +4429,7 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
   .kol-deal-summary button { @apply [padding-inline:12px]; }
 }
 .kol-deal-product-picker .kol-deal-picker-list { @apply [max-height:min(56dvh,_420px)]; @apply [overscroll-behavior:contain]; }
-.kol-deal-summary { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply [min-height:120px]; @apply [padding:16px_0]; @apply [margin-top:0]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:16px]; @apply [background:#fff]; }
+.kol-deal-summary { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply [margin-top:0]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:16px]; @apply [background:#fff]; @apply overflow-hidden; }
 .kol-deals-toolbar { @apply grid; @apply [grid-template-columns:minmax(0,_3fr)_repeat(2,_minmax(0,_1fr))]; @apply [gap:12px]; @apply [padding:10px]; @apply [margin-top:14px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:13px]; @apply [background:#fff]; }
 .kol-deals-search { @apply flex; @apply items-center; @apply [gap:10px]; @apply [min-width:0]; @apply [height:44px]; @apply [padding:0_14px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply [background:#fff]; @apply [color:#7D715E]; }
 .kol-deals-search:focus-within { @apply [border-color:#C59B58]; @apply [box-shadow:0_0_0_2px_#FBF5EB]; }
@@ -4438,7 +4438,7 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
 .kol-deals-search input::placeholder { @apply [color:#7D715E]; }
 .kol-deals-toolbar > button { @apply [width:100%]; @apply [min-width:0]; @apply [min-height:44px]; @apply [height:44px]; @apply justify-center; @apply [font-size:13px]; @apply [font-weight:500]; @apply [box-shadow:none]; }
 @media(max-width:700px) { .kol-deals-toolbar { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; } .kol-deals-search { @apply [grid-column:1_/_-1]; } }
-.kol-deal-summary button { @apply relative; @apply flex; @apply flex-col; @apply items-start; @apply justify-start; @apply text-left; @apply [gap:8px]; @apply [min-height:86px]; @apply [padding:0_20px]; @apply [border:0]; @apply [border-radius:0]; @apply cursor-pointer; }
+.kol-deal-summary button { @apply relative; @apply flex; @apply flex-col; @apply items-start; @apply justify-start; @apply text-left; @apply [gap:8px]; @apply [min-height:92px]; @apply [padding:16px_20px]; @apply [border:0]; @apply [border-radius:0]; @apply [background:transparent]; @apply cursor-pointer; @apply transition-colors; }
 .kol-deal-summary button + button { @apply [border-left:1px_solid_#EAE4D7]; }
 .kol-deal-summary button[aria-pressed="true"] { @apply [background:#FBF5EB]; }
 .kol-deal-summary span { @apply [color:#7D715E]; @apply [font-size:12px]; }

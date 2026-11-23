@@ -37,7 +37,6 @@ const CACHEABLE_URL_PREFIXES = [
   '/referral-links',
   '/returns',
   '/leaderboard',
-  '/live-sessions',
   '/affiliate-deals',
   '/store-collaborators',
   '/customer',
@@ -112,7 +111,6 @@ export const apiCache = {
     if (url.includes('/kyc')) return '/kyc';
     if (url.includes('/returns')) return '/returns';
     if (url.includes('/campaigns')) return '/campaigns';
-    if (url.includes('/live-sessions')) return '/live-sessions';
     if (url.includes('/affiliate-deals')) return '/affiliate-deals';
     if (url.includes('/customer')) return '/customer';
     return null;

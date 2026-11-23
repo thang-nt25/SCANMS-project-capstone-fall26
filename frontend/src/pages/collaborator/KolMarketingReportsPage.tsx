@@ -7,13 +7,12 @@ import { handleProductImageError } from '../../utils/image-fallback.utils';
 import { kolOrderCommissionStatus } from '../../utils/kol-order-status';
 import { KolReferralOrderDialog } from '../../components/affiliate/KolReferralOrderDialog';
 import KolProductCommissionTable from '../../components/affiliate/KolProductCommissionTable';
-import KolLivePerformanceCard from '../../components/affiliate/KolLivePerformanceCard';
 
-type ReportTab = 'orders' | 'products' | 'stores' | 'live';
+type ReportTab = 'orders' | 'products' | 'stores';
 export default function KolMarketingReportsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const activeTab: ReportTab = ['orders', 'products', 'stores', 'live'].includes(params.get('tab') || '') ? params.get('tab') as ReportTab : 'orders';
+  const activeTab: ReportTab = ['orders', 'products', 'stores'].includes(params.get('tab') || '') ? params.get('tab') as ReportTab : 'orders';
   const setActiveTab = (tab: ReportTab) => setParams({ tab });
   const [copiedOrderSn, setCopiedOrderSn] = useState<string | null>(null);
   const [ordersPage, setOrdersPage] = useState(1);
@@ -33,19 +32,8 @@ export default function KolMarketingReportsPage() {
     placeholderData: keepPreviousData,
   });
 
-  const { data: liveData, isFetching: isFetchingLive } = useQuery({
-    queryKey: ['kol-live-summary'],
-    queryFn: () => analyticsService.getCollaboratorLiveSessionsSummary().catch(() => null),
-    staleTime: 1000 * 60 * 3,
-    placeholderData: keepPreviousData,
-  });
-
   const referralOrders = referralOrdersData?.items || [];
   const topProducts = topProductsData?.items || [];
-  const liveSummary = {
-    sessions: liveData?.sessions || [],
-    totals: liveData?.totals || { totalLiveRevenue: 0, totalLiveCommission: 0, totalLiveOrders: 0 },
-  };
 
   const storeBreakdown = referralOrdersData?.stores || [];
 
@@ -55,12 +43,11 @@ export default function KolMarketingReportsPage() {
       <div className="flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
         {/* Khay tab điều hướng */}
         <div className="px-3 py-3 border-b border-[#EAE4D7] bg-white">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5" role="group" aria-label="Loại báo cáo tiếp thị">
+          <div className="grid grid-cols-3 gap-2 sm:gap-2.5" role="group" aria-label="Loại báo cáo tiếp thị">
             {([
               { id: 'orders', label: 'Đơn hàng', count: referralOrdersData?.total || 0 },
               { id: 'products', label: 'Sản phẩm', count: topProductsData?.totalProducts || 0 },
               { id: 'stores', label: 'Cửa hàng', count: storeBreakdown.length },
-              { id: 'live', label: 'Livestream', count: liveSummary.sessions.length },
             ] as const).map((tab, index) => (
               <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center justify-center gap-2 min-h-[42px] sm:min-h-[46px] px-2.5 py-2 border rounded-[10px] text-[11px] sm:text-[12px] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#b88e4f] focus-visible:outline-offset-2 ${activeTab === tab.id ? "border-[#eedfc6] bg-[#fbf5eb] text-[#1a1612] font-semibold" : "border-[#eae4d7] bg-white text-[#7d715e] font-medium"}`}>
                 <span className={`grid place-items-center shrink-0 w-[25px] h-[25px] border rounded-full text-[11px] font-normal ${activeTab === tab.id ? "border-[#c59b58] text-[#9a7135]" : "border-[#eae4d7]"}`} aria-hidden="true">{index + 1}</span>
@@ -73,7 +60,6 @@ export default function KolMarketingReportsPage() {
             Lũy kế mọi thời gian · {activeTab === 'orders' && '10 đơn mỗi trang'}
             {activeTab === 'products' && `Top ${topProducts.length} sản phẩm theo thù lao ghi nhận`}
             {activeTab === 'stores' && `${storeBreakdown.length} gian hàng đối tác`}
-            {activeTab === 'live' && `${liveSummary.sessions.length} phiên gần nhất · số liệu trong danh sách`}
           </span>
           {selectedStore && activeTab === 'orders' && <div className="kol-store-filter">Cửa hàng: {selectedStore.name}<button type="button" onClick={() => { setSelectedStore(null); setOrdersPage(1); }}>Xóa bộ lọc</button></div>}
         </div>
@@ -251,17 +237,6 @@ export default function KolMarketingReportsPage() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* Nội dung Tab 3: Phiên Livestream */}
-      {activeTab === 'live' && (
-        <div className="p-0">
-          {liveData === null ? <p className="kol-report-empty">Chưa tải được số liệu livestream.</p> : <KolLivePerformanceCard
-            sessions={liveSummary.sessions}
-            totals={liveSummary.totals}
-            loading={isFetchingLive}
-          />}
         </div>
       )}
     </div>

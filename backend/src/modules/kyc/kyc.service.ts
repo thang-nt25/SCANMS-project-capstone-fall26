@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { SubmitKycDto } from './dto/submit-kyc.dto';
@@ -625,6 +626,7 @@ export class KycService {
   async reviewKolApplication(
     profileId: string,
     dto: ReviewUpgradeApplicationDto,
+    reviewerId?: string,
   ) {
     const profile = await this.prisma.collaboratorProfile.findUnique({
       where: { id: profileId },
@@ -633,6 +635,18 @@ export class KycService {
 
     if (!profile) {
       throw new NotFoundException('Không tìm thấy hồ sơ đối tác');
+    }
+
+    if (reviewerId && reviewerId === profile.userId) {
+      throw new ForbiddenException(
+        'Vi phạm nguyên tắc Maker-Checker: Người duyệt hồ sơ eKYC không thể tự duyệt hồ sơ của chính mình.',
+      );
+    }
+
+    if (dto.status !== 'VERIFIED' && (!dto.note || dto.note.trim().length < 10)) {
+      throw new BadRequestException(
+        'Vui lòng nhập lý do từ chối hoặc nội dung yêu cầu bổ sung chi tiết (tối thiểu 10 ký tự).',
+      );
     }
 
     let bronzeTierId: string | undefined = undefined;
@@ -658,54 +672,53 @@ export class KycService {
         : {};
 
     if (dto.status === 'VERIFIED') {
-      // 1. Nâng quyền user nếu đang là CUSTOMER
-      if (profile.user.role === UserRole.CUSTOMER) {
-        await this.prisma.user.update({
-          where: { id: profile.userId },
-          data: { role: UserRole.COLLABORATOR },
-        });
-      }
+      const updatedProfile = await this.prisma.$transaction(async (tx) => {
+        if (profile.user.role === UserRole.CUSTOMER) {
+          await tx.user.update({
+            where: { id: profile.userId },
+            data: { role: UserRole.COLLABORATOR },
+          });
+        }
 
-      // 2. Đảm bảo ví hoa hồng đã tồn tại
-      const existingWallet = await this.prisma.wallet.findUnique({
-        where: { collaboratorId: profile.userId },
-      });
-      if (!existingWallet) {
-        await this.prisma.wallet.create({
-          data: {
+        await tx.wallet.upsert({
+          where: { collaboratorId: profile.userId },
+          create: {
             collaboratorId: profile.userId,
             availableBalance: 0,
             pendingBalance: 0,
           },
+          update: {},
         });
-      }
 
-      const updatedProfile = await this.prisma.collaboratorProfile.update({
-        where: { id: profileId },
-        data: {
-          kycStatus: KycStatus.VERIFIED,
-          ...(bronzeTierId ? { tierId: bronzeTierId } : {}),
-          socialLinksJson: {
-            ...currentJson,
-            reviewStatus: 'VERIFIED',
-            needsInfo: false,
-            rejectionReason: null,
-            requestedItems: [],
-            channelsVerified: true,
-            verifiedAt: new Date().toISOString(),
+        const updated = await tx.collaboratorProfile.update({
+          where: { id: profileId },
+          data: {
+            kycStatus: KycStatus.VERIFIED,
+            ...(bronzeTierId ? { tierId: bronzeTierId } : {}),
+            socialLinksJson: {
+              ...currentJson,
+              reviewStatus: 'VERIFIED',
+              needsInfo: false,
+              rejectionReason: null,
+              requestedItems: [],
+              channelsVerified: true,
+              verifiedAt: new Date().toISOString(),
+              ...(reviewerId ? { reviewedById: reviewerId } : {}),
+            },
           },
-        },
-      });
+        });
 
-      // 4. Thông báo cho người dùng
-      await this.prisma.notification.create({
-        data: {
-          userId: profile.userId,
-          title: 'Chúc mừng! Bạn đã trở thành Đối tác KOL chính thức',
-          message:
-            'Hồ sơ đối tác sáng tạo nội dung & liên kết tiếp thị của bạn đã được Admin SCANMS phê duyệt cấp Tích Xanh.',
-          type: 'KOL_APPROVED',
-        },
+        await tx.notification.create({
+          data: {
+            userId: profile.userId,
+            title: 'Chúc mừng! Bạn đã trở thành Đối tác KOL chính thức',
+            message:
+              'Hồ sơ đối tác sáng tạo nội dung & liên kết tiếp thị của bạn đã được Admin SCANMS phê duyệt cấp Tích Xanh.',
+            type: 'KOL_APPROVED',
+          },
+        });
+
+        return updated;
       });
 
       return {

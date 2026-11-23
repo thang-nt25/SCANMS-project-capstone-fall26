@@ -21,9 +21,6 @@ import { ProductsController } from '../products/products.controller';
 import { ProductsService } from '../products/products.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { GhnService } from '../shipping/ghn.service';
-import { LiveSessionsController } from '../live-sessions/live-sessions.controller';
-import { LiveSessionsService } from '../live-sessions/live-sessions.service';
-import { LiveGovernanceService } from '../live-sessions/live-governance.service';
 import { buildDataset } from '../../../prisma/seeds/build-dataset';
 import { applyDataset } from '../../../prisma/seeds/seed.database';
 import { parseDatabaseTarget } from '../../../prisma/seeds/seed.config';
@@ -94,7 +91,7 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
           JwtModule.register({ secret }),
           PassportModule.register({ defaultStrategy: 'jwt' }),
         ],
-        controllers: [StoresController, LiveSessionsController, SponsorshipController, ProductsController],
+        controllers: [StoresController, SponsorshipController, ProductsController],
         providers: [
           StoresService,
           SponsorshipService,
@@ -106,16 +103,6 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
             useValue: new ConfigService({ JWT_SECRET: secret }),
           },
           { provide: PrismaService, useValue: prisma },
-          // Payment/governance collaborators are deliberately not invoked by public read or pin APIs.
-          {
-            provide: LiveSessionsService,
-            useValue: new LiveSessionsService(
-              prisma as never,
-              {} as never,
-              {} as never,
-            ),
-          },
-          { provide: LiveGovernanceService, useValue: {} },
         ],
       }).compile();
       app = module.createNestApplication({ logger: false });
@@ -322,53 +309,6 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
       expect(quote).toHaveBeenCalledWith('Địa chỉ kiểm thử', 1400, Number(variant.price) * 2, seedId('store:0'), response.shippingPackage);
       await expect(carrier.quoteCart(seedId('store:1'), 'Địa chỉ kiểm thử', [{ productId, quantity: 1 }])).rejects.toThrow('không thuộc gian hàng');
       await expect(carrier.quoteCart(seedId('store:0'), 'Địa chỉ kiểm thử', [{ productId, variantId: randomUUID(), quantity: 1 }])).rejects.toThrow('Phân loại');
-    });
-
-    it('reads both active live sessions with their seeded pins and zero real viewers', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/live-sessions/public/list')
-        .expect(200);
-      expect(response.body).toHaveLength(2);
-      for (const session of response.body) {
-        expect(session.pinnedProduct?.id).toBe(
-          data.products.find((product) => product.storeId === session.storeId)
-            ?.id,
-        );
-        expect(session.viewerCount).toBe(0);
-        expect(session.governance).toBeUndefined();
-      }
-    });
-
-    it('persists an authorized pin and rejects customer/cross-shop/foreign-product attempts', async () => {
-      const url = `/api/live-sessions/${seedId('live:0')}/pinned-product`;
-      const productId = seedId('product:1');
-      await request(app.getHttpServer())
-        .post(url)
-        .send({ productId })
-        .expect(401);
-      for (const token of [customerToken, shopTwoToken])
-        await request(app.getHttpServer())
-          .post(url)
-          .auth(token, { type: 'bearer' })
-          .send({ productId })
-          .expect(403);
-      await request(app.getHttpServer())
-        .post(url)
-        .auth(ownerToken, { type: 'bearer' })
-        .send({ productId: seedId('product:3') })
-        .expect(400);
-      await request(app.getHttpServer())
-        .post(url)
-        .auth(ownerToken, { type: 'bearer' })
-        .send({ productId })
-        .expect(201);
-      const response = await request(app.getHttpServer())
-        .get('/api/live-sessions/public/list')
-        .expect(200);
-      expect(
-        response.body.find((row: { id: string }) => row.id === seedId('live:0'))
-          .pinnedProduct.id,
-      ).toBe(productId);
     });
   },
 );

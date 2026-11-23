@@ -158,10 +158,15 @@ export const PartnerUpgradeTab: React.FC = () => {
     e.preventDefault();
     const primaryChannel = kolForm.channels?.[0];
     const platform = primaryChannel?.platform || kolForm.platform;
+    const channelName = primaryChannel?.channelName || kolForm.channelName;
     const channelUrl = primaryChannel?.channelUrl || kolForm.channelUrl;
 
     if (!platform) {
       toast.error('Vui lòng chọn nền tảng mạng xã hội chính');
+      return;
+    }
+    if (!channelName?.trim()) {
+      toast.error('Vui lòng nhập tên kênh mạng xã hội chính');
       return;
     }
     if (!channelUrl?.trim()) {
@@ -215,12 +220,19 @@ export const PartnerUpgradeTab: React.FC = () => {
         followerCount: Number(followerCount) || 0,
         channelProofUrl,
         channels: (kolForm.channels && kolForm.channels.length > 0)
-          ? kolForm.channels
+          ? kolForm.channels.map((ch, idx) => ({
+              platform: (ch.platform as any) || 'TIKTOK',
+              channelName: (ch.channelName || channelName || '').trim(),
+              channelUrl: (ch.channelUrl || '').trim(),
+              followerCount: Number(ch.followerCount) || 0,
+              ...(ch.channelProofUrl ? { channelProofUrl: ch.channelProofUrl } : {}),
+              isPrimary: ch.isPrimary ?? idx === 0,
+            }))
           : [
               {
                 platform: (platform as any) || 'TIKTOK',
-                channelName: channelName || '',
-                channelUrl: channelUrl || '',
+                channelName: (channelName || '').trim(),
+                channelUrl: (channelUrl || '').trim(),
                 followerCount: Number(followerCount) || 0,
                 channelProofUrl: channelProofUrl || undefined,
                 isPrimary: true,

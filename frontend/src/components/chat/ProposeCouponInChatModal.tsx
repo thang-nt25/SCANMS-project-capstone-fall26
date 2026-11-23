@@ -19,8 +19,8 @@ export function ProposeCouponInChatModal({
   onSuccess,
 }: ProposeCouponInChatModalProps) {
   const [code, setCode] = useState('');
-  const [desiredPercent, setDesiredPercent] = useState<number>(10);
-  const [validityDays, setValidityDays] = useState<number>(30);
+  const desiredPercent = 10;
+  const validityDays = 30;
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +107,12 @@ export function ProposeCouponInChatModal({
         status: 'PENDING_APPROVAL',
       };
 
-      onSuccess(cardPayload);
+      onSuccess(
+        res?.chatMessage || {
+          ...cardPayload,
+          conversationId: res?.conversationId,
+        }
+      );
       onClose();
     } catch (err: any) {
       console.error('Lỗi khi đề xuất mã giảm giá:', err);
@@ -226,76 +231,33 @@ export function ProposeCouponInChatModal({
                   rows={2}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Gắn bio, video review, phiên Live..."
+                  placeholder="Gắn bio, video review chiến dịch..."
                   maxLength={150}
                   className="w-full px-3 py-1.5 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none resize-none leading-relaxed"
                 />
               </div>
             </div>
 
-            {/* CỘT PHẢI: Mức % (Chỉ 5% và 10%) & Thời hạn */}
+            {/* CỘT PHẢI: Quy trình duyệt & Hạch toán chuẩn hóa */}
             <div className="space-y-3.5">
-              {/* Mức % giảm đề xuất: Khớp 100% với Shop Manager (Chỉ 5% và 10%) */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-[#1A1612]">
-                    Mức giảm đề xuất (Shop duyệt)
-                  </label>
-                  <span className="text-xs font-extrabold text-[#B88E4F]">Giảm {desiredPercent}%</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[5, 10].map((pct) => (
-                    <button
-                      key={pct}
-                      type="button"
-                      onClick={() => setDesiredPercent(pct)}
-                      className={`p-2.5 rounded-xl border text-center transition cursor-pointer ${
-                        desiredPercent === pct
-                          ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] shadow-2xs font-bold'
-                          : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
-                      }`}
-                    >
-                      <strong className="block text-sm text-[#1A1612]">Giảm {pct}%</strong>
-                      <span className="text-[10px] text-[#7D715E]">
-                        {pct === 5 ? 'Ưu đãi phổ thông' : 'Ưu đãi tối đa'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Thời hạn hiệu lực: Dạng Segmented Pills 1 dòng */}
-              <div>
-                <label className="block text-xs font-bold text-[#1A1612] mb-1.5">
-                  Thời hạn hiệu lực
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[14, 30, 60].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setValidityDays(d)}
-                      className={`py-2 px-1 text-center rounded-xl border text-xs font-bold transition cursor-pointer ${
-                        validityDays === d
-                          ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] shadow-2xs'
-                          : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
-                      }`}
-                    >
-                      {d} ngày
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tóm tắt nhanh thẻ ưu đãi */}
-              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1 text-xs">
-                <div className="flex items-center justify-between text-[#7D715E]">
-                  <span>Áp dụng:</span>
-                  <span className="font-semibold text-[#1A1612]">Toàn cửa hàng</span>
-                </div>
-                <div className="flex items-center justify-between text-[#7D715E]">
-                  <span>Kinh phí:</span>
-                  <span className="font-semibold text-[#B88E4F]">Cửa hàng chi trả 100%</span>
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2 text-xs">
+                <p className="font-bold text-[#1A1612]">Điều kiện do Shop Manager thiết lập khi duyệt</p>
+                <p className="text-[11px] text-[#7D715E] leading-relaxed">
+                  Bạn chỉ cần đề xuất <strong>tên mã gắn thương hiệu</strong> và ghi chú. Shop Manager sẽ ấn định mức giảm (3%–20%), trần giảm tối đa/đơn và ngày hết hạn chiến dịch (trên 10% tự động chuyển System Admin duyệt).
+                </p>
+                <div className="pt-2 border-t border-[#EAE4D7] space-y-1.5">
+                  <div className="flex items-center justify-between text-[#7D715E]">
+                    <span>Áp dụng:</span>
+                    <span className="font-semibold text-[#1A1612]">Toàn cửa hàng</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[#7D715E]">
+                    <span>Số lượt dùng:</span>
+                    <span className="font-semibold text-[#1A1612]">Không giới hạn trong hạn dùng</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[#7D715E]">
+                    <span>Hạch toán:</span>
+                    <span className="font-semibold text-[#B88E4F]">Trừ doanh thu đơn hàng</span>
+                  </div>
                 </div>
               </div>
             </div>

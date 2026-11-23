@@ -32,6 +32,7 @@ import {
   Check,
   Package,
   FlaskConical,
+  Handshake,
 } from "lucide-react";
 import { toast } from "../../utils/toast";
 import api from '../../services/api';
@@ -149,7 +150,7 @@ export default function OrdersManagementPage({
   onClose,
   onCompleted,
 }: Props = {}) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const returnDetailState = { shopReturnFrom: { pathname: location.pathname, search: location.search } };
   const navigate = useNavigate();
@@ -158,6 +159,28 @@ export default function OrdersManagementPage({
       ? 'SAMPLES'
       : 'COMMERCIAL'
   );
+  const [sampleRefreshKey, setSampleRefreshKey] = useState(0);
+  const [sampleLoading, setSampleLoading] = useState(false);
+
+  useEffect(() => {
+    const paramView =
+      searchParams.get('tab') === 'samples' || searchParams.get('view') === 'samples'
+        ? 'SAMPLES'
+        : 'COMMERCIAL';
+    setActiveOrderView((prev) => (prev === paramView ? prev : paramView));
+  }, [searchParams]);
+
+  const handleSwitchOrderView = (nextView: 'COMMERCIAL' | 'SAMPLES') => {
+    setActiveOrderView(nextView);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('view');
+    if (nextView === 'SAMPLES') {
+      nextParams.set('tab', 'samples');
+    } else {
+      nextParams.delete('tab');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
   const deepLinkHandledRef = useRef<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
@@ -424,7 +447,7 @@ export default function OrdersManagementPage({
           page: ordersPage,
           limit: 12,
           storeId,
-        }, isManualFresh);
+        }, !background && isManualFresh);
         if (active && res && requestedRevision === fulfillmentRevision.current) {
           lastOrdersSnapshot = {
             orders: res.items || [],
@@ -450,7 +473,7 @@ export default function OrdersManagementPage({
     };
     void loadOrders();
     const refresh = () => { void loadOrders(true); };
-    const timer = window.setInterval(refresh, 10000);
+    const timer = window.setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
     const handleOrderEvent = () => { refresh(); };
@@ -1130,7 +1153,7 @@ export default function OrdersManagementPage({
             <div className="merchant-orders-view-tabs" role="group" aria-label="Chuyển chế độ đơn hàng">
               <button
                 type="button"
-                onClick={() => setActiveOrderView("COMMERCIAL")}
+                onClick={() => handleSwitchOrderView("COMMERCIAL")}
                 aria-pressed={activeOrderView === "COMMERCIAL"}
                 className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-xs font-semibold transition cursor-pointer ${
                   activeOrderView === "COMMERCIAL"
@@ -1143,7 +1166,7 @@ export default function OrdersManagementPage({
               </button>
               <button
                 type="button"
-                onClick={() => setActiveOrderView("SAMPLES")}
+                onClick={() => handleSwitchOrderView("SAMPLES")}
                 aria-pressed={activeOrderView === "SAMPLES"}
                 className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-xs font-semibold transition cursor-pointer ${
                   activeOrderView === "SAMPLES"
@@ -1155,7 +1178,7 @@ export default function OrdersManagementPage({
                 <span>Hàng mẫu KOL</span>
               </button>
             </div>
-            {activeOrderView === "COMMERCIAL" && (
+            {activeOrderView === "COMMERCIAL" ? (
               <div className="merchant-orders-toolbar-actions">
                 <button
                   type="button"
@@ -1180,11 +1203,37 @@ export default function OrdersManagementPage({
                   <span>Hợp tác</span>
                 </Link>
               </div>
+            ) : (
+              <div className="merchant-orders-toolbar-actions">
+                <button
+                  type="button"
+                  onClick={() => setSampleRefreshKey((prev) => prev + 1)}
+                  disabled={sampleLoading}
+                  title="Làm mới danh sách hàng mẫu"
+                  aria-label="Làm mới danh sách hàng mẫu"
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-60"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 shrink-0 text-[#B88E4F] ${sampleLoading ? "animate-spin" : ""}`} />
+                  <span>Làm mới</span>
+                </button>
+                <Link to="/merchant/kol-hub?tab=deals" title="Thỏa thuận độc quyền" aria-label="Thỏa thuận độc quyền" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]">
+                  <Handshake className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
+                  <span>Deal độc quyền</span>
+                </Link>
+                <Link to="/merchant/kol-hub" title="Quản lý hợp tác" aria-label="Quản lý hợp tác" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]">
+                  <Users className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
+                  <span>Hợp tác</span>
+                </Link>
+              </div>
             )}
           </div>
 
           {activeOrderView === "SAMPLES" ? (
-            <ShopSampleManagementTab showRefreshButton={false} />
+            <ShopSampleManagementTab
+              refreshKey={sampleRefreshKey}
+              showRefreshButton={false}
+              onLoadingChange={setSampleLoading}
+            />
           ) : (
             <>
               {/* Success Alert Banner (Chuẩn màu Vàng Be) */}

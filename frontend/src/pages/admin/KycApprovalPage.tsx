@@ -149,8 +149,8 @@ export default function KycApprovalPage() {
     if (!rejectReason.trim() && (status === 'REJECTED' || requestedItems.length === 0)) {
       showToast(
         status === 'NEEDS_INFO'
-          ? 'Vui lòng nêu rõ các mục cần đối tác bổ sung hoặc chỉnh sửa.'
-          : 'Vui lòng nhập lý do từ chối hồ sơ.',
+          ? 'Vui lòng nêu rõ các mục cần đối tác bổ sung (tối thiểu 10 ký tự).'
+          : 'Vui lòng nhập lý do từ chối hồ sơ chi tiết (tối thiểu 10 ký tự).',
         'error',
       );
       return;
@@ -535,22 +535,22 @@ export default function KycApprovalPage() {
             </colgroup>
             <thead>
               <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5]">
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
+                <th className="px-2.5 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7D715E]">
                   Đối tác tiếp thị
                 </th>
                 <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
                   Định danh & liên hệ
                 </th>
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
+                <th className="px-2.5 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7D715E]">
                   Kênh truyền thông
                 </th>
                 <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
                   Hạng khởi điểm
                 </th>
-                <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
+                <th className="px-2.5 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7D715E]">
                   Trạng thái
                 </th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-[0.12em] text-[#7D715E]">
+                <th className="px-2.5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.08em] text-[#7D715E]">
                   Thao tác
                 </th>
               </tr>
@@ -580,7 +580,7 @@ export default function KycApprovalPage() {
                             u.avatar
                           )}
                         </span>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <div className="flex items-center gap-1.5 text-xs font-bold leading-5 text-[#1A1612]">
                             <span className="truncate" title={u.fullName}>
                               {u.fullName}
@@ -589,10 +589,10 @@ export default function KycApprovalPage() {
                               <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#059669]" />
                             )}
                           </div>
-                          <div className="flex items-center gap-1 text-[10px] text-[#7D715E]">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] text-[#7D715E]">
                             <span className="font-medium">{u.role}</span>
-                            <span>·</span>
-                            <span className="tabular-nums">{u.createdAt}</span>
+                            <span aria-hidden="true">·</span>
+                            <span className="tabular-nums break-words">{u.createdAt}</span>
                           </div>
                         </div>
                       </div>
@@ -1044,8 +1044,8 @@ export default function KycApprovalPage() {
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder={
                   reviewActionMode === 'NEEDS_INFO'
-                    ? 'Nhập thông tin cần đối tác chỉnh sửa hoặc bổ sung...'
-                    : 'Nhập lý do từ chối hồ sơ...'
+                    ? 'Nhập thông tin cần đối tác chỉnh sửa hoặc bổ sung (tối thiểu 10 ký tự)...'
+                    : 'Nhập lý do từ chối hồ sơ (tối thiểu 10 ký tự)...'
                 }
                 className={`w-full resize-none rounded-xl border bg-white p-2.5 text-xs text-[#1A1612] outline-none ${
                   reviewActionMode === 'NEEDS_INFO'
@@ -1053,6 +1053,11 @@ export default function KycApprovalPage() {
                     : 'border-rose-200 focus:border-rose-400'
                 }`}
               />
+              {rejectReason.trim().length > 0 && rejectReason.trim().length < 10 && (
+                <p className="text-[11px] font-medium text-[#DC2626]">
+                  Cần nhập tối thiểu 10 ký tự ({rejectReason.trim().length}/10).
+                </p>
+              )}
             </div>
           )}
 
@@ -1081,7 +1086,7 @@ export default function KycApprovalPage() {
                       : 'w-full sm:w-auto'
                   }
                   onClick={() => handleReviewKol(inspectProfile.id, reviewActionMode)}
-                  disabled={reviewKolMutation.isPending}
+                  disabled={reviewKolMutation.isPending || rejectReason.trim().length < 10}
                 >
                   {reviewKolMutation.isPending
                     ? 'Đang xử lý...'

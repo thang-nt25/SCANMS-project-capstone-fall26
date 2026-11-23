@@ -144,7 +144,7 @@ export default function AdminReferralLinksPage() {
       <div className="referral-summary-grid grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         <article className="flex items-center gap-3 min-w-0 p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-sm">
           <span className="hidden sm:grid place-items-center w-8.5 h-8.5 shrink-0 border border-[#EEDFC6] rounded-lg text-[#B88E4F] bg-white"><Link2 size={18} /></span>
-          <div><p className="text-[#7D715E] text-xs leading-relaxed">{search || statusFilter || channelFilter ? 'Liên kết phù hợp' : 'Liên kết trên sàn'}</p><strong className="block mt-1 text-2xl font-semibold tabular-nums text-[#1A1612]">{totalLinks.toLocaleString('vi-VN')}</strong></div>
+          <div><p className="text-[#7D715E] text-xs leading-relaxed">{search || statusFilter || channelFilter ? 'Liên kết phù hợp' : 'Liên kết trên hệ thống'}</p><strong className="block mt-1 text-2xl font-semibold tabular-nums text-[#1A1612]">{totalLinks.toLocaleString('vi-VN')}</strong></div>
         </article>
         <article className="flex items-center gap-3 min-w-0 p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-sm">
           <span className="hidden sm:grid place-items-center w-8.5 h-8.5 shrink-0 border border-[#EEDFC6] rounded-lg text-[#B88E4F] bg-white"><TrendingUp size={18} /></span>
@@ -196,7 +196,7 @@ export default function AdminReferralLinksPage() {
           <>
             <div className="referral-table-region" role="region" aria-label="Bảng liên kết tiếp thị">
               <table className="referral-links-table">
-                <caption className="sr-only">Liên kết tiếp thị trên sàn SCANMS</caption>
+                <caption className="sr-only">Liên kết tiếp thị trên hệ thống SCANMS</caption>
                 <colgroup><col style={{width:'15%'}}/><col style={{width:'25%'}}/><col style={{width:'17%'}}/><col style={{width:'10%'}}/><col style={{width:'7%'}}/><col style={{width:'5%'}}/><col style={{width:'11%'}}/><col style={{width:'10%'}}/></colgroup>
                 <thead className="bg-[#FAF8F5]"><tr>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Mã link</th>

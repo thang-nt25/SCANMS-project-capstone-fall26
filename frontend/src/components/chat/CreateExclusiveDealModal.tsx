@@ -180,7 +180,14 @@ export function CreateExclusiveDealModal({
     }
   };
 
-  const isEscalation = (Number(commissionRate) || 0) > 16;
+  const numRate = commissionRate === '' ? NaN : Number(commissionRate);
+  const numOrders = targetOrders === '' ? NaN : Number(targetOrders);
+  const numDays = commitmentDays === '' ? NaN : Number(commitmentDays);
+
+  const isRateInvalid = !Number.isFinite(numRate) || numRate < 11 || numRate > 25;
+  const isOrdersInvalid = !Number.isFinite(numOrders) || numOrders < 1 || numOrders > 10000;
+  const isDaysInvalid = !Number.isFinite(numDays) || numDays < 7 || numDays > 90;
+  const isEscalation = !isRateInvalid && numRate > 16;
 
   const inputClass = 'h-[42px] w-full rounded-lg border border-[#EAE4D7] bg-white px-3 pr-12 text-sm font-semibold tabular-nums outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10';
   const modalContent = (
@@ -233,7 +240,7 @@ export function CreateExclusiveDealModal({
         </div>
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] bg-white px-5 py-4">
           <div className="exclusive-deal-summary text-xs tabular-nums text-[#7D715E]">{selectedProductIds.length} sản phẩm · {commissionRate || 0}% · {targetOrders || 0} đơn · {commitmentDays || 0} ngày</div>
-          <div className="flex items-center gap-2"><button type="button" onClick={onClose} disabled={submitting} className="h-[42px] rounded-lg border border-[#EAE4D7] bg-white px-4 text-xs font-semibold hover:bg-[#FAF8F5] disabled:opacity-40">Quay lại</button><button type="button" onClick={handleSubmit} disabled={submitting || !selectedProductIds.length || loadingProducts} className="flex h-[42px] items-center justify-center gap-2 rounded-lg border border-[#B88E4F] bg-[#C59B58] px-5 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-40">{submitting ? <Loader2 size={15} className="animate-spin"/> : <Handshake size={16}/>}<span>{submitting?'Đang gửi…':'Gửi đề xuất'}</span></button></div>
+          <div className="flex items-center gap-2"><button type="button" onClick={onClose} disabled={submitting} className="h-[42px] rounded-lg border border-[#EAE4D7] bg-white px-4 text-xs font-semibold hover:bg-[#FAF8F5] disabled:opacity-40">Quay lại</button><button type="button" onClick={handleSubmit} disabled={submitting || !selectedProductIds.length || loadingProducts || isRateInvalid || isOrdersInvalid || isDaysInvalid} className="flex h-[42px] items-center justify-center gap-2 rounded-lg border border-[#B88E4F] bg-[#C59B58] px-5 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-40">{submitting ? <Loader2 size={15} className="animate-spin"/> : <Handshake size={16}/>}<span>{submitting?'Đang gửi…':'Gửi đề xuất'}</span></button></div>
         </footer>
       </div>
     </div>

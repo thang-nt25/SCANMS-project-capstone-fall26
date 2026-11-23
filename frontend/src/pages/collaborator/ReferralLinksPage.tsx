@@ -19,7 +19,7 @@ import {
   MousePointerClick,
   ShoppingBag,
   Layers,
-  Sparkles,
+  Handshake,
   X,
   Loader2,
   Store,
@@ -186,6 +186,18 @@ export default function ReferralLinksPage({
   const [deletingDealId, setDeletingDealId] = useState<string | null>(null);
   const [dealToDelete, setDealToDelete] = useState<any | null>(null);
 
+  const [dealStoreFilter, setDealStoreFilter] = useState<string>('ALL');
+  const dealStoreOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const deal of dealProposals) {
+      const sid = deal.storeId || deal.store?.id || 'unknown';
+      if (!map.has(sid)) {
+        map.set(sid, { id: sid, name: deal.store?.name || 'Cửa hàng đối tác' });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }, [dealProposals]);
+
   const dealStats = useMemo(() => {
     const total = dealProposals.length;
     const approved = dealProposals.filter((d) => d.status === 'APPROVED' && d.isCurrentDeal && !d.closedAt).length;
@@ -200,9 +212,29 @@ export default function ReferralLinksPage({
       const matchesGroup = dealFilter === 'ALL'
         || dealFilter === 'ACTIVE' && deal.status === 'APPROVED' && deal.isCurrentDeal && !deal.closedAt
         || dealFilter === 'PENDING' && (deal.status === 'PENDING' || deal.status === 'PENDING_ADMIN_APPROVAL');
-      return matchesGroup && normalize(`${deal.product?.title ?? ''} ${deal.store?.name ?? ''}`).includes(search);
+      const sid = deal.storeId || deal.store?.id || 'unknown';
+      const matchesStore = dealStoreFilter === 'ALL' || sid === dealStoreFilter;
+      return matchesGroup && matchesStore && normalize(`${deal.product?.title ?? ''} ${deal.store?.name ?? ''}`).includes(search);
     });
-  }, [dealProposals, dealFilter, dealSearch]);
+  }, [dealProposals, dealFilter, dealSearch, dealStoreFilter]);
+
+  const groupedVisibleDeals = useMemo(() => {
+    const groups = new Map<string, { storeId: string; storeName: string; items: any[] }>();
+    for (const deal of visibleDeals) {
+      const sid = deal.storeId || deal.store?.id || 'unknown';
+      const existing = groups.get(sid);
+      if (existing) {
+        existing.items.push(deal);
+      } else {
+        groups.set(sid, {
+          storeId: sid,
+          storeName: deal.store?.name || 'Cửa hàng đối tác',
+          items: [deal],
+        });
+      }
+    }
+    return Array.from(groups.values());
+  }, [visibleDeals]);
   const [customExpiresAt, setCustomExpiresAt] = useState<string>('');
   const [formChannel, setFormChannel] = useState<string>('TIKTOK');
   const [formLabel, setFormLabel] = useState('');
@@ -950,6 +982,39 @@ export default function ReferralLinksPage({
               <span>Mở Chat</span>
             </button>
         </div>
+        {dealStoreOptions.length > 1 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-2.5" role="group" aria-label="Lọc Deal theo cửa hàng">
+            <span className="text-[11px] font-semibold text-[#7D715E] mr-1">Cửa hàng:</span>
+            <button
+              type="button"
+              onClick={() => setDealStoreFilter('ALL')}
+              aria-pressed={dealStoreFilter === 'ALL'}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                dealStoreFilter === 'ALL'
+                  ? 'border-[#C59B58] bg-[#FBF5EB] text-[#855F2D] font-semibold'
+                  : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
+              }`}
+            >
+              Tất cả cửa hàng
+            </button>
+            {dealStoreOptions.map(st => (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => setDealStoreFilter(st.id)}
+                aria-pressed={dealStoreFilter === st.id}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                  dealStoreFilter === st.id
+                    ? 'border-[#C59B58] bg-[#FBF5EB] text-[#855F2D] font-semibold'
+                    : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
+                }`}
+              >
+                <Store className="h-3 w-3 text-[#B88E4F]" />
+                <span>{st.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {(
           <div id="kol-deal-list" className="kol-deal-content mt-4">
@@ -963,10 +1028,28 @@ export default function ReferralLinksPage({
                 Chưa có đề xuất. Bấm “Đề xuất Deal” để chọn sản phẩm.
               </p>
             ) : visibleDeals.length === 0 ? (
-              <p className="rounded-xl border border-[#EAE4D7] p-6 text-center text-sm text-[#7D715E]">{dealSearch.trim() ? 'Không có Deal phù hợp với tìm kiếm trong nhóm này.' : 'Chưa có Deal trong nhóm này.'}</p>
+              <p className="rounded-xl border border-[#EAE4D7] p-6 text-center text-sm text-[#7D715E]">{dealSearch.trim() || dealStoreFilter !== 'ALL' ? 'Không có Deal phù hợp với tìm kiếm trong nhóm này.' : 'Chưa có Deal trong nhóm này.'}</p>
             ) : (
-              <div className="kol-deal-grid grid grid-cols-1 gap-4 md:grid-cols-2">
-                {visibleDeals.map((deal) => (
+              <div className="space-y-5">
+                {groupedVisibleDeals.map((group) => {
+                  const activeCount = group.items.filter((d) => d.status === 'APPROVED' && d.isCurrentDeal && !d.closedAt).length;
+                  return (
+                    <section key={group.storeId} className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4">
+                      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAE4D7] pb-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#B88E4F]">
+                            <Store className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-bold text-[#1A1612] truncate m-0">{group.storeName}</h3>
+                            <p className="text-[11px] text-[#7D715E] m-0">
+                              {group.items.length} deal · {activeCount} đang áp dụng
+                            </p>
+                          </div>
+                        </div>
+                      </header>
+                      <div className="kol-deal-grid grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {group.items.map((deal) => (
                   <div
                     key={deal.id}
                     data-deal-status={deal.status}
@@ -1080,7 +1163,7 @@ export default function ReferralLinksPage({
                               onClick={() => openDealRevision(deal)}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-white text-xs font-bold text-[#B88E4F] hover:bg-[#FBF5EB] shadow-2xs transition shrink-0 cursor-pointer"
                             >
-                              <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" />
+                              <Handshake className="h-3.5 w-3.5 text-[#B88E4F]" />
                               <span>Điều chỉnh</span>
                             </button>
                           )}
@@ -1111,7 +1194,7 @@ export default function ReferralLinksPage({
                               onClick={() => openDealRevision(deal)}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-white text-xs font-bold text-[#B88E4F] hover:bg-[#FBF5EB] shadow-2xs transition cursor-pointer"
                             >
-                              <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" />
+                              <Handshake className="h-3.5 w-3.5 text-[#B88E4F]" />
                             <span>Điều chỉnh</span>
                             </button>
                           ) : deal.isCurrentDeal && dealProposals.some((item) => item.productId === deal.productId && item.status === 'PENDING') ? (
@@ -1178,7 +1261,11 @@ export default function ReferralLinksPage({
                       ) : null}
                     </div>
                   </div>
-                ))}
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1296,18 +1383,18 @@ export default function ReferralLinksPage({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] table-fixed text-left border-collapse">
+            <table className="w-full min-w-[820px] table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-white border-b border-[#EAE4D7] text-xs font-semibold text-[#7D715E]">
-                  <th className="w-[24%] py-3 px-3">
+                  <th className="w-[26%] py-3 px-2.5">
                     Sản phẩm &amp; Cửa hàng
                   </th>
-                  <th className="w-[20%] py-3 px-3">Link &amp; Kênh</th>
-                  <th className="py-3 px-2 text-center whitespace-nowrap">Ngày tạo</th>
-                  <th className="w-[13%] py-3 px-2 text-center whitespace-nowrap">Trạng thái</th>
-                  <th className="w-[10%] py-3 px-2 text-center whitespace-nowrap">Lượt nhấp</th>
-                  <th className="w-[7%] py-3 px-2 text-center whitespace-nowrap">Đơn hàng</th>
-                  <th className="w-[16%] py-3 px-3 text-center whitespace-nowrap">Thao tác</th>
+                  <th className="w-[18%] py-3 px-2">Link &amp; Kênh</th>
+                  <th className="w-[10%] py-3 px-1.5 text-center whitespace-nowrap">Ngày tạo</th>
+                  <th className="w-[13%] py-3 px-1.5 text-center whitespace-nowrap">Trạng thái</th>
+                  <th className="w-[9%] py-3 px-1.5 text-center whitespace-nowrap">Lượt nhấp</th>
+                  <th className="w-[8%] py-3 px-1.5 text-center whitespace-nowrap">Đơn hàng</th>
+                  <th className="w-[16%] py-3 px-2 text-center whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]/60 text-sm">
@@ -1443,7 +1530,7 @@ export default function ReferralLinksPage({
             <div className="kol-create-link-heading gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-[#EAE4D7] flex items-center justify-between bg-gradient-to-r from-white via-[#FAF8F5]/80 to-white flex-shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-[#F6EFE3] border border-[#DEBE85]/50 flex items-center justify-center text-[#B88E4F] shadow-2xs flex-shrink-0">
-                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <Link2 className="w-4 h-4 text-[#B88E4F]" />
                 </div>
                 <div>
                   <h3 id="create-link-title" className="text-base sm:text-lg font-bold text-[#1A1612] leading-tight flex items-center gap-1.5">
@@ -1881,7 +1968,7 @@ export default function ReferralLinksPage({
                           </>
                         ) : (
                           <>
-                            <Sparkles className="w-3.5 h-3.5" />
+                            <Link2 className="w-3.5 h-3.5" />
                             <span>Tạo link tiếp thị</span>
                           </>
                         )}
@@ -1983,9 +2070,43 @@ export default function ReferralLinksPage({
       <Modal isOpen={dealPickerOpen} onClose={() => setDealPickerOpen(false)} title="Chọn sản phẩm đề xuất Deal" stickyHeader maxWidth="2xl" className="kol-deal-product-picker">
         <input aria-label="Tìm sản phẩm đề xuất Deal" placeholder="Tìm sản phẩm, SKU, cửa hàng…" value={dealProductSearch} onChange={e => setDealProductSearch(e.target.value)} className="w-full h-11 px-3 mb-3 rounded-xl border border-[#EAE4D7] text-sm outline-none focus:border-[#C59B58]" />
         {loadingProducts ? <p className="text-sm text-[#7D715E] py-6 text-center">Đang tải sản phẩm…</p> : loadProductsError ? <p role="alert" className="text-sm text-red-600">{loadProductsError}</p> : <div className="kol-deal-picker-list overflow-y-auto rounded-xl border border-[#EAE4D7] divide-y divide-[#EAE4D7]">
-          {eligibleProducts.filter(product => `${product.title} ${product.sku} ${product.store.name}`.toLocaleLowerCase('vi-VN').includes(dealProductSearch.trim().toLocaleLowerCase('vi-VN'))).map(product => <button key={product.id} type="button" className="w-full flex items-center gap-3 p-3 text-left hover:bg-[#FBF5EB]" onClick={() => { setDealPickerOpen(false); openExclusiveDealDialog(product); }}>
-            <img src={getSafeProductImageUrl(product.imageUrl)} onError={handleProductImageError} alt="" className="size-12 shrink-0 rounded-lg border border-[#EAE4D7] object-contain" /><span className="min-w-0 flex-1"><strong className="block text-sm font-semibold line-clamp-2">{product.title}</strong><span className="block text-xs text-[#7D715E] mt-1">{product.store.name}</span></span><ChevronRight size={16} className="text-[#B88E4F] shrink-0" />
-          </button>)}
+          {eligibleProducts.filter(product => `${product.title} ${product.sku} ${product.store.name}`.toLocaleLowerCase('vi-VN').includes(dealProductSearch.trim().toLocaleLowerCase('vi-VN'))).map(product => {
+            const nowMs = Date.now();
+            const activeOrPendingDeal = dealProposals.find((d) => {
+              if (d.closedAt) return false;
+              const matchesProduct =
+                d.scopeType === 'STORE_WIDE' && d.storeId === product.store.id ||
+                d.productId === product.id ||
+                d.scopeProducts?.some((sp: any) => sp.productId === product.id);
+              if (!matchesProduct) return false;
+              if (d.status === 'PENDING' || d.status === 'PENDING_ADMIN_APPROVAL') return true;
+              if (d.status === 'APPROVED') return !d.commitmentEndsAt || new Date(d.commitmentEndsAt).getTime() > nowMs;
+              return false;
+            });
+            const isLocked = Boolean(activeOrPendingDeal);
+            return (
+              <button
+                key={product.id}
+                type="button"
+                disabled={isLocked}
+                className={`w-full flex items-center gap-3 p-3 text-left transition ${isLocked ? 'opacity-55 bg-[#FAF8F5] cursor-not-allowed' : 'hover:bg-[#FBF5EB] cursor-pointer'}`}
+                onClick={() => { if (!isLocked) { setDealPickerOpen(false); openExclusiveDealDialog(product); } }}
+              >
+                <img src={getSafeProductImageUrl(product.imageUrl)} onError={handleProductImageError} alt="" className="size-12 shrink-0 rounded-lg border border-[#EAE4D7] object-contain" />
+                <span className="min-w-0 flex-1">
+                  <strong className="block text-sm font-semibold line-clamp-2">{product.title}</strong>
+                  <span className="block text-xs text-[#7D715E] mt-1">{product.store.name}</span>
+                </span>
+                {isLocked ? (
+                  <span className="shrink-0 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#855F2D]">
+                    Đang có Deal
+                  </span>
+                ) : (
+                  <ChevronRight size={16} className="text-[#B88E4F] shrink-0" />
+                )}
+              </button>
+            );
+          })}
           {!eligibleProducts.length && <p className="text-sm text-[#7D715E] p-6 text-center">Chưa có sản phẩm phù hợp.</p>}
         </div>}
         {hasMoreEligibleProducts && <button type="button" disabled={loadingMoreProducts} onClick={() => void loadMoreEligibleProducts()} className="kol-create-link-button mt-3 w-full">{loadingMoreProducts ? 'Đang tải…' : 'Tải thêm sản phẩm'}</button>}

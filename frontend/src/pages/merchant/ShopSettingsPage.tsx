@@ -1,3 +1,4 @@
+import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, FileText, Loader2, MapPin, Pencil, Percent, Save, ShieldAlert, Store, Upload } from 'lucide-react';
@@ -8,7 +9,6 @@ import { uploadService } from '../../services/upload.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
-import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 import { StorefrontSettingsSection } from '../../components/stores/StorefrontSettingsSection';
 
 const tabs = [

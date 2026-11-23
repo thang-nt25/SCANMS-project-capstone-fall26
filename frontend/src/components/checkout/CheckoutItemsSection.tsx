@@ -96,7 +96,7 @@ function ShopVoucherRow({
                     }
                   }
                 }}
-                placeholder="Nhập mã KOC (VD: THAONHI16)"
+                placeholder="Nhập mã ưu đãi KOC"
                 className="flex-1 min-h-[40px] px-3.5 py-1.5 text-xs font-mono font-bold uppercase rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] placeholder:text-[#7D715E] placeholder:font-sans placeholder:normal-case focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 focus:outline-none transition-all shadow-2xs"
               />
               <button
@@ -222,7 +222,22 @@ export function CheckoutItemsSection({
 
             {/* Product Items */}
             <div className="checkout-shop-items px-4 sm:px-6 divide-y divide-[#EAE4D7]">
-              {group.items.map((item) => (
+              {(() => {
+                const shopDiscount = applied?.discountAmount || 0;
+                let allocatedDiscount = 0;
+                return group.items.map((item, idx) => {
+                  const itemSubtotal = item.price * item.quantity;
+                  let itemDiscount = 0;
+                  if (shopDiscount > 0 && group.subtotal > 0) {
+                    if (idx === group.items.length - 1) {
+                      itemDiscount = Math.max(0, shopDiscount - allocatedDiscount);
+                    } else {
+                      itemDiscount = Math.round((shopDiscount * itemSubtotal) / group.subtotal);
+                      allocatedDiscount += itemDiscount;
+                    }
+                  }
+                  const itemNetTotal = Math.max(0, itemSubtotal - itemDiscount);
+                  return (
                 <article
                   className="checkout-product-row grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_140px_90px_140px] items-center gap-3 sm:gap-4 py-4"
                   key={item.cartItemId}
@@ -261,16 +276,30 @@ export function CheckoutItemsSection({
                     ×{item.quantity}
                   </div>
 
-                  <div className="checkout-product-line-total flex items-center justify-between sm:justify-end gap-2 text-xs text-right tabular-nums">
-                    <span className="sm:hidden text-[#7D715E]">
-                      {formatMoney(item.price)} × {item.quantity}
-                    </span>
-                    <strong className="text-xs sm:text-[13px] font-black text-[#1A1612]">
-                      {formatMoney(item.price * item.quantity)}
-                    </strong>
+                  <div className="checkout-product-line-total flex flex-col items-end justify-center gap-0.5 text-xs text-right tabular-nums">
+                    <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-2">
+                      <span className="sm:hidden text-[#7D715E]">
+                        {formatMoney(item.price)} × {item.quantity}
+                      </span>
+                      <strong className={`text-xs sm:text-[13px] font-black ${itemDiscount > 0 ? 'line-through text-[#7D715E] font-medium' : 'text-[#1A1612]'}`}>
+                        {formatMoney(itemSubtotal)}
+                      </strong>
+                    </div>
+                    {itemDiscount > 0 && (
+                      <>
+                        <strong className="text-xs sm:text-[13px] font-black text-[#B45309]">
+                          {formatMoney(itemNetTotal)}
+                        </strong>
+                        <span className="text-[10px] font-medium text-[#059669]">
+                          Giảm mã KOC: −{formatMoney(itemDiscount)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </article>
-              ))}
+                  );
+                });
+              })()}
             </div>
 
             {/* MÃ ƯU ĐÃI CREATOR / KOC GẮN VỚI TỪNG SHOP */}
@@ -285,36 +314,51 @@ export function CheckoutItemsSection({
               onClearError={onClearCouponError}
             />
 
-            {/* Shop Footer: GHN Shipping & Shop Subtotal */}
-            <footer className="checkout-shop-footer flex items-center justify-between flex-wrap gap-2.5 px-4 sm:px-6 py-3 bg-[#FAF8F5]/60 border-t border-[#EAE4D7] text-xs text-[#7D715E]">
-              <span className="inline-flex items-center gap-2">
-                <Truck size={15} className="text-[#B88E4F] shrink-0" />
-                <span>Vận chuyển GHN:</span>
-                {shippingFees[group.store.id] !== undefined && (
-                  <strong className="font-bold text-[#1A1612]">
-                    {formatMoney(shippingFees[group.store.id])}
-                  </strong>
-                )}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span>
-                  Tiền hàng ({group.items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm):
-                </span>
-                {applied && applied.discountAmount > 0 ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="line-through text-[#7D715E] text-xs">
-                      {formatMoney(group.subtotal)}
-                    </span>
-                    <strong className="text-sm font-black text-[#B45309]">
-                      {formatMoney(Math.max(0, group.subtotal - applied.discountAmount))}
+            {/* Shop Footer: GHN Shipping, Shop Subtotal & Per-Shop Total */}
+            <footer className="checkout-shop-footer flex flex-col gap-2 px-4 sm:px-6 py-3 bg-[#FAF8F5]/60 border-t border-[#EAE4D7] text-xs text-[#7D715E]">
+              <div className="flex items-center justify-between flex-wrap gap-2.5">
+                <span className="inline-flex items-center gap-2">
+                  <Truck size={15} className="text-[#B88E4F] shrink-0" />
+                  <span>Vận chuyển GHN:</span>
+                  {shippingFees[group.store.id] !== undefined && (
+                    <strong className="font-bold text-[#1A1612] tabular-nums">
+                      {formatMoney(shippingFees[group.store.id])}
                     </strong>
+                  )}
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span>
+                    Tiền hàng ({group.items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm):
                   </span>
-                ) : (
-                  <strong className="text-sm font-bold text-[#1A1612]">
-                    {formatMoney(group.subtotal)}
+                  {applied && applied.discountAmount > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 tabular-nums">
+                      <span className="line-through text-[#7D715E] text-xs">
+                        {formatMoney(group.subtotal)}
+                      </span>
+                      <strong className="text-sm font-black text-[#B45309]">
+                        {formatMoney(Math.max(0, group.subtotal - applied.discountAmount))}
+                      </strong>
+                    </span>
+                  ) : (
+                    <strong className="text-sm font-bold text-[#1A1612] tabular-nums">
+                      {formatMoney(group.subtotal)}
+                    </strong>
+                  )}
+                </span>
+              </div>
+              {shippingFees[group.store.id] !== undefined && (
+                <div className="flex items-center justify-end gap-2 pt-1.5 border-t border-[#EAE4D7]/70">
+                  <span className="text-[11px] font-semibold text-[#7D715E]">
+                    Tổng thanh toán Shop ({group.store.name}):
+                  </span>
+                  <strong className="text-sm font-black text-[#1A1612] tabular-nums">
+                    {formatMoney(
+                      Math.max(0, group.subtotal - (applied?.discountAmount || 0)) +
+                        shippingFees[group.store.id],
+                    )}
                   </strong>
-                )}
-              </span>
+                </div>
+              )}
             </footer>
           </section>
         );

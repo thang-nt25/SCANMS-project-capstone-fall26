@@ -83,10 +83,10 @@ const defaultVipTerms = {
   budgetTotal: 1000000,
   validDays: 30,
 };
-type VipTerms = typeof defaultVipTerms;
 
 export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   // Main Tab: 'ACTIVE' | 'PENDING' | 'HISTORY'
+  const [voucherTermsById, setVoucherTermsById] = useState<Record<string, typeof defaultVipTerms>>({});
   const [activeSubTab, setActiveSubTab] = useState<'ACTIVE' | 'PENDING' | 'HISTORY'>('ACTIVE');
 
   // Active Deals Data
@@ -114,7 +114,6 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   // Processing & Terminate states
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [voucherTermsById, setVoucherTermsById] = useState<Record<string, VipTerms>>({});
   const [selectedDealToTerminate, setSelectedDealToTerminate] = useState<any | null>(null);
   const [terminateReason, setTerminateReason] = useState('KOL không đạt chỉ tiêu đơn hàng/doanh số sau chu kỳ cam kết');
   const [escalateDispute, setEscalateDispute] = useState(false);
@@ -409,9 +408,9 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                     key={item.id}
                     className="deal-proposal-card rounded-xl border border-[#EAE4D7] bg-white p-4 space-y-3"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0 flex items-center justify-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0 flex items-center justify-center">
                           {item.product?.imageUrl ? (
                             <img src={item.product.imageUrl} onError={handleProductImageError} alt="" className="w-full h-full object-cover" />
                           ) : (

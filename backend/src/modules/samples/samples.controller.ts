@@ -32,6 +32,7 @@ import {
   ReportSampleViolationDto,
   ShipSampleRequestDto,
   SubmitSampleVideoDto,
+  ReviewSampleVideoDto,
   AppealSampleRevisionDto,
 } from './dto/sample-request.dto';
 
@@ -256,6 +257,18 @@ export class SamplesController {
   ) {
     const userId = req.user?.id || req.user?.sub;
     return this.samplesService.shipRequest(id, userId, dto);
+  }
+
+  @Patch(':id/review-video')
+  @Roles('SHOP_MANAGER')
+  @ApiOperation({ summary: '[Shop] Nghiệm thu trực tiếp hoặc yêu cầu sửa video hàng mẫu' })
+  reviewVideo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReviewSampleVideoDto,
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.reviewVideoByShop(id, userId, dto);
   }
 
   @Post(':id/appeal')

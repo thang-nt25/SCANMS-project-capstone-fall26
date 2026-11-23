@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Ticket, Tag, Check, Clock3, AlertCircle, Copy, CheckCircle2, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Ticket, Tag, Check, Clock3, Copy, CheckCircle2, ExternalLink, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import { couponService, type DiscountType, type CouponScope } from '../../services/coupon.service';
+import { type DiscountType, type CouponScope } from '../../services/coupon.service';
 
 interface CouponProposalCardProps {
   card: {
@@ -34,32 +35,11 @@ export function CouponProposalCardBubble({
   isShop,
   activeConv,
 }: CouponProposalCardProps) {
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [discountValue, setDiscountValue] = useState<number>(
-    card.discountValue || card.discountPercent || card.desiredDiscount || 10
-  );
-  const [usageLimit, setUsageLimit] = useState<number>(card.usageLimit || 50);
-  const [minOrder, setMinOrder] = useState<number>(card.minimumOrderAmount || 150000);
-  const [validityDays] = useState<number>(card.validityDays || 30);
-  const [status, setStatus] = useState<string>(card.status || 'PENDING_APPROVAL');
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const currentUser = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('user') || 'null');
-    } catch {
-      return null;
-    }
-  })();
-  const effectiveStoreId =
-    card.storeId ||
-    activeConv?.storeId ||
-    activeConv?.store?.id ||
-    currentUser?.stores?.[0]?.id ||
-    currentUser?.storeId;
-  const isApproved = status === 'APPROVED' || card.type === 'COUPON_PROPOSAL_APPROVED';
+  const isApproved = card.status === 'APPROVED' || card.type === 'COUPON_PROPOSAL_APPROVED';
+  const officialPercent = card.discountValue || card.discountPercent;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(card.code);
@@ -67,53 +47,6 @@ export function CouponProposalCardBubble({
     toast.success(`Đã sao chép mã ${card.code}!`);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const handleNumericInput = (rawText: string, setter: (val: number) => void) => {
-    const digits = rawText.replace(/\D/g, '');
-    if (!digits) {
-      setter(0);
-      return;
-    }
-    const parsed = parseInt(digits, 10);
-    setter(Number.isNaN(parsed) ? 0 : parsed);
-  };
-
-
-
-  const handleApprove = async () => {
-    if (!effectiveStoreId || !card.couponId) {
-      setError('Thiếu thông tin mã hoặc cửa hàng để kích hoạt.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const expiresAt = validityDays > 0
-        ? new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000).toISOString()
-        : undefined;
-
-      await couponService.approveCoupon(effectiveStoreId, card.couponId, {
-        discountType: 'PERCENTAGE',
-        discountValue,
-        minimumOrderAmount: minOrder > 0 ? minOrder : undefined,
-        usageLimitTotal: usageLimit > 0 ? usageLimit : undefined,
-        usageLimitPerCustomer: 1,
-        expiresAt,
-        scopeType: 'STORE_WIDE',
-      });
-
-      setStatus('APPROVED');
-      setIsConfigOpen(false);
-      toast.success(`Đã kích hoạt thành công mã "${card.code}" giảm ${discountValue}%!`);
-    } catch (err: any) {
-      console.error('Lỗi duyệt mã coupon:', err);
-      setError(err?.response?.data?.message || 'Không thể kích hoạt mã lúc này.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const displayVal = card.discountValue || card.discountPercent || card.desiredDiscount || 15;
 
   return (
     <div className="w-[340px] max-w-full rounded-2xl border border-[#EEDFC6] bg-white text-[#1A1612] shadow-[0_3px_12px_rgba(35,29,21,0.03)] text-left overflow-hidden">
@@ -163,12 +96,12 @@ export function CouponProposalCardBubble({
         {/* Details grid */}
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
-            <span className="text-[10px] text-[#7D715E] block">Mức giảm đề xuất</span>
-            <strong className="text-sm font-bold text-[#B88E4F]">
-              {displayVal}%
+            <span className="text-[10px] text-[#7D715E] block">Mức giảm ưu đãi</span>
+            <strong className="text-xs font-bold text-[#B88E4F]">
+              {officialPercent ? `${officialPercent}%` : 'Shop thiết lập (3%–20%)'}
             </strong>
             <span className="text-[9.5px] text-[#7D715E] block mt-0.5">
-              Shop duyệt bảo vệ giá sàn
+              Phạm vi: Toàn cửa hàng
             </span>
           </div>
           <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
@@ -199,13 +132,6 @@ export function CouponProposalCardBubble({
             {card.note}
           </div>
         )}
-
-        {error && (
-          <div className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-200 flex items-center gap-1.5">
-            <AlertCircle size={13} className="shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
       </div>
 
       {/* Footer / Actions */}
@@ -216,110 +142,24 @@ export function CouponProposalCardBubble({
             <span>Mã đã kích hoạt · Khách áp dụng được ngay</span>
           </div>
         ) : isShop ? (
-          <div className="space-y-2">
-            {!isConfigOpen ? (
-              <button
-                type="button"
-                onClick={() => setIsConfigOpen(true)}
-                className="w-full min-h-[34px] px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <Tag size={14} />
-                <span>Cấu hình & Kích hoạt mã ngay</span>
-              </button>
-            ) : (
-              <div className="p-3 bg-white rounded-xl border border-[#EEDFC6] space-y-2.5 animate-in fade-in-50 duration-150">
-                <span className="text-[11px] font-bold text-[#1A1612] block">
-                  Thiết lập hạn mức % giảm chính thức:
-                </span>
-                <p className="text-[10px] text-[#7D715E] m-0">
-                  KOL kỳ vọng: <strong className="text-[#B88E4F]">{displayVal}%</strong>. Shop thẩm định bảo đảm trên Giá sàn (floorPrice).
-                </p>
-
-                {/* Percentage input & quick presets */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] text-[#7D715E] font-bold">% Giảm giá chính thức:</label>
-                    <span className="text-xs font-extrabold text-[#B88E4F]">{discountValue}%</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={discountValue === 0 ? '0' : (discountValue || '')}
-                      onChange={(e) => setDiscountValue(e.target.value === '' ? ('' as unknown as number) : Number(e.target.value))}
-                      className="w-18 p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold font-mono focus:border-[#C59B58] outline-none"
-                    />
-                    <div className="flex items-center gap-1.5 flex-1">
-                      {[5, 10].map((pct) => (
-                        <button
-                          key={pct}
-                          type="button"
-                          onClick={() => setDiscountValue(pct)}
-                          className={`flex-1 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border ${
-                            discountValue === pct
-                              ? 'bg-[#FBF5EB] border-[#C59B58] text-[#8C6226]'
-                              : 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E]'
-                          }`}
-                        >
-                          Giảm {pct}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Usage limit & Min order */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <label className="text-[10px] text-[#7D715E] block mb-0.5">Số lượt tối đa:</label>
-                    <input
-                      type="number"
-                      min={10}
-                      max={5000}
-                      value={usageLimit || ''}
-                      onChange={(e) => setUsageLimit(e.target.value === '' ? ('' as unknown as number) : Number(e.target.value))}
-                      onBlur={() => setUsageLimit((prev) => Math.max(10, Math.min(5000, Number(prev) || 100)))}
-                      className="w-full p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold focus:border-[#C59B58] outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#7D715E] block mb-0.5">Đơn tối thiểu (VNĐ):</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={minOrder ? String(minOrder) : ''}
-                      onChange={(e) => handleNumericInput(e.target.value, setMinOrder)}
-                      className="w-full p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold font-mono focus:border-[#C59B58] outline-none"
-                      placeholder="150000"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsConfigOpen(false)}
-                    className="flex-1 py-1.5 text-xs text-[#7D715E] hover:bg-[#FAF8F5] border border-[#EAE4D7] rounded-lg cursor-pointer"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={handleApprove}
-                    className="flex-1 py-1.5 text-xs font-bold bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] rounded-lg transition cursor-pointer disabled:opacity-50"
-                  >
-                    {loading ? 'Đang kích hoạt...' : 'Kích hoạt mã'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const target = card.couponId
+                ? `/merchant/promotions?tab=creator-incentives&reviewCouponId=${encodeURIComponent(card.couponId)}`
+                : '/merchant/promotions?tab=creator-incentives';
+              navigate(target);
+            }}
+            className="w-full min-h-[34px] px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <Tag size={14} />
+            <span>Xem chi tiết &amp; Xét duyệt</span>
+            <ExternalLink size={12} />
+          </button>
         ) : (
           <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E]">
             <Clock3 size={13} className="text-[#B88E4F] shrink-0" />
-            <span>Đã gửi đề xuất · Đang chờ Quản lý Cửa hàng kích hoạt hạn mức</span>
+            <span>Đã gửi đề xuất · Đang chờ Quản lý Cửa hàng xét duyệt &amp; gán %</span>
           </div>
         )}
       </footer>

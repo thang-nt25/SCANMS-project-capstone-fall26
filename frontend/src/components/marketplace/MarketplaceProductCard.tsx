@@ -2,8 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Heart, Minus, Plus, ShoppingCart, Store, X } from 'lucide-react';
 import type { Product } from '@/types/marketplace.types';
-import { formatMoney, handleProductImageError } from '@/utils/marketplace.utils';
-import { LiveSessionDealBadge } from '@/components/product/LiveSessionDealBadge';
+import { formatMoney, getSafeProductImageUrl, handleProductImageError } from '@/utils/marketplace.utils';
 import { StoreCooperationAction } from '../affiliate/StoreCooperationAction';
 import { getColourSizeOptions } from '@/utils/variant-choice';
 import { authService } from '@/services/auth.service';
@@ -13,13 +12,11 @@ interface Props {
   wished: boolean;
   onWishlist: () => void;
   onPurchase: (intent: 'cart' | 'buy', variantId?: string, quantity?: number) => void;
-  deal: React.ComponentProps<typeof LiveSessionDealBadge>['deal'];
-  now: number;
   choosing: boolean;
   onChoosingChange: (open: boolean) => void;
 }
 
-export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase, deal, now, choosing, onChoosingChange }: Props) {
+export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase, choosing, onChoosingChange }: Props) {
   const [variantId, setVariantId] = useState('');
   const setChoosing = onChoosingChange;
   const [intent, setIntent] = useState<'cart' | 'buy'>('cart');
@@ -78,9 +75,8 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
     <article className="group relative flex h-full min-w-0 flex-col rounded-2xl border border-[#EAE4D7] bg-white text-left transition duration-200 hover:border-[#EEDFC6] hover:shadow-[0_6px_20px_rgba(35,29,21,0.06)]">
       <div className="relative aspect-square overflow-hidden rounded-t-2xl bg-white">
         <Link to={`/products/${product.sku || product.id}`} className="block h-full w-full">
-          <img src={product.image} alt={product.name} loading="lazy" onError={handleProductImageError} className="h-full w-full object-contain p-3 transition motion-safe:group-hover:scale-[1.03]" />
+          <img src={getSafeProductImageUrl(product.image, product.name)} alt={product.name} loading="lazy" onError={handleProductImageError} className="h-full w-full object-contain p-3 transition motion-safe:group-hover:scale-[1.03]" />
         </Link>
-        <LiveSessionDealBadge deal={deal} now={now} />
         {product.origPrice > price && <span className="absolute left-2 top-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-bold text-[#8C6226]">−{Math.round((product.origPrice - price) / product.origPrice * 100)}%</span>}
         <button type="button" onClick={onWishlist} aria-label={wished ? `Bỏ lưu ${product.name}` : `Lưu ${product.name}`} aria-pressed={wished} className="group/wishlist absolute right-0.5 top-0.5 flex h-11 w-11 items-center justify-center rounded-full bg-transparent text-[#7D715E] hover:text-[#DC2626] focus-visible:outline-[#C59B58]">
           <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#DFD6C5] bg-white/95 shadow-[0_1px_4px_rgba(35,29,21,0.05)] transition-colors group-hover/wishlist:border-[#EEDFC6]"><Heart size={15} strokeWidth={1.7} className={wished ? 'fill-[#DC2626] text-[#DC2626]' : ''} /></span>
@@ -113,7 +109,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
         </div>
         <div className="max-h-[calc(100dvh-180px)] overflow-y-auto overscroll-contain px-5 py-4">
           <div className="mb-4 flex items-center gap-3">
-            <img src={product.image} alt="" onError={handleProductImageError} className="size-[72px] shrink-0 rounded-xl border border-[#EAE4D7] bg-white object-contain p-1" />
+            <img src={getSafeProductImageUrl(product.image, product.name)} alt="" onError={handleProductImageError} className="size-[72px] shrink-0 rounded-xl border border-[#EAE4D7] bg-white object-contain p-1" />
             <div className="min-w-0"><p className="m-0 line-clamp-2 text-sm font-semibold leading-5">{product.name}</p><strong className="mt-1 block text-lg tabular-nums text-[#B88E4F]">{formatMoney(price)}</strong></div>
           </div>
           {grouped ? <div className="space-y-3">

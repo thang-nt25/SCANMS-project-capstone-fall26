@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
 import { authService } from '../../services/auth.service';
-import { liveBroadcastService } from '@/services/live-broadcast.service';
 import { getNotificationSection } from '../../utils/notification-categories.utils';
 import { useChatNotifications } from '../../hooks/useChatNotifications';
 import { notificationTarget, localNotificationAction } from '../../utils/notification-target';
@@ -84,20 +83,6 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
     };
   }, [isOpen]);
 
-  const getLiveNotifications = useCallback((): AppNotification[] => {
-    const broadcasts = liveBroadcastService.getAllBroadcasts();
-    return broadcasts.map((b) => ({
-      id: b.id,
-      userId: 'current',
-      title: b.title,
-      message: `${b.storeName} • ${b.creatorName}: Đang livestream trực tiếp trợ giá cực sốc! ${b.discountText || 'Vào xem ngay'}`,
-      type: 'LIVE_SESSION_BROADCAST',
-      data: { sessionId: b.sessionId, liveUrl: b.liveUrl },
-      isRead: !!b.isRead,
-      createdAt: b.createdAt,
-    }));
-  }, []);
-
   const fetchUnreadCount = useCallback(async () => {
     const user = authService.getCurrentUser();
     let backendUnread = 0;
@@ -107,8 +92,8 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
       if (unreadCount === null) return;
       backendUnread = unreadCount;
     }
-    setUnreadCount(headerNotificationSnapshot(!!user, [], backendUnread, getLiveNotifications()).unreadCount);
-  }, [getLiveNotifications]);
+    setUnreadCount(headerNotificationSnapshot(!!user, [], backendUnread, []).unreadCount);
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     const requestId = ++listRequest.current;
@@ -131,19 +116,15 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
       }
       if (user?.id !== authService.getCurrentUser()?.id || requestId !== listRequest.current) return;
 
-      const snapshot = headerNotificationSnapshot(!!user, backendItems, backendUnread, getLiveNotifications());
-      const liveItems = user ? [] : snapshot.items;
+      const snapshot = headerNotificationSnapshot(!!user, backendItems, backendUnread, []);
       const deduplicatedBackend = user ? snapshot.items : [];
 
       let combined: AppNotification[] = [];
 
       if (activeTab === 'ALL') {
-        combined = [...liveItems, ...deduplicatedBackend];
+        combined = [...deduplicatedBackend];
       } else if (activeTab === 'PROMOTION') {
-        combined = [
-          ...liveItems,
-          ...deduplicatedBackend.filter((item) => getNotificationSection(item.type) === 'PROMOTION'),
-        ];
+        combined = deduplicatedBackend.filter((item) => getNotificationSection(item.type) === 'PROMOTION');
       } else {
         combined = deduplicatedBackend.filter(
           (item) => getNotificationSection(item.type) === activeTab,
@@ -156,7 +137,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
     } finally {
       if (requestId === listRequest.current) setLoading(false);
     }
-  }, [activeTab, getLiveNotifications]);
+  }, [activeTab]);
 
   useEffect(() => {
     const reset = () => {
@@ -175,40 +156,22 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
     return () => window.removeEventListener('auth-user-updated', reset);
   }, [fetchUnreadCount]);
 
-  const { soundOn, soundBlocked, toggleSound, unlockSound, playChime } = useChatNotifications(() => {
+  const { soundOn, soundBlocked, toggleSound, unlockSound } = useChatNotifications(() => {
     void fetchUnreadCount();
     if (isOpen) void fetchNotifications();
   });
 
   useEffect(() => {
     fetchUnreadCount();
-    // Tự động kiểm tra unread định kỳ mỗi 10 giây (khi hết giờ kết thúc phiên live, chuông lập tức hạ số)
-    const interval = setInterval(fetchUnreadCount, 10000);
-
-    // Lắng nghe sự kiện livestream phát sóng thời gian thực cho mọi Role
-    const handleNewLive = () => {
-      playChime();
-      void fetchNotifications();
-      void fetchUnreadCount();
-    };
-
-    const handleLiveRead = () => {
-      void fetchNotifications();
-      void fetchUnreadCount();
-    };
+    const interval = setInterval(fetchUnreadCount, 30000);
     const handleFocus = () => { void fetchUnreadCount(); };
-
-    window.addEventListener('scanms-new-live-broadcast', handleNewLive);
-    window.addEventListener('scanms-live-broadcast-read', handleLiveRead);
     window.addEventListener('focus', handleFocus);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('scanms-new-live-broadcast', handleNewLive);
-      window.removeEventListener('scanms-live-broadcast-read', handleLiveRead);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [fetchUnreadCount, fetchNotifications, playChime]);
+  }, [fetchUnreadCount]);
 
   useEffect(() => {
     if (isOpen) {
@@ -239,7 +202,6 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
       const saved = !userId || await notificationsService.markAllAsRead();
       if (userId !== authService.getCurrentUser()?.id) return;
       if (!saved) { toast.error('Chưa lưu được trạng thái đã đọc. Vui lòng thử lại.'); return; }
-      if (!userId) liveBroadcastService.markAllAsRead();
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } finally { setMarkingRead(false); }
@@ -248,13 +210,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
   const handleNotificationClick = async (notif: AppNotification) => {
     const recipientId = authService.getCurrentUser()?.id;
     if (!notif.isRead) {
-      const localLive = liveBroadcastService.getAllBroadcasts().some(item => item.id === notif.id);
-      let saved = true;
-      if (localLive) {
-        liveBroadcastService.markAsRead(notif.id);
-      } else {
-        saved = await notificationsService.markAsRead(notif.id);
-      }
+      const saved = await notificationsService.markAsRead(notif.id);
       if (recipientId !== authService.getCurrentUser()?.id) return;
       if (saved) {
         setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)));
@@ -266,44 +222,6 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
     if (notif.type === 'PRODUCT_REVIEW_REPORTED') {
       const role = authService.getCurrentUser()?.role;
       if (role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER') navigate(`/admin/customer-reviews?filter=PENDING&review=${encodeURIComponent(notif.data?.reviewId || '')}`);
-      return;
-    }
-
-    if (notif.type === 'LIVE_GOVERNANCE') {
-      const role = authService.getCurrentUser()?.role;
-      const sessionQuery = `session=${encodeURIComponent(notif.data?.sessionId || '')}`;
-      if (role === 'COLLABORATOR') navigate(`/collaborator/live-sessions?${sessionQuery}`);
-      else if (role === 'SHOP_MANAGER') navigate(`/merchant/live-sessions?${sessionQuery}`);
-      else if (role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER') navigate(`/admin/affiliate-oversight?tab=live-sessions&${sessionQuery}`);
-      return;
-    }
-
-    // 1. Live stream broadcast notification -> dẫn thẳng vào phòng livestream
-    if ((notif.type.startsWith('LIVE_') || notif.type.includes('LIVE')) && !notif.type.startsWith('LIVE_ORDER_')) {
-      const liveUrl = notif.data?.liveUrl;
-      if (liveUrl) {
-        if (/^https?:\/\//i.test(liveUrl)) {
-          try {
-            const urlObj = new URL(liveUrl);
-            if (urlObj.origin === window.location.origin) {
-              navigate(urlObj.pathname + urlObj.search);
-              return;
-            } else {
-              window.open(liveUrl, '_blank', 'noopener,noreferrer');
-              return;
-            }
-          } catch {
-            toast.info('Liên kết phiên Live không hợp lệ.');
-            return;
-          }
-        } else if (localNotificationAction(liveUrl)) {
-          navigate(localNotificationAction(liveUrl)!);
-          return;
-        }
-      }
-      const sessionId = notif.data?.sessionId || notif.data?.id;
-      if (sessionId) navigate(`/live/${encodeURIComponent(sessionId)}`);
-      else toast.info('Thông báo này chưa có liên kết phiên Live.');
       return;
     }
 

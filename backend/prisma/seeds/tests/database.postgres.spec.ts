@@ -195,9 +195,6 @@ integration('Prisma seeder on isolated PostgreSQL', () => {
         })
       ).status,
     ).toBe('SHOP_APPROVED');
-    await prisma.liveSessionViewer.create({
-      data: { sessionId: data.liveSessions[0].id!, clientId: 'actual-tester' },
-    });
     await prisma.$transaction((tx) => verifyPersistedCounts(tx, target, data));
   }, 120_000);
 

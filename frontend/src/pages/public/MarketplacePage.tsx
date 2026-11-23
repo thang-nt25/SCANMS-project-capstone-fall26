@@ -16,15 +16,11 @@ import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import type { Product } from '@/types/marketplace.types';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
-import { useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
-import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 import { MarketplaceHeader } from '../../components/marketplace/MarketplaceHeader';
 import { OrderTrackingShortcut } from '../../components/marketplace/OrderTrackingShortcut';
 import { QuickCustomerAuth } from '../../components/marketplace/QuickCustomerAuth';
 import { MarketplaceProductCard } from '../../components/marketplace/MarketplaceProductCard';
-import { LiveNowSection } from '../../components/marketplace/LiveNowSection';
 import { CategoryQuickNav } from '../../components/marketplace/CategoryQuickNav';
-import { SponsoredStores } from '../../components/marketplace/SponsoredStores';
 import { FeaturedStores } from '../../components/marketplace/FeaturedStores';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
 import { MarketplaceHero } from '../../components/marketplace/MarketplaceHero';
@@ -84,7 +80,6 @@ export default function MarketplacePage() {
     },
     staleTime: 1000 * 60 * 5,
   });
-  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(items.map((product) => product.id));
 
   const { data: featuredStores = [], isLoading: storesLoading, isError: storesFailed, refetch: retryStores } = useQuery<MarketplaceStore[]>({
     queryKey: ['marketplace-featured-stores'],
@@ -102,7 +97,6 @@ export default function MarketplacePage() {
   const { addItem, buyNow, cart, startCheckout } = useCart();
 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
 
   const [pendingPurchase, setPendingPurchase] = useState<{ productId: string; variantId?: string; intent: 'cart' | 'buy' } | null>(null);
 
@@ -237,17 +231,13 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-screen bg-[#f7f1e8] text-[#302317] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F]">
 
-      <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => setIsLiveModalOpen(true)} />
+      <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} />
 
-      <MarketplaceHero stores={marketplaceStores} onOpenLive={() => setIsLiveModalOpen(true)} />
+      <MarketplaceHero stores={marketplaceStores} />
 
       <CategoryQuickNav products={items} loading={loading} />
 
       <FeaturedStores stores={marketplaceStores} loading={storesLoading} failed={storesFailed} onRetry={() => void retryStores()} />
-
-      <SponsoredStores />
-
-      <LiveNowSection onOpenHub={() => setIsLiveModalOpen(true)} />
 
       {/* Dense commerce catalog with SCANMS affiliate information */}
       <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-36 bg-[#FAF8F5] py-7 text-left lg:py-9">
@@ -305,7 +295,6 @@ export default function MarketplacePage() {
                 choosing={choosingProductId === product.id}
                 onChoosingChange={open => setChoosingProductId(open ? product.id : null)}
                 onPurchase={(intent, variantId, quantity) => handlePurchase(product, intent, variantId, quantity)}
-                deal={liveDeals[product.id]} now={liveDealsNow}
               />
             ))}
           </div>
@@ -489,12 +478,6 @@ export default function MarketplacePage() {
       )}
 
       {pendingPurchase && <QuickCustomerAuth onClose={() => setPendingPurchase(null)} onSuccess={finishAuthentication} />}
-
-      {/* KOC LIVE COMMERCE PREVIEW MODAL */}
-      <LiveCommerceHubModal
-        isOpen={isLiveModalOpen}
-        onClose={() => setIsLiveModalOpen(false)}
-      />
 
     </div>
   );

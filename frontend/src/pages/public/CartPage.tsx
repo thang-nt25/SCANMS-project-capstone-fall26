@@ -272,11 +272,6 @@ export default function CartPage() {
                                   <strong className="text-sm font-semibold text-[#1A1612] tabular-nums">
                                     {formatMoney(item.price)}
                                   </strong>
-                                  {!!item.originalPrice && item.originalPrice > item.price && (
-                                    <del className="block text-[11px] text-[#7D715E] mt-0.5">
-                                      {formatMoney(item.originalPrice)}
-                                    </del>
-                                  )}
                                 </div>
                               </div>
 
@@ -349,7 +344,7 @@ export default function CartPage() {
 
             </div>
             {/* Cart checkout bar */}
-            <div className="sticky bottom-0 z-20 rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_-4px_24px_rgba(35,29,21,0.06)]">
+            <div className="sticky bottom-2 z-20 rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_-4px_24px_rgba(35,29,21,0.06)] lg:mr-36">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] px-4 py-3 sm:px-5 text-xs text-[#7D715E]">
                 <span>Mã độc quyền KOL được nhập ở bước thanh toán.</span>
                 <span>Phí vận chuyển tính theo địa chỉ nhận hàng.</span>
@@ -380,7 +375,7 @@ export default function CartPage() {
                 <button type="button" id="cart-checkout-btn" onClick={handleCheckout}
                   disabled={!selected.length || isValidatingStock || isCartSyncing}
                   className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl border border-[#EEDFC6] bg-[#C59B58] px-8 py-3 text-sm font-bold text-[#1A1612] hover:bg-[#B88E4F] disabled:bg-[#F3EFE6] disabled:text-[#7D715E] disabled:cursor-not-allowed transition-colors lg:min-w-48">
-                  Mua hàng {selectedCount > 0 && `(${selectedCount})`} <ArrowRight size={18} />
+                  {isValidatingStock || isCartSyncing ? 'Đang đồng bộ...' : <>Mua hàng {selectedCount > 0 && `(${selectedCount})`} <ArrowRight size={18} /></>}
                 </button>
               </div>
             </div>

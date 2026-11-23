@@ -11,7 +11,7 @@ type AdminAnalyticsTab = (typeof ADMIN_ANALYTICS_TABS)[number];
 
 export default function AdminAnalyticsHubPage() {
   const isAdmin = authService.getCurrentUser()?.role === 'SYSTEM_ADMIN';
-  const { activeTab, setActiveTab } = useControlledTab<AdminAnalyticsTab>({
+  const { activeTab, setActiveTab, visitedTabs } = useControlledTab<AdminAnalyticsTab>({
     defaultTab: 'realtime',
     validTabs: ADMIN_ANALYTICS_TABS,
   });
@@ -62,10 +62,13 @@ export default function AdminAnalyticsHubPage() {
 
   return (
     <div className="w-full min-w-0 text-[#1A1612]" id="admin-analytics-hub">
-      {activeTab === 'realtime' ? (
-        <RealtimeAnalyticsPage headerTabs={headerTabs} headerColumnCount={tabs.length} />
-      ) : activeTab === 'finance' && isAdmin ? (
-        <div className="flex flex-col gap-3">
+      {visitedTabs.realtime && (
+        <div className={activeTab === 'realtime' ? 'block' : 'hidden'}>
+          <RealtimeAnalyticsPage headerTabs={headerTabs} headerColumnCount={tabs.length} />
+        </div>
+      )}
+      {isAdmin && visitedTabs.finance && (
+        <div className={activeTab === 'finance' ? 'flex flex-col gap-3' : 'hidden'}>
           <div className="flex justify-end pt-1 pb-2">
             <div className="w-full">{headerTabs}</div>
           </div>
@@ -73,8 +76,9 @@ export default function AdminAnalyticsHubPage() {
             <ExecutiveFinanceReport />
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col gap-3">
+      )}
+      {visitedTabs.leaderboard && (
+        <div className={activeTab === 'leaderboard' ? 'flex flex-col gap-3' : 'hidden'}>
           <div className="w-full">{headerTabs}</div>
           <div className="w-full animate-in fade-in-50 duration-200">
             <LeaderboardPage alignToContainer />

@@ -36,7 +36,6 @@ import { AiModule } from './modules/ai/ai.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
-import { LiveSessionsModule } from './modules/live-sessions/live-sessions.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { ReturnModule } from './modules/returns/return.module';
 import { PricingModule } from './modules/pricing/pricing.module';
@@ -102,7 +101,6 @@ import { scheduleOptions } from './core/config/schedule.options';
     AuditModule,
     CustomerModule,
     NotificationsModule,
-    LiveSessionsModule,
     ShippingModule,
     ReturnModule,
     PricingModule,
