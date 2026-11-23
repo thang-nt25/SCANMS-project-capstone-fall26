@@ -8,8 +8,6 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SampleRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
-import { CacheService } from '../../core/cache/cache.service';
-import { Optional } from '@nestjs/common';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { MediaService } from '../media/media.service';
 import { GhnService } from '../shipping/ghn.service';
@@ -42,7 +40,6 @@ export class SamplesService {
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
     private readonly ghnService: GhnService,
-    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async getMyEligibility(collaboratorId: string) {
@@ -388,11 +385,8 @@ export class SamplesService {
   }
 
   async getRequestsForShop(shopOwnerId: string, status?: SampleRequestStatus, storeId?: string) {
-    const cacheKey = `samples:shop:${shopOwnerId}:${storeId || 'default'}:${status || 'ALL'}`;
-    if (this.cacheService) {
-      const cached = await this.cacheService.get(cacheKey);
-      if (cached) return cached;
-    }
+    // This is an action inbox. Approval, shipping and video review can change
+    // it outside this service/tab; always resolve current access and DB state.
     const store = await this.prisma.store.findFirst({
       where: { ...managedStoreWhere(shopOwnerId), ...(storeId ? { id: storeId } : {}) },
       select: { id: true },
@@ -403,9 +397,6 @@ export class SamplesService {
       orderBy: { createdAt: 'desc' },
       include: this.includeRelations(),
     });
-    if (this.cacheService) {
-      await this.cacheService.set(cacheKey, list, 30);
-    }
     return list;
   }
 
@@ -461,6 +452,8 @@ export class SamplesService {
 
   async approveRequest(requestId: string, shopOwnerId: string) {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
+    // A repeated click or a lost response must not allocate another sample.
+    if (req.status === SampleRequestStatus.APPROVED) return req;
     if (req.status !== SampleRequestStatus.PENDING) {
       throw new BadRequestException(
         `Không thể duyệt yêu cầu đang ở trạng thái ${req.status}.`,

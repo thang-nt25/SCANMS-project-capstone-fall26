@@ -77,3 +77,16 @@ test('abort identity and network error codes survive normalization', async () =>
   api.defaults.adapter = async config => { throw new axios.AxiosError('Offline', 'ERR_NETWORK', config); };
   await assert.rejects(api.post('/coupons/validate', {}), error => error.code === 'ERR_NETWORK');
 });
+
+test('sample inbox, badges and customer sample state always refresh after another actor changes them', async () => {
+  apiCache.clear();
+  values.set('token', 'sample-owner');
+  for (const path of ['/sample-requests/shop', '/sample-requests/shop/stats', '/sample-requests/my']) {
+    let status = 'PENDING', calls = 0;
+    api.defaults.adapter = async config => { calls++; return response(config, { status }); };
+    assert.deepEqual(await api.get(path), { status: 'PENDING' });
+    status = 'APPROVED';
+    assert.deepEqual(await api.get(path), { status: 'APPROVED' });
+    assert.equal(calls, 2);
+  }
+});

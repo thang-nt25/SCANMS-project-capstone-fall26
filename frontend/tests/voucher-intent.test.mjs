@@ -7,13 +7,13 @@ const source = readFileSync(new URL('../src/utils/voucher-intent.ts', import.met
 const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext } }).outputText;
 const { voucherSlot, voucherProductUrl } = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
 
-test('platform-funded shipping must use the shipping slot, not platform goods', () => {
-  assert.equal(voucherSlot({ fundingSource: 'PLATFORM_FUNDED', benefitType: 'SHIPPING' }), 'SHIPPING');
+test('retired shipping discounts cannot select a checkout slot', () => {
+  assert.equal(voucherSlot({ fundingSource: 'PLATFORM_FUNDED', benefitType: 'SHIPPING' }), null);
 });
-test('platform goods and shop goods are routed to separate validation APIs', () => {
-  assert.equal(voucherSlot({ fundingSource: 'PLATFORM_FUNDED', benefitType: 'GOODS' }), 'PLATFORM');
+test('only Shop-funded KOL goods codes can select validation', () => {
+  assert.equal(voucherSlot({ fundingSource: 'PLATFORM_FUNDED', benefitType: 'GOODS' }), null);
   assert.equal(voucherSlot({ fundingSource: 'SHOP_FUNDED', benefitType: 'GOODS' }), 'SHOP');
-  assert.equal(voucherSlot({ fundingSource: 'CO_FUNDED', benefitType: 'GOODS' }), 'SHOP');
+  assert.equal(voucherSlot({ fundingSource: 'CO_FUNDED', benefitType: 'GOODS' }), null);
 });
 test('legacy coupons without funding metadata retain shop validation', () => {
   assert.equal(voucherSlot({}), 'SHOP');

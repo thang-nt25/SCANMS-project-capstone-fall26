@@ -77,12 +77,14 @@ describe('GHN customer order notifications', () => {
       product: { title: 'Sample', price: 100000, packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5, store: { id: 'store-1', ownerId: 'shop-1', name: 'Shop', onboardingData: { warehouseAddress: 'Actual warehouse', contactPhone: '0987654321' }, returnWarehouse: {} } },
     };
     const tx = {
+      store: { findFirst: jest.fn().mockResolvedValue(null) },
       sampleProductRequest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUnique: jest.fn().mockResolvedValue(sample) },
       sampleRequestEvent: { create: jest.fn() }, notification: { create: jest.fn() },
       sampleShippingCharge: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
       $executeRaw: jest.fn(),
     };
     const prisma = {
+      store: tx.store,
       sampleProductRequest: { findUnique: jest.fn().mockResolvedValue(sample) },
       $transaction: jest.fn((callback: any) => callback(tx)),
     };
@@ -222,6 +224,15 @@ describe('GHN customer order notifications', () => {
     const fetch = jest.spyOn(service as any, 'ghnFetch');
     await expect(service.createSampleShippingOrder('sample-1', 'another-owner')).rejects.toThrow('không quản lý');
     expect(fetch).not.toHaveBeenCalled(); expect(tx.sampleShippingCharge.create).not.toHaveBeenCalled();
+  });
+
+  it('allows an active assigned manager to ship a sample owned by the internal Admin', async () => {
+    const { service, prisma, tx } = sampleShippingFixture();
+    prisma.store.findFirst.mockResolvedValue({ id: 'store-1' } as any);
+    jest.spyOn(service as any, 'ghnFetch').mockResolvedValue({ code: 200, data: { order_code: 'STAFF-TEST', total_fee: 21000 } });
+    await expect(service.createSampleShippingOrder('sample-1', 'assigned-manager', GhnEnvironment.TEST)).resolves.toMatchObject({ trackingNumber: 'STAFF-TEST', testOnly: true });
+    expect(tx.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'store-1', OR: expect.arrayContaining([expect.objectContaining({ staffMembers: expect.any(Object) })]) }) }));
+    expect(tx.sampleProductRequest.updateMany).not.toHaveBeenCalled();
   });
 
   it.each([undefined, null, -1, NaN, Infinity, '25000', false])('rejects an invalid GHN checkout quote %p', async (total) => {

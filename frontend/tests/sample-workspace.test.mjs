@@ -37,6 +37,8 @@ test('sandbox overlays affect only test shipments without changing authoritative
   assert.equal(request.status, 'APPROVED');
   assert.equal(withSampleSandboxState(request, { ...state, status: 'OVERDUE' }).status, 'OVERDUE');
   assert.equal(withSampleSandboxState(request, { ...state, videoUrl: 'https://tiktok.com/video' }).status, 'VIDEO_SUBMITTED');
+  assert.equal(withSampleSandboxState(request, { ...state, videoUrl: 'https://tiktok.com/video', status: 'REVISION_REQUIRED' }).status, 'REVISION_REQUIRED');
+  assert.equal(withSampleSandboxState(request, { ...state, videoUrl: 'https://tiktok.com/video', status: 'COMPLETED' }).status, 'COMPLETED');
   const live = { ...request, trackingNumber: 'LIVE123', status: 'SHIPPED' };
   assert.equal(sampleSandboxCode(live), null);
   assert.equal(withSampleSandboxState(live, state), live);

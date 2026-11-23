@@ -68,7 +68,7 @@ export const apiCache = {
     // Balances, delivery state, conversations and voucher quotas change outside this tab.
     // Also covers nested endpoints such as /stores/:id/payouts and signed bill URLs.
     // Money, order state, messages and coupon limits can change in another session.
-    if (/\/(?:wallets|payouts|orders|chat\/conversations|coupons)(?:\/|$)/.test(url)) return false;
+    if (/\/(?:wallets|payouts|orders|chat\/conversations|coupons|sample-requests)(?:\/|$)/.test(url)) return false;
     // Không cache các endpoint auth hoặc nhạy cảm payment execution
     if (
       url.includes('/auth/') ||

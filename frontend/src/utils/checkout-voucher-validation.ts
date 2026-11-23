@@ -16,29 +16,21 @@ interface ValidationOptions {
 /** Preview only: never claims a voucher, creates an order or spends its quota. */
 export async function validateCheckoutVoucher(post: Post, options: ValidationOptions): Promise<Applied & { slot: VoucherSlot }> {
   const code = options.code.trim().toUpperCase();
+  if (options.slot && options.slot !== 'SHOP')
+    throw new Error('Chỉ hỗ trợ mã ưu đãi độc quyền KOL cho tiền hàng.');
   const groups = options.groups.filter(group => !options.storeId || group.store.id === options.storeId);
   if (!code || !groups.length) throw new Error('Vui lòng chọn sản phẩm trước khi áp dụng voucher.');
   let lastMessage = 'Voucher không áp dụng được cho sản phẩm trong đơn.';
-  for (const slot of options.slot ? [options.slot] : ['SHOP', 'PLATFORM', 'SHIPPING'] as const) {
+  for (const slot of ['SHOP'] as const) {
     for (const group of groups) {
       try {
-        const shop = options.shopDiscounts[group.store.id];
-        const response: any = await post(slot === 'SHOP' ? '/coupons/validate' : '/coupons/preview-stacked', {
+        const response: any = await post('/coupons/validate', {
           code, storeId: group.store.id, customerPhone: options.customerPhone?.trim() || undefined,
-          ...(slot === 'SHOP' ? {
             items: group.items.map(item => ({ productId: item.productId, variantId: item.variantId || undefined, quantity: item.quantity })),
-          } : {
-            benefitType: slot === 'SHIPPING' ? 'SHIPPING' : 'GOODS',
-            goodsSubtotal: group.subtotal,
-            shippingFee: options.shippingFees[group.store.id] || 0,
-            shopDiscount: shop?.discountAmount || 0,
-            shopCouponCode: shop?.code,
-          }),
         });
         const result = response?.data?.data ?? response?.data ?? response;
         const amount = Number(result?.discountAmount);
-        const base = slot === 'SHIPPING' ? options.shippingFees[group.store.id] || 0 : group.subtotal;
-        if ((slot === 'SHOP' && result?.valid !== true) || !Number.isFinite(amount) || amount <= 0 || amount > base) {
+        if (result?.valid !== true || !Number.isFinite(amount) || amount <= 0 || amount > group.subtotal) {
           throw new Error(result?.message || 'Voucher chưa đạt điều kiện áp dụng.');
         }
         return { slot, code: result.code || code, discountAmount: amount, discountType: result.discountType,

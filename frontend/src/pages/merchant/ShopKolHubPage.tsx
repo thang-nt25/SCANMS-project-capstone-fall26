@@ -22,7 +22,6 @@ import {
   Truck,
   CheckCircle2,
   Clock,
-  Video,
   Plus,
   Copy,
   Check,
@@ -53,6 +52,8 @@ import { vi } from 'date-fns/locale';
 import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
 import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineExtension';
 import ShopActiveDealsTab from '../../components/affiliate/ShopActiveDealsTab';
+import { pendingSampleVideo } from '../../utils/sample-video';
+import { useSandboxSampleStates } from '../../components/shipping/useSandboxSampleState';
 
 function formatConvTime(dateStr?: string | null) {
   if (!dateStr) return '';
@@ -329,6 +330,7 @@ export default function ShopKolHubPage() {
 
   const isMountedRef = useRef(true);
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -345,6 +347,8 @@ export default function ShopKolHubPage() {
   const sampleLoadSequence = useRef(0);
   const [loadingBackendData, setLoadingBackendData] = useState(() => !lastShopKolHubSnapshot);
   const [sampleFilter, setSampleFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'REVISION_REQUIRED' | 'OVERDUE' | 'DELIVERY_ISSUE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'>('ALL');
+  const sampleDecisionsRef = useRef(new Set<string>());
+  const [processingSampleIds, setProcessingSampleIds] = useState<string[]>([]);
   const [trackingModalItem, setTrackingModalItem] = useState<SampleRequestItem | null>(null);
   const [sampleShippingError, setSampleShippingError] = useState('');
   const [sampleGhnEnvironment, setSampleGhnEnvironment] = useState<'LIVE' | 'TEST'>('LIVE');
@@ -448,7 +452,7 @@ export default function ShopKolHubPage() {
     try {
 // 1. Fetch conversations, sample requests, and store members in parallel
       const [sampleRes, statsRes, convsRes, membersRes]: [any, any, any, any] = await Promise.all([
-        api.get('/sample-requests/shop').catch(() => []),
+        api.get('/sample-requests/shop', { headers: { 'x-skip-cache': '1' } }),
         api.get('/sample-requests/shop/stats').catch(() => null),
         api.get('/chat/conversations').catch(() => []),
         api.get('/store-collaborators/shop').catch(() => ({})),
@@ -646,6 +650,7 @@ export default function ShopKolHubPage() {
       } catch {
         dbKols = [];
       }
+      if (!isMountedRef.current || sequence !== sampleLoadSequence.current) return;
 
       // 4. Load active conversations with collaborators (real chat history)
       const convsList = Array.isArray(convsRes) ? convsRes : convsRes?.data || [];
@@ -775,7 +780,7 @@ export default function ShopKolHubPage() {
       setTrackingModalItem(null);
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && sequence === sampleLoadSequence.current) {
         setLoadingBackendData(false);
       }
     }
@@ -883,11 +888,17 @@ return true;
   }, [allPlatformKols, kols, leaderSearch, leaderTier, leaderSort]);
 
   // Selected KOL Samples
+  const sandboxStates = useSandboxSampleStates((samplesMap[selectedKol?.id] || []).flatMap(sample =>
+    isSandboxShipment(sample) ? [sample.shippingCharges!.find(charge => charge.environment === 'TEST')!.trackingNumber] : [],
+  ));
+  const displaySampleStatus = useCallback((sample: SampleRequestItem) => sampleDisplayStatus(sample,
+    sandboxStates[sample.shippingCharges?.find(charge => charge.environment === 'TEST')?.trackingNumber || '']?.state,
+  ), [sandboxStates]);
   const currentKolSamples = useMemo(() => {
     const list = samplesMap[selectedKol?.id] || [];
     if (sampleFilter === 'ALL') return list;
-    return list.filter((s) => sampleDisplayStatus(s) === sampleFilter);
-  }, [samplesMap, selectedKol, sampleFilter]);
+    return list.filter((s) => displaySampleStatus(s) === sampleFilter);
+  }, [samplesMap, selectedKol, sampleFilter, displaySampleStatus]);
 
   const pendingSampleCount = kols.reduce((total, kol) => total + Math.max(
     (samplesMap[kol.id] || []).filter(sample => sample.status === 'PENDING').length,
@@ -966,21 +977,24 @@ return true;
 
   // Handler: Approve Sample Request
   const handleApproveSample = async (sampleId: string) => {
+    if (sampleDecisionsRef.current.has(sampleId)) return;
+    sampleDecisionsRef.current.add(sampleId);
+    setProcessingSampleIds([...sampleDecisionsRef.current]);
     try {
       await api.patch(`/sample-requests/${sampleId}/approve`, {});
+      // Ignore a list request started before this successful decision.
+      sampleLoadSequence.current++;
+      setSamplesMap((previous) => Object.fromEntries(Object.entries(previous).map(([kolId, items]) => [
+        kolId, items.map(item => item.id === sampleId ? { ...item, status: 'APPROVED' as const } : item),
+      ])));
       toast.success('Đã duyệt đơn gửi hàng mẫu cho KOL!');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể duyệt yêu cầu mẫu.');
-      return;
+    } finally {
+      await loadBackendData();
+      sampleDecisionsRef.current.delete(sampleId);
+      if (isMountedRef.current) setProcessingSampleIds([...sampleDecisionsRef.current]);
     }
-
-    setSamplesMap((prev) => {
-      const copy = { ...prev };
-      Object.keys(copy).forEach((k) => {
-        copy[k] = copy[k].map((item) => (item.id === sampleId ? { ...item, status: 'APPROVED' } : item));
-      });
-      return copy;
-    });
   };
 
   // Handler: Reject Sample Request
@@ -1005,21 +1019,28 @@ return true;
   };
 
   const handleReviewSampleVideo = async (sample: SampleRequestItem, status: 'APPROVED' | 'REJECTED') => {
-    const asset = sample.videoAssets?.find((item) => item.status === 'PENDING');
+    const asset = pendingSampleVideo(sample);
     if (!asset) {
       toast.error('Không tìm thấy video đang chờ kiểm duyệt.');
       return;
     }
+    if (sampleDecisionsRef.current.has(sample.id)) return;
     const rejectionReason = status === 'REJECTED'
       ? window.prompt('Nhập lý do cần chỉnh sửa video:')?.trim()
       : undefined;
     if (status === 'REJECTED' && !rejectionReason) return;
+    sampleDecisionsRef.current.add(sample.id);
+    setProcessingSampleIds([...sampleDecisionsRef.current]);
     try {
       await api.patch(`/media/${asset.id}/review`, { status, rejectionReason });
+      sampleLoadSequence.current++;
       toast.success(status === 'APPROVED' ? 'Đã nghiệm thu video và hoàn tất yêu cầu mẫu.' : 'Đã gửi yêu cầu chỉnh sửa video cho KOL.');
       await loadBackendData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể cập nhật kết quả kiểm duyệt video.');
+    } finally {
+      sampleDecisionsRef.current.delete(sample.id);
+      if (isMountedRef.current) setProcessingSampleIds([...sampleDecisionsRef.current]);
     }
   };
 
@@ -2260,7 +2281,7 @@ return true;
                   <div className="kol-sample-filterbar">
                     <div className="contents">
                       {([{value:'ALL',label:'Tất cả'}, {value:'PENDING',label:'Chờ duyệt mẫu'}, {value:'VIDEO_SUBMITTED',label:'Chờ duyệt video'}] as const).map((filter) => (
-                        <button key={filter.value} type="button" onClick={() => setSampleFilter(filter.value)} aria-pressed={sampleFilter === filter.value} className={
+                        <button key={filter.value} data-sample-filter={filter.value} type="button" onClick={() => setSampleFilter(filter.value)} aria-pressed={sampleFilter === filter.value} className={
                           'flex h-9 min-w-0 items-center justify-center whitespace-nowrap rounded-lg px-2 text-[11px] font-semibold transition ' + (sampleFilter === filter.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')
                         }>{filter.label}<span className="ml-1.5 text-[11px]">{(samplesMap[selectedKol.id] || []).filter((sample) => filter.value === 'ALL' || sampleDisplayStatus(sample) === filter.value).length}</span></button>
                       ))}
@@ -2300,6 +2321,7 @@ return true;
                       {currentKolSamples.map((item) => (
                         <div
                           key={item.id}
+                          data-sample-request-id={item.id}
                           className="group rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-[0_3px_14px_rgba(35,29,21,0.035)] transition-all hover:border-[#D8BD91] hover:shadow-[0_6px_20px_rgba(35,29,21,0.06)] sm:p-4"
                         >
                           <div className="flex flex-col items-stretch justify-between gap-3">
@@ -2389,6 +2411,7 @@ return true;
                                 <>
                                   <button
                                     type="button"
+                                    disabled={processingSampleIds.includes(item.id) || loadingBackendData}
                                     onClick={() => handleRejectSample(item.id)}
                                     className="px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
                                   >
@@ -2396,10 +2419,11 @@ return true;
                                   </button>
                                   <button
                                     type="button"
+                                    disabled={processingSampleIds.includes(item.id) || loadingBackendData}
                                     onClick={() => handleApproveSample(item.id)}
                                     className="px-4 py-2 rounded-xl text-xs font-bold text-[#231D15] bg-[#C59B58] hover:bg-[#B88E4F] transition shadow-xs cursor-pointer"
                                   >
-                                    Duyệt mẫu
+                                    {processingSampleIds.includes(item.id) ? 'Đang duyệt…' : 'Duyệt mẫu'}
                                   </button>
                                 </>
                               )}
@@ -2424,29 +2448,20 @@ return true;
                                 </span>
                               )}
 
-                              {item.reviewVideoUrl && (
-                                <a
-                                  href={item.reviewVideoUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="px-4 py-2 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition flex items-center gap-1.5"
-                                >
-                                  <Video className="w-3.5 h-3.5" />
-                                  Xem video
-                                </a>
-                              )}
                               {item.status === 'VIDEO_SUBMITTED' && (
                                 <>
                                   <button
                                     type="button"
                                     onClick={() => handleReviewSampleVideo(item, 'REJECTED')}
-                                    className="px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+                                    disabled={loadingBackendData || processingSampleIds.includes(item.id) || !pendingSampleVideo(item)}
+                                    className="px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                   >Yêu cầu sửa</button>
                                   <button
                                     type="button"
                                     onClick={() => handleReviewSampleVideo(item, 'APPROVED')}
-                                    className="px-3 py-2 rounded-xl text-xs font-bold text-[#231D15] bg-[#C59B58] hover:bg-[#B88E4F] transition cursor-pointer"
-                                  >Nghiệm thu video</button>
+                                    disabled={loadingBackendData || processingSampleIds.includes(item.id) || !pendingSampleVideo(item)}
+                                    className="px-3 py-2 rounded-xl text-xs font-bold text-[#231D15] bg-[#C59B58] hover:bg-[#B88E4F] transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                  >{processingSampleIds.includes(item.id) ? 'Đang xử lý...' : 'Nghiệm thu video'}</button>
                                 </>
                               )}
                             </div>

@@ -32,6 +32,13 @@ export type {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Product photos/stock labels can refresh without changing the persisted basket.
+const cartSyncKey = (items: CartItem[]) => JSON.stringify(items.map((item) => ({
+  productId: item.productId,
+  variantId: normalizeOrderVariantId(item.variantId),
+  quantity: item.quantity,
+})).sort((a, b) => `${a.productId}:${a.variantId || 'base'}`.localeCompare(`${b.productId}:${b.variantId || 'base'}`)));
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const getInitialUserId = () => localStorage.getItem('token') ? authService.getCurrentUser()?.id || null : null;
   const [activeUserId, setActiveUserId] = useState<string | null>(getInitialUserId);
@@ -45,7 +52,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
-  const [checkoutCouponCode, setCheckoutCouponCode] = useState<string>('');
   const [isValidatingStock, setIsValidatingStock] = useState(false);
   const [isCartSyncing, setIsCartSyncing] = useState(false);
   const [cartSyncedAt, setCartSyncedAt] = useState<string | null>(null);
@@ -57,6 +63,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadingUserRef = useRef<string | null>(null);
   const authRevisionRef = useRef(0);
   const sessionRef = useRef<CartSessionRequest | null>(null);
+  const lastSyncedCartRef = useRef<string | null>(null);
+  const syncFailureNotifiedRef = useRef(false);
   cartRef.current = cart;
   selectedRef.current = selectedItemIds;
 
@@ -75,6 +83,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionController = new AbortController();
       const session = nextId && token ? { token, signal: sessionController.signal } : null;
       sessionRef.current = session;
+      lastSyncedCartRef.current = null;
+      syncFailureNotifiedRef.current = false;
       const revision = ++authRevisionRef.current;
       const isCurrent = () => mounted && userIdRef.current === nextId && authRevisionRef.current === revision &&
         localStorage.getItem('token') === token && !session?.signal.aborted;
@@ -86,7 +96,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (previousId) {
           setIsCheckoutOpen(false);
           setCheckoutItems([]);
-          setCheckoutCouponCode('');
           localStorage.removeItem(PENDING_CHECKOUT_KEY);
         }
       }
@@ -125,6 +134,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsCartSyncing(true);
       void customerService.getCart(session).then(async (remote) => {
         if (!isCurrent()) return;
+        lastSyncedCartRef.current = cartSyncKey(remote.items || []);
         const account = mergeCartItems(remote.items || [], accountCache);
         const combined = mergeCartItems(account, guest, true);
         const next = mergeCartItems(combined, cartRef.current);
@@ -143,11 +153,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hydratedUserRef.current = nextId;
         localStorage.setItem(CART_OWNER_KEY, nextId);
         setCartSyncedAt(remote.syncedAt || new Date().toISOString());
-        if (guest.length || accountCache.length) {
+        if ((guest.length || accountCache.length) && cartSyncKey(next) !== lastSyncedCartRef.current) {
           const synced = await customerService.syncCart(next.map((item) => ({
             productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity,
           })), session);
-          if (isCurrent()) setCartSyncedAt(synced.syncedAt || new Date().toISOString());
+          if (isCurrent()) {
+            lastSyncedCartRef.current = cartSyncKey(next);
+            setCartSyncedAt(synced.syncedAt || new Date().toISOString());
+          }
         }
       }).catch(() => {
         // The staged account copy remains available offline; retry on the next auth/focus event.
@@ -191,6 +204,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       skipNextPushRef.current = false;
       return;
     }
+    const syncKey = cartSyncKey(cart);
+    if (syncKey === lastSyncedCartRef.current) return;
     const userId = activeUserId;
     const isCurrent = () => userIdRef.current === userId && sessionRef.current === session &&
       !session.signal.aborted && localStorage.getItem('token') === session.token;
@@ -198,8 +213,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!isCurrent()) return;
       setIsCartSyncing(true);
       customerService.syncCart(JSON.parse(cartSyncPayload), session)
-        .then((result) => { if (isCurrent()) setCartSyncedAt(result.syncedAt || new Date().toISOString()); })
-        .catch(() => { if (isCurrent()) toast.error('Chưa thể đồng bộ giỏ hàng. Sản phẩm vẫn được giữ trên thiết bị.'); })
+        .then((result) => {
+          if (!isCurrent()) return;
+          lastSyncedCartRef.current = syncKey;
+          syncFailureNotifiedRef.current = false;
+          toast.dismiss(`cart-sync-${userId}`);
+          setCartSyncedAt(result.syncedAt || new Date().toISOString());
+        })
+        .catch(() => {
+          if (!isCurrent() || syncFailureNotifiedRef.current) return;
+          syncFailureNotifiedRef.current = true;
+          toast.error('Chưa thể đồng bộ giỏ hàng. Sản phẩm vẫn được giữ trên thiết bị.', { id: `cart-sync-${userId}` });
+        })
         .finally(() => { if (isCurrent()) setIsCartSyncing(false); });
     }, 250);
     return () => window.clearTimeout(timer);
@@ -641,7 +666,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Start checkout flow (Requirement 4 & 5)
   const startCheckout = useCallback(
-    (customItems?: CartItem[], couponCode?: string) => {
+    (customItems?: CartItem[]) => {
       const itemsToCheckout = customItems && customItems.length > 0 ? customItems : selectedItems;
 
       if (!itemsToCheckout || itemsToCheckout.length === 0) {
@@ -663,9 +688,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setCheckoutItems(itemsToCheckout);
-      if (couponCode !== undefined) {
-        setCheckoutCouponCode(couponCode);
-      }
       setIsCartOpen(false);
       setIsCheckoutOpen(true);
     },
@@ -674,7 +696,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Mua ngay sản phẩm trực tiếp (Instant Buy): lập tức mở thanh toán cho sản phẩm được chọn mà không cần chờ chọn checkbox
   const buyNow = useCallback(
-    (params: AddItemParams, couponCode?: string) => {
+    (params: AddItemParams) => {
       const prodTitle = params.product.title || params.product.name || 'Sản phẩm';
       const prodImage = getSafeProductImageUrl(params.product.imageUrl || params.product.image, prodTitle);
       const availableVariants = params.product.variants || [];
@@ -754,7 +776,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSelectedItemIds((prev) => (prev.includes(cartItemId) ? prev : [...prev, cartItemId]));
 
       // Kích hoạt ngay thanh toán với món hàng này
-      startCheckout([directItem], couponCode);
+      startCheckout([directItem]);
     },
     [startCheckout],
   );
@@ -795,7 +817,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(PENDING_CHECKOUT_KEY);
     setIsCheckoutOpen(false);
     setCheckoutItems([]);
-    setCheckoutCouponCode('');
   }, []);
 
   // Real-time stock & price validation (Requirement 6)
@@ -872,7 +893,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isCheckoutOpen,
       setIsCheckoutOpen,
       checkoutItems,
-      checkoutCouponCode,
       startCheckout,
       buyNow,
       editCheckoutCart,
@@ -906,7 +926,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedItems,
       isCheckoutOpen,
       checkoutItems,
-      checkoutCouponCode,
       startCheckout,
       buyNow,
       editCheckoutCart,

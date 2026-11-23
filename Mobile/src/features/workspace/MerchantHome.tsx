@@ -42,7 +42,6 @@ export function MerchantHome() {
     { title: "Hàng mẫu", icon: "package", feature: "samples" },
     { title: "Thưởng doanh số", icon: "award", feature: "bonuses" },
     { title: "Khuyến mãi", icon: "tag", feature: "pricing" },
-    { title: "Chiến dịch", icon: "flag", feature: "campaigns" },
     { title: "Đánh giá", icon: "star", feature: "reviews" },
   ];
   return <View style={s.screen}>

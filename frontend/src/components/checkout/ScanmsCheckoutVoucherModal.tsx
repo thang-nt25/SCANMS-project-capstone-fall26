@@ -10,13 +10,6 @@ export interface AppliedShopVoucher {
   storeId: string;
   storeName?: string;
 }
-/** Legacy fields remain compatible with old order presentation, never selectable here. */
-export interface AppliedPlatformVoucher {
-  storeId?: string;
-  code: string;
-  discountAmount: number;
-  benefitType: "GOODS" | "SHIPPING";
-}
 export interface ScanmsCheckoutVoucherModalProps {
   isOpen: boolean;
   onClose(): void;
@@ -27,8 +20,6 @@ export interface ScanmsCheckoutVoucherModalProps {
   rawGoodsSubtotal: number;
   customerPhone?: string;
   appliedShopCoupons: Record<string, AppliedShopVoucher>;
-  appliedPlatformCoupon: AppliedPlatformVoucher | null;
-  appliedShippingCoupon: AppliedPlatformVoucher | null;
   onApplyShopCoupon(
     storeId: string,
     voucher: {
@@ -39,10 +30,6 @@ export interface ScanmsCheckoutVoucherModalProps {
     },
   ): void;
   onRemoveShopCoupon(storeId: string): void;
-  onApplyPlatformCoupon(voucher: AppliedPlatformVoucher): void;
-  onRemovePlatformCoupon(): void;
-  onApplyShippingCoupon(voucher: AppliedPlatformVoucher): void;
-  onRemoveShippingCoupon(): void;
 }
 export function ScanmsCheckoutVoucherModal({
   isOpen,

@@ -93,8 +93,10 @@ export function isSandboxShipment(sample: {
     Boolean(sample.shippingCharges?.some(charge => charge.environment === 'TEST'));
 }
 
-export function sampleDisplayStatus(sample: Parameters<typeof isSandboxShipment>[0]) {
-  return isSandboxShipment(sample) ? 'SHIPPED' : sample.status;
+export function sampleDisplayStatus(sample: Parameters<typeof isSandboxShipment>[0], state?: { status?: string; videoUrl?: string | null; receivedAt?: string | null } | null) {
+  if (!isSandboxShipment(sample)) return sample.status;
+  if (state?.status && ['COMPLETED', 'REVISION_REQUIRED', 'OVERDUE'].includes(state.status)) return state.status;
+  return state?.videoUrl ? 'VIDEO_SUBMITTED' : state?.receivedAt ? 'RECEIVED' : 'SHIPPED';
 }
 
 export function SampleSandboxWaybills({ charges, role = 'kol', productId, productTitle, sampleRequestId, compact = false }: {

@@ -1,5 +1,5 @@
 import { replyHighlightClass } from './chat-reply.styles';
-import { chatVoucherDiscount, chatVoucherHint } from '../../utils/chat-voucher';
+import { chatVoucherDiscount, chatVoucherHint, isRetiredChatVoucher } from '../../utils/chat-voucher';
 import { lazy, Suspense, useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { Categories as EmojiCategory, PickerProps } from 'emoji-picker-react';
@@ -1274,7 +1274,7 @@ export function ScanmsFloatingChatWidget() {
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-[#C59B58] bg-[#FBF5EB] p-3">
                       <span className="font-mono text-base font-extrabold tracking-wider text-[#8F682E]">{coupon.code}</span>
-                      <button type="button" onClick={() => void handleCopyCoupon(coupon)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-2.5 py-1.5 text-xs font-bold text-[#7D715E] hover:bg-[#FAF8F5]">
+                      <button type="button" disabled={isRetiredChatVoucher(coupon)} onClick={() => void handleCopyCoupon(coupon)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-2.5 py-1.5 text-xs font-bold text-[#7D715E] hover:bg-[#FAF8F5] disabled:opacity-50">
                         {copiedCouponId === coupon.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                         {copiedCouponId === coupon.id ? 'Đã chép' : 'Sao chép'}
                       </button>

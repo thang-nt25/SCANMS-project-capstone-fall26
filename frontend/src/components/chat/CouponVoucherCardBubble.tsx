@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Copy, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
-import { chatVoucherDiscount, chatVoucherHint } from '../../utils/chat-voucher';
+import { chatVoucherDiscount, chatVoucherHint, isRetiredChatVoucher } from '../../utils/chat-voucher';
 
 export interface CouponVoucherCardData {
   benefitType?: string;
@@ -26,6 +26,7 @@ export function CouponVoucherCardBubble({ card }: { card: CouponVoucherCardData 
   const discount = chatVoucherDiscount(card);
 
   const copyCode = async () => {
+    if (isRetiredChatVoucher(card)) return;
     try {
       await navigator.clipboard.writeText(card.couponCode);
       setCopied(true);
@@ -43,7 +44,7 @@ export function CouponVoucherCardBubble({ card }: { card: CouponVoucherCardData 
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-[#C59B58] bg-[#FBF5EB] p-3">
         <span className="font-mono text-base font-extrabold tracking-wider text-[#8F682E]">{card.couponCode}</span>
-        <button type="button" onClick={() => void copyCode()} className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-2.5 py-1.5 text-xs font-bold text-[#7D715E] hover:bg-[#FAF8F5]">
+        <button type="button" disabled={isRetiredChatVoucher(card)} onClick={() => void copyCode()} className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-2.5 py-1.5 text-xs font-bold text-[#7D715E] hover:bg-[#FAF8F5] disabled:opacity-50">
           <Copy className="h-3.5 w-3.5" /> {copied ? 'Đã chép' : 'Sao chép'}
         </button>
       </div>

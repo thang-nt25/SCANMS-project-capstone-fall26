@@ -362,6 +362,24 @@ describe('CommissionsService', () => {
     );
   });
 
+  it('keeps Live bonus in ordinary escrow when the purchase also has a KPI Deal', async () => {
+    const f = historicalDealFixture();
+    Object.assign(f.order.orderItems[0], {
+      appliedCommissionRate: new Prisma.Decimal(18),
+      regularCommissionRate: new Prisma.Decimal(16),
+      calculatedCommissionAmount: new Prisma.Decimal(81000),
+    });
+    f.order.rawPayload = {
+      goodsPricing: [{ commissionDealId: 'historical-deal' }],
+    };
+    await f.service.createPendingCommission(orderId, f.now);
+    const data = (f.getCommissionCreateInput() as any).data;
+    // Historical fixture uses a 10% tier base: 10% + Live 2% versus Deal 6%.
+    expect(Number(data.baseCommissionAmount)).toBe(54000);
+    expect(Number(data.dealBonusAmount)).toBe(27000);
+    expect(data.dealBonusStatus).toBe(DealBonusStatus.PENDING_KPI);
+  });
+
   it('uses the captured deal identity instead of a later agreement', async () => {
     const f = historicalDealFixture();
     f.order.rawPayload = {

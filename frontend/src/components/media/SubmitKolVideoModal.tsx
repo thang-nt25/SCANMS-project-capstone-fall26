@@ -384,7 +384,7 @@ export function SubmitKolVideoModal({
         : await mediaService.submitKolVideo(payload);
 
       setSuccessMsg(
-        sandboxOrderCode ? 'Đã lưu video kiểm thử. Không gửi duyệt hoặc đăng công khai.' : res?.message ||
+        sandboxOrderCode ? 'Đã gửi video kiểm thử. Shop có thể nghiệm thu trong hồ sơ sandbox.' : res?.message ||
           'Video review đã được nộp thành công! Gian hàng sẽ kiểm duyệt trước khi hiển thị trên landing page.',
       );
 
@@ -629,7 +629,7 @@ export function SubmitKolVideoModal({
             )}
             {sampleRequestId ? (
               <p className="text-[11px] text-[#7D715E] mt-1 m-0">
-                {sandboxOrderCode ? 'Video chỉ được lưu cho vận đơn sandbox này, không gửi Shop duyệt.' : 'Video sẽ được gắn trực tiếp với yêu cầu nhận mẫu thử này để Shop kiểm duyệt.'}
+                {sandboxOrderCode ? 'Video được gửi cho Shop nghiệm thu kiểm thử trên vận đơn sandbox này.' : 'Video sẽ được gắn trực tiếp với yêu cầu nhận mẫu thử này để Shop kiểm duyệt.'}
               </p>
             ) : (
               <p className="text-[11px] text-[#7D715E] mt-1 m-0">

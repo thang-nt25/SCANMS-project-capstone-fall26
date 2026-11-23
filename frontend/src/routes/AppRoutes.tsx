@@ -88,14 +88,13 @@ import { StorePresenceHeartbeat } from '../components/store/StorePresenceHeartbe
 import { ShoppingMobileNavigation } from '../components/layout/ShoppingMobileNavigation';
 
 function GlobalCheckoutModal() {
-  const { isCheckoutOpen, closeCheckout, checkoutItems, checkoutCouponCode } = useCart();
+  const { isCheckoutOpen, closeCheckout, checkoutItems } = useCart();
   if (!isCheckoutOpen) return null;
   return (
     <GuestCheckoutModal
       isOpen={isCheckoutOpen}
       onClose={closeCheckout}
       checkoutItems={checkoutItems}
-      initialCouponCode={checkoutCouponCode}
     />
   );
 }

@@ -6,6 +6,7 @@ import {
   OrderSchema,
   CooperationSchema,
   DealSchema,
+  ExceptionQueueSchema,
   ConversationSchema,
   MessageSchema,
   UserSchema,
@@ -179,9 +180,9 @@ export async function deals(role: Role, signal?: AbortSignal) {
     );
 }
 export const exceptions = async (signal?: AbortSignal) =>
-  z
-    .array(DealSchema)
-    .parse(await api.request("/affiliate-deals/exceptions", { signal }));
+  ExceptionQueueSchema.parse(
+    await api.request("/affiliate-deals/exceptions", { signal }),
+  ).items;
 export const dealState = async (id: string) =>
   z
     .object({

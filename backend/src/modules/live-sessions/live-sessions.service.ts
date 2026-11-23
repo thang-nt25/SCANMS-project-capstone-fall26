@@ -1297,7 +1297,7 @@ export class LiveSessionsService {
             data: {
               userId: order.customerId,
               title: 'Giá đơn hàng đã được cập nhật',
-              message: `Voucher của phiên “${session.title}” đã kết thúc. Đơn ${order.externalOrderSn} được tính lại còn ${Number(finalAmount).toLocaleString('vi-VN')} đ, giữ nguyên voucher Sàn và vận chuyển đã áp dụng; vui lòng tạo lại thanh toán nếu bạn đã mở liên kết cũ.`,
+              message: `Ưu đãi của phiên “${session.title}” đã kết thúc. Đơn ${order.externalOrderSn} được tính lại còn ${Number(finalAmount).toLocaleString('vi-VN')} đ. Vui lòng kiểm tra chi tiết đơn và tạo lại thanh toán nếu bạn đã mở liên kết cũ.`,
               type: 'LIVE_ORDER_REPRICED',
               data: { orderId: order.id, sessionId, finalAmount: Number(finalAmount) },
             },

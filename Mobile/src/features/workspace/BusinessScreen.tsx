@@ -26,7 +26,6 @@ import { ProductEditScreen } from "../catalog/ProductEditScreen";
 import { StorefrontScreen } from "../stores/StorefrontScreen";
 import { CouponsScreen } from "../coupons/CouponsScreen";
 import { ManualOrdersScreen } from "../orders/ManualOrdersScreen";
-import { CampaignsScreen } from "../campaigns/CampaignsScreen";
 import { FraudScreen } from "../admin/FraudScreen";
 import { IdentityScreen } from "../customer/IdentityScreen";
 import { BonusesScreen } from "../commissions/BonusesScreen";
@@ -106,8 +105,6 @@ function BusinessContent({ route }: Pick<ScreenProps<"Business">, "route">) {
       return <CouponsScreen />;
     case "manual-orders":
       return <ManualOrdersScreen />;
-    case "campaigns":
-      return <CampaignsScreen />;
     case "fraud":
       return <FraudScreen />;
     case "identity":

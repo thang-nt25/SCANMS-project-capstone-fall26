@@ -103,9 +103,8 @@ export interface CartContextType {
   isCheckoutOpen: boolean;
   setIsCheckoutOpen: (open: boolean) => void;
   checkoutItems: CartItem[];
-  checkoutCouponCode?: string;
-  startCheckout: (customItems?: CartItem[], couponCode?: string) => void;
-  buyNow: (params: AddItemParams, couponCode?: string) => void;
+  startCheckout: (customItems?: CartItem[]) => void;
+  buyNow: (params: AddItemParams) => void;
   editCheckoutCart: (items: CartItem[]) => void;
   continueShoppingFromCheckout: (items: CartItem[]) => void;
   closeCheckout: () => void;

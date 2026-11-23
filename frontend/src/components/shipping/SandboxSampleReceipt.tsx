@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSandboxSampleState, sandboxSampleStatusLabel } from './useSandboxSampleState';
 import api from '../../services/api';
 import { createPortal } from 'react-dom';
@@ -49,6 +49,34 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [revisionFormOpen, setRevisionFormOpen] = useState(false);
+  const [revisionReason, setRevisionReason] = useState('');
+  const decisionPending = useRef(false);
+
+  async function reviewVideo(status: 'APPROVED' | 'REJECTED') {
+    if (decisionPending.current || !state?.videoUrl || state.status !== 'VIDEO_SUBMITTED') return;
+    if (status === 'REJECTED' && revisionReason.trim().length < 5) {
+      setError('Vui lòng nhập lý do cần sửa video (ít nhất 5 ký tự).');
+      return;
+    }
+    decisionPending.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      const response: any = await api.post(`/shipping/ghn/sandbox-sample/${encodeURIComponent(code)}/review-video`, {
+        status, videoUrl: state.videoUrl, revision: state.videoRevision || 1,
+        ...(status === 'REJECTED' ? { rejectionReason: revisionReason.trim() } : {}),
+      });
+      setState(response?.data?.data || response?.data || response);
+      setRevisionFormOpen(false);
+      setRevisionReason('');
+    } catch (err: any) {
+      setError(String(err?.response?.data?.message || 'Chưa lưu được kết quả nghiệm thu. Vui lòng thử lại.'));
+    } finally {
+      decisionPending.current = false;
+      setBusy(false);
+    }
+  }
 
   async function submit(action: 'start' | 'expire') {
     setBusy(true);
@@ -68,6 +96,7 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
   const deliveryIndex = deliverySteps.findIndex(step => step.key === (state?.deliveryStatus || (state?.receivedAt ? 'DELIVERED' : 'NOT_STARTED')));
   const delivered = Boolean(state?.receivedAt);
   const overdue = state?.status === 'OVERDUE';
+  const needsVideo = !state?.videoUrl || state?.status === 'REVISION_REQUIRED';
 
   return (
     <section
@@ -85,7 +114,29 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
         </div>}
         <div className="flex items-center gap-2">
           {role === 'shop' && !simulationStartedAt && !delivered && <button type="button" disabled={busy || !state} onClick={() => void submit('start')} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#C59B58] px-3 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50">{busy ? <Loader2 size={14} className="animate-spin" /> : <PackageCheck size={14} />}Bắt đầu hành trình</button>}
-          {role === 'kol' && delivered && !state?.videoUrl && <button type="button" onClick={() => setVideoModalOpen(true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#C59B58] px-3 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F]"><Video size={14} />Nộp video kiểm thử</button>}
+          {role === 'kol' && delivered && needsVideo && <button type="button" onClick={() => setVideoModalOpen(true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#C59B58] px-3 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F]"><Video size={14} />{state?.status === 'REVISION_REQUIRED' ? 'Nộp lại video kiểm thử' : 'Nộp video kiểm thử'}</button>}
+        </div>
+      </div>}
+      {state?.videoUrl && <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 pl-[46px]">
+        <a
+          href={state.videoUrl}
+          target="_blank"
+          rel="noreferrer"
+          data-sandbox-video-link={code}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#795A2D] hover:border-[#C59B58] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]"
+        ><Video size={14} aria-hidden="true" />Xem video đã nộp</a>
+        <span className="text-[11px] text-[#7D715E]">{state.status === 'COMPLETED' ? 'Video sandbox · đã nghiệm thu' : state.status === 'REVISION_REQUIRED' ? 'Video sandbox · cần chỉnh sửa' : 'Video sandbox · chờ Shop nghiệm thu'}</span>
+      </div>}
+      {state?.videoReview?.rejectionReason && <p className="mb-0 mt-2 pl-[46px] text-xs text-[#DC2626]">Yêu cầu chỉnh sửa: {state.videoReview.rejectionReason}</p>}
+      {role === 'shop' && state?.videoUrl && state.status === 'VIDEO_SUBMITTED' && <div className="ml-[46px] mt-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3" data-sandbox-video-review={code}>
+        <p className="m-0 text-[11px] leading-relaxed text-[#7D715E]">Nghiệm thu kiểm thử chỉ áp dụng cho vận đơn sandbox này, không đăng video công khai hoặc giải ngân thù lao.</p>
+        {revisionFormOpen && <label className="mt-2 block text-xs font-semibold text-[#1A1612]">Nội dung cần KOL chỉnh sửa
+          <textarea value={revisionReason} onChange={event => setRevisionReason(event.target.value)} maxLength={2000} disabled={busy} rows={3} className="mt-1 w-full rounded-lg border border-[#EAE4D7] bg-white p-2 font-normal outline-none focus:border-[#C59B58]" />
+        </label>}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button type="button" disabled={busy} onClick={() => revisionFormOpen ? void reviewVideo('REJECTED') : setRevisionFormOpen(true)} className="min-h-9 rounded-lg border border-[#EEDFC6] bg-white px-3 py-2 text-xs font-semibold text-[#795A2D] disabled:opacity-50">{revisionFormOpen ? 'Gửi yêu cầu sửa' : 'Yêu cầu sửa (sandbox)'}</button>
+          {revisionFormOpen ? <button type="button" disabled={busy} onClick={() => setRevisionFormOpen(false)} className="px-3 py-2 text-xs text-[#7D715E]">Hủy</button>
+            : <button type="button" disabled={busy} onClick={() => void reviewVideo('APPROVED')} className="min-h-9 rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50">{busy ? 'Đang lưu...' : 'Nghiệm thu (sandbox)'}</button>}
         </div>
       </div>}
       {expanded && <div className="sample-receipt-details mt-3 space-y-2 border-t border-[#EAE4D7] pt-3">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { BottomSheet } from "../../components/BottomSheet";
@@ -26,8 +26,10 @@ import { canRespondToDeal } from "./deal-policy";
 
 export function DealsScreen({
   exceptionQueue = false,
+  dealId,
 }: {
   exceptionQueue?: boolean;
+  dealId?: string;
 }) {
   const { session } = useAuth(),
     operation = useOperation();
@@ -38,6 +40,7 @@ export function DealsScreen({
     [discount, setDiscount] = useState("5"),
     [budget, setBudget] = useState("1000000");
   const role = session!.user.role;
+  const openedDeal = useRef<string | undefined>(undefined);
   const result = useQuery({
     queryKey: [session!.user.id, exceptionQueue ? "exceptions" : "deals"],
     queryFn: ({ signal }) =>
@@ -50,6 +53,10 @@ export function DealsScreen({
     enabled: Boolean(selected),
     refetchInterval: 10000,
   });
+  useEffect(() => {
+    const item = result.data?.find(deal => deal.id === dealId);
+    if (item && openedDeal.current !== dealId) { setSelected(item); openedDeal.current = dealId; }
+  }, [dealId, result.data]);
   const decide = (approve: boolean) =>
     operation.run(
       async () => {

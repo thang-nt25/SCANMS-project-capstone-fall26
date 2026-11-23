@@ -3,10 +3,10 @@ export type VoucherSlot = "SHOP" | "PLATFORM" | "SHIPPING";
 export function voucherSlot(voucher: {
   fundingSource?: string;
   benefitType?: string;
-}): VoucherSlot {
-  // Shipping takes precedence: platform-funded shipping is not a goods discount.
-  if (voucher.benefitType === "SHIPPING") return "SHIPPING";
-  return voucher.fundingSource === "PLATFORM_FUNDED" ? "PLATFORM" : "SHOP";
+}): 'SHOP' | null {
+  if (voucher.benefitType === 'SHIPPING'
+    || (voucher.fundingSource && voucher.fundingSource !== 'SHOP_FUNDED')) return null;
+  return 'SHOP';
 }
 
 export function voucherProductUrl(productId: string, _code: string): string {

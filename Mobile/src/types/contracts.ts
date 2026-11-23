@@ -216,6 +216,9 @@ export const DealSchema = z.object({
   vipVoucherCode: z.string().nullish(),
 });
 export type Deal = z.infer<typeof DealSchema>;
+// The Admin endpoint returns a queue object (items + server statistics),
+// whereas Shop/KOL endpoints return a proposal array.
+export const ExceptionQueueSchema = z.object({ items: z.array(DealSchema) });
 export const MessageSchema = z.object({
   id: z.string(),
   conversationId: z.string(),

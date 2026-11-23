@@ -17,6 +17,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 import { SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
+import { useSandboxSampleStates } from '../../components/shipping/useSandboxSampleState';
 import { isSamplePhoneValid, normalizeSamplePhone, SAMPLE_PHONE_ERROR } from '../../utils/sample-phone';
 import {
   Store,
@@ -442,15 +443,20 @@ export default function ShopCollaborationPage() {
   const isKycVerified = kycProfile?.kycStatus === 'VERIFIED';
   const hasSocialChannel = socialChannels.length > 0;
   const canRequestSample = Boolean(sampleEligibility?.canRequest ?? (isKycVerified && hasSocialChannel));
+  const sandboxStates = useSandboxSampleStates(samples.flatMap(sample => isSandboxShipment(sample)
+    ? [sample.shippingCharges.find((charge: any) => charge.environment === 'TEST').trackingNumber] : []));
+  const displaySampleStatus = useCallback((sample: any) => sampleDisplayStatus(sample,
+    sandboxStates[sample.shippingCharges?.find((charge: any) => charge.environment === 'TEST')?.trackingNumber || '']?.state,
+  ), [sandboxStates]);
   const visibleSamples = useMemo(() => {
     if (sampleStatusFilter === 'ALL') return samples;
     const group = SAMPLE_FILTER_GROUPS.find((g) => g.id === sampleStatusFilter);
     if (!group || !group.statuses) return samples;
     return samples.filter((sample) => {
-      const status = sampleDisplayStatus(sample) || 'PENDING';
+      const status = displaySampleStatus(sample) || 'PENDING';
       return group.statuses!.includes(status);
     });
-  }, [samples, sampleStatusFilter]);
+  }, [samples, sampleStatusFilter, displaySampleStatus]);
 
   const groupCounts = useMemo(() => {
     const counts: Record<SampleFilterGroup, number> = {
@@ -462,7 +468,7 @@ export default function ShopCollaborationPage() {
       CLOSED: 0,
     };
     samples.forEach((sample) => {
-      const status = sampleDisplayStatus(sample) || 'PENDING';
+      const status = displaySampleStatus(sample) || 'PENDING';
       SAMPLE_FILTER_GROUPS.forEach((group) => {
         if (group.statuses && group.statuses.includes(status)) {
           counts[group.id]++;
@@ -470,7 +476,7 @@ export default function ShopCollaborationPage() {
       });
     });
     return counts;
-  }, [samples]);
+  }, [samples, displaySampleStatus]);
 
   const overdueSamplesCount = useMemo(() => {
     return samples.filter((s: any) => {
@@ -1874,10 +1880,10 @@ setActiveTab('samples');
                       <div className="grid gap-2.5 min-w-0">
                         {visibleSamples.map((samp: any) => {
                           const sandboxShipment = isSandboxShipment(samp);
-                          const status = sampleDisplayStatus(samp) || 'PENDING';
+                          const status = displaySampleStatus(samp) || 'PENDING';
                           const isShipped = !sandboxShipment && status === 'SHIPPED';
                           const awaitingReceipt = isShipped || status === 'DELIVERY_ISSUE';
-                          const canSubmitVideo = ['RECEIVED', 'OVERDUE', 'REVISION_REQUIRED'].includes(status);
+                          const canSubmitVideo = !sandboxShipment && ['RECEIVED', 'OVERDUE', 'REVISION_REQUIRED'].includes(status);
                           const activeDeadline = ['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'].includes(status) ? null : samp.revisionDeadlineAt && ['REVISION_REQUIRED', 'OVERDUE'].includes(status)
                             ? samp.revisionDeadlineAt
                             : samp.deadlineAt;

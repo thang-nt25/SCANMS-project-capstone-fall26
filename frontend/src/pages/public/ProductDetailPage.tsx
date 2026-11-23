@@ -2649,7 +2649,6 @@ export default function ProductDetailPage() {
           }}
           initialVariantId={selectedVariant?.id}
           initialQuantity={quantity}
-          initialCouponCode={''}
           onOrderPlaced={(order) => {
             if (order.paymentMethod === 'PAYOS') return;
             trackAnalytics('order_complete', {

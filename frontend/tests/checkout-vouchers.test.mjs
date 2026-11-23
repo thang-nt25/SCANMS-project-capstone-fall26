@@ -19,8 +19,8 @@ test('minimum order conditions are visible before clicking', () => {
   assert.equal(checkoutVoucherDisabledReason({ minimumOrderAmount: 300000 }, 250000, 21000), 'Chưa đạt giá trị đơn tối thiểu');
   assert.equal(checkoutVoucherDisabledReason({ minimumOrderAmount: 250000 }, 250000, 21000), null);
 });
-test('shipping codes require a positive shipping fee; goods codes do not', () => {
-  assert.equal(checkoutVoucherDisabledReason({ minimumOrderAmount: null, benefitType: 'SHIPPING' }, 250000, 0), 'Cần có phí vận chuyển để dùng mã này');
+test('shipping codes are retired even when shipping is charged', () => {
+  for (const fee of [0, 30000]) assert.equal(checkoutVoucherDisabledReason({ minimumOrderAmount: null, benefitType: 'SHIPPING' }, 250000, fee), 'Chỉ hỗ trợ mã KOL cho tiền hàng');
   assert.equal(checkoutVoucherDisabledReason({ minimumOrderAmount: null, benefitType: 'GOODS' }, 250000, 0), null);
 });
 
@@ -33,7 +33,7 @@ const groups = [
 ];
 const options = { code: ' click10 ', groups, shippingFees: { 'shop-a': 20000, 'shop-b': 30000 }, shopDiscounts: { 'shop-b': { code: 'SHOP20', discountAmount: 20000 } } };
 
-for (const slot of ['SHOP', 'PLATFORM', 'SHIPPING']) {
+for (const slot of ['SHOP']) {
   test(`clicked ${slot} code is validated for its own store, without client price estimates`, async () => {
     const calls = [];
     const result = await validateCheckoutVoucher(async (path, body) => {
@@ -44,19 +44,18 @@ for (const slot of ['SHOP', 'PLATFORM', 'SHIPPING']) {
     assert.equal(calls.length, 1);
     assert.equal(calls[0].body.code, 'CLICK10');
     assert.equal(calls[0].body.storeId, 'shop-b');
-    if (slot === 'SHOP') {
       assert.equal(calls[0].path, '/coupons/validate');
       assert.deepEqual(calls[0].body.items, [{ productId: 'b', variantId: 'variant-b', quantity: 2 }]);
-    } else {
-      assert.equal(calls[0].path, '/coupons/preview-stacked');
-      assert.equal(calls[0].body.goodsSubtotal, 200000);
-      assert.equal(calls[0].body.shippingFee, 30000);
-      assert.equal(calls[0].body.shopDiscount, 20000);
-      assert.equal(calls[0].body.shopCouponCode, 'SHOP20');
-      assert.equal(calls[0].body.benefitType, slot === 'SHIPPING' ? 'SHIPPING' : 'GOODS');
-    }
   });
 }
+
+test('retired platform/shipping slots fail before any API request', async () => {
+  for (const slot of ['PLATFORM', 'SHIPPING']) {
+    let requests = 0;
+    await assert.rejects(validateCheckoutVoucher(async () => { requests++; }, { ...options, slot }), /mã ưu đãi độc quyền KOL/);
+    assert.equal(requests, 0);
+  }
+});
 
 test('manual code searches matching stores but does not save or claim it', async () => {
   const calls = [];

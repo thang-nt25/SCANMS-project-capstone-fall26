@@ -276,6 +276,17 @@ describe('Customer shopping rules', () => {
     await service.syncCart('customer-1', {
       items: [{ productId: 'product-1', quantity: 2 }],
     });
+    const [query, userId] = tx.$queryRaw.mock.calls[0] as unknown as [
+      TemplateStringsArray,
+      string,
+    ];
+    expect(query.join('?')).toBe(
+      'SELECT id FROM users WHERE id = ?::uuid FOR UPDATE',
+    );
+    expect(userId).toBe('customer-1');
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.customerCartItem.deleteMany.mock.invocationCallOrder[0],
+    );
     expect(tx.customerCartItem.deleteMany).toHaveBeenCalledWith({
       where: { userId: 'customer-1' },
     });
@@ -288,5 +299,26 @@ describe('Customer shopping rules', () => {
         }),
       ],
     });
+  });
+
+  it('locks an empty basket before clearing it and does not insert any rows', async () => {
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      customerCartItem: { deleteMany: jest.fn(), createMany: jest.fn() },
+    };
+    const service = serviceWith({
+      product: { findMany: jest.fn().mockResolvedValue([]) },
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    });
+    jest
+      .spyOn(service, 'getCart')
+      .mockResolvedValue({ items: [], syncedAt: 'now' });
+    await service.syncCart('customer-1', { items: [] });
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.customerCartItem.deleteMany.mock.invocationCallOrder[0],
+    );
+    expect(tx.customerCartItem.createMany).not.toHaveBeenCalled();
   });
 });

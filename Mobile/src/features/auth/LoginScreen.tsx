@@ -14,8 +14,10 @@ import { Button, ErrorNotice } from "../../components/ui";
 import { Icon, Wordmark } from "../../components/commerce";
 import { colors } from "../../theme/tokens";
 import { useAuth } from "./AuthProvider";
+import { useRouter } from "expo-router";
 
 export function LoginScreen() {
+  const router = useRouter();
   const { login } = useAuth();
   const [identifier, setIdentifier] = useState(""),
     [password, setPassword] = useState(""),
@@ -132,6 +134,12 @@ export function LoginScreen() {
               loading={busy}
               onPress={() => void submit()}
             />
+            <View style={styles.registerRow}>
+              <Text style={styles.subtitle}>Chưa có tài khoản?</Text>
+              <Pressable accessibilityRole="link" accessibilityLabel="Đăng ký tài khoản" disabled={busy} onPress={() => router.push("/register")} style={{ paddingVertical: 10, paddingHorizontal: 4 }}>
+                <Text style={{ color: colors.strong, fontSize: 13, fontWeight: "700" }}>Đăng ký ngay</Text>
+              </Pressable>
+            </View>
           </View>
           <View style={styles.note}>
             <Icon name="shield" size={16} color={colors.strong} />
@@ -141,7 +149,7 @@ export function LoginScreen() {
             </Text>
           </View>
           <Text style={styles.footer}>
-            Sàn thương mại tiếp thị liên kết SCANMS
+            Hệ thống quản lý đội ngũ cộng tác viên bán hàng và tiếp thị liên kết
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -227,4 +235,5 @@ const styles = StyleSheet.create({
   },
   noteText: { flex: 1, fontSize: 10, lineHeight: 17, color: colors.muted },
   footer: { color: colors.muted, fontSize: 10, textAlign: "center" },
+  registerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, flexWrap: "wrap" },
 });

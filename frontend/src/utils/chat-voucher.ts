@@ -3,6 +3,13 @@ export function chatVoucherDiscount(coupon: { discountType: string; discountValu
   return `${coupon.benefitType === 'SHIPPING' ? 'Giảm phí vận chuyển' : 'Giảm'} ${value}`;
 }
 
+export function isRetiredChatVoucher(coupon: { benefitType?: string; fundingSource?: string }) {
+  return coupon.benefitType === 'SHIPPING'
+    || Boolean(coupon.fundingSource && coupon.fundingSource !== 'SHOP_FUNDED');
+}
+
 export function chatVoucherHint(coupon: { benefitType?: string; fundingSource?: string }) {
-  return coupon.benefitType === 'SHIPPING' ? 'Nhập ở ô voucher vận chuyển khi thanh toán.' : coupon.fundingSource === 'PLATFORM_FUNDED' ? 'Nhập ở ô voucher Sàn khi thanh toán.' : 'Nhập ở ô voucher Shop khi thanh toán.';
+  return isRetiredChatVoucher(coupon)
+    ? 'Ưu đãi cũ đã ngừng hỗ trợ. Chỉ dùng mã độc quyền KOL.'
+    : 'Sao chép mã KOL và tự nhập khi thanh toán. Mã không được lưu vào tài khoản.';
 }

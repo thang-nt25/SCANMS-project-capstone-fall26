@@ -449,7 +449,7 @@ export default function LiveStreamRoomPage() {
       sender: 'Hệ Thống SCANMS',
       role: 'SYSTEM',
       avatar: '/favicon.ico',
-      text: 'Chào mừng bạn đến với phiên Livestream chính thức trên Hệ thống SCANMS! Hãy tương tác tích cực, săn deal trợ giá độc quyền và lưu voucher phiên live.',
+      text: 'Chào mừng bạn đến với phiên Livestream trên SCANMS! Nếu KOL chia sẻ mã ưu đãi, hãy sao chép và tự nhập khi thanh toán.',
       time: 'Bắt đầu',
     },
   ]);
@@ -1237,7 +1237,6 @@ export default function LiveStreamRoomPage() {
         },
         openCartAfterAdd: false,
       },
-      couponCode,
     );
   };
 
@@ -1987,7 +1986,7 @@ export default function LiveStreamRoomPage() {
                   type="button"
                   onClick={() => {
                     setIsBagOpen(false);
-                    startCheckout(undefined, couponCode);
+                    startCheckout();
                   }}
                   className="p-1.5 rounded-full hover:bg-[#F3EFE6] text-[#7D715E] hover:text-[#1A1612] transition-colors relative cursor-pointer"
                   title="Giỏ hàng & thanh toán"
@@ -2200,25 +2199,13 @@ export default function LiveStreamRoomPage() {
                             </h4>
                           </div>
 
-                          {/* Row 2: Freeship · Giảm · Quà miễn phí */}
+                          {/* Only show savings backed by this product's actual live price. */}
                           <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
-                            <span className="text-[#059669] bg-[#ECFDF5] px-1.5 py-0.5 rounded font-bold inline-flex items-center gap-0.5">
-                              🚚 Freeship
-                            </span>
-                            {index === 1 ? (
-                              <span className="text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.5 rounded font-semibold">
-                                · Giảm 150K đ
-                              </span>
-                            ) : index >= 2 && discountVal > 0 ? (
+                            {discountVal > 0 ? (
                               <span className="text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.5 rounded font-semibold">
                                 · Giảm {saving >= 100000 ? `${Math.round(saving / 1000)}K đ` : `${discountVal}%`}
                               </span>
                             ) : null}
-                            {index > 0 && (
-                              <span className="text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.5 rounded font-semibold">
-                                · Quà miễn phí
-                              </span>
-                            )}
                           </div>
 
                           {/* Row 3: Assurance line */}

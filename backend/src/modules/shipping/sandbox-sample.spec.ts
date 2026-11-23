@@ -22,7 +22,7 @@ describe('sandbox sample receipt isolation', () => {
       sampleRequestId: 'sample',
       sampleRequest: {
         collaboratorId: 'kol',
-        product: { store: { ownerId: 'shop' } },
+        product: { store: { id: 'store-1', ownerId: 'shop' } },
       },
     };
     const tx = {
@@ -35,12 +35,77 @@ describe('sandbox sample receipt isolation', () => {
       },
     };
     const db = {
+      store: { findFirst: jest.fn().mockResolvedValue(null) },
       sampleShippingCharge: { findFirst: jest.fn().mockResolvedValue(charge) },
       sampleProductRequest: { update: jest.fn(), updateMany: jest.fn() },
       $transaction: jest.fn((callback) => callback(tx)),
     };
     return { service: new GhnService(db as any, {} as any), db, tx, charge };
   }
+  it('reviews sandbox video, requests revision, resubmits and completes without touching the real sample', async () => {
+    const { service, db, tx } = fixture();
+    await service.sandboxSampleState('TEST123', 'shop', 'receive');
+    const first = await service.sandboxSampleState('TEST123', 'kol', 'video', 'https://example.test/review');
+    expect(first.videoRevision).toBe(1);
+    const rejected = await service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, {
+      review: { status: 'REJECTED', videoUrl: first.videoUrl!, revision: 1, rejectionReason: 'Thiếu nội dung giới thiệu sản phẩm' },
+    });
+    expect(rejected.status).toBe('REVISION_REQUIRED');
+    expect((await service.sandboxSampleState('TEST123', 'kol')).videoReview.rejectionReason).toContain('Thiếu');
+    // A resubmission can reuse the URL (the KOL may edit the existing post).
+    const revised = await service.sandboxSampleState('TEST123', 'kol', 'video', first.videoUrl!);
+    expect(revised.videoRevision).toBe(2);
+    expect(revised.status).toBe('VIDEO_SUBMITTED');
+    await expect(service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, {
+      review: { status: 'APPROVED', videoUrl: first.videoUrl!, revision: 1 },
+    })).rejects.toThrow('đã thay đổi');
+    const completed = await service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, {
+      review: { status: 'APPROVED', videoUrl: revised.videoUrl!, revision: 2 },
+    });
+    expect(completed.status).toBe('COMPLETED');
+    await expect(service.sandboxSampleState('TEST123', 'shop', 'start')).rejects.toThrow('không thể bắt đầu lại');
+    const eventCount = tx.sampleRequestEvent.create.mock.calls.length;
+    await service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, {
+      review: { status: 'APPROVED', videoUrl: revised.videoUrl!, revision: 2 },
+    });
+    expect(tx.sampleRequestEvent.create).toHaveBeenCalledTimes(eventCount);
+    expect((await service.sandboxSampleState('TEST123', 'kol')).status).toBe('COMPLETED');
+    await expect(service.sandboxSampleState('TEST123', 'kol', 'video', first.videoUrl!)).rejects.toThrow('đã nghiệm thu');
+    expect(db.sampleProductRequest.update).not.toHaveBeenCalled();
+    expect(db.sampleProductRequest.updateMany).not.toHaveBeenCalled();
+    expect(jest.spyOn(service as any, 'ghnFetch')).not.toHaveBeenCalled();
+  });
+  it('rejects missing video, unrelated actors, wrong URL, invalid decision and empty revision reason', async () => {
+    const { service, tx } = fixture();
+    const review = { status: 'APPROVED' as const, videoUrl: 'https://example.test/review', revision: 1 };
+    await expect(service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, { review })).rejects.toThrow('Chưa có video');
+    await service.sandboxSampleState('TEST123', 'shop', 'receive');
+    await service.sandboxSampleState('TEST123', 'kol', 'video', review.videoUrl);
+    const count = tx.sampleRequestEvent.create.mock.calls.length;
+    for (const actor of ['kol', 'stranger']) {
+      await expect(service.sandboxSampleState('TEST123', actor, 'review-video', undefined, { review })).rejects.toThrow('quyền');
+    }
+    await expect(service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, { review: { ...review, videoUrl: 'https://example.test/other' } })).rejects.toThrow('đã thay đổi');
+    await expect(service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, { review: { ...review, status: 'INVALID' as any } })).rejects.toThrow('không hợp lệ');
+    await expect(service.sandboxSampleState('TEST123', 'shop', 'review-video', undefined, { review: { ...review, status: 'REJECTED', rejectionReason: '  ' } })).rejects.toThrow('Lý do');
+    await expect(service.sandboxSampleState('TEST123', 'kol', 'video', 'https://example.test/overwrite')).rejects.toThrow('đang chờ');
+    expect(tx.sampleRequestEvent.create).toHaveBeenCalledTimes(count);
+  });
+  it('lets the current assigned manager review this store and checks the feature flag', async () => {
+    const { service, db } = fixture();
+    await service.sandboxSampleState('TEST123', 'shop', 'receive');
+    await service.sandboxSampleState('TEST123', 'kol', 'video', 'https://example.test/review');
+    db.store.findFirst.mockResolvedValue({ id: 'store-1' });
+    expect((await service.sandboxSampleState('TEST123', 'assigned-manager', 'review-video', undefined, {
+      review: { status: 'APPROVED', videoUrl: 'https://example.test/review', revision: 1 },
+    })).status).toBe('COMPLETED');
+    expect(db.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'store-1' }) }));
+    process.env.SHIPPING_SIMULATION_ENABLED = 'false';
+    await expect(service.sandboxSampleState('TEST123', 'shop')).rejects.toThrow();
+    process.env.SHIPPING_SIMULATION_ENABLED = 'true';
+    process.env.NODE_ENV = 'production';
+    await expect(service.sandboxSampleState('TEST123', 'shop')).rejects.toThrow();
+  });
   it('records simulated freight payment once, shares it with KOL and preserves it across delivery actions', async () => {
     const { service, db, tx } = fixture();
     const carrier = jest.spyOn(service as any, 'ghnFetch');

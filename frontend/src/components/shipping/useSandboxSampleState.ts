@@ -1,10 +1,14 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import api from '../../services/api';
 
 export interface SandboxSampleState {
   receivedAt: string | null;
   deadlineAt: string | null;
   videoUrl: string | null;
+  videoRevision?: number;
+  videoSubmittedAt?: string | null;
+  title?: string | null;
+  videoReview?: { status: 'APPROVED' | 'REJECTED'; rejectionReason?: string | null; reviewedAt: string; reviewedBy: string } | null;
   status?: string;
   simulatedNow?: string | null;
   simulationStartedAt?: string | null;
@@ -69,9 +73,25 @@ export function useSandboxSampleState(code: string) {
   return { ...snapshot, setState };
 }
 
+/** Subscribe before filtering: a pending video must remain discoverable even
+ * when its receipt card is hidden by the currently selected tab. */
+export function useSandboxSampleStates(codes: string[]) {
+  const key = JSON.stringify([...new Set(codes)].sort());
+  const subscribeToCodes = useCallback((listener: () => void) => {
+    const stops = (JSON.parse(key) as string[]).map(code => subscribe(code, listener));
+    return () => stops.forEach(stop => stop());
+  }, [key]);
+  // A primitive snapshot stays referentially stable between publications.
+  const getSnapshot = useCallback(() => JSON.stringify((JSON.parse(key) as string[]).map(code => [code, entryFor(code).snapshot])), [key]);
+  const snapshot = useSyncExternalStore(subscribeToCodes, getSnapshot);
+  return useMemo(() => Object.fromEntries(JSON.parse(snapshot)) as Record<string, Snapshot>, [snapshot]);
+}
+
 export function sandboxSampleStatusLabel(state: SandboxSampleState | null) {
   if (!state) return 'Đang cập nhật';
-  if (state.videoUrl || state.status === 'VIDEO_SUBMITTED') return 'Đã nộp video';
+  if (state.status === 'COMPLETED') return 'Đã nghiệm thu · Sandbox';
+  if (state.status === 'REVISION_REQUIRED') return 'Cần sửa video · Sandbox';
+  if (state.videoUrl || state.status === 'VIDEO_SUBMITTED') return 'Đã nộp video kiểm thử';
   if (state.status === 'OVERDUE') return 'Quá hạn';
   if (state.receivedAt || state.deliveryStatus === 'DELIVERED') return 'Chờ video';
   if (state.deliveryStatus === 'IN_TRANSIT') return 'Đang giao';

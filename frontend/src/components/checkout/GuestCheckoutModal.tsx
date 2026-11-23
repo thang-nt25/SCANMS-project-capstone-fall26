@@ -5,7 +5,7 @@ import { CheckoutOrderConfirmation, type CheckoutOrderResult } from './CheckoutO
 import { CheckoutItemsSection } from './CheckoutItemsSection';
 import { CheckoutPaymentMethods } from './CheckoutPaymentMethods';
 import { ScanMSLogo } from '../common/ScanMSLogo';
-import type { AppliedShopVoucher, AppliedPlatformVoucher } from './ScanmsCheckoutVoucherModal';
+import type { AppliedShopVoucher } from './ScanmsCheckoutVoucherModal';
 import {
   ArrowLeft,
   ArrowRight,
@@ -104,8 +104,6 @@ interface GuestCheckoutModalProps {
   store?: CheckoutStoreInfo;
   checkoutItems?: CartItem[];
   initialQuantity?: number;
-  initialCouponCode?: string;
-  initialExtraVoucher?: { code: string; benefitType: 'GOODS' | 'SHIPPING' };
   initialVariantId?: string;
   onOrderPlaced?: (orderData: any) => void;
   onPaymentConfirmed?: (orderData: any) => void;
@@ -118,8 +116,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   store,
   checkoutItems,
   initialQuantity = 1,
-  initialCouponCode = '',
-  initialExtraVoucher,
   initialVariantId,
   onOrderPlaced,
   onPaymentConfirmed,
@@ -395,14 +391,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [singleQuantity] = useState(initialQuantity);
   const [selectedVariantId] = useState<string | undefined>(initialVariantId);
 
-  // SCANMS 3-Tier Vouchers
-  // voucher modal streamlined into in-place KOC attribution card
+  // Only KOL codes explicitly entered by the customer are selectable.
   const [appliedShopCoupons, setAppliedShopCoupons] = useState<Record<string, AppliedShopVoucher>>({});
-  const [appliedPlatformCoupon, setAppliedPlatformCoupon] = useState<AppliedPlatformVoucher | null>(null);
-  const [appliedShippingCoupon, setAppliedShippingCoupon] = useState<AppliedPlatformVoucher | null>(null);
-  const [extraVoucherDismissed, setExtraVoucherDismissed] = useState(false);
-  const [extraVoucherBusy, setExtraVoucherBusy] = useState(false);
-  const [autoCouponDismissed, setAutoCouponDismissed] = useState(false);
 
   // Pre-checkout validation state (Requirement 6)
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
@@ -602,28 +592,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setShopCouponErrors((prev) => ({ ...prev, [storeId]: null }));
   }, []);
 
-  const targetVoucherStoreId = itemsGroupedByShop[0]?.store.id || store?.id || '';
-  const targetVoucherSubtotal = itemsGroupedByShop.find((group) => group.store.id === targetVoucherStoreId)?.subtotal || 0;
   const voucherBasisKey = activeItems.map((item) => `${item.store.id}:${item.productId}:${item.variantId || ''}:${item.quantity}:${item.price}`).join('|') + `:${customerPhone.trim()}`;
-  const voucherValidationBasis = `${targetVoucherStoreId}:${voucherBasisKey}:${shippingFeesByStore[targetVoucherStoreId] || 0}`;
-  const voucherValidationBasisRef = useRef(voucherValidationBasis);
-  voucherValidationBasisRef.current = voucherValidationBasis;
   const previousVoucherBasis = useRef(voucherBasisKey);
-  const shippingVoucherBasis = JSON.stringify(shippingFeesByStore);
-  const previousShippingVoucherBasis = useRef(shippingVoucherBasis);
-  useEffect(() => {
-    if (previousShippingVoucherBasis.current !== shippingVoucherBasis) {
-      previousShippingVoucherBasis.current = shippingVoucherBasis;
-      // A shipping discount is a preview of a particular quote, not a fixed credit.
-      setAppliedShippingCoupon(null);
-    }
-  }, [shippingVoucherBasis]);
   useEffect(() => {
     if (previousVoucherBasis.current !== voucherBasisKey) {
       previousVoucherBasis.current = voucherBasisKey;
       setAppliedShopCoupons({});
-      setAppliedPlatformCoupon(null);
-      setAppliedShippingCoupon(null);
     }
   }, [voucherBasisKey]);
 
@@ -662,17 +636,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const totalShopDiscount = useMemo(() => {
     return Object.values(appliedShopCoupons).reduce((sum, c) => sum + (Number(c.discountAmount) || 0), 0);
   }, [appliedShopCoupons]);
-  const platformDiscount = appliedPlatformCoupon ? Number(appliedPlatformCoupon.discountAmount) || 0 : 0;
-  const shippingDiscount = appliedShippingCoupon ? Number(appliedShippingCoupon.discountAmount) || 0 : 0;
-  // totalCombinedDiscount & appliedVoucherCount replaced by single attribution card
-
-  const appliedCoupon = useMemo(() => {
-    const list = Object.values(appliedShopCoupons);
-    return list.length > 0 ? list[0] : null;
-  }, [appliedShopCoupons]);
-  const discountAmount = totalShopDiscount;
-
-  const finalTotal = Math.max(0, rawSubtotal - totalShopDiscount - platformDiscount) + Math.max(0, (shippingFee || 0) - shippingDiscount);
+  const finalTotal = Math.max(0, rawSubtotal - totalShopDiscount) + (shippingFee || 0);
 
   // Check PayOS Availability
   useEffect(() => {
@@ -843,7 +807,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     if (!isOpen || !selectedProvince || !selectedDistrict || !selectedWard || shippingAddress.trim().length < 5 || !itemsGroupedByShop.length) {
       setShippingFee(null);
       setShippingFeesByStore({});
-      setAppliedShippingCoupon(null);
       setShippingFeeError(null);
       setShippingFeeLoading(false);
       return;
@@ -852,7 +815,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     const address = [shippingAddress.trim(), selectedWard.name, selectedDistrict.name, selectedProvince.name].join(', ');
     setShippingFee(null);
     setShippingFeesByStore({});
-    setAppliedShippingCoupon(null);
     setShippingFeeError(null);
     setShippingFeeLoading(true);
     const controller = new AbortController();
@@ -1132,55 +1094,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const isEmailValid = (email: string) =>
     !email.trim() || /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim());
 
-  const liveCouponCodes = [...new Set(activeItems.map((item) => item.liveCouponCode).filter(Boolean))];
-  const autoCouponCode = initialCouponCode || (liveCouponCodes.length === 1 ? liveCouponCodes[0]! : '');
-  const extraVoucherCode = initialExtraVoucher?.code;
-  const extraVoucherBenefit = initialExtraVoucher?.benefitType;
-  const voucherShippingFee = shippingFeesByStore[targetVoucherStoreId] || 0;
-  useEffect(() => { setExtraVoucherDismissed(false); }, [isOpen, extraVoucherCode]);
-  useEffect(() => {
-    if (!isOpen || !extraVoucherCode || !extraVoucherBenefit || !targetVoucherStoreId || extraVoucherDismissed) return;
-    let active = true;
-    setExtraVoucherBusy(true);
-    const code = extraVoucherCode;
-    const benefitType = extraVoucherBenefit;
-    if (benefitType === 'GOODS') { setAppliedPlatformCoupon(null); }
-    else { setAppliedShippingCoupon(null); }
-    const timer = window.setTimeout(() => {
-      void api.post('/coupons/preview-stacked', {
-        code, storeId: targetVoucherStoreId, benefitType,
-        goodsSubtotal: targetVoucherSubtotal, shippingFee: voucherShippingFee,
-        shopDiscount: discountAmount, shopCouponCode: appliedCoupon?.code || undefined,
-        customerPhone: customerPhone.trim() || undefined,
-      }).then((response) => {
-        if (!active) return;
-        if (benefitType === 'GOODS') setAppliedPlatformCoupon(response.data);
-        else setAppliedShippingCoupon(response.data);
-      }).catch((error) => {
-        if (active) setErrorMessage(error?.response?.data?.message || 'Voucher chưa đủ điều kiện. Vui lòng kiểm tra đơn hàng.');
-      }).finally(() => { if (active) setExtraVoucherBusy(false); });
-    }, 300);
-    return () => { active = false; window.clearTimeout(timer); setExtraVoucherBusy(false); };
-  }, [isOpen, extraVoucherCode, extraVoucherBenefit, extraVoucherDismissed, targetVoucherStoreId, targetVoucherSubtotal, voucherBasisKey, voucherShippingFee, discountAmount, appliedCoupon?.code, customerPhone]);
-  useEffect(() => {
-    if (!isOpen) { setAutoCouponDismissed(false); return; }
-    if (!autoCouponCode || autoCouponDismissed) return;
-    const targetStore = itemsGroupedByShop[0]?.store.id;
-    if (!targetStore) return;
-    let active = true;
-    const timer = window.setTimeout(() => {
-      if (!active) return;
-      void handleApplyShopCoupon(targetStore, autoCouponCode);
-    }, 300);
-    return () => { active = false; window.clearTimeout(timer); };
-  }, [isOpen, autoCouponCode, autoCouponDismissed, itemsGroupedByShop, handleApplyShopCoupon]);
-
   // Submit Order (Requirements 7, 8, 9, 10)
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setAddressValidationField(null);
-    if (Boolean(couponLoadingStoreId) || extraVoucherBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
+    if (couponLoadingStoreId) { setErrorMessage('Đang kiểm tra mã KOL. Vui lòng đợi một chút rồi đặt hàng.'); return; }
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
@@ -1307,10 +1226,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         paymentMethod,
         couponCode: Object.values(appliedShopCoupons)[0]?.code || undefined,
         couponsByStore: Object.keys(finalCouponsByStore).length > 0 ? finalCouponsByStore : undefined,
-        platformCouponsByStore: appliedPlatformCoupon ? { [appliedPlatformCoupon.storeId || targetVoucherStoreId]: appliedPlatformCoupon.code } : undefined,
-        shippingCouponsByStore: appliedShippingCoupon ? { [appliedShippingCoupon.storeId || targetVoucherStoreId]: appliedShippingCoupon.code } : undefined,
-        platformCouponCode: appliedPlatformCoupon?.code || undefined,
-        shippingCouponCode: appliedShippingCoupon?.code || undefined,
         idempotencyKey,
         items: normalizedItems,
       };

@@ -25,7 +25,8 @@ export function withSampleSandboxState(request: SampleRequest, state?: {
   receivedAt: string | null; deadlineAt: string | null; videoUrl: string | null; status?: string;
 } | null): SampleRequest {
   if (!sampleSandboxCode(request) || !state) return request;
-  const status = state.videoUrl ? 'VIDEO_SUBMITTED' : state.status === 'OVERDUE' ? 'OVERDUE'
+  const status = state.status === 'COMPLETED' ? 'COMPLETED' : state.status === 'REVISION_REQUIRED' ? 'REVISION_REQUIRED'
+    : state.videoUrl ? 'VIDEO_SUBMITTED' : state.status === 'OVERDUE' ? 'OVERDUE'
     : state.receivedAt ? 'RECEIVED' : 'SHIPPED';
   return { ...request, status, receivedAt: state.receivedAt || undefined, deadlineAt: state.deadlineAt || undefined, videoUrl: state.videoUrl || undefined };
 }
