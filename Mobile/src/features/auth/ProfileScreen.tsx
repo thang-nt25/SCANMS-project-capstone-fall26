@@ -79,6 +79,13 @@ export function ProfileScreen() {
       >
         <View style={[styles.header, (collaborator || shop) && styles.kolHeader, { paddingTop: insets.top + 6 }]}>
           <View style={styles.headerActions}>
+            {collaborator && (
+              <IconButton
+                name="arrow-left"
+                label="Quay lại Tổng quan"
+                onPress={() => router.navigate("/(private)/(tabs)/workspace")}
+              />
+            )}
             <Text style={styles.headerTitle}>Tôi</Text>
             <IconButton
               name="settings"
