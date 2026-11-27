@@ -211,6 +211,7 @@ export interface CouponFilterParams {
   search?: string;
   status?: CouponStatus;
   storeId?: string;
+  collaboratorId?: string;
   page?: number;
   limit?: number;
 }

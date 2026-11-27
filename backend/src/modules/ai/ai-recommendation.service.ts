@@ -110,7 +110,14 @@ export class AiRecommendationService {
     ])}`;
     const cached =
       await this.cacheService.get<AiRecommendationResponseDto>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      return this.attachCooperationStatuses(
+        cached,
+        currentUserId,
+        currentUserRole,
+        targetProduct?.store?.id,
+      );
+    }
 
     // 2. Lấy danh sách tất cả Collaborators đủ điều kiện (KYC, Active)
     const collaborators = await this.prisma.user.findMany({
@@ -563,7 +570,65 @@ export class AiRecommendationService {
       },
     };
     await this.cacheService.set(cacheKey, recommendationResult, 120);
-    return recommendationResult;
+    return this.attachCooperationStatuses(
+      recommendationResult,
+      currentUserId,
+      currentUserRole,
+      targetProduct?.store?.id,
+    );
+  }
+
+  private async attachCooperationStatuses(
+    result: AiRecommendationResponseDto,
+    currentUserId: string,
+    currentUserRole: string,
+    explicitStoreId?: string,
+  ): Promise<AiRecommendationResponseDto> {
+    if (
+      !result.recommendedKols?.length ||
+      typeof this.prisma.storeCollaborator?.findMany !== 'function'
+    ) {
+      return result;
+    }
+    let storeId = explicitStoreId;
+    if (
+      !storeId &&
+      currentUserRole === UserRole.SHOP_MANAGER &&
+      typeof this.prisma.store?.findFirst === 'function'
+    ) {
+      const owned = await this.prisma.store.findFirst({
+        where: managedStoreWhere(currentUserId),
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      storeId = owned?.id;
+    }
+    if (!storeId) return result;
+    const ids = result.recommendedKols.map((k) => k.collaboratorId);
+    const relations = await this.prisma.storeCollaborator.findMany({
+      where: { storeId, collaboratorId: { in: ids } },
+      select: {
+        id: true,
+        collaboratorId: true,
+        status: true,
+        requestedByKol: true,
+      },
+    });
+    const byKol = new Map(relations.map((r) => [r.collaboratorId, r]));
+    return {
+      ...result,
+      recommendedKols: result.recommendedKols.map((kol) => {
+        const rel = byKol.get(kol.collaboratorId);
+        return rel
+          ? {
+              ...kol,
+              cooperationId: rel.id,
+              cooperationStatus: rel.status,
+              requestedByKol: rel.requestedByKol,
+            }
+          : kol;
+      }),
+    };
   }
 
   // ─── 2. PHÂN TÍCH CHUYÊN SÂU 1-1 GIỮA 1 SẢN PHẨM VÀ 1 KOL CỤ THỂ ─────

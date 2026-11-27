@@ -19,6 +19,7 @@ import type { AuthenticatedRequest } from '../../common/interfaces/authenticated
 import { InviteStoreCollaboratorDto } from './dto/invite-store-collaborator.dto';
 import { StoreCollaboratorsService } from './store-collaborators.service';
 import { RequestStoreCooperationDto } from './dto/request-store-cooperation.dto';
+import { TerminateStoreCooperationDto } from './dto/terminate-store-cooperation.dto';
 
 @Controller('store-collaborators')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -90,14 +91,26 @@ export class StoreCollaboratorsController {
     return this.service.respond(req.user!.id, id, false);
   }
 
+  @Get(':id/termination-eligibility')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  getTerminationEligibility(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.service.getTerminationEligibility(req.user!.id, req.user!.role, id, storeId);
+  }
+
   @Delete(':id')
   @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   terminate(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Query('storeId') storeId?: string,
+    @Query('reason') queryReason?: string,
+    @Body() dto?: TerminateStoreCooperationDto,
   ) {
-    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId);
+    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId, dto?.reason ?? queryReason);
   }
 
   @Post(':id/terminate')
@@ -106,7 +119,9 @@ export class StoreCollaboratorsController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Query('storeId') storeId?: string,
+    @Query('reason') queryReason?: string,
+    @Body() dto?: TerminateStoreCooperationDto,
   ) {
-    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId);
+    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId, dto?.reason ?? queryReason);
   }
 }

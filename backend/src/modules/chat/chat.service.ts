@@ -21,6 +21,7 @@ import { buildExplorerWhere, ChatExplorerQuery } from './chat-explorer.query';
 import { chatReplySelect, chatMessageSelect } from './chat-reply';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { validateChatReaction, type ChatReactionSummary } from './chat-reactions';
+import { assertChatNotBlocked } from '../../common/policies/cooperation.policy';
 
 function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
@@ -172,22 +173,6 @@ export class ChatService {
       throw new BadRequestException(
         'ID cửa hàng hoặc đối tác không đúng định dạng UUID',
       );
-    }
-
-    // Đảm bảo quan hệ đối tác StoreCollaborator được ghi nhận nếu là collaborator
-    if (collaboratorId) {
-      try {
-        await this.prisma.storeCollaborator.upsert({
-          where: { storeId_collaboratorId: { storeId, collaboratorId } },
-          update: {},
-          create: {
-            storeId,
-            collaboratorId,
-            status: 'PENDING',
-            requestedByKol: actor.role === 'COLLABORATOR',
-          },
-        });
-      } catch {}
     }
 
     if (actingForShop) {
@@ -911,6 +896,13 @@ export class ChatService {
       conversationId,
       senderId,
     );
+    if (conversation.collaboratorId) {
+      await assertChatNotBlocked(
+        this.prisma,
+        conversation.storeId,
+        conversation.collaboratorId,
+      );
+    }
     const { messageReplies } = await this.getCapabilities();
     if (replyToId && !messageReplies) throw new BadRequestException('Tính năng trả lời trích dẫn đang chờ cập nhật cơ sở dữ liệu.');
     // getConversationById already authorizes this actor. An assigned manager
@@ -1041,7 +1033,14 @@ export class ChatService {
     userId: string,
     file?: Express.Multer.File,
   ) {
-    await this.getConversationById(conversationId, userId);
+    const conversation = await this.getConversationById(conversationId, userId);
+    if (conversation.collaboratorId) {
+      await assertChatNotBlocked(
+        this.prisma,
+        conversation.storeId,
+        conversation.collaboratorId,
+      );
+    }
     const type = validateChatAttachment(file);
     const safeName = sanitizeChatAttachmentName(file!.originalname);
     const safeFile = { ...file!, originalname: safeName };

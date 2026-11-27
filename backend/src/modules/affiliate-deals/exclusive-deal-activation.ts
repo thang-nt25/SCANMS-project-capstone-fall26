@@ -12,6 +12,7 @@ import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { assertCooperationOpen } from '../../common/policies/cooperation.policy';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ReferralLinksService } from '../referral-links/referral-links.service';
 import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
@@ -186,6 +187,12 @@ export async function decideExclusiveDeal(
             throw new BadRequestException(
               'KOC hoặc gian hàng không còn đủ điều kiện kích hoạt.',
             );
+          await assertCooperationOpen(
+            tx,
+            proposal.storeId,
+            proposal.collaboratorId,
+            'duyệt đề xuất Deal',
+          );
           const products = await scopedProducts(tx, proposal);
           const kpi =
             proposal.targetRevenue != null

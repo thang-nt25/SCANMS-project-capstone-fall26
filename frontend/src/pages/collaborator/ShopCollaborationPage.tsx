@@ -10,6 +10,7 @@ import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AddressLocationPicker, type AddressLocationResult } from '../../components/customer/AddressLocationPicker';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
+import { TerminateCooperationModal } from '../../components/affiliate/TerminateCooperationModal';
 import { useStoreCooperations } from '../../hooks/useStoreCooperations';
 import { mergeCooperationStores, type PartnerStore } from '../../utils/cooperation-stores';
 import { authService } from '../../services/auth.service';
@@ -112,6 +113,11 @@ function StoreAvatar({
           alt={`Logo ${name}`}
           className="absolute inset-0 w-full h-full object-cover"
           onError={() => setImageFailed(true)}
+          onLoad={(e) => {
+            if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
+              setImageFailed(true);
+            }
+          }}
         />
       ) : (
         <span aria-hidden="true">{initials}</span>
@@ -227,7 +233,12 @@ export default function ShopCollaborationPage() {
   }, []);
 
   const [searchShopQuery, setSearchShopQuery] = useState('');
-  const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'INVITATIONS' | 'SAMPLES' | 'HIGH_COMM'>('ALL');
+  const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'INVITATIONS' | 'SAMPLES' | 'HIGH_COMM' | 'CLOSED'>('ALL');
+  const [terminateOpen, setTerminateOpen] = useState(false);
+  const [dealStoreIdsState, setDealStoreIdsState] = useState<Set<string>>(() => new Set());
+  const [sampleStoreIdsState, setSampleStoreIdsState] = useState<Set<string>>(() => new Set());
+  const shopParamRef = useRef(shopParam);
+  shopParamRef.current = shopParam;
 
   // KOL verification profile & channels (Business Guard)
   const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
@@ -542,21 +553,30 @@ export default function ShopCollaborationPage() {
   // Load conversations & stores (Tối ưu hóa: Bỏ quét toàn sàn /stores/marketplace, dùng targeted single-store fetch và sync module cache)
   const loadConversationsAndStores = useCallback(async () => {
     try {
-      const [convRes, dealsRes]: [any, any] = await Promise.all([
+      const [convRes, dealsRes, mySamplesRes]: [any, any, any] = await Promise.all([
         api.get('/chat/conversations').catch(() => []),
         referralLinksService.getMyExclusiveDeals().catch(() => []),
+        api.get('/sample-requests/my').catch(() => []),
       ]);
 
       const convList = Array.isArray(convRes) ? convRes : convRes?.data || [];
       const dealsList: any[] = Array.isArray(dealsRes) ? dealsRes : dealsRes?.data || [];
+      const mySamplesList: any[] = Array.isArray(mySamplesRes) ? mySamplesRes : mySamplesRes?.data || [];
       setExclusiveDeals(dealsList);
 
-      // Tập hợp các ID gian hàng đã có deal độc quyền (đã xin deal hoa hồng)
+      // Tập hợp các ID gian hàng đã từng có deal hoặc xin hàng mẫu
       const dealStoreIds = new Set<string>();
       dealsList.forEach((d) => {
         const sid = d.storeId || d.store?.id;
         if (sid) dealStoreIds.add(sid);
       });
+      const sampleStoreIds = new Set<string>();
+      mySamplesList.forEach((s) => {
+        const sid = s.product?.storeId || s.storeId;
+        if (sid) sampleStoreIds.add(sid);
+      });
+      setDealStoreIdsState(dealStoreIds);
+      setSampleStoreIdsState(sampleStoreIds);
 
       const mappedStores: PartnerStore[] = [];
 
@@ -566,6 +586,8 @@ export default function ShopCollaborationPage() {
         if (storeId && !mappedStores.some((store) => store.id === storeId)) {
           const lastMsg = conv.chatMessages?.[0];
           const hasDeal = dealStoreIds.has(storeId);
+          const hasSample = sampleStoreIds.has(storeId);
+          const msgCount = typeof conv.messageCount === 'number' ? conv.messageCount : 0;
 
           // Keep every existing conversation, including contacts with no messages yet.
 
@@ -573,6 +595,7 @@ export default function ShopCollaborationPage() {
             id: storeId,
             conversationId: conv.id,
             messageCount: typeof conv.messageCount === 'number' ? conv.messageCount : undefined,
+            hasCooperationHistory: msgCount > 0 || hasDeal || hasSample,
             name: st.name || 'Gian hàng đối tác',
             slug: st.slug || '',
             logoUrl: getShopLogoUrl(st.logoUrl),
@@ -616,12 +639,13 @@ export default function ShopCollaborationPage() {
       });
 
       // Xử lý khi KOL mở trang từ sản phẩm hoặc gian hàng qua URL query ?shop=xxx
+      const activeShopParam = shopParamRef.current;
       let targetNewStore: PartnerStore | null = null;
-      if (shopParam) {
-        const matchedInMapped = mappedStores.find((s) => s.id === shopParam);
+      if (activeShopParam) {
+        const matchedInMapped = mappedStores.find((s) => s.id === activeShopParam);
         if (!matchedInMapped) {
           try {
-            const foundRes: any = await api.get(`/stores/public/id/${shopParam}`).catch(() => null);
+            const foundRes: any = await api.get(`/stores/public/id/${activeShopParam}`).catch(() => null);
             const found = foundRes?.data || foundRes;
             if (found && found.id) {
               targetNewStore = {
@@ -655,15 +679,17 @@ export default function ShopCollaborationPage() {
       setActiveTargetStore(targetNewStore);
 
       const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const targetStoreId = (shopParam && UUID_REGEX.test(shopParam))
-        ? shopParam
-        : (mappedStores.length > 0 ? mappedStores[0].id : '');
+      const targetStoreId = (activeShopParam && UUID_REGEX.test(activeShopParam))
+        ? activeShopParam
+        : cachedLastSelectedStoreId && mappedStores.some((s) => s.id === cachedLastSelectedStoreId)
+          ? cachedLastSelectedStoreId
+          : (mappedStores.length > 0 ? mappedStores[0].id : '');
 
       cachedLastSelectedStoreId = targetStoreId;
       if (targetStoreId) {
-        setSelectedStoreId(targetStoreId);
-        if (!shopParam && mappedStores.length > 0 && isMountedRef.current) {
-          updateUrl(mappedStores[0].id, activeTabRef.current);
+        setSelectedStoreId((curr) => (curr && mappedStores.some((s) => s.id === curr) ? curr : targetStoreId));
+        if (!activeShopParam && mappedStores.length > 0 && isMountedRef.current) {
+          updateUrl(targetStoreId, activeTabRef.current);
         }
       } else {
         setSelectedStoreId('');
@@ -673,7 +699,7 @@ export default function ShopCollaborationPage() {
       setStores([]);
       setActiveTargetStore(null);
     }
-  }, [shopParam]);
+  }, []);
 
   const handleConversationRead = useCallback((conversationId: string) => {
     setStores(previous => {
@@ -685,7 +711,13 @@ export default function ShopCollaborationPage() {
 
   useEffect(() => {
     loadConversationsAndStores();
-  }, [loadConversationsAndStores]);
+    const onCoopChanged = () => {
+      void reloadCooperations();
+      void loadConversationsAndStores();
+    };
+    window.addEventListener('scanms_cooperation_changed', onCoopChanged);
+    return () => window.removeEventListener('scanms_cooperation_changed', onCoopChanged);
+  }, [loadConversationsAndStores, reloadCooperations]);
 
   const selectedStore = useMemo(() => {
     if (selectedStoreId) {
@@ -708,6 +740,9 @@ export default function ShopCollaborationPage() {
     if (tabScrollRef.current) tabScrollRef.current.scrollTop = 0;
   }, [selectedStore?.id, activeTab]);
 
+  const storesRef = useRef(stores);
+  storesRef.current = stores;
+
   const [tabCounts, setTabCounts] = useState<{
     storeId: string; messages: number | null; products: number | null;
     samples: number | null;
@@ -719,32 +754,54 @@ export default function ShopCollaborationPage() {
     const storeId = selectedStore?.id;
     if (!storeId) return;
 
+    const cachedProds = productsStoreCache.current.get(storeId);
+    const cachedSamps = samplesStoreCache.current.get(storeId);
+    const currentStore = storesRef.current.find((s) => s.id === storeId);
+    if (cachedProds || cachedSamps) {
+      setTabCounts({
+        storeId,
+        messages: currentStore?.messageCount ?? null,
+        products: cachedProds ? cachedProds.length : null,
+        samples: cachedSamps ? cachedSamps.length : null,
+      });
+    }
+
     const refresh = async () => {
       if (fetching || document.hidden) return;
       fetching = true;
       try {
         const results = await Promise.allSettled([
-          api.get('/products', { params: { storeId, limit: 1 } }),
-          api.get('/sample-requests/my', { params: { storeId } }),
+          cachedProds ? Promise.resolve({ cachedCount: cachedProds.length }) : api.get('/products', { params: { storeId, limit: 1 } }),
+          cachedSamps ? Promise.resolve({ cachedCount: cachedSamps.length }) : api.get('/sample-requests/my', { params: { storeId } }),
         ]);
         if (!active) return;
-        const prodData: any = results[0].status === 'fulfilled' ? ((results[0].value as any)?.data ?? results[0].value) : null;
-        const sampleData: any = results[1].status === 'fulfilled' ? ((results[1].value as any)?.data ?? results[1].value) : null;
+        const prodVal: any = results[0].status === 'fulfilled' ? results[0].value : null;
+        const sampleVal: any = results[1].status === 'fulfilled' ? results[1].value : null;
+        const prodData: any = prodVal?.data ?? prodVal;
+        const sampleData: any = sampleVal?.data ?? sampleVal;
 
-        const currentStore = stores.find((s) => s.id === storeId);
-        const msgCount = currentStore?.messageCount ?? null;
+        const latestStore = storesRef.current.find((s) => s.id === storeId);
+        const msgCount = latestStore?.messageCount ?? null;
 
         setTabCounts({
           storeId,
           messages: msgCount,
-          products: typeof prodData?.pagination?.total === 'number' ? prodData.pagination.total : null,
-          samples: Array.isArray(sampleData) ? sampleData.length : null,
+          products: typeof prodVal?.cachedCount === 'number'
+            ? prodVal.cachedCount
+            : typeof prodData?.pagination?.total === 'number'
+              ? prodData.pagination.total
+              : null,
+          samples: typeof sampleVal?.cachedCount === 'number'
+            ? sampleVal.cachedCount
+            : Array.isArray(sampleData)
+              ? sampleData.length
+              : null,
         });
       } finally {
         fetching = false;
       }
     };
-    const initialTimer = window.setTimeout(() => void refresh(), 250);
+    void refresh();
 
     const onMessage = () => {
       void loadConversationsAndStores().catch(() => undefined);
@@ -755,12 +812,11 @@ export default function ShopCollaborationPage() {
     window.addEventListener('focus', refresh);
     return () => {
       active = false;
-      window.clearTimeout(initialTimer);
       window.clearInterval(timer);
       socket.off('new_message', onMessage);
       window.removeEventListener('focus', refresh);
     };
-  }, [selectedStore?.id, stores, loadConversationsAndStores]);
+  }, [selectedStore?.id, selectedStore?.messageCount, loadConversationsAndStores]);
 
   const openStorefront = useCallback((store: PartnerStore) => {
     if (store.slug) {
@@ -894,6 +950,14 @@ export default function ShopCollaborationPage() {
 
   // Mở modal Đề xuất Deal hoa hồng riêng (Đơn lẻ hoặc Gói nhiều sản phẩm)
   const handleOpenDealModal = (singleProduct?: any, bulkProducts?: any[]) => {
+    if (
+      selectedStore?.cooperationStatus === 'REJECTED' ||
+      selectedStore?.cooperationStatus === 'TERMINATED' ||
+      selectedStore?.cooperationStatus === 'BLOCKED'
+    ) {
+      toast.error('Quan hệ hợp tác hiện đã từ chối hoặc chấm dứt. Vui lòng gửi yêu cầu hợp tác lại trước khi tạo Deal mới.');
+      return;
+    }
     let prodsToDeal: any[] = [];
     if (bulkProducts && bulkProducts.length > 0) {
       prodsToDeal = bulkProducts;
@@ -1074,9 +1138,10 @@ setActiveTab('samples');
     setConnectingStoreId(store.id);
     try {
       await api.post('/store-collaborators/request', { storeId: store.id });
-      await api.post('/chat/conversations', { storeId: store.id });
+      window.dispatchEvent(new Event('scanms_cooperation_changed'));
       toast.success(`Đã gửi yêu cầu hợp tác tới ${store.name}, chờ Shop duyệt.`);
       setShowDiscoverModal(false);
+      await reloadCooperations();
       await loadConversationsAndStores();
       setSelectedStoreId(store.id);
       setActiveTab('messages');
@@ -1101,6 +1166,40 @@ setActiveTab('samples');
     }
   };
 
+  const storeHasHistory = useCallback(
+    (st: PartnerStore) =>
+      Boolean(
+        st.hasCooperationHistory ||
+          (st.messageCount ?? 0) > 0 ||
+          dealStoreIdsState.has(st.id) ||
+          sampleStoreIdsState.has(st.id),
+      ),
+    [dealStoreIdsState, sampleStoreIdsState],
+  );
+
+  const isClosedRelation = (status?: string) =>
+    status === 'REJECTED' || status === 'TERMINATED' || status === 'BLOCKED';
+
+  const handledClosedDeepLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!shopParam) {
+      handledClosedDeepLinkRef.current = null;
+      return;
+    }
+    if (handledClosedDeepLinkRef.current === shopParam) return;
+    const match = stores.find((s) => s.id === shopParam);
+    if (!match) return;
+    handledClosedDeepLinkRef.current = shopParam;
+    if (isClosedRelation(match.cooperationStatus) && !storeHasHistory(match)) {
+      setShopFilter('CLOSED');
+    }
+  }, [shopParam, stores, storeHasHistory]);
+
+  const closedStoresCount = useMemo(
+    () => stores.filter((s) => isClosedRelation(s.cooperationStatus)).length,
+    [stores],
+  );
+
   // Filtered stores
   const filteredStores = useMemo(() => {
     return stores.filter((s) => {
@@ -1109,6 +1208,10 @@ setActiveTab('samples');
         (s.category || '').toLowerCase().includes(searchShopQuery.toLowerCase());
       if (!matchesSearch) return false;
 
+      const closed = isClosedRelation(s.cooperationStatus);
+      if (shopFilter === 'CLOSED') return closed;
+      if (shopFilter === 'ALL' && closed && !storeHasHistory(s)) return false;
+
       if (shopFilter === 'CHAT') return Boolean(s.unreadCount);
       if (shopFilter === 'INVITATIONS') return s.cooperationStatus === 'PENDING' && !s.requestedByKol;
       if (shopFilter === 'SAMPLES') return Boolean(s.pendingSamplesCount);
@@ -1116,7 +1219,7 @@ setActiveTab('samples');
         return Number(s.defaultCommissionRate || 0) >= 15;
       return true;
     });
-  }, [stores, searchShopQuery, shopFilter]);
+  }, [stores, searchShopQuery, shopFilter, storeHasHistory]);
 
   const filteredProducts = products;
 
@@ -1195,6 +1298,7 @@ setActiveTab('samples');
                         type="button"
                         aria-pressed={isSelected}
                         onClick={() => {
+                          cachedLastSelectedStoreId = st.id;
                           setSelectedStoreId(st.id);
                           updateUrl(st.id, activeTab);
                         }}
@@ -1206,8 +1310,8 @@ setActiveTab('samples');
                         }`}
                       >
                         <StoreAvatar
-                          name={st.ownerName || st.name}
-                          logoUrl={st.ownerAvatarUrl || st.logoUrl}
+                          name={st.name || st.ownerName || 'Gian hàng'}
+                          logoUrl={st.logoUrl || st.ownerAvatarUrl}
                           className="w-8.5 h-8.5 rounded-lg border border-[#EAE4D7] bg-white shadow-2xs text-[11px]"
                         />
                         {st.unreadCount ? (
@@ -1255,6 +1359,9 @@ setActiveTab('samples');
                     { id: 'CHAT', label: 'Tin mới' },
                     { id: 'INVITATIONS', label: `Lời mời (${stores.filter(store => store.cooperationStatus === 'PENDING' && !store.requestedByKol).length})` },
                     { id: 'SAMPLES', label: 'Mẫu thử' },
+                    ...((closedStoresCount > 0 || shopFilter === 'CLOSED')
+                      ? [{ id: 'CLOSED', label: `Đã kết thúc (${closedStoresCount})` }]
+                      : []),
                   ].map((f) => (
                     <button
                       key={f.id}
@@ -1295,7 +1402,15 @@ setActiveTab('samples');
                     <div className="w-10 h-10 mx-auto rounded-full bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F]">
                       <MessageSquare className="w-5 h-5 stroke-1" />
                     </div>
-                    <p className="font-semibold text-[#1A1612]">{loadingCooperations ? 'Đang tải lời mời hợp tác…' : shopFilter === 'INVITATIONS' ? 'Chưa có lời mời hợp tác đang chờ' : 'Chưa có cuộc trò chuyện nào'}</p>
+                    <p className="font-semibold text-[#1A1612]">
+                      {loadingCooperations
+                        ? 'Đang tải lời mời hợp tác…'
+                        : shopFilter === 'INVITATIONS'
+                          ? 'Chưa có lời mời hợp tác đang chờ'
+                          : shopFilter === 'CLOSED'
+                            ? 'Chưa có hợp tác nào đã từ chối hoặc kết thúc'
+                            : 'Chưa có cuộc trò chuyện nào'}
+                    </p>
                     <p className="text-[11px] text-[#7D715E] leading-relaxed max-w-[200px] mx-auto">
                       Khám phá các gian hàng đối tác để bắt đầu trao đổi & nhận mẫu thử.
                     </p>
@@ -1334,8 +1449,8 @@ setActiveTab('samples');
                             className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]"
                           >
                             <StoreAvatar
-                              name={st.ownerName || st.name}
-                              logoUrl={st.ownerAvatarUrl || st.logoUrl}
+                              name={st.name || st.ownerName || 'Gian hàng'}
+                              logoUrl={st.logoUrl || st.ownerAvatarUrl}
                               className="w-9 h-9 rounded-xl border border-[#EAE4D7] bg-white shadow-2xs text-xs"
                             />
                           </button>
@@ -1348,6 +1463,7 @@ setActiveTab('samples');
                           type="button"
                           aria-pressed={isSelected}
                           onClick={() => {
+                            cachedLastSelectedStoreId = st.id;
                             setSelectedStoreId(st.id);
                             updateUrl(st.id, activeTab);
                           }}
@@ -1366,6 +1482,9 @@ setActiveTab('samples');
                           </div>
 
                           {st.cooperationStatus === 'PENDING' && <span className="mt-1 inline-flex rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 py-0.5 text-[10px] font-semibold text-[#8C6226]">{st.requestedByKol ? 'Chờ Shop duyệt' : 'Lời mời hợp tác'}</span>}
+                          {st.cooperationStatus === 'REJECTED' && <span className="mt-1 inline-flex rounded-md border border-[#FECACA] bg-[#FEF2F2] px-1.5 py-0.5 text-[10px] font-semibold text-[#DC2626]">Đã từ chối</span>}
+                          {st.cooperationStatus === 'TERMINATED' && <span className="mt-1 inline-flex rounded-md border border-[#EAE4D7] bg-[#F3EFE6] px-1.5 py-0.5 text-[10px] font-semibold text-[#7D715E]">Đã chấm dứt</span>}
+                          {st.cooperationStatus === 'BLOCKED' && <span className="mt-1 inline-flex rounded-md border border-[#FECACA] bg-[#FEF2F2] px-1.5 py-0.5 text-[10px] font-semibold text-[#DC2626]">Đã khóa</span>}
 
                           <div className="flex items-center justify-between gap-1 mt-0.5">
                             <span
@@ -1427,8 +1546,8 @@ setActiveTab('samples');
                       className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] shrink-0"
                     >
                       <StoreAvatar
-                        name={selectedStore.ownerName || selectedStore.name}
-                        logoUrl={selectedStore.ownerAvatarUrl || selectedStore.logoUrl}
+                        name={selectedStore.name || selectedStore.ownerName || 'Gian hàng'}
+                        logoUrl={selectedStore.logoUrl || selectedStore.ownerAvatarUrl}
                         className="w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm"
                       />
                     </button>
@@ -1446,30 +1565,67 @@ setActiveTab('samples');
                       </div>
                       <div className="collaboration-shop-status">
                       <div className="collaboration-cooperation-inline">
-                        <StoreCooperationPanel mode="kol" storeId={selectedStoreId || undefined} />
+                        <StoreCooperationPanel
+                          mode="kol"
+                          storeId={selectedStoreId || undefined}
+                          onChanged={() => {
+                            void reloadCooperations();
+                            void loadConversationsAndStores();
+                          }}
+                        />
                       </div>
                         <span className="collaboration-shop-verified"><CheckCircle2 size={13} aria-hidden="true" />Đã xác minh</span>
+                        {selectedStore.cooperationStatus === 'APPROVED' && (
+                          <button
+                            type="button"
+                            id="btn-kol-terminate-collab"
+                            onClick={() => setTerminateOpen(true)}
+                            className="ml-2 inline-flex items-center gap-1 rounded-lg border border-[#EAE4D7] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#7D715E] hover:border-[#FECACA] hover:bg-[#FEF2F2] hover:text-[#DC2626] transition cursor-pointer"
+                            title="Kiểm tra điều kiện & yêu cầu chấm dứt hợp tác với cửa hàng"
+                          >
+                            Chấm dứt hợp tác
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Nút Đề xuất Deal & Xin mã ưu đãi */}
-                  <div className="collaboration-heading-actions flex items-center gap-2 shrink-0">
-                    <button type="button" onClick={() => setDealPickerStoreId(selectedStore.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-semibold cursor-pointer hover:bg-[#F3EFE6]">
-                      <Plus size={13} aria-hidden="true" /> Đề xuất Deal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCouponProposalStore({ id: selectedStore.id, name: selectedStore.name })}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer shrink-0 select-none"
-                      aria-label={`Xin mã ưu đãi từ ${selectedStore.name}`}
-                      title={`Đề xuất mã ưu đãi KOC toàn shop ${selectedStore.name}`}
-                    >
-                      <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
-                      <span>Xin mã ưu đãi</span>
-                    </button>
-                    <button type="button" className="collaboration-search-messages" aria-label="Tìm tin nhắn và tệp trong hội thoại" title="Tìm tin nhắn và tệp" onClick={() => { setActiveTab('messages'); setChatSearchRequest(value => value + 1); }}><Search size={17} /></button>
-                  </div>
+                  {(() => {
+                    const isCoopLocked = selectedStore.cooperationStatus !== 'APPROVED';
+                    const coopLockTitle = selectedStore.cooperationStatus === 'BLOCKED'
+                      ? 'Cửa hàng đã khóa hợp tác'
+                      : selectedStore.cooperationStatus === 'PENDING'
+                        ? 'Cần xác nhận lời mời hợp tác trước khi tạo Deal / Mã ưu đãi'
+                        : isClosedRelation(selectedStore.cooperationStatus)
+                          ? 'Hợp tác đã từ chối/chấm dứt — cần gửi yêu cầu hợp tác lại trước khi tạo mới'
+                          : 'Cần gửi yêu cầu hợp tác và được Shop duyệt trước khi tạo mới';
+                    return (
+                      <div className="collaboration-heading-actions flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          disabled={isCoopLocked}
+                          onClick={() => setDealPickerStoreId(selectedStore.id)}
+                          title={isCoopLocked ? coopLockTitle : `Đề xuất Deal độc quyền với ${selectedStore.name}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-semibold cursor-pointer hover:bg-[#F3EFE6] disabled:opacity-45 disabled:cursor-not-allowed"
+                        >
+                          <Plus size={13} aria-hidden="true" /> Đề xuất Deal
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isCoopLocked}
+                          onClick={() => setCouponProposalStore({ id: selectedStore.id, name: selectedStore.name })}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer shrink-0 select-none disabled:opacity-45 disabled:cursor-not-allowed"
+                          aria-label={`Xin mã ưu đãi từ ${selectedStore.name}`}
+                          title={isCoopLocked ? coopLockTitle : `Đề xuất mã ưu đãi KOC toàn shop ${selectedStore.name}`}
+                        >
+                          <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
+                          <span>Xin mã ưu đãi</span>
+                        </button>
+                        <button type="button" className="collaboration-search-messages" aria-label="Tìm tin nhắn và tệp trong hội thoại" title="Tìm tin nhắn và tệp" onClick={() => { setActiveTab('messages'); setChatSearchRequest(value => value + 1); }}><Search size={17} /></button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
 {/* Sub-Tabs Bar: Cố định 3 Tab (Tin nhắn, Sản phẩm, Hàng mẫu) */}
@@ -1529,6 +1685,7 @@ setActiveTab('samples');
                   targetStoreId={selectedStore.id}
                   targetStoreName={selectedStore.name}
                   targetStoreLogo={selectedStore.logoUrl}
+                  cooperationStatus={selectedStore.cooperationStatus ?? null}
                   hideSidebar
                   hideHeaderInChat
                   searchRequestKey={chatSearchRequest}
@@ -1581,8 +1738,9 @@ setActiveTab('samples');
                             </button>
                             <button
                               type="button"
+                              disabled={selectedStore.cooperationStatus !== 'APPROVED'}
                               onClick={() => handleOpenDealModal(undefined, products.filter((p) => selectedProductIds.includes(p.id)))}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95 disabled:opacity-45 disabled:cursor-not-allowed"
                             >
                               <Handshake size={14} />
                               <span>Đề xuất Deal · {selectedProductIds.length} sản phẩm</span>
@@ -1625,7 +1783,7 @@ setActiveTab('samples');
                             const displayedSample = activeSample || productSamples[0];
                             const hasCompletedSample = Boolean(productSamples.some((s) => s.status === 'COMPLETED'));
                             const canRequestThisProduct = Boolean(
-                              sampleHistoryReady && !activeSample && !hasCompletedSample && canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
+                              selectedStore.cooperationStatus === 'APPROVED' && sampleHistoryReady && !activeSample && !hasCompletedSample && canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
                             );
                             const isSelectedForBundle = selectedProductIds.includes(prod.id);
                             const activeDeal = exclusiveDeals.find(
@@ -1733,6 +1891,10 @@ setActiveTab('samples');
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        if (selectedStore.cooperationStatus !== 'APPROVED') {
+                                          toast.error('Cần kết nối và xác nhận hợp tác trước khi xin hàng mẫu.');
+                                          return;
+                                        }
                                         if (!canRequestSample) {
                                           toast.error(sampleEligibility?.blockReason || 'Cần hoàn tất KYC và liên kết kênh mạng xã hội trước khi xin mẫu.');
                                           return;
@@ -1758,8 +1920,9 @@ setActiveTab('samples');
 
                                   <button
                                     type="button"
+                                    disabled={selectedStore.cooperationStatus !== 'APPROVED'}
                                     onClick={() => handleOpenDealModal(prod)}
-                                    className="w-full inline-flex items-center justify-center gap-1.5 h-8 px-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#8C6226] text-xs font-bold hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:text-[#B88E4F] transition cursor-pointer whitespace-nowrap shadow-2xs"
+                                    className="w-full inline-flex items-center justify-center gap-1.5 h-8 px-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#8C6226] text-xs font-bold hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:text-[#B88E4F] transition cursor-pointer whitespace-nowrap shadow-2xs disabled:opacity-45 disabled:cursor-not-allowed"
                                   >
                                     <Handshake className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
                                     <span className="whitespace-nowrap">Đề xuất Deal</span>
@@ -2582,7 +2745,11 @@ setActiveTab('samples');
                 </div>
               ) : (
                 discoveredStores.map((ms) => {
-                    const isAlreadyConnected = stores.some((st) => st.id === ms.id);
+                    const coopRel = cooperations.find((c) => c.storeId === ms.id);
+                    const coopState = coopRel?.status;
+                    const isActiveOrPending = coopState === 'APPROVED' || coopState === 'PENDING' || (!coopState && stores.some((st) => st.id === ms.id));
+                    const isClosedRel = coopState === 'REJECTED' || coopState === 'TERMINATED';
+                    const isBlockedRel = coopState === 'BLOCKED';
                     return (
                       <div
                         key={ms.id}
@@ -2607,8 +2774,24 @@ setActiveTab('samples');
                         </div>
 
                         <div className="shop-discovery-actions">
-                          <span className="text-[11px] text-[#7D715E] leading-tight">{isAlreadyConnected ? 'Đã kết nối' : 'Chưa kết nối'}</span>
-                          {isAlreadyConnected ? (
+                          <span className="text-[11px] text-[#7D715E] leading-tight">
+                            {coopState === 'APPROVED'
+                              ? 'Đang hợp tác'
+                              : coopState === 'PENDING'
+                                ? (coopRel?.requestedByKol ? 'Chờ Shop duyệt' : 'Shop đang mời')
+                                : coopState === 'REJECTED'
+                                  ? 'Đã từ chối'
+                                  : coopState === 'TERMINATED'
+                                    ? 'Đã chấm dứt'
+                                    : coopState === 'BLOCKED'
+                                      ? 'Đã bị khóa'
+                                      : isActiveOrPending
+                                        ? 'Đã kết nối'
+                                        : 'Chưa kết nối'}
+                          </span>
+                          {isBlockedRel ? (
+                            <span className="shop-discovery-action border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626] opacity-75">Đã khóa</span>
+                          ) : isActiveOrPending ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -2629,7 +2812,7 @@ setActiveTab('samples');
                               className="shop-discovery-action border border-[#EEDFC6] bg-[#FBF5EB] text-[#855F2D] hover:bg-[#F3EFE6] disabled:opacity-60 disabled:cursor-wait"
                             >
                               {connectingStoreId === ms.id ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                              <span>{connectingStoreId === ms.id ? 'Đang gửi' : 'Kết nối'}</span>
+                              <span>{connectingStoreId === ms.id ? 'Đang gửi' : isClosedRel ? 'Xin hợp tác lại' : 'Kết nối'}</span>
                             </button>
                           )}
                         </div>
@@ -2659,6 +2842,20 @@ setActiveTab('samples');
           initialProductIds={dealModalProducts.map(item => item.id)}
           onClose={() => { setDealModalProduct(null); setDealModalProducts([]); }}
           onSuccess={conversationId => { setDealModalProduct(null); setDealModalProducts([]); navigate('/chat?conversationId=' + conversationId); }}
+        />
+      )}
+      {selectedStore && terminateOpen && (
+        <TerminateCooperationModal
+          isOpen={terminateOpen}
+          targetId={selectedStore.cooperationId || selectedStore.id}
+          storeId={selectedStore.id}
+          partnerName={selectedStore.name}
+          mode="kol"
+          onClose={() => setTerminateOpen(false)}
+          onTerminated={() => {
+            void reloadCooperations();
+            void loadConversationsAndStores();
+          }}
         />
       )}
       {couponProposalStore && (

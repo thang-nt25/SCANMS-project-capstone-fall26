@@ -28,6 +28,13 @@ export class QueryCouponsDto {
   storeId?: string;
 
   @ApiPropertyOptional({
+    description: 'Lọc theo ID đối tác KOC/KOL',
+  })
+  @IsOptional()
+  @IsUUID('all')
+  collaboratorId?: string;
+
+  @ApiPropertyOptional({
     description: 'Trang hiện tại (mặc định 1)',
     default: 1,
   })
