@@ -177,7 +177,7 @@ export function MonthlyRewardsPanel({
           )}
       </div>
       {mode === 'shop' && submissionNotice && <div role="status" className="flex items-start gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-3 text-sm text-[#715126]"><CheckCircle2 size={17} className="mt-0.5 shrink-0"/><span>{submissionNotice}</span></div>}
-      <div ref={detailRef} className="scroll-mt-4"/>
+      <div ref={detailRef} className="grid min-w-0 scroll-mt-4 gap-4">
       {loading && (
         <p role="status" className="p-4 text-sm text-[#7D715E]">
           Đang đối soát dữ liệu thưởng…
@@ -359,6 +359,7 @@ export function MonthlyRewardsPanel({
         </article>
         </div>
       ))}
+      </div>
       {creating && (
         <Modal
           isOpen

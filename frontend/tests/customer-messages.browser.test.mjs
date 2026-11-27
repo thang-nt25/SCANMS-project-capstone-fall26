@@ -75,7 +75,7 @@ test('Shop customer messaging routes each action correctly and preserves data on
           if (failProducts) return respond(null, 500);
           return respond({ items: [{ ...product, title: url.searchParams.get('page') === '2' ? 'Sản phẩm trang hai' : product.title }], pagination: { page: Number(url.searchParams.get('page') || 1), totalPages: 2 } });
         }
-        if (url.pathname.endsWith('/available')) {
+        if (url.pathname.endsWith('/coupons/shareable')) {
           const discount = { discountType: 'PERCENTAGE', discountValue: 10, benefitType: 'GOODS' };
           return failCoupons ? respond(null, 500) : respond([
             { ...discount, id: 'qa-coupon', displayCode: 'SHOP10', couponType: 'KOL_EXCLUSIVE', fundingSource: 'SHOP_FUNDED', scopeType: 'PRODUCTS', remainingUses: 4 },

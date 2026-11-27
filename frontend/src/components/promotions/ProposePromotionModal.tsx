@@ -1,3 +1,4 @@
+import { DateTimePicker } from '../common/DateTimePicker';
 import { Select } from '../ui/Select';
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useState, useEffect, useMemo, useRef, type FormEvent } from 'react';
@@ -31,21 +32,13 @@ interface ProposePromotionModalProps {
 const money = (val: unknown) =>
   val == null ? 'Chưa cấu hình' : `${Number(val).toLocaleString('vi-VN')} ₫`;
 
-const toLocalDateTimeString = (date: Date) =>
-  new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
+const VIETNAM_OFFSET = '+07:00';
+const toVietnamDateTime = (date: Date) =>
+  new Date(date.getTime() + 7 * 3600000).toISOString().slice(0, 16);
+const parseVietnamDateTime = (value: string) => Date.parse(`${value}${VIETNAM_OFFSET}`);
+const vietnamPickerNow = () => new Date(toVietnamDateTime(new Date()));
 
 const EMPTY_ARRAY: any[] = [];
-
-function PromotionScheduleField({ label, value, onChange, min }: { label: string; value: string; onChange: (value: string) => void; min?: string }) {
-  const [date = '', time = ''] = value.split('T');
-  const displayedDate = date ? date.split('-').reverse().join('/') : 'dd/mm/yyyy';
-  return <div className="min-w-0"><span className="mb-1 block text-[11px] text-[#7D715E]">{label}</span><div className="grid grid-cols-[minmax(0,1fr)_64px] divide-x divide-[#EAE4D7] rounded-lg border border-[#EAE4D7]">
-    <label className="relative flex h-10 min-w-0 items-center justify-center rounded-l-lg text-[11px] tabular-nums focus-within:outline-2 focus-within:outline-[#B88E4F]">{displayedDate}<input aria-label={`${label} ngày`} type="date" required min={min?.split('T')[0]} value={date} onChange={event => onChange(`${event.target.value}T${time || '00:00'}`)} onClick={event => event.currentTarget.showPicker?.()} className="absolute inset-0 size-full! cursor-pointer opacity-0"/></label>
-    <label className="relative flex h-10 items-center justify-center rounded-r-lg text-[11px] tabular-nums focus-within:outline-2 focus-within:outline-[#B88E4F]">{time || 'HH:mm'}<input aria-label={`${label} giờ`} type="time" required value={time} onChange={event => onChange(`${date}T${event.target.value}`)} onClick={event => event.currentTarget.showPicker?.()} className="absolute inset-0 size-full! cursor-pointer opacity-0"/></label>
-  </div></div>;
-}
 
 export function ProposePromotionModal({
   isOpen,
@@ -78,10 +71,10 @@ export function ProposePromotionModal({
 
   // Schedule & Reason (Common)
   const [startsAt, setStartsAt] = useState<string>(
-    toLocalDateTimeString(new Date(Date.now() + 15 * 60 * 1000)),
+    toVietnamDateTime(new Date(Date.now() + 15 * 60 * 1000)),
   );
   const [endsAt, setEndsAt] = useState<string>(
-    toLocalDateTimeString(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+    toVietnamDateTime(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
   );
   const [reason, setReason] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -89,6 +82,7 @@ export function ProposePromotionModal({
   const [showMakerCheckerInfo, setShowMakerCheckerInfo] = useState<boolean>(false);
 
   const submitLock = useRef(false);
+  const schedulePopoverRoot = useRef<HTMLDivElement>(null);
 
   // Catalog list normalization
   const availableCatalog = useMemo(() => {
@@ -118,8 +112,8 @@ export function ProposePromotionModal({
     setErrorMessage(null);
     setReason('');
     const start = new Date(Date.now() + 15 * 60000);
-    setStartsAt(toLocalDateTimeString(start));
-    setEndsAt(toLocalDateTimeString(new Date(start.getTime() + 7 * 86400000)));
+    setStartsAt(toVietnamDateTime(start));
+    setEndsAt(toVietnamDateTime(new Date(start.getTime() + 7 * 86400000)));
   }, [initialProduct, initialSelected, availableCatalog, isOpen]);
 
   // Keyboard escape listener
@@ -244,15 +238,15 @@ export function ProposePromotionModal({
   };
 
   const handleApplyDuration = (days: number) => {
-    const start = new Date(startsAt).getTime() || Date.now();
-    setEndsAt(toLocalDateTimeString(new Date(start + days * 24 * 60 * 60 * 1000)));
+    const start = parseVietnamDateTime(startsAt) || Date.now();
+    setEndsAt(toVietnamDateTime(new Date(start + days * 24 * 60 * 60 * 1000)));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting || submitLock.current) return;
     setErrorMessage(null);
-    const startTime = Date.parse(startsAt), endTime = Date.parse(endsAt);
+    const startTime = parseVietnamDateTime(startsAt), endTime = parseVietnamDateTime(endsAt);
     if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime || endTime <= Date.now() || startTime < Date.now() - 60000 || endTime - startTime > 366 * 86400000) {
       setErrorMessage('Chọn thời gian hợp lệ: kết thúc sau bắt đầu, tối đa 366 ngày.');
       return;
@@ -287,8 +281,8 @@ export function ProposePromotionModal({
           productId: activeProduct.id,
           variantId: selectedVariantId || undefined,
           proposedPrice: computedProposedPrice,
-          startsAt: new Date(startsAt).toISOString(),
-          endsAt: new Date(endsAt).toISOString(),
+          startsAt: new Date(startTime).toISOString(),
+          endsAt: new Date(endTime).toISOString(),
           reason: reason.trim(),
         });
 
@@ -311,8 +305,8 @@ export function ProposePromotionModal({
             productId: item.product.id,
             proposedPrice: item.proposedPrice,
           })),
-          startsAt: new Date(startsAt).toISOString(),
-          endsAt: new Date(endsAt).toISOString(),
+          startsAt: new Date(startTime).toISOString(),
+          endsAt: new Date(endTime).toISOString(),
           reason: reason.trim(),
         });
 
@@ -349,7 +343,7 @@ export function ProposePromotionModal({
     .filter(Boolean) : [];
   const inputClass = 'w-full min-w-0 border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58]';
   const productContent = (item: any) => <span className="flex min-w-0 items-center gap-2"><img src={getSafeProductImageUrl(item.imageUrl, item.title, '')} onError={handleProductImageError} alt="" className="size-8! shrink-0 rounded-md border border-[#EAE4D7] bg-white object-contain"/><span className="min-w-0 text-left"><strong className="line-clamp-2 text-xs font-semibold">{item.title}</strong><span className="block text-[11px] text-[#7D715E] tabular-nums">{money(item.listPrice ?? item.price)}{item.sku ? ` · SKU ${item.sku}` : ''}</span></span></span>;
-  return <div role="dialog" aria-modal="true" aria-labelledby="promo-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/40 p-3 backdrop-blur-xs">
+  return <div ref={schedulePopoverRoot} role="dialog" aria-modal="true" aria-labelledby="promo-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/40 p-3 backdrop-blur-xs">
     <div className="promotion-light-dialog">
       <header className="promotion-light-header">
         <div className="flex items-center gap-2"><h2 id="promo-modal-title">Đề xuất giảm giá</h2><div className="relative"><button type="button" aria-label="Cơ chế duyệt" aria-expanded={showMakerCheckerInfo} onClick={() => setShowMakerCheckerInfo(value => !value)} className="grid size-7 place-items-center text-[#7D715E]"><HelpCircle size={16}/></button>
@@ -408,8 +402,13 @@ export function ProposePromotionModal({
               </section>
           )}
           <section className="promotion-light-schedule space-y-3">
-            <div className="space-y-2"><h4 className="text-xs font-medium">Thời gian áp dụng</h4><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <PromotionScheduleField label="Bắt đầu" value={startsAt} onChange={setStartsAt}/><PromotionScheduleField label="Kết thúc" value={endsAt} onChange={setEndsAt} min={startsAt}/>
+            <div className="space-y-2"><h4 className="text-xs font-medium">Thời gian áp dụng <span className="ml-1 text-[11px] font-normal text-[#7D715E]">· Giờ Việt Nam</span></h4><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <DateTimePicker label="Bắt đầu" popoverTitle="Chọn thời điểm bắt đầu" compact required
+                value={startsAt} onChange={setStartsAt} disabled={submitting}
+                getCurrentDate={vietnamPickerNow} popoverPortalRef={schedulePopoverRoot} />
+              <DateTimePicker label="Kết thúc" popoverTitle="Chọn thời điểm kết thúc" compact required
+                value={endsAt} onChange={setEndsAt} disabled={submitting} minDateTime={startsAt}
+                getCurrentDate={vietnamPickerNow} popoverPortalRef={schedulePopoverRoot} />
             </div><div className="grid grid-cols-4 gap-2">{[3,7,14,30].map(days => <button type="button" key={days} onClick={() => handleApplyDuration(days)} className="h-8 border border-[#EAE4D7] text-[11px] hover:bg-[#FBF5EB]">{days} ngày</button>)}</div></div>
             <div><label htmlFor="promotion-reason" className="mb-1 block text-xs font-medium">Lý do đề xuất <span className="text-[#DC2626]">*</span></label><textarea id="promotion-reason" value={reason} onChange={event => setReason(event.target.value)} required minLength={10} maxLength={1000} placeholder="Nhập lý do…" className={`${inputClass} h-[72px]! resize-none py-2`}/><p className="mt-1 text-right text-[10px] text-[#7D715E]">{reason.length}/1.000 · Tối thiểu 10 ký tự</p></div>
             {errorMessage && <p role="alert" className="flex items-start gap-2 text-xs leading-relaxed text-[#DC2626]"><AlertCircle size={15} className="shrink-0"/>{errorMessage}</p>}

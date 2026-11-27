@@ -74,6 +74,7 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  const isShopWorkspace = /^\/(merchant|shop)(\/|$)/.test(location.pathname);
   const isKycPage = location.pathname === '/collaborator/wallet' &&
     new URLSearchParams(location.search).get('tab') === 'kyc';
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
@@ -105,10 +106,10 @@ export default function MainLayout() {
 
       {/* 2. Container nội dung căn giữa đồng bộ 100% với Customer (max-w-[1520px]) */}
       <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col">
-        <div className="flex flex-col lg:flex-row gap-5 items-start flex-1 min-h-0">
+        <div className={`flex flex-col lg:flex-row gap-5 items-start flex-1 min-h-0 ${isShopWorkspace ? 'lg:gap-6' : ''}`}>
           {/* Cột trái: Sidebar điều hướng các chức năng của từng vai trò */}
-          <div id="workspace-mobile-navigation" className={`${mobileMenuOpen ? 'block' : 'hidden'} relative w-full lg:w-[250px] lg:shrink-0 lg:h-full lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
-            <Sidebar currentUser={currentUser} onLogout={handleLogout} />
+          <div id="workspace-mobile-navigation" className={`${mobileMenuOpen ? 'block' : 'hidden'} ${isShopWorkspace ? 'lg:w-[265px] lg:after:-right-3' : 'lg:w-[250px] lg:after:-right-2.5'} relative w-full lg:shrink-0 lg:h-full lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
+            <Sidebar currentUser={currentUser} onLogout={handleLogout} className={isShopWorkspace ? 'px-0 lg:h-full lg:overflow-y-auto no-scrollbar' : undefined} />
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}

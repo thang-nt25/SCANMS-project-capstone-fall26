@@ -447,6 +447,8 @@ model Store {
 
 enum SponsoredPlacementStatus {
   REQUESTED
+  AWAITING_PAYMENT
+  PAYMENT_REVIEW
   APPROVED
   REJECTED
   CANCELLED
@@ -464,6 +466,8 @@ model SponsoredPlacement {
   requestedById    String                     @map("requested_by_id") @db.Uuid
   reviewedById     String?                    @map("reviewed_by_id") @db.Uuid
   headline         String                     @db.VarChar(160)
+  productId        String?                    @map("product_id") @db.Uuid
+  bannerImageUrl   String?                    @map("banner_image_url") @db.VarChar(2000)
   startsAt         DateTime                   @map("starts_at") @db.Timestamptz(6)
   endsAt           DateTime                   @map("ends_at") @db.Timestamptz(6)
   status           SponsoredPlacementStatus   @default(REQUESTED)
@@ -471,16 +475,26 @@ model SponsoredPlacement {
   amount           Decimal?                   @db.Decimal(15, 2)
   paymentReference String?                    @unique @map("payment_reference") @db.VarChar(100)
   paymentProofUrl  String?                    @map("payment_proof_url") @db.VarChar(2000)
+  paymentDeadline  DateTime?                  @map("payment_deadline") @db.Timestamptz(6)
+  payosOrderCode   String?                    @unique @map("payos_order_code") @db.VarChar(16)
+  payosLinkId      String?                    @unique @map("payos_link_id") @db.VarChar(100)
+  paymentStartedAt DateTime?                  @map("payment_started_at") @db.Timestamptz(6)
+  paymentCheckedAt DateTime?                  @map("payment_checked_at") @db.Timestamptz(6)
+  paidAt           DateTime?                  @map("paid_at") @db.Timestamptz(6)
+  receivedAmount   Decimal?                   @map("received_amount") @db.Decimal(15, 2)
+  paymentIssue     String?                    @map("payment_issue") @db.VarChar(255)
   reviewNote       String?                    @map("review_note") @db.VarChar(2000)
   reviewedAt       DateTime?                  @map("reviewed_at") @db.Timestamptz(6)
   createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   store            Store                      @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  product          Product?                   @relation(fields: [productId], references: [id], onDelete: Restrict)
   requestedBy      User                       @relation("SponsorshipRequester", fields: [requestedById], references: [id], onDelete: Restrict)
   reviewedBy       User?                      @relation("SponsorshipReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
 
   @@index([status, startsAt, endsAt], map: "idx_sponsorship_public_window")
   @@index([storeId, createdAt], map: "idx_sponsorship_store")
+  @@index([productId], map: "idx_sponsorship_product")
   @@map("sponsored_placements")
 }
 
@@ -645,6 +659,7 @@ model Product {
   exclusiveDealProposals ExclusiveDealProposal[]
   dealResources          ExclusiveDealProduct[]
   pricePromotions        ProductPricePromotion[]
+  sponsoredPlacements    SponsoredPlacement[]
 
   @@index([storeId], map: "idx_fk_products_store")
   @@index([moderationStatus, createdAt], map: "idx_products_moderation_status_created")

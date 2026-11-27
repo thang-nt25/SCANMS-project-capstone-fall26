@@ -32,7 +32,8 @@ import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import type { ChatAttachmentType, ChatReply, ChatMessageItem } from '@/types/chat.types';
 import { ExclusiveDealCardBubble } from './ExclusiveDealCardBubble';
 import { CampaignCardBubble } from './CampaignCardBubble';
-import { parseCampaignCard } from '@/utils/chat-explorer';
+import { parseCampaignCard, parseCouponProposalCard } from '@/utils/chat-explorer';
+import { CouponProposalCardBubble } from './CouponProposalCardBubble';
 import { useChatReply } from '@/hooks/useChatReply';
 import { useChatCapabilities } from '@/hooks/useChatCapabilities';
 import { ChatReplyQuote } from './ChatReplyQuote';
@@ -111,6 +112,7 @@ export function ScanmsFloatingChatWidget() {
     location.pathname.startsWith('/reset-password');
 
   const isAuthenticated = Boolean(currentUser && localStorage.getItem('token'));
+  const canUseFloatingChat = currentUser?.role === 'CUSTOMER' || currentUser?.role === 'COLLABORATOR';
 
   const isLiveRoute = location.pathname.startsWith('/live');
 
@@ -305,10 +307,10 @@ export function ScanmsFloatingChatWidget() {
 
 
   useEffect(() => {
-    if (isOpen && (isAuthRoute || !isAuthenticated)) {
+    if (isOpen && (isAuthRoute || !isAuthenticated || !canUseFloatingChat)) {
       closeChat();
     }
-  }, [isOpen, isAuthRoute, isAuthenticated, closeChat]);
+  }, [isOpen, isAuthRoute, isAuthenticated, canUseFloatingChat, closeChat]);
   const [searchLeftQuery, setSearchLeftQuery] = useState('');
   const [conversationFilter, setConversationFilter] = useState('ALL');
   const [isProductSelectOpen, setIsProductSelectOpen] = useState(false);
@@ -518,7 +520,7 @@ export function ScanmsFloatingChatWidget() {
     const messages = activeConversation?.messages || [];
     return canSeeAffiliateDeals
       ? messages
-      : messages.filter((message) => !parseExclusiveDealMessage(message.content));
+      : messages.filter((message) => !parseExclusiveDealMessage(message.content) && !parseCouponProposalCard(message.content));
   }, [activeConversation?.messages, canSeeAffiliateDeals]);
 
   // Keep the shop just opened visible, even before the first message is sent.
@@ -586,7 +588,7 @@ export function ScanmsFloatingChatWidget() {
     setIsLoadingShopCoupons(true);
     setShopCouponLoadError('');
     try {
-      setShopCoupons(await couponService.getPublicStoreCoupons(storeId));
+      setShopCoupons(await couponService.getShareableStoreCoupons(storeId));
     } catch (error: any) {
       setShopCouponLoadError(error?.message || 'Không tải được mã giảm giá của Shop.');
     } finally {
@@ -657,7 +659,7 @@ export function ScanmsFloatingChatWidget() {
   };
 
   // Completely hide the floating widget on auth pages, when unauthenticated, or on merchant/admin/dedicated chat pages
-  if (isAuthRoute || !isAuthenticated || isMerchantOrChatRoute) {
+  if (isAuthRoute || !isAuthenticated || !canUseFloatingChat || isMerchantOrChatRoute) {
     return null;
   }
 
@@ -1233,7 +1235,19 @@ export function ScanmsFloatingChatWidget() {
             const hasProducts = msg.products && msg.products.length > 0;
             const exclusiveDeal = parseExclusiveDealMessage(msg.content);
             const campaignCard = parseCampaignCard(msg.content);
+            const couponProposal = parseCouponProposalCard(msg.content);
             const renderMessage = () => {
+
+            if (couponProposal) {
+              return (
+                <div className={`my-2 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  <div className="min-w-0 max-w-[90%]">
+                    <CouponProposalCardBubble card={couponProposal} isShop={isShopManager} />
+                    <div className={`mt-1 text-[10px] text-[#7D715E] ${isUser ? 'text-right' : 'text-left'}`}>{msg.timestamp}</div>
+                  </div>
+                </div>
+              );
+            }
 
             if (campaignCard) {
               return (
@@ -1468,7 +1482,7 @@ export function ScanmsFloatingChatWidget() {
               </span>
               <button
                 type="button"
-                onClick={() => handleQuickSuggestion('Chào Shop, mình quan tâm đến sản phẩm này và muốn xin mẫu thử (Sample) để review/livestream.')}
+                onClick={() => handleQuickSuggestion('Chào Shop, mình quan tâm đến sản phẩm này và muốn xin mẫu thử để làm nội dung đánh giá.')}
                 className="px-2 py-0.5 bg-white border border-[#EAE4D7] hover:border-[#B88E4F] hover:text-[#B88E4F] rounded-full text-[#1A1612] whitespace-nowrap transition cursor-pointer shadow-2xs"
               >
                 Xin mẫu thử (Sample)

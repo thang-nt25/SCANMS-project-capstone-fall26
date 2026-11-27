@@ -1,39 +1,38 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Tag, Store } from 'lucide-react';
+import { Store, Tag, Truck } from 'lucide-react';
+
+const shortcuts = [
+  { label: 'Gian hàng', icon: Store, to: '/marketplace#featured-stores' },
+  { label: 'Giảm giá', icon: Tag, to: '/search?discount=true&inStock=true' },
+  { label: 'Tra cứu đơn', icon: Truck, to: '/marketplace#tracking-section' },
+] as const;
 
 export function MarketplaceShortcuts({ compact: _compact }: { compact?: boolean }) {
-  const location = useLocation();
-  const storesActive = location.hash === '#featured-stores';
-  const discountsActive = location.pathname === '/search' && new URLSearchParams(location.search).get('discount') === 'true';
+  const { hash, pathname, search } = useLocation();
+  const discountsActive = pathname === '/search' && new URLSearchParams(search).get('discount') === 'true';
 
   return (
-    <nav aria-label="Khám phá SCANMS" className="inline-flex shrink-0 items-center gap-0 py-[3px] px-2 bg-[#FAF5EC] rounded-full border border-[#E6D8C2] shadow-[0_4px_14px_rgba(70,45,15,0.06),0_1px_3px_rgba(0,0,0,0.02)]">
-      <Link
-        to="/marketplace#featured-stores"
-        aria-current={storesActive ? 'location' : undefined}
-        onClick={() => document.getElementById('featured-stores')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-        className={`relative inline-flex items-center gap-1.5 py-1.5 px-3.5 no-underline rounded-full text-[13px] border-0 bg-transparent cursor-pointer transition-colors duration-200 whitespace-nowrap ${
-          storesActive ? 'text-[#94621f] font-semibold' : 'text-[#63523e] font-medium hover:text-[#94621f]'
-        }`}
-      >
-        <Store size={14} className={storesActive ? 'text-[#94621f]' : 'text-[#85735f]'} aria-hidden="true" />
-        <span>Gian hàng</span>
-        {storesActive && <span className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 w-[26px] h-[2.5px] bg-[#B8862F] rounded-full" />}
-      </Link>
+    <nav aria-label="Khám phá SCANMS" className="grid w-[min(100%,23rem)] grid-cols-3 rounded-full border border-[#E6D8C2] bg-[#FAF5EC] px-1.5 py-[3px] shadow-[0_4px_14px_rgba(70,45,15,0.06),0_1px_3px_rgba(0,0,0,0.02)] sm:w-[25rem]">
+      {shortcuts.map(({ label, icon: Icon, to }, index) => {
+        const anchor = to.split('#')[1];
+        const active = anchor ? pathname === '/marketplace' && hash === `#${anchor}` : discountsActive;
 
-      <span className="text-[#DEC9B0] text-[11px] font-light select-none px-0.5" aria-hidden="true">|</span>
-
-      <Link
-        to="/search?discount=true&inStock=true"
-        aria-current={discountsActive ? 'page' : undefined}
-        className={`relative inline-flex items-center gap-1.5 py-1.5 px-3.5 no-underline rounded-full text-[13px] border-0 bg-transparent cursor-pointer transition-colors duration-200 whitespace-nowrap ${
-          discountsActive ? 'text-[#94621f] font-semibold' : 'text-[#63523e] font-medium hover:text-[#94621f]'
-        }`}
-      >
-        <Tag size={14} className={discountsActive ? 'text-[#94621f]' : 'text-[#85735f]'} aria-hidden="true" />
-        <span>Giảm giá</span>
-        {discountsActive && <span className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 w-[26px] h-[2.5px] bg-[#B8862F] rounded-full" />}
-      </Link>
+        return (
+          <div key={to} className="relative min-w-0 px-0.5">
+            {index > 0 && <span aria-hidden="true" className="pointer-events-none absolute left-0 top-1/2 h-3.5 w-px -translate-y-1/2 bg-[#DEC9B0]" />}
+            <Link
+              to={to}
+              aria-current={active ? (anchor ? 'location' : 'page') : undefined}
+              className={`flex min-h-9 w-full items-center justify-center gap-1 rounded-full px-1 text-center text-[11px] leading-tight no-underline transition-colors focus-visible:outline-2 focus-visible:outline-[#B88E4F] sm:gap-1.5 sm:text-[13px] ${
+                active ? 'bg-[#F3E8D6] font-semibold text-[#795A2D]' : 'font-medium text-[#63523e] hover:bg-white hover:text-[#795A2D]'
+              }`}
+            >
+              <Icon size={14} className="shrink-0" aria-hidden="true" />
+              <span className="whitespace-nowrap">{label}</span>
+            </Link>
+          </div>
+        );
+      })}
     </nav>
   );
 }

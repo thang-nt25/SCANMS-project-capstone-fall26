@@ -1,5 +1,6 @@
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useRef } from 'react';
+import { AccountAvatar } from './AccountAvatar';
 import { Link, useLocation } from 'react-router-dom';
 import { LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
@@ -30,7 +31,6 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
 
   const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
   const [uploading, setUploading] = useState(false);
-  const [failedAvatar, setFailedAvatar] = useState('');
   const wishlistInventory = useCustomerWishlist(currentPath.startsWith('/customer') ? currentUser?.id : undefined);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -357,17 +357,8 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
           >
             {uploading ? (
               <Loader2 className="w-4 h-4 text-[#B88E4F] animate-spin" />
-            ) : (currentUser?.avatarUrl || (role === 'SHOP_MANAGER' && (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'))) && failedAvatar !== `${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}` ? (
-              <img
-                src={currentUser?.avatarUrl || (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png')}
-                alt={`Ảnh đại diện ${currentUser?.fullName || 'tài khoản'}`}
-                className="w-full h-full object-cover"
-                onError={() => setFailedAvatar(`${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}`)}
-              />
             ) : (
-              <span>
-                {currentUser?.fullName?.charAt(0).toUpperCase() || (role === 'CUSTOMER' ? 'C' : 'K')}
-              </span>
+              <AccountAvatar user={currentUser} name={displayName} useShopLogo={role === 'SHOP_MANAGER'} />
             )}
             {!uploading && (
               <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
@@ -392,7 +383,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
       </div>
 
       {/* SCANMS UI Reference Minimalist Navigation List */}
-      <nav className="flex flex-col gap-0.5 text-xs sm:text-[13px] flex-1 overflow-y-auto no-scrollbar pt-1" aria-label="Menu chức năng">
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 pt-1 text-xs sm:text-[13px] overflow-y-auto no-scrollbar" aria-label="Menu chức năng">
         {navConfig.items.map((item, index) => {
           const active = isLinkActive(item.path);
           const Icon = item.icon;
@@ -400,9 +391,9 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
           const isNewGroup = index > 0 && item.group !== undefined && navConfig.items[index - 1]?.group !== item.group;
 
           return (
-            <div key={item.path} className="flex flex-col">
+            <div key={item.path} className="flex shrink-0 flex-col">
               {isNewGroup && (
-                <div className="my-1.5 h-px bg-[#EAE4D7]/40 mx-2" aria-hidden="true" />
+                <div className="mx-2 my-1.5 h-px bg-[#EAE4D7]/40" aria-hidden="true" />
               )}
               <Link
                 to={item.path}
@@ -411,7 +402,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
                 onFocus={() => handleRouteHover(item.path)}
                 onBlur={cancelRouteHover}
                 aria-current={active ? 'page' : undefined}
-                className={`group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer min-h-[38px] ${
+                className={`group flex items-center gap-2.5 px-3 rounded-xl text-xs sm:text-[13px] min-h-[38px] py-2 transition-all duration-150 cursor-pointer ${
                   active
                     ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border-l-[3px] border-l-[#C59B58] border-y border-r border-[#EEDFC6] shadow-2xs'
                     : 'text-[#4A3F33] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium border-l-[3px] border-l-transparent'
@@ -440,14 +431,13 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
         })}
       </nav>
 
-      {/* Bottom Actions có đường kẻ ngăn cách tinh tế, luôn neo ở đáy sidebar */}
-      <div className="mt-auto pt-3 border-t border-[#EAE4D7] flex flex-col gap-1 text-xs sm:text-[13px] shrink-0">
+      <div className="mt-auto flex shrink-0 flex-col gap-1 border-t border-[#EAE4D7] pt-3 text-xs sm:text-[13px]!">
         {currentUser ? (
           <>
             {/* Cổng Mua Sắm Link */}
             <Link
               to="/marketplace"
-              className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] min-h-[44px] font-medium text-[#4A3F33] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition-all duration-150 cursor-pointer"
+              className="group flex min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-2.5 [font-size:inherit] font-medium text-[#4A3F33] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition-all duration-150 cursor-pointer"
               title="Quay lại Cổng Mua Sắm SCANMS"
               aria-label="Quay lại Cổng Mua Sắm SCANMS"
             >
@@ -459,7 +449,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
             <button
               type="button"
               onClick={onLogout}
-              className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] min-h-[40px] font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all duration-150 cursor-pointer text-left w-full"
+              className="group flex min-h-[40px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left [font-size:inherit] font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all duration-150 cursor-pointer"
             >
               <LogOut className="w-4 h-4 shrink-0 text-rose-500 transition-colors" />
               <span className="flex-1 truncate tracking-tight font-semibold">Đăng xuất</span>

@@ -13,6 +13,11 @@ test('homepage category filters accept Vietnamese seed catalogue labels and excl
   assert.equal(matchesHomeCategory('Thực phẩm bổ sung', 'health'), true);
   assert.equal(matchesHomeCategory('Trang điểm', 'makeup'), true);
   assert.equal(matchesHomeCategory('Thực phẩm sức khỏe', 'skin'), false);
+  assert.equal(matchesHomeCategory('Mỹ phẩm & Chăm sóc da chuyên sâu', 'skin'), true);
+  assert.equal(matchesHomeCategory('Thời trang & Phụ kiện', 'fashion'), true);
+  assert.equal(matchesHomeCategory('Thiết bị điện tử & Phụ kiện', 'electronics'), true);
+  assert.equal(matchesHomeCategory('Thiết bị điện tử & Phụ kiện', 'body'), false);
+  assert.equal(matchesHomeCategory('Thời trang & Phụ kiện', 'electronics'), false);
 });
 
 test('homepage category matching is accent/case independent and unknown filters do not hide all products', () => {

@@ -1,168 +1,76 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Ticket, Tag, Check, Clock3, Copy, CheckCircle2, ExternalLink, Calendar } from 'lucide-react';
+﻿import { useNavigate } from 'react-router-dom';
+import { ArrowUpRight, Copy, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
-import { type DiscountType, type CouponScope } from '../../services/coupon.service';
+import { type CouponProposalCard } from '@/utils/chat-explorer';
 
 interface CouponProposalCardProps {
-  card: {
-    type: string;
-    couponId?: string;
-    code: string;
-    discountType?: DiscountType;
-    discountValue?: number;
-    desiredDiscount?: number;
-    minimumOrderAmount?: number;
-    maximumDiscountAmount?: number;
-    validityDays?: number;
-    startsAt?: string;
-    expiresAt?: string;
-    scopeType?: CouponScope;
-    discountPercent?: number;
-    usageLimit?: number;
-    note?: string;
-    storeId?: string;
-    storeName?: string;
-    status?: string;
-  };
-  isMine: boolean;
+  card: CouponProposalCard;
   isShop: boolean;
-  activeConv?: any;
+  storeName?: string;
 }
 
-export function CouponProposalCardBubble({
-  card,
-  isShop,
-  activeConv,
-}: CouponProposalCardProps) {
+const formatMoney = (value: number) => `${value.toLocaleString('vi-VN')} ₫`;
+
+export function CouponProposalCardBubble({ card, isShop, storeName }: CouponProposalCardProps) {
   const navigate = useNavigate();
-  const [copied, setCopied] = useState(false);
+  const approved = card.status === 'APPROVED' || card.type === 'COUPON_PROPOSAL_APPROVED';
+  const rejected = card.status === 'REJECTED';
+  const canReview = isShop && !approved && !rejected && card.couponId;
+  const discount = card.discountValue ?? card.discountPercent ?? card.desiredDiscount;
+  const discountText = discount === undefined
+    ? undefined
+    : card.discountType === 'FIXED_AMOUNT' ? formatMoney(discount) : `${discount}%`;
+  const expiresAt = card.expiresAt ? new Date(card.expiresAt) : null;
+  const validity = expiresAt && Number.isFinite(expiresAt.getTime())
+    ? expiresAt.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+    : card.validityDays ? `${card.validityDays} ngày` : undefined;
 
-  const isApproved = card.status === 'APPROVED' || card.type === 'COUPON_PROPOSAL_APPROVED';
-  const officialPercent = card.discountValue || card.discountPercent;
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(card.code);
-    setCopied(true);
-    toast.success(`Đã sao chép mã ${card.code}!`);
-    setTimeout(() => setCopied(false), 2000);
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(card.code);
+      toast.success('Đã sao chép mã ưu đãi');
+    } catch {
+      toast.error('Không sao chép được mã ưu đãi');
+    }
   };
 
   return (
-    <div className="w-[340px] max-w-full rounded-2xl border border-[#EEDFC6] bg-white text-[#1A1612] shadow-[0_3px_12px_rgba(35,29,21,0.03)] text-left overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center gap-2.5 px-3.5 py-3 bg-[#FAF8F5] border-b border-[#EAE4D7]">
-        <span className="grid place-items-center shrink-0 w-[34px] h-[34px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]">
-          <Ticket size={18} />
-        </span>
-        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-          <span className="text-[10px] leading-3.5 text-[#7D715E]">Đề xuất ưu đãi</span>
-          <strong className="text-[13px] leading-[18px] font-semibold text-[#1A1612] truncate">
-            Mã độc quyền KOL
-          </strong>
-        </div>
-        <span
-          className={`px-2 py-0.5 border rounded-md text-[9px] font-semibold tracking-wider flex items-center gap-1 ${
-            isApproved
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
-          }`}
-        >
-          {isApproved ? <Check size={11} className="text-[#059669]" /> : <Clock3 size={11} />}
-          {isApproved ? 'ĐÃ KÍCH HOẠT' : 'CHỜ DUYỆT'}
+    <article className="w-[340px] max-w-full overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-left text-[#1A1612]">
+      <header className="flex flex-wrap items-center gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2.5">
+        <Ticket size={17} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+        <strong className="flex-1 text-sm">Đề xuất mã riêng</strong>
+        <span className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-xs text-[#795522]">
+          {approved ? 'Đã duyệt' : rejected ? 'Đã từ chối' : 'Chờ duyệt'}
         </span>
       </header>
-
-      {/* Body */}
-      <div className="p-3.5 space-y-3">
-        {/* Voucher Code Box */}
-        <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
-          <div>
-            <span className="text-[10px] text-[#7D715E] block">Mã ưu đãi độc quyền</span>
-            <strong className="text-base font-extrabold tracking-wider font-mono text-[#1A1612]">
-              {card.code}
-            </strong>
-          </div>
-          <button
-            type="button"
-            onClick={handleCopyCode}
-            className="p-1.5 rounded-lg border border-[#EEDFC6] bg-white text-[#B88E4F] hover:bg-[#F3EFE6] transition cursor-pointer"
-            title="Sao chép mã"
-          >
-            {copied ? <Check size={14} className="text-[#059669]" /> : <Copy size={14} />}
-          </button>
-        </div>
-
-        {/* Details grid */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
-            <span className="text-[10px] text-[#7D715E] block">Mức giảm ưu đãi</span>
-            <strong className="text-xs font-bold text-[#B88E4F]">
-              {officialPercent ? `${officialPercent}%` : 'Shop thiết lập (3%–20%)'}
-            </strong>
-            <span className="text-[9.5px] text-[#7D715E] block mt-0.5">
-              Phạm vi: Toàn cửa hàng
-            </span>
-          </div>
-          <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
-            <span className="text-[10px] text-[#7D715E] block">Đơn tối thiểu</span>
-            <strong className="text-xs font-bold text-[#1A1612] block">
-              {card.minimumOrderAmount ? `${Number(card.minimumOrderAmount).toLocaleString('vi-VN')}₫` : 'Shop cấu hình'}
-            </strong>
-            <span className="text-[9.5px] text-[#7D715E] block mt-0.5">
-              Toàn cửa hàng
-            </span>
-          </div>
-        </div>
-
-        {/* Validity & Scope badge */}
-        <div className="flex items-center justify-between text-[10.5px] text-[#7D715E] bg-[#FAF8F5] px-2.5 py-1.5 rounded-lg border border-[#EAE4D7]/80">
-          <span className="flex items-center gap-1">
-            <Calendar size={12} className="text-[#B88E4F]" />
-            <span>Thời hạn: {card.validityDays ? `${card.validityDays} ngày` : '30 ngày'}</span>
-          </span>
-          <span className="truncate max-w-[130px] font-medium text-[#1A1612]">
-            {card.storeName || activeConv?.store?.name || 'Cửa hàng trực thuộc'}
-          </span>
-        </div>
-
-        {card.note && (
-          <div className="text-[11px] text-[#7D715E] bg-[#FAF8F5] p-2 rounded-lg border border-[#EAE4D7]/80 leading-relaxed">
-            <span className="font-semibold text-[#1A1612]">Cam kết: </span>
-            {card.note}
+      <div className="space-y-2 px-3 py-3 text-xs">
+        {card.code && (
+          <div className="flex items-center gap-2">
+            <strong className="min-w-0 break-all font-mono text-sm">{card.code}</strong>
+            <button type="button" onClick={copyCode} title="Sao chép mã" aria-label="Sao chép mã"
+              className="grid size-7 shrink-0 place-items-center rounded-md text-[#795522] hover:bg-[#FBF5EB]">
+              <Copy size={14} />
+            </button>
           </div>
         )}
+        <p className="break-words text-[#7D715E]">
+          {[card.storeName || storeName, card.scopeType === 'STORE_WIDE' ? 'Toàn gian hàng' : undefined].filter(Boolean).join(' · ')}
+        </p>
+        {discountText && <p>{approved ? 'Mức giảm' : 'Mức giảm đề xuất'} · <strong>{discountText}</strong></p>}
+        {validity && <p>Hiệu lực · <strong>{validity}</strong></p>}
+        {card.minimumOrderAmount !== undefined && <p>Đơn tối thiểu · {formatMoney(card.minimumOrderAmount)}</p>}
+        {card.maximumDiscountAmount !== undefined && <p>Giảm tối đa · {formatMoney(card.maximumDiscountAmount)}</p>}
+        {card.note && <p className="whitespace-pre-wrap break-words border-t border-[#EAE4D7] pt-2">{card.note}</p>}
       </div>
-
-      {/* Footer / Actions */}
-      <footer className="px-3.5 py-2.5 border-t border-[#EAE4D7] bg-[#FAF8F5]">
-        {isApproved ? (
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800">
-            <CheckCircle2 size={15} className="text-[#059669] shrink-0" />
-            <span>Mã đã kích hoạt · Khách áp dụng được ngay</span>
-          </div>
-        ) : isShop ? (
-          <button
-            type="button"
-            onClick={() => {
-              const target = card.couponId
-                ? `/merchant/promotions?tab=creator-incentives&reviewCouponId=${encodeURIComponent(card.couponId)}`
-                : '/merchant/promotions?tab=creator-incentives';
-              navigate(target);
-            }}
-            className="w-full min-h-[34px] px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Tag size={14} />
-            <span>Xem chi tiết &amp; Xét duyệt</span>
-            <ExternalLink size={12} />
+      {canReview && (
+        <footer className="border-t border-[#EAE4D7] px-3 py-2.5">
+          <button type="button"
+            onClick={() => navigate(`/merchant/promotions?tab=creator-incentives&reviewCouponId=${encodeURIComponent(canReview)}`)}
+            className="flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#795522] hover:bg-[#F3EFE6]">
+            Xem đề xuất <ArrowUpRight size={14} />
           </button>
-        ) : (
-          <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E]">
-            <Clock3 size={13} className="text-[#B88E4F] shrink-0" />
-            <span>Đã gửi đề xuất · Đang chờ Quản lý Cửa hàng xét duyệt &amp; gán %</span>
-          </div>
-        )}
-      </footer>
-    </div>
+        </footer>
+      )}
+    </article>
   );
 }

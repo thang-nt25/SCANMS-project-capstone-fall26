@@ -53,7 +53,8 @@ export default function AdminProductPricingHubPage() {
   return (
     <div className="w-full min-w-0 flex flex-col gap-3 text-[#1A1612]" id="admin-product-pricing-hub">
       <HubTabs
-        className="mb-0 [&_[role=tab]]:min-w-0 max-sm:[&_[role=tab]]:flex-col max-sm:[&_[role=tab]]:px-1 max-sm:[&_[role=tab]]:gap-1"
+        className="mb-0"
+        variant="framed"
         stretchTabs
         stretchTabColumns={3}
         tone="white"

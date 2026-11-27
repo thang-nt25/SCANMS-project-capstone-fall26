@@ -1,5 +1,7 @@
+import { authPage, authHeader, authMain, authExperience, authFormPanel, authHeading, authLabel, authGoogle, authSubmit } from '../../components/auth/auth-form-layout';
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { AuthFooter } from '../../components/auth/AuthFooter';
 import {
   Store,
   Sparkles,
@@ -72,6 +74,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{identifier?: string; password?: string}>({});
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   useEffect(() => {
@@ -132,12 +135,11 @@ export default function LoginPage() {
     if (loading || passwordAuthState === 'success') return;
     const submittedIdentifier = identifier.trim();
     const submittedPassword = password;
-    if (!submittedIdentifier) {
-      setError('Vui lòng nhập email hoặc số điện thoại đã đăng ký.');
-      return;
-    }
-    if (!submittedPassword) {
-      setError('Vui lòng nhập mật khẩu.');
+    const errors = {identifier: !submittedIdentifier ? 'Nhập email hoặc số điện thoại.' : undefined, password: !submittedPassword ? 'Nhập mật khẩu.' : undefined};
+    setFieldErrors(errors);
+    if (errors.identifier || errors.password) {
+      setError(null);
+      document.getElementById(errors.identifier ? 'login-identifier' : 'login-password')?.focus();
       return;
     }
     setError(null);
@@ -184,8 +186,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="scanms-login-page selection:bg-[#EEDFC6] selection:text-[#1A1612] flex min-h-dvh flex-col gap-[18px] bg-canvas px-10 pt-4 pb-3.5 text-ink [color-scheme:light] max-[1050px]:gap-[22px] max-[1050px]:px-6 max-[1050px]:py-[18px] login-compact:gap-3 login-compact:py-2.5 max-[760px]:gap-[18px] max-[760px]:px-4 max-[760px]:pt-3.5 max-[760px]:pb-5 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-brand-strong [&_button:focus-visible]:outline-offset-4 [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-brand-strong [&_a:focus-visible]:outline-offset-4 motion-reduce:[&_*]:animate-none! motion-reduce:[&_*]:transition-none! motion-reduce:[&_*]:scroll-auto! motion-reduce:[&_*::before]:animate-none! motion-reduce:[&_*::before]:transition-none! motion-reduce:[&_*::after]:animate-none! motion-reduce:[&_*::after]:transition-none!">
-      <header className="login-page-header mx-auto mt-auto flex min-h-14 w-full max-w-[1240px] items-center justify-between gap-4 min-[1500px]:max-w-[1320px] login-compact:min-h-11 max-[760px]:min-h-12 max-[760px]:[&>a:first-child]:max-w-[61%] max-[760px]:[&>a:last-child]:px-2.5 max-[760px]:[&>a:last-child]:py-2 max-[760px]:[&>a:last-child]:text-[11px] max-[760px]:[&>a:last-child]:whitespace-nowrap">
+    <div className={`scanms-login-page ${authPage}`}>
+      <header className={`login-page-header ${authHeader}`}>
         <Link to="/marketplace" className="hover:opacity-95 transition-opacity">
           <ScanMSLogo size="md" showSubtitle={true} />
         </Link>
@@ -199,9 +201,9 @@ export default function LoginPage() {
         </Link>
       </header>
 
-      <main className="login-page-main mx-auto mt-0 mb-auto w-full max-w-[1240px] min-[1500px]:max-w-[1320px]">
-        <div className="login-experience relative isolate grid grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] overflow-clip rounded-[30px] border-2 border-brand-border p-0 bg-[linear-gradient(to_right,transparent_72%,#FAF8F0_91%),radial-gradient(ellipse_at_20%_18%,#FFFDF7_2%,transparent_55%),linear-gradient(135deg,#EEDFC6,#FBF5EB_52%,#EEDFC6)] shadow-[0_20px_65px_-30px_rgb(125_113_94/28%),0_2px_6px_rgb(125_113_94/3%)] before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:content-[''] before:[background:url('/assets/auth_luxury_card_inner.jpg')_center/100%_100%_no-repeat] before:[mask:url('/assets/login-gold-curve-mask.svg')_center/100%_100%_no-repeat] before:[transform:scaleX(.8)] before:origin-[55%_center] after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:content-[''] after:bg-[linear-gradient(to_right,transparent_86%,#FAF8F0_91%)] max-[760px]:grid-cols-[minmax(0,1fr)] max-[760px]:rounded-[22px] max-[760px]:before:bg-[linear-gradient(160deg,transparent_10%,#FFFEF9_65%,#FBF5EB)] max-[760px]:before:[mask:none] max-[760px]:before:[transform:none] max-[760px]:after:hidden">
-          <section className="login-showcase relative flex min-w-0 flex-col overflow-hidden rounded-none bg-transparent max-[760px]:grid max-[760px]:min-h-[175px] max-[760px]:grid-cols-[1.05fr_1fr]" aria-label="Kết nối mua sắm cùng SCANMS">
+      <main className={`login-page-main ${authMain}`}>
+        <div className={`login-experience ${authExperience} overflow-clip rounded-[30px] border-0 ring-1 ring-inset ring-brand-border p-0 bg-[linear-gradient(to_right,transparent_72%,#FAF8F0_91%),radial-gradient(ellipse_at_20%_18%,#FFFDF7_2%,transparent_55%),linear-gradient(135deg,#EEDFC6,#FBF5EB_52%,#EEDFC6)] shadow-[0_20px_65px_-30px_rgb(125_113_94/28%),0_2px_6px_rgb(125_113_94/3%)] before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:content-[''] before:[background:url('/assets/auth_luxury_card_inner.jpg')_center/100%_100%_no-repeat] before:[mask:url('/assets/login-gold-curve-mask.svg')_center/100%_100%_no-repeat] before:[transform:translateX(-80px)_scaleX(.8)] before:origin-[55%_center] after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:content-[''] after:bg-[linear-gradient(to_right,transparent_72%,#FAF8F0_84%)] max-[760px]:grid-cols-[minmax(0,1fr)] max-[760px]:rounded-[22px] max-[760px]:before:bg-[linear-gradient(160deg,transparent_10%,#FFFEF9_65%,#FBF5EB)] max-[760px]:before:[mask:none] max-[760px]:before:[transform:none] max-[760px]:after:hidden`}>
+          <section className="login-showcase max-[900px]:hidden relative flex min-w-0 flex-col overflow-hidden rounded-none bg-transparent max-[760px]:grid max-[760px]:min-h-[175px] max-[760px]:grid-cols-[1.05fr_1fr]" aria-label="Kết nối mua sắm cùng SCANMS">
             <div className="login-showcase-copy relative z-1 px-[42px] pt-10 pb-0 animate-[login-content-enter_600ms_both] min-[1500px]:px-[38px] min-[1500px]:pt-[34px] max-[1050px]:px-[22px] max-[1050px]:pt-[26px] login-compact:pt-6 max-[760px]:self-center max-[760px]:pt-6 max-[760px]:pr-0 max-[760px]:pb-[22px] max-[760px]:pl-[22px] [&_h1]:mt-[19px] [&_h1]:mb-0 [&_h1]:pb-[5px] [&_h1]:text-[clamp(30px,3vw,40px)] [&_h1]:font-semibold [&_h1]:italic [&_h1]:leading-[1.2] [&_h1]:tracking-[-1px] [&_h1_span]:text-brand-strong max-[1050px]:[&_h1]:text-[32px] max-[1050px]:[&_h1]:tracking-[-1.1px] max-[760px]:[&_h1]:mt-2.5 max-[760px]:[&_h1]:text-[clamp(20px,4.3vw,29px)] max-[760px]:[&_h1]:tracking-[-.7px] max-[760px]:[&_h1]:leading-[1.25] max-[760px]:[&_p]:hidden">
               <div className="login-showcase-eyebrow inline-flex items-center gap-[9px] rounded-full border border-brand-border bg-white/90 px-4 py-2 text-xs font-bold leading-[1.5] text-ink shadow-[0_2px_6px_rgb(125_113_94/6%)] [&_svg]:shrink-0 [&_svg]:text-brand-strong max-[760px]:gap-1 max-[760px]:px-2 max-[760px]:py-[5px] max-[760px]:text-[9px] max-[760px]:[&_svg]:hidden"><Sparkles size={14} /><span>Mạng Lưới Nhãn Hàng & Tiếp Thị</span></div>
               <h1 className="font-display">Kết nối nhãn hàng,<br /><span>lan tỏa giá trị.</span></h1>
@@ -209,15 +211,15 @@ export default function LoginPage() {
             <ShoppingScene quiet={isForgotPasswordOpen} />
           </section>
 
-          <div className="login-form-panel relative flex min-h-[580px] min-w-0 flex-col justify-between gap-[25px] rounded-none border-0 bg-transparent pt-7 pr-8 pb-[26px] pl-[100px] shadow-none min-[1500px]:pr-9 min-[1500px]:pl-[108px] max-[1050px]:pt-[26px] max-[1050px]:pr-6 max-[1050px]:pb-6 max-[1050px]:pl-[74px] login-compact:min-h-[540px] login-compact:gap-[22px] login-compact:py-6 max-[760px]:min-h-[490px] max-[760px]:gap-6 max-[760px]:px-6 max-[760px]:py-[26px] [&_input:not([type=checkbox])]:min-h-11 [&_input:not([type=checkbox])]:text-[13px] [&_button.h-11]:min-h-11 [&_button.h-11]:text-[13px] [&_input::placeholder]:text-muted [&_label]:font-medium [&_form]:flex [&_form]:flex-col [&_form]:gap-3 [&_form>*]:my-0 max-[760px]:[&_input:not([type=checkbox])]:[font-size:16px]">
-            <div className="login-form-heading mb-2 text-center [&_h2]:m-0 [&_h2]:text-[34px] [&_h2]:font-black [&_h2]:tracking-[-1px] [&_h2]:leading-[1.25] [&_h2>span]:text-brand-strong login-compact:[&_h2]:text-[32px] max-[760px]:[&_h2]:text-[28px]">
-              <h2 className="font-display">Đăng <span>nhập</span></h2>
+          <div className={`login-form-panel ${authFormPanel} bg-transparent!`}>
+            <div className="login-form-heading">
+              <h2 className={authHeading}>Đăng <span className="text-brand-strong">nhập</span></h2>
             </div>
 
             {/* Role Dropdown */}
             {showRoleSelector && <div className="relative">
-              <label id="login-role-label" className="block text-xs font-bold text-[#1A1612] mb-1">
-                Vai trò đăng nhập:
+              <label id="login-role-label" className={authLabel}>
+                Vai trò đăng nhập
               </label>
               <button
                 type="button"
@@ -226,7 +228,7 @@ export default function LoginPage() {
                 aria-controls="login-role-options"
                 onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
                 onKeyDown={(e) => { if (e.key === 'Escape') setIsRoleDropdownOpen(false); }}
-                className="w-full h-11 px-3.5 bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl flex items-center justify-between transition shadow-2xs cursor-pointer text-left"
+                className="w-full h-[46px]! rounded-[10px]! px-3.5 bg-white hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl flex items-center justify-between transition shadow-2xs cursor-pointer text-left"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center text-[#C59B58] shadow-2xs shrink-0">
@@ -302,23 +304,21 @@ export default function LoginPage() {
             </div>}
 
             {/* Social sign-in options */}
-            {showRoleSelector && <>
+            <>
             <div className="w-full">
               <GoogleOfficialButton
+                disabled={loading || passwordAuthState === 'success'}
                 onSuccess={onGoogleTokenSuccess}
                 onError={(err) => setError(err)}
-                className="h-11"
+                className={authGoogle}
               />
             </div>
 
             {/* Divider */}
-            <div className="relative flex items-center justify-center my-0.5">
-              <div className="border-t border-[#EAE4D7] w-full" />
-              <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
-                hoặc email / số điện thoại
-              </span>
+            <div className="flex h-5 items-center gap-3 text-[11px] font-medium text-[#7D715E] before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line">
+              Hoặc dùng email
             </div>
-            </>}
+            </>
 
             {error && (
               <div role="alert" className="p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium">
@@ -332,17 +332,20 @@ export default function LoginPage() {
                 Tài khoản đã được thay đổi ở tab khác. Đăng nhập {showRoleSelector ? `tài khoản ${activeRole.label} ` : ''}để tiếp tục trang vừa mở.
               </p>
             )}
-            <form id="scanms-auth-form" name="scanms-auth-form" autoComplete="off" noValidate onSubmit={handleSubmit} className="space-y-3">
+            <form id="scanms-auth-form" name="scanms-auth-form" autoComplete="off" noValidate onSubmit={handleSubmit} aria-busy={loading} className="flex flex-col gap-4">
               {/* Trap decoy inputs for Chrome autofill */}
               <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none', overflow: 'hidden' }} aria-hidden="true">
                 <input type="text" name="chrome_autofill_decoy_user" tabIndex={-1} autoComplete="username" />
                 <input type="password" name="chrome_autofill_decoy_pass" tabIndex={-1} autoComplete="current-password" />
               </div>
 
-              <div className="relative flex items-center">
-                <label htmlFor="login-identifier" className="sr-only">Email hoặc số điện thoại đã đăng ký</label>
+              <div className="w-full">
+                <label htmlFor="login-identifier" className={authLabel}>Email hoặc số điện thoại</label>
+                <div className="relative flex items-center">
                 <input
                   id="login-identifier"
+                  aria-invalid={Boolean(fieldErrors.identifier)}
+                  aria-describedby={fieldErrors.identifier ? "login-identifier-error" : undefined}
                   name="scanms_account_identity"
                   type="text"
                   autoComplete="one-time-code"
@@ -354,22 +357,26 @@ export default function LoginPage() {
                   spellCheck={false}
                   maxLength={254}
                   value={identifier}
-                  onChange={(e) => { setIdentifier(e.target.value); setPasswordAuthState('idle'); }}
+                  onChange={(e) => { setIdentifier(e.target.value); setPasswordAuthState('idle'); setFieldErrors(previous => ({...previous, identifier:undefined})); }}
                   required
                   placeholder="Email hoặc số điện thoại đã đăng ký"
                   className="w-full h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
                 />
                 <UserRound className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
+                </div>
+                {fieldErrors.identifier && <p id="login-identifier-error" className="mt-1.5 text-xs text-danger">{fieldErrors.identifier}</p>}
               </div>
 
-              <label className="sr-only" htmlFor="login-password">Mật khẩu</label>
+              <div className="w-full"><label className={authLabel} htmlFor="login-password">Mật khẩu</label>
               <AnimatedPasswordField
                 autoComplete="new-password"
                 name="scanms_account_secret"
+                invalid={Boolean(fieldErrors.password)}
+                describedBy={fieldErrors.password ? 'login-password-error' : undefined}
                 value={password}
                 state={passwordAuthState}
-                onChange={(value) => { setPassword(value); setPasswordAuthState('idle'); }}
-              />
+                onChange={(value) => { setPassword(value); setPasswordAuthState('idle'); setFieldErrors(previous => ({...previous, password:undefined})); }}
+              />{fieldErrors.password && <p id="login-password-error" className="mt-1.5 text-xs text-danger">{fieldErrors.password}</p>}</div>
 
               <div className="flex items-center justify-between text-xs pt-0.5">
                 <label className="flex items-center gap-2 cursor-pointer text-[#7D715E] hover:text-[#1A1612]">
@@ -379,7 +386,7 @@ export default function LoginPage() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-3.5 h-3.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
                   />
-                  <span>Ghi nhớ</span>
+                  <span>Ghi nhớ đăng nhập</span>
                 </label>
                 <button
                   type="button"
@@ -393,45 +400,24 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || passwordAuthState === 'success'}
-                className="login-submit disabled:opacity-50 flex min-h-[46px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-full border border-brand-border bg-brand-soft px-[18px] py-3 text-sm font-semibold leading-[1.5] text-brand-dark shadow-[inset_0_1px_0_rgb(255_255_255/55%)] transition-[background,transform,box-shadow] duration-180 enabled:hover:-translate-y-px enabled:hover:border-brand enabled:hover:bg-surface-sand enabled:hover:shadow-[0_6px_16px_rgb(197_155_88/15%)] enabled:active:translate-y-0 disabled:cursor-wait my-0"
+                className={`login-submit ${authSubmit}`}
               >
-                <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
+                <span>{loading ? 'Đang xử lý…' : 'Đăng nhập'}</span>
               </button>
             </form>
-
-            {!showRoleSelector && <div className="w-full space-y-4">
-              <div className="flex items-center gap-3 text-[11px] uppercase text-[#7D715E]">
-                <span className="h-px flex-1 bg-[#EAE4D7]" />
-                <span>hoặc</span>
-                <span className="h-px flex-1 bg-[#EAE4D7]" />
-              </div>
-              <GoogleOfficialButton
-                onSuccess={onGoogleTokenSuccess}
-                onError={(err) => setError(err)}
-                className="h-11"
-              />
-            </div>}
 
             {/* Bottom switch link */}
             <div className="login-register-link border-t border-line pt-3.5 text-center text-xs leading-[1.7] text-muted [&_a]:text-[#90682F]">
               Chưa có tài khoản?{' '}
               <Link to={registerUrl} className="font-bold text-[#B88E4F] hover:underline">
-                Đăng ký tham gia mạng lưới đối tác →
+                Đăng ký mạng lưới đối tác →
               </Link>
             </div>
           </div>
         </div>
       </main>
 
-      <footer className="max-w-[1240px] mx-auto w-full pt-0 text-center text-[11px] leading-4 max-[760px]:text-[10px] max-[760px]:gap-x-3 max-[760px]:gap-y-2 text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
-        <span>© 2026 SCANMS Corporation</span>
-        <span>•</span>
-        <Link to="/marketplace" className="hover:underline">Cổng Mua Sắm</Link>
-        <span>•</span>
-        <Link to="/privacy" className="hover:underline">Chính sách bảo mật</Link>
-        <span>•</span>
-        <Link to="/terms" className="hover:underline">Điều khoản dịch vụ</Link>
-      </footer>
+      <AuthFooter />
 
       <ForgotPasswordModal
         isOpen={isForgotPasswordOpen}

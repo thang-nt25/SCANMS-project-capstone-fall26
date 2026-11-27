@@ -5,8 +5,6 @@ import {
   Patch,
   Delete,
   ParseUUIDPipe,
-  ParseIntPipe,
-  DefaultValuePipe,
   Body,
   Param,
   Query,
@@ -54,15 +52,12 @@ export class PublicCouponsController {
   constructor(private readonly service: CouponsService) {}
 
   @Get('stores/:storeId/product-eligible')
-  @UseGuards(OptionalJwtAuthGuard)
   @Header('Cache-Control', 'private, no-store')
   getEligibleProductCoupons(
-    @Param('storeId', ParseUUIDPipe) storeId: string,
-    @Query() query: ProductCouponQueryDto,
-    @CurrentUser('id') userId?: string,
-    @Ip() ip?: string,
+    @Param('storeId', ParseUUIDPipe) _storeId: string,
+    @Query() _query: ProductCouponQueryDto,
   ) {
-    return this.service.getEligibleProductCoupons(storeId, query, userId, ip);
+    return [];
   }
 
   @Post('preview-stacked')
@@ -72,9 +67,9 @@ export class PublicCouponsController {
   }
 
   @Get('available')
-  @ApiOperation({ summary: 'Danh sách voucher đang khả dụng trên SCANMS' })
+  @Header('Cache-Control', 'private, no-store')
   getAvailableCoupons() {
-    return this.service.getPublicAvailableCoupons();
+    return [];
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -152,28 +147,12 @@ export class PublicCouponsController {
   }
 
   @Get('stores/:storeId/available')
-  @ApiOperation({
-    summary: 'Lấy các mã giảm giá đang áp dụng công khai của một gian hàng',
-  })
-  @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Danh sách mã giảm giá còn hiệu lực',
-  })
-  async getAvailableStoreCoupons(
-    @Param('storeId', ParseUUIDPipe) storeId: string,
-    @Query('productId', new ParseUUIDPipe({ optional: true }))
-    productId?: string,
+  @Header('Cache-Control', 'private, no-store')
+  getAvailableStoreCoupons(
+    @Param('storeId', ParseUUIDPipe) _storeId: string,
+    @Query('productId', new ParseUUIDPipe({ optional: true })) _productId?: string,
   ) {
-    return this.service.getPublicStoreCoupons(storeId, productId);
-  }
-
-  @Get(':couponId/products')
-  getVoucherProducts(
-    @Param('couponId', ParseUUIDPipe) couponId: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-  ) {
-    return this.service.getVoucherProducts(couponId, page);
+    return [];
   }
 
   @Post('validate')
@@ -224,16 +203,9 @@ export class PublicCouponsController {
   }
 
   @Get('store/:storeId')
-  @ApiOperation({
-    summary: 'Khách hàng lấy danh sách voucher công khai của Shop để áp dụng',
-  })
-  @ApiParam({ name: 'storeId', description: 'ID của gian hàng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Danh sách các voucher đang kích hoạt của Shop',
-  })
-  async getPublicStoreCoupons(@Param('storeId') storeId: string) {
-    return this.service.getPublicStoreCoupons(storeId);
+  @Header('Cache-Control', 'private, no-store')
+  getPublicStoreCoupons() {
+    return [];
   }
 }
 
@@ -391,6 +363,17 @@ export class CollaboratorCouponsController {
 @Controller('stores/:storeId/coupons')
 export class StoreCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Get('shareable')
+  @Roles(UserRole.SHOP_MANAGER)
+  @Header('Cache-Control', 'private, no-store')
+  getShareableStoreCoupons(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.getShareableStoreCoupons(storeId, userId, role);
+  }
 
   @Get(':id/oversight')
   getOversight(@Param('storeId', ParseUUIDPipe) storeId: string, @Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole, @Query('page') page?: string) {

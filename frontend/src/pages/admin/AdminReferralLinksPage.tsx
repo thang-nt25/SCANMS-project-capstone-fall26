@@ -1,14 +1,16 @@
 import { publicWebsiteUrl } from '@/utils/public-url';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Link2,
+  MoreHorizontal,
   ShieldAlert,
   Search,
   User,
   Store,
   AlertCircle,
+  Info,
   Loader2,
-  X,
   CheckCircle2,
   Copy,
   ExternalLink,
@@ -44,6 +46,23 @@ export default function AdminReferralLinksPage() {
 
 
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [actionMenu, setActionMenu] = useState<{ link: ReferralLinkItem; top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuTrigger = useRef<HTMLButtonElement | null>(null);
+  const [unblockLink, setUnblockLink] = useState<ReferralLinkItem | null>(null);
+  const [unblocking, setUnblocking] = useState(false);
+  useEffect(() => {
+    if (!actionMenu) return;
+    const outside = (event: PointerEvent) => { if (!menuRef.current?.contains(event.target as Node) && !menuTrigger.current?.contains(event.target as Node)) setActionMenu(null); };
+    const keyboard = (event: KeyboardEvent) => { if (event.key === 'Escape') { setActionMenu(null); menuTrigger.current?.focus(); } };
+    const dismiss = () => setActionMenu(null);
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', keyboard);
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    menuRef.current?.querySelector('button')?.focus();
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', keyboard); window.removeEventListener('scroll', dismiss, true); window.removeEventListener('resize', dismiss); };
+  }, [actionMenu]);
   const [selectedLinkToBlock, setSelectedLinkToBlock] = useState<ReferralLinkItem | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
@@ -92,7 +111,7 @@ export default function AdminReferralLinksPage() {
 
 
   const handleConfirmBlock = async () => {
-    if (!selectedLinkToBlock || !blockReason.trim()) return;
+    if (!selectedLinkToBlock || isSubmittingBlock || blockReason.trim().length < 5 || blockReason.trim().length > 255) return;
     setIsSubmittingBlock(true);
     try {
       await referralLinksService.blockLinkByAdmin(selectedLinkToBlock.id, blockReason.trim());
@@ -108,15 +127,17 @@ export default function AdminReferralLinksPage() {
     }
   };
 
-  const handleUnblock = async (link: ReferralLinkItem) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn mở khóa liên kết ${link.shortCode} không?`)) return;
+  const handleUnblock = async () => {
+    if (!unblockLink || unblocking) return;
+    setUnblocking(true);
     try {
-      await referralLinksService.unblockLinkByAdmin(link.id);
-      toast.success('Đã mở khóa liên kết tiếp thị thành công');
-      fetchAdminLinks();
+      await referralLinksService.unblockLinkByAdmin(unblockLink.id);
+      setUnblockLink(null);
+      toast.success('Đã mở khóa liên kết tiếp thị');
+      void fetchAdminLinks();
     } catch (err: any) {
       toast.error(err.message || 'Không thể mở khóa liên kết tiếp thị');
-    }
+    } finally { setUnblocking(false); }
   };
 
   const handleCopy = async (shortCode: string, url: string) => {
@@ -195,39 +216,39 @@ export default function AdminReferralLinksPage() {
         ) : (
           <>
             <div className="referral-table-region" role="region" aria-label="Bảng liên kết tiếp thị">
-              <table className="referral-links-table">
+              <table className="block w-full table-fixed border-collapse text-left lg:table [&_th]:px-3 [&_th]:text-xs [&_th]:font-medium [&_td]:min-w-0 [&_td]:p-3 [&_td]:align-middle [&_td]:text-xs">
                 <caption className="sr-only">Liên kết tiếp thị trên hệ thống SCANMS</caption>
-                <colgroup><col style={{width:'15%'}}/><col style={{width:'25%'}}/><col style={{width:'17%'}}/><col style={{width:'10%'}}/><col style={{width:'7%'}}/><col style={{width:'5%'}}/><col style={{width:'11%'}}/><col style={{width:'10%'}}/></colgroup>
-                <thead className="bg-[#FAF8F5]"><tr>
+                <colgroup className="hidden lg:table-column-group"><col style={{width:'16%'}}/><col style={{width:'27%'}}/><col style={{width:'17%'}}/><col style={{width:'8%'}}/><col style={{width:'7%'}}/><col style={{width:'5%'}}/><col style={{width:'12%'}}/><col style={{width:'8%'}}/></colgroup>
+                <thead className="hidden bg-[#FAF8F5] lg:table-header-group"><tr>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Mã link</th>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Sản phẩm & gian hàng</th>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">KOL tiếp thị</th>
-                  <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Kênh / UTM</th>
-                  <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap text-center">Nhấp</th>
-                  <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap text-center">Đơn</th>
+                  <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Nguồn</th>
+                  <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap text-right">Lượt nhấp</th>
+                  <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap text-right">Đơn</th>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap">Trạng thái</th>
                   <th scope="col" className="h-11 px-3 py-2.5 border-b border-[#EAE4D7] text-[#7D715E] text-xs font-medium whitespace-nowrap text-right">Thao tác</th>
                 </tr></thead>
-                <tbody>
+                <tbody className="block lg:table-row-group">
                   {links.map((link) => {
                     const fullUrl = publicWebsiteUrl('/r/' + link.shortCode);
                     const statusLabel = link.status === 'BLOCKED' ? 'Bị khóa' : link.status === 'PAUSED' ? 'Tạm dừng' : link.status === 'EXPIRED' ? 'Hết hạn' : 'Hoạt động';
                     return (
-                      <tr key={link.id} className="hover:bg-[#FBF5EB] transition-colors border-b border-[#EAE4D7] last:border-b-0">
+                      <tr key={link.id} className="grid min-h-[76px] grid-cols-2 items-center gap-y-1 border-b border-[#EAE4D7] transition-colors last:border-b-0 hover:bg-[#FAF8F5] lg:table-row">
                         <td data-label="Mã link" className="p-3 text-xs align-middle">
-                          <div className="flex items-center gap-1.5">
-                            <button type="button" className="referral-code-detail" onClick={()=>setDetailLink(link)} title="Xem thông tin liên kết"><code>{link.shortCode}</code></button>
-                            <button type="button" onClick={() => { void handleCopy(link.shortCode, fullUrl); }} aria-label={'Sao chép liên kết ' + link.shortCode} title="Sao chép liên kết" className="grid place-items-center w-6 h-6 shrink-0 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer">
+                          <div className="flex min-w-0 items-center gap-1">
+                            <button type="button" className="min-w-0 flex-1 truncate text-left font-mono text-xs font-semibold text-[#805B27]" onClick={()=>setDetailLink(link)} title="Xem thông tin liên kết"><code className="whitespace-nowrap">{link.shortCode}</code></button>
+                            <button type="button" onClick={() => { void handleCopy(link.shortCode, fullUrl); }} aria-label={'Sao chép liên kết ' + link.shortCode} title="Sao chép liên kết" className="grid place-items-center w-7 h-7 shrink-0 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer">
                               {copiedCode === link.shortCode ? <CheckCircle2 size={14} className="text-[#059669]" /> : <Copy size={14} />}
                             </button>
-                            <a href={fullUrl} target="_blank" rel="noreferrer" aria-label={'Mở liên kết ' + link.shortCode + ' trong tab mới'} title="Mở liên kết" className="grid place-items-center w-6 h-6 shrink-0 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer"><ExternalLink size={13} /></a>
+                            <a href={fullUrl} target="_blank" rel="noreferrer" aria-label={'Mở liên kết ' + link.shortCode + ' trong tab mới'} title="Mở liên kết" className="grid place-items-center w-7 h-7 shrink-0 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer"><ExternalLink size={13} /></a>
                           </div>
                           <p className="mt-0.5 truncate text-[#7D715E] text-[10px]">{new Date(link.createdAt).toLocaleDateString('vi-VN')}</p>
                         </td>
-                        <td data-label="Sản phẩm & gian hàng" className="p-3 text-xs align-middle">
+                        <td data-label="Sản phẩm & gian hàng" className="col-span-2 p-3 text-xs align-middle">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {link.product?.imageUrl && <img src={link.product.imageUrl} alt={link.product.title} onError={(event) => { event.currentTarget.classList.add('hidden'); event.currentTarget.nextElementSibling?.classList.remove('hidden'); }} className="w-9 h-9 shrink-0 border border-[#EAE4D7] rounded-lg bg-white object-contain" />}
-                            <span className={'grid place-items-center w-9 h-9 shrink-0 border border-[#EAE4D7] rounded-lg bg-white text-[#B88E4F] ' + (link.product?.imageUrl ? 'hidden' : '')}><ShoppingBag size={18} /></span>
+                            {link.product?.imageUrl && <img src={link.product.imageUrl} alt={link.product.title} onError={(event) => { event.currentTarget.classList.add('hidden'); event.currentTarget.nextElementSibling?.classList.remove('hidden'); }} className="w-10 h-10 shrink-0 border border-[#EAE4D7] rounded-lg bg-white object-contain" />}
+                            <span className={'grid place-items-center w-10 h-10 shrink-0 border border-[#EAE4D7] rounded-lg bg-white text-[#B88E4F] ' + (link.product?.imageUrl ? 'hidden' : '')}><ShoppingBag size={18} /></span>
                             <div className="min-w-0">
                               <p className="line-clamp-2 text-xs font-medium leading-relaxed" title={link.product?.title}>{link.product?.title || 'Sản phẩm không rõ'}</p>
                               <p className="flex items-center gap-1 mt-1 text-[#7D715E] text-[10px]"><Store size={11} className="text-[#B88E4F] shrink-0" /><span title={link.store?.name} className="truncate">{link.store?.name || 'Gian hàng'}</span></p>
@@ -236,31 +257,32 @@ export default function AdminReferralLinksPage() {
                         </td>
                         <td data-label="KOL tiếp thị" className="p-3 text-xs align-middle">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="grid place-items-center w-7 h-7 shrink-0 border border-[#EEDFC6] rounded-full bg-white text-[#B88E4F] text-xs font-medium">{link.collaborator?.fullName?.charAt(0) || <User size={14} />}</span>
+                            <span className="grid place-items-center w-8 h-8 shrink-0 border border-[#EEDFC6] rounded-full bg-white text-[#B88E4F] text-xs font-medium">{link.collaborator?.fullName?.charAt(0) || <User size={14} />}</span>
                             <div className="min-w-0"><p className="line-clamp-2 text-xs font-medium leading-relaxed" title={link.collaborator?.fullName}>{link.collaborator?.fullName || 'Ẩn danh'}</p><p className="truncate text-[#7D715E] text-[10px]" title={link.collaborator?.email}>{link.collaborator?.email || ''}</p></div>
                           </div>
                         </td>
-                        <td data-label="Kênh / UTM" className="p-3 text-xs align-middle">
-                          <span className="inline-block max-w-full px-1.5 py-0.5 border border-[#EAE4D7] rounded bg-white text-[#7D715E] text-[10px] leading-normal">{link.channel || 'Chưa xác định'}</span>
+                        <td data-label="Nguồn" className="p-3 text-xs align-middle">
+                          <span className="inline-block max-w-full px-1.5 py-0.5 border border-[#EAE4D7] rounded bg-white text-[#7D715E] text-[10px] leading-normal">{({ TIKTOK: 'TikTok', FACEBOOK: 'Facebook', YOUTUBE: 'YouTube', INSTAGRAM: 'Instagram', ZALO: 'Zalo', OTHER: 'Khác' } as Record<string, string>)[link.channel || ''] || link.channel || 'Chưa xác định'}</span>
                           {link.utmSource && <p className="mt-0.5 truncate text-[#7D715E] text-[10px]" title={link.utmSource}>Nguồn: {link.utmSource}</p>}
                         </td>
-                        <td data-label="Nhấp" className="p-3 text-xs align-middle text-center tabular-nums">
+                        <td data-label="Lượt nhấp" className="p-3 text-xs align-middle text-right tabular-nums">
                           <strong className="text-xs font-semibold">{(link.totalClicks || 0).toLocaleString('vi-VN')}</strong><p className="text-[10px] text-[#7D715E]">{(link.uniqueClicks || 0).toLocaleString('vi-VN')} duy nhất</p>
                         </td>
-                        <td data-label="Đơn" className="p-3 text-xs align-middle text-center tabular-nums"><strong className="text-xs font-semibold">{(link.totalOrders || 0).toLocaleString('vi-VN')}</strong></td>
+                        <td data-label="Đơn" className="p-3 text-xs align-middle text-right tabular-nums"><strong className="text-xs font-semibold">{(link.totalOrders || 0).toLocaleString('vi-VN')}</strong></td>
                         <td data-label="Trạng thái" className="p-3 text-xs align-middle">
-                          <span className={'inline-flex items-center gap-1 px-1.5 py-0.5 border rounded text-[10px] leading-tight whitespace-nowrap ' + (link.status === 'BLOCKED' ? 'border-red-200 bg-red-50/50 text-[#DC2626]' : 'border-[#EAE4D7] bg-white text-[#7D715E]')}>
+                          <span className={'inline-flex items-center gap-1.5 text-xs leading-5 whitespace-nowrap ' + (link.status === 'BLOCKED' ? 'text-[#DC2626]' : 'text-[#655A49]')}>
                             {link.status === 'BLOCKED' ? <ShieldAlert size={12} className="text-[#DC2626] shrink-0" /> : link.status === 'PAUSED' ? <Clock3 size={12} className="text-[#B88E4F] shrink-0" /> : link.status !== 'EXPIRED' ? <CheckCircle2 size={12} className="text-[#059669] shrink-0" /> : null}
                             {statusLabel}
                           </span>
                           {link.status === 'BLOCKED' && link.disabledReason && <p className="line-clamp-2 mt-1 text-[#DC2626] text-[10px]" title={link.disabledReason}>{link.disabledReason}</p>}
                         </td>
                         <td data-label="Thao tác" className="p-3 text-xs align-middle text-right">
-                          {link.status === 'BLOCKED' ? (
-                            <button type="button" className="inline-flex justify-center items-center gap-1 min-h-[28px] px-2 py-1 border border-[#EEDFC6] rounded-md bg-white text-[#7D715E] text-[10px] font-medium whitespace-nowrap hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition-colors cursor-pointer" onClick={() => handleUnblock(link)}><UnlockKeyhole size={13} /> Mở khóa</button>
-                          ) : (
-                            <button type="button" className="inline-flex justify-center items-center gap-1 min-h-[28px] px-2 py-1 border border-red-200 rounded-md bg-white text-[#DC2626] text-[10px] font-medium whitespace-nowrap hover:bg-red-50 transition-colors cursor-pointer" onClick={() => handleOpenBlockModal(link)}><LockKeyhole size={13} /> Khóa link</button>
-                          )}
+                          <button type="button" aria-label={`Thao tác liên kết ${link.shortCode}`} aria-haspopup="dialog" aria-expanded={actionMenu?.link.id === link.id} onClick={(event) => {
+                            if (actionMenu?.link.id === link.id) { setActionMenu(null); return; }
+                            menuTrigger.current = event.currentTarget;
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            setActionMenu({ link, left: Math.max(8, Math.min(rect.right - 208, window.innerWidth - 216)), top: rect.bottom + 58 < window.innerHeight ? rect.bottom + 6 : rect.top - 58 });
+                          }} className="inline-flex size-[34px] items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#655A49] hover:bg-[#FBF5EB]"><MoreHorizontal size={17} /></button>
                         </td>
                       </tr>
                     );
@@ -283,26 +305,35 @@ export default function AdminReferralLinksPage() {
 
       {detailLink && <Modal isOpen onClose={()=>setDetailLink(null)} title="Thông tin liên kết" subtitle={detailLink.shortCode} maxWidth="lg" stickyHeader><dl className="referral-detail-facts">{[['Tiêu đề',detailLink.label],['Sản phẩm',detailLink.product?.title],['Cửa hàng',detailLink.store?.name],['KOL',detailLink.collaborator?.fullName],['Kênh',detailLink.channel],['UTM source',detailLink.utmSource],['UTM medium',detailLink.utmMedium],['UTM campaign',detailLink.utmCampaign],['UTM content',detailLink.utmContent],['Ngày tạo',new Date(detailLink.createdAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})],['Hết hạn',detailLink.expiresAt?new Date(detailLink.expiresAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'Không thiết lập']].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||'Chưa có thông tin'}</dd></div>)}</dl></Modal>}
 
-      {isBlockModalOpen && selectedLinkToBlock && (
-        <div className="fixed inset-0 z-50 flex justify-center items-center p-4 bg-[#231D15]/35 backdrop-blur-[3px]">
-          <div className="w-full max-w-[420px] max-h-[calc(100dvh-32px)] overflow-y-auto p-4 border border-[#EAE4D7] rounded-2xl bg-white shadow-xl text-[#1A1612]" role="dialog" aria-modal="true" aria-labelledby="admin-referral-block-title">
-            <header className="flex items-center justify-between gap-3 pb-3 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2"><ShieldAlert size={18} className="text-[#DC2626] shrink-0" /><h3 id="admin-referral-block-title" className="text-sm font-semibold">Khóa liên kết tiếp thị</h3></div>
-              <button type="button" aria-label="Đóng cửa sổ" disabled={isSubmittingBlock} onClick={() => setIsBlockModalOpen(false)} className="p-1 text-[#7D715E] hover:text-[#1A1612] cursor-pointer"><X size={18} /></button>
-            </header>
-            <p className="my-3 p-2.5 border-l-2 border-[#EEDFC6] text-[#7D715E] text-xs leading-relaxed bg-[#FAF8F5]/60">Sau khi khóa, khách hàng không thể mở sản phẩm qua link này và các lượt truy cập mới không được ghi nhận hoa hồng.</p>
-            <div className="flex justify-between gap-2.5 mb-3.5 p-2.5 border border-[#EAE4D7] rounded-lg text-xs"><span>Mã link</span><code className="font-mono font-medium text-[#B88E4F]">{selectedLinkToBlock.shortCode}</code></div>
-            <label htmlFor="admin-referral-block-reason" className="block mb-1.5 text-xs font-medium">Lý do khóa <span className="text-[#DC2626]">*</span></label>
-            <textarea id="admin-referral-block-reason" rows={3} value={blockReason} onChange={(event) => setBlockReason(event.target.value)} placeholder="Mô tả vi phạm cần xử lý…" className="w-full min-h-[80px] p-2.5 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs leading-relaxed resize-y outline-none focus:border-[#C59B58]" />
-            <footer className="flex justify-end gap-2 mt-3.5">
-              <button type="button" disabled={isSubmittingBlock} onClick={() => setIsBlockModalOpen(false)} className="inline-flex items-center justify-center min-h-[32px] px-3 py-1.5 border border-[#EAE4D7] rounded-lg text-[#7D715E] text-xs hover:bg-[#FAF8F5] cursor-pointer">Hủy bỏ</button>
-              <button type="button" className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3.5 py-1.5 border border-[#DC2626] rounded-lg bg-[#DC2626] text-white text-xs font-medium hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50" onClick={handleConfirmBlock} disabled={isSubmittingBlock || !blockReason.trim()}>
-                {isSubmittingBlock ? <><Loader2 size={13} className="animate-spin" /> Đang khóa…</> : 'Xác nhận khóa'}
-              </button>
-            </footer>
-          </div>
-        </div>
+      {actionMenu && createPortal(
+        <div ref={menuRef} role="dialog" aria-label="Thao tác liên kết" style={{ top: actionMenu.top, left: actionMenu.left }} className="fixed z-[60] w-52 rounded-lg border border-[#EAE4D7] bg-white p-1.5 shadow-lg">
+          <button type="button" onClick={() => { const link = actionMenu.link; setActionMenu(null); if (link.status === 'BLOCKED') setUnblockLink(link); else handleOpenBlockModal(link); }} className={`flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-[13px] hover:bg-[#FAF8F5] ${actionMenu.link.status === 'BLOCKED' ? 'text-[#8F682E]' : 'text-[#DC2626]'}`}>
+            {actionMenu.link.status === 'BLOCKED' ? <UnlockKeyhole size={15} /> : <LockKeyhole size={15} />}{actionMenu.link.status === 'BLOCKED' ? 'Mở khóa liên kết' : 'Khóa liên kết'}
+          </button>
+        </div>, document.body
       )}
+      {isBlockModalOpen && selectedLinkToBlock && (
+        <Modal isOpen title="Khóa liên kết tiếp thị" maxWidth="xl" className="max-w-[520px]" stickyHeader bodyClassName="p-5 sm:p-5" onClose={() => { if (!isSubmittingBlock) setIsBlockModalOpen(false); }}
+          footer={<div className="flex justify-end gap-2">
+            <button type="button" disabled={isSubmittingBlock} onClick={() => setIsBlockModalOpen(false)} className="h-10 rounded-lg border border-[#EAE4D7] bg-white px-5 text-sm text-[#655A49] disabled:opacity-50">Hủy</button>
+            <button type="submit" form="block-referral-form" disabled={isSubmittingBlock || blockReason.trim().length < 5 || blockReason.trim().length > 255} className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#DC2626] px-5 text-sm font-semibold text-white hover:bg-[#B91C1C] disabled:opacity-50">{isSubmittingBlock && <Loader2 size={15} className="animate-spin" />}{isSubmittingBlock ? 'Đang khóa…' : 'Khóa liên kết'}</button>
+          </div>}>
+          <form id="block-referral-form" onSubmit={(event) => { event.preventDefault(); void handleConfirmBlock(); }} className="space-y-4">
+            <div className="flex items-center gap-3">
+              {selectedLinkToBlock.product?.imageUrl ? <img src={selectedLinkToBlock.product.imageUrl} alt="" className="size-9 shrink-0 rounded-lg border border-[#EAE4D7] object-contain" onError={(event) => { event.currentTarget.style.visibility = 'hidden'; }} /> : <ShoppingBag size={28} className="shrink-0 text-[#B88E4F]" />}
+              <div className="min-w-0"><p className="m-0 text-sm font-semibold leading-5">{selectedLinkToBlock.product?.title || 'Chưa có thông tin sản phẩm'}</p><p className="m-0 mt-1 text-xs text-[#7D715E]">{selectedLinkToBlock.store?.name || 'Chưa có thông tin cửa hàng'}</p></div>
+            </div>
+            <dl className="m-0 space-y-2 text-[13px]">
+              <div className="flex justify-between gap-3"><dt className="text-[#7D715E]">KOL</dt><dd className="m-0 text-right font-medium">{selectedLinkToBlock.collaborator?.fullName || 'Chưa cập nhật'}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-[#7D715E]">Mã link</dt><dd className="m-0 inline-flex items-center gap-2"><code className="font-semibold text-[#805B27]">{selectedLinkToBlock.shortCode}</code><button type="button" aria-label="Sao chép liên kết đang chọn" className="flex size-7 items-center justify-center rounded hover:bg-[#FBF5EB]" onClick={() => void handleCopy(selectedLinkToBlock.shortCode, publicWebsiteUrl('/r/' + selectedLinkToBlock.shortCode))}><Copy size={14} /></button></dd></div>
+            </dl>
+            <p className="m-0 flex items-center gap-2 rounded-lg bg-[#FBF5EB] px-3 py-2 text-xs leading-5 text-[#7D715E]"><Info size={15} className="shrink-0" />Link sẽ ngừng hoạt động sau khi khóa.</p>
+            <div><label htmlFor="admin-referral-block-reason" className="mb-1.5 block text-[13px] font-medium">Lý do khóa <span className="text-[#DC2626]">*</span></label><textarea id="admin-referral-block-reason" required minLength={5} maxLength={255} rows={3} value={blockReason} onChange={(event) => setBlockReason(event.target.value)} placeholder="Mô tả căn cứ khóa liên kết…" className="h-20 w-full resize-y rounded-lg border border-[#EAE4D7] bg-white p-3 text-[13px] leading-5 outline-none focus:border-[#C59B58]" /><p className="m-0 mt-1 flex justify-between text-[11px] text-[#7D715E]"><span>5–255 ký tự</span><span className="tabular-nums">{blockReason.length}/255</span></p></div>
+          </form>
+        </Modal>
+      )}
+      {unblockLink && <Modal isOpen title="Mở khóa liên kết" maxWidth="lg" stickyHeader onClose={() => { if (!unblocking) setUnblockLink(null); }} footer={<div className="flex justify-end gap-2"><button type="button" disabled={unblocking} onClick={() => setUnblockLink(null)} className="h-10 rounded-lg border border-[#EAE4D7] px-4 text-sm">Hủy</button><button type="button" disabled={unblocking} onClick={() => void handleUnblock()} className="h-10 rounded-lg bg-[#C59B58] px-4 text-sm font-semibold text-[#231D15] disabled:opacity-50">{unblocking ? 'Đang mở khóa…' : 'Mở khóa liên kết'}</button></div>}><p className="text-sm leading-6">Cho phép liên kết <strong className="font-mono">{unblockLink.shortCode}</strong> hoạt động trở lại.</p></Modal>}
+
     </div>
   );
 }

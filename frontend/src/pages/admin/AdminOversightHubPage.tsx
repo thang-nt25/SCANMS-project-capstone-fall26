@@ -1,12 +1,13 @@
 import { Navigate } from 'react-router-dom';
-import { Link2, Tag } from 'lucide-react';
+import { Link2, Megaphone, Tag } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import { KolCouponManagement } from '../../components/coupons/KolCouponManagement';
+import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 
-const ADMIN_OVERSIGHT_TABS = ['links', 'coupons'] as const;
+const ADMIN_OVERSIGHT_TABS = ['links', 'coupons', 'sponsorship'] as const;
 type AdminOversightTab = (typeof ADMIN_OVERSIGHT_TABS)[number];
 
 export default function AdminOversightHubPage() {
@@ -40,17 +41,19 @@ export default function AdminOversightHubPage() {
       label: 'Mã ưu đãi KOL',
       icon: Tag,
     },
+    { id: 'sponsorship', label: 'Quảng bá gian hàng', icon: Megaphone },
   ];
 
   return (
     <div className="w-full min-w-0 flex flex-col gap-3 text-[#1A1612]" id="admin-oversight-hub">
       <HubTabs
-        className="mb-0 shadow-none"
+        className="mb-0"
+        variant="framed"
         tabs={tabs}
         activeTab={activeTab}
         onChange={(id) => setActiveTab(id as AdminOversightTab)}
         stretchTabs
-        stretchTabColumns={2}
+        stretchTabColumns={3}
         tone="white"
       />
 
@@ -64,6 +67,11 @@ export default function AdminOversightHubPage() {
         {visitedTabs['coupons'] && (
           <div className={activeTab === 'coupons' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <KolCouponManagement shop={false} />
+          </div>
+        )}
+        {visitedTabs['sponsorship'] && (
+          <div hidden={activeTab !== 'sponsorship'}>
+            <SponsoredPlacementsPanel admin />
           </div>
         )}
       </div>

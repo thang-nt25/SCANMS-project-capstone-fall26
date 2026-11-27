@@ -1,6 +1,6 @@
 import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Building2, FileText, Loader2, MapPin, Pencil, Percent, Save, ShieldAlert, Store, Upload } from 'lucide-react';
 import { publicWebsiteUrl } from '@/utils/public-url';
 import { storeService, type StoreSettings } from '../../services/store.service';
@@ -97,7 +97,9 @@ export default function ShopSettingsPage() {
   const isShopManager = currentUser?.role === 'SHOP_MANAGER';
   const isPlatformAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'SYSTEM_MANAGER';
 
-  const [tab, setTab] = useState<SettingsTab>('profile');
+  const [searchParams] = useSearchParams();
+  const sponsorshipId = searchParams.get('sponsorship');
+  const [tab, setTab] = useState<SettingsTab>(sponsorshipId ? 'affiliate' : 'profile');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -107,13 +109,20 @@ export default function ShopSettingsPage() {
   const [slug, setSlug] = useState('');
   const [profile, setProfile] = useState(emptyProfile);
   const [savedProfile, setSavedProfile] = useState(emptyProfile);
+  const [storeId, setStoreId] = useState('');
   const [attributionDays, setAttributionDays] = useState(30);
   const [savedAttributionDays, setSavedAttributionDays] = useState(30);
   const [owner, setOwner] = useState<OwnerDetails | null>(null);
   const [ownerDraft, setOwnerDraft] = useState<OwnerDetails | null>(null);
   const [sameReturnAddress, setSameReturnAddress] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [hasVisitedAffiliate, setHasVisitedAffiliate] = useState(false);
+  const [hasVisitedAffiliate, setHasVisitedAffiliate] = useState(Boolean(sponsorshipId));
+
+  useEffect(() => {
+    if (!sponsorshipId) return;
+    setTab('affiliate');
+    setHasVisitedAffiliate(true);
+  }, [sponsorshipId]);
 
   const openTab = (next: SettingsTab) => {
     if (next === 'affiliate') setHasVisitedAffiliate(true);
@@ -127,6 +136,7 @@ export default function ShopSettingsPage() {
     setLoadError(false);
     storeService.getMyStore(Boolean(loadAttempt)).then(store => {
       if (!active) return;
+      setStoreId(store.id);
       const storedProfile = {
         name: store.name || '',
         description: store.description || '',
@@ -269,7 +279,7 @@ export default function ShopSettingsPage() {
   }
 
   return (
-    <div className="merchant-settings-page w-full min-w-0 pb-8 text-left">
+    <div className="merchant-settings-page w-full min-w-0 pb-[calc(80px+env(safe-area-inset-bottom,0px))] text-left lg:pb-8">
       {message && (
         <div role={message.error ? 'alert' : 'status'} className={`fixed top-5 right-4 z-50 max-w-[min(24rem,calc(100vw-32px))] rounded-xl border bg-white px-4 py-3 text-sm shadow-lg ${message.error ? 'border-[#DC2626]/30 text-[#DC2626]' : 'border-[#EEDFC6] text-[#1A1612]'}`}>
           {message.text}
@@ -377,7 +387,7 @@ export default function ShopSettingsPage() {
                 {affiliateChanged && <SaveBar saving={saving === 'affiliate'} disabled={saving !== null && saving !== 'affiliate'} onCancel={() => setAttributionDays(savedAttributionDays)} />}
               </form>
               <section aria-label="Quảng bá gian hàng" className="border-t border-[#EAE4D7] px-4 py-4 sm:px-6">
-                {hasVisitedAffiliate && <SponsoredPlacementsPanel embedded storefront={savedProfile} />}
+                {hasVisitedAffiliate && <SponsoredPlacementsPanel key={sponsorshipId ?? 'bookings'} embedded storefront={savedProfile} storeId={storeId} paymentReturnId={sponsorshipId} />}
               </section>
             </section>
 

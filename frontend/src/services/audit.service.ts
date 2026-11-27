@@ -1,16 +1,16 @@
-import api from './api';
+import api from "./api";
 
-export type AuditSeverity = 'INFO' | 'WARN' | 'CRITICAL';
+export type AuditSeverity = "INFO" | "WARN" | "CRITICAL";
 
 export type AuditCategory =
-  | 'AUTH'
-  | 'FINANCIAL'
-  | 'PRODUCT'
-  | 'STORE'
-  | 'SAMPLE_CAMPAIGN'
-  | 'AI_SECURITY'
-  | 'SYSTEM'
-  | 'OTHER';
+  | "AUTH"
+  | "FINANCIAL"
+  | "PRODUCT"
+  | "STORE"
+  | "SAMPLE_CAMPAIGN"
+  | "AI_SECURITY"
+  | "SYSTEM"
+  | "OTHER";
 
 export interface AuditActor {
   id: string;
@@ -28,7 +28,7 @@ export interface AuditLogItem {
   category: AuditCategory;
   severity: AuditSeverity;
   description: string;
-  ipAddress: string;
+  ipAddress: string | null;
   details?: Record<string, any> | null;
   createdAt: string;
   actor: AuditActor;
@@ -95,18 +95,25 @@ export const auditService = {
   /**
    * Lấy danh sách Audit Logs phân trang và có lọc
    */
-  getAuditLogs: async (params?: AuditQueryFilters): Promise<AuditLogsResponse> => {
-    const res = await api.get('/audit-logs', { params, headers: { 'x-skip-cache': '1' } });
+  getAuditLogs: async (
+    params?: AuditQueryFilters,
+  ): Promise<AuditLogsResponse> => {
+    const res = await api.get("/audit-logs", {
+      params,
+      headers: { "x-skip-cache": "1" },
+    });
     return res.data?.data || res.data || res;
   },
 
   /**
    * Lấy thống kê tổng quan KPI Audit Logs
    */
-  getAuditStats: async (timeframe?: '24h' | '7d' | '30d' | 'all'): Promise<AuditStats> => {
-    const res = await api.get('/audit-logs/stats', {
-      params: { timeframe: timeframe || '30d' },
-      headers: { 'x-skip-cache': '1' },
+  getAuditStats: async (
+    timeframe?: "24h" | "7d" | "30d" | "all",
+  ): Promise<AuditStats> => {
+    const res = await api.get("/audit-logs/stats", {
+      params: { timeframe: timeframe || "30d" },
+      headers: { "x-skip-cache": "1" },
     });
     return res.data?.data || res.data || res;
   },
@@ -115,7 +122,7 @@ export const auditService = {
    * Lấy danh mục Action codes có sẵn
    */
   getAvailableActions: async (): Promise<AuditActionDefinition[]> => {
-    const res = await api.get('/audit-logs/actions');
+    const res = await api.get("/audit-logs/actions");
     return res.data?.data || res.data || res;
   },
 
@@ -130,10 +137,12 @@ export const auditService = {
   /**
    * Xuất file CSV kiểm toán
    */
-  exportAuditLogsCsv: async (params?: Partial<AuditQueryFilters>): Promise<Blob> => {
-    const res = await api.get('/audit-logs/export', {
+  exportAuditLogsCsv: async (
+    params?: Partial<AuditQueryFilters>,
+  ): Promise<Blob> => {
+    const res = await api.get("/audit-logs/export", {
       params,
-      responseType: 'blob',
+      responseType: "blob",
     });
     return res.data;
   },

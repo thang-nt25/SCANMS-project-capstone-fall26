@@ -96,7 +96,7 @@ export const PRODUCT_TEMPLATES = [
   {
     name: 'Bộ Quần Áo Tập Gym Nữ Co Giãn 4 Chiều Thoáng Mát',
     category: 'Thời trang & Phụ kiện',
-    image: 'linen-dress.jpg',
+    image: 'aura-womens-gym-set.webp',
     price: 380_000,
     size: 'Size S/M',
     largeSize: 'Size L/XL',
@@ -109,7 +109,7 @@ export const PRODUCT_TEMPLATES = [
   {
     name: 'Áo Khoác Chạy Bộ Gió Siêu Nhẹ Kháng Nước UV Cut',
     category: 'Thời trang & Phụ kiện',
-    image: 'linen-dress.jpg',
+    image: 'aura-running-windbreaker.webp',
     price: 320_000,
     size: 'Size M',
     largeSize: 'Size L',

@@ -9,8 +9,11 @@ test('creator incentives preserve coupon data and distinguish unknown revenue fr
  assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
  const browser=await puppeteer.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--no-sandbox']});
  let writes=0;
+ let issuedCoupon;
+ let extendedCoupon;
  try {
   const page=await browser.newPage(); page.setDefaultTimeout(8000);await page.setViewport({width:1440,height:1000});
+  await page.emulateTimezone('UTC');
   await page.evaluateOnNewDocument(()=>{localStorage.setItem('token','fixture-only');localStorage.setItem('user',JSON.stringify({id:'qa',role:'SHOP_MANAGER'}));});
   const coupons=Array.from({length:12},(_,i)=>({id:`coupon-${i}`,displayCode:`QA${i}`,codeNormalized:`QA${i}`,status:i===1?'BLOCKED':i===2?'EXPIRED':'ACTIVE',blockedReason:i===1?'Đã thay thế bởi mã định danh mới: QA0':null,discountType:i===0?'FIXED_AMOUNT':'PERCENTAGE',discountValue:i===0?50000:5,usageCount:i===0?1:0,usageLimitTotal:20,minimumOrderAmount:200000,maximumDiscountAmount:50000,budgetTotal:1000000,scopeType:'STORE_WIDE',collaboratorId:'kol-qa',collaborator:{id:'kol-qa',fullName:'Partner QA'},createdAt:'2026-01-01'}));
   const member=(id, revenue,grant=null)=>({collaboratorId:id,name:id,validRevenue:revenue,validOrdersCount:0,eligible:revenue!==null&&Number(revenue)>=50000000,estimatedReward:revenue===null?'0':'2000000',error:revenue===null?'Revenue unavailable':undefined,grant});
@@ -23,30 +26,88 @@ test('creator incentives preserve coupon data and distinguish unknown revenue fr
    const u=new URL(req.url());
    if(u.pathname==='/incentives-fixture')return req.respond({contentType:'text/html',body:'<div id="root"></div><script type="module">import R from "/@react-refresh";R.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;</script><script type="module" src="/tests/fixtures/creator-incentives.tsx"></script>'});
    if(u.pathname.startsWith('/api/')||u.port==='3000'){
-    const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers()['access-control-request-headers']||'*','Access-Control-Allow-Methods':'GET,OPTIONS'};
+    const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers()['access-control-request-headers']||'*','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS'};
     if(req.method()==='OPTIONS')return req.respond({status:204,headers});
+    if(req.method()==='POST' && u.pathname.includes('/coupons')){
+      issuedCoupon=JSON.parse(req.postData());
+      return req.respond({headers,contentType:'application/json',body:JSON.stringify({data:{id:'issued-fixture'}})});
+    }
+    if(req.method()==='PATCH' && u.pathname.endsWith('/coupon-0/policy')){
+      extendedCoupon=JSON.parse(req.postData());
+      return req.respond({headers,contentType:'application/json',body:JSON.stringify({data:{id:'coupon-0'}})});
+    }
     if(req.method()!=='GET')writes++;
     if(req.method()==='POST' && u.pathname==='/api/monthly-rewards/stores/store-qa'){
       const body=JSON.parse(req.postData());policies.push({...body,id:'created-policy',storeId:'store-qa',storeName:'Shop QA',status:'PENDING',isDemo:false,createdAt:'2026-11-19T00:00:00Z',members:[]});
       return req.respond({headers,contentType:'application/json',body:JSON.stringify({data:{id:'created-policy',status:'PENDING'}})});
     }
-    const data=u.pathname==='/api/stores/my-store'?{id:'store-qa'}:u.pathname.includes('/coupons')?coupons:u.pathname.endsWith('/policies')?{items:policies.map(p=>({...p,createdAt:p.createdAt||'2026-11-19T00:00:00Z'})),total:policies.length,page:1,pageSize:5}:u.pathname.includes('/monthly-rewards')?{policies:policies.filter(p=>p.yearMonth===(u.searchParams.get('month')||'2026-11')),stores:[]}:[];
+    const data=u.pathname==='/api/affiliate-deals/shop'?{total:1,page:1,pageSize:20,items:[{id:'deal-qa',storeId:'store-qa',collaboratorId:'kol-qa',collaborator:{id:'kol-qa',fullName:'Partner QA'},status:'APPROVED',scopeType:'STORE_WIDE',approvedCommissionRate:14}]}:u.pathname==='/api/stores/my-store'?{id:'store-qa'}:u.pathname.includes('/coupons')?coupons:u.pathname.endsWith('/policies')?{items:policies.map(p=>({...p,createdAt:p.createdAt||'2026-11-19T00:00:00Z'})),total:policies.length,page:1,pageSize:5}:u.pathname.includes('/monthly-rewards')?{policies:policies.filter(p=>p.yearMonth===(u.searchParams.get('month')||'2026-11')),stores:[]}:[];
     return req.respond({headers,contentType:'application/json',body:JSON.stringify({data})});
    }
    if(u.origin!==origin&&!['data:','blob:'].includes(u.protocol))return req.abort();req.continue();
   });
   await page.goto(origin+'/incentives-fixture',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('[aria-label="Chi tiết mã QA0"]');
-  assert.equal(await page.$$eval('tbody tr',els=>els.length),10);
-  const first=await page.$eval('tbody tr',el=>el.textContent);
+  assert.equal(await page.$$eval('section ul > li',els=>els.length),10);
+  const first=await page.$eval('section ul > li',el=>el.textContent);
   assert.ok(first.includes('50.000'));assert.ok(!first.includes('50000%'));assert.ok(first.includes('1/20'));assert.ok(first.includes('Toàn Shop'));
-  await page.$$eval('button[aria-expanded="false"]',buttons=>buttons.find(button=>button.textContent.includes('Lịch sử mã trước đây')).click());
-  const historyRow=await page.$eval('[aria-label="Chi tiết mã QA1"]',button=>button.closest('tr').textContent);
+  await page.click('[aria-label="Lịch sử mã của Partner QA"]');
+  const historyRow=await page.$eval('[role="dialog"] [aria-label="Chi tiết mã QA1"]',button=>button.closest('tr').textContent);
   assert.match(historyRow,/Đã thay thế/);
-  await page.select('[aria-label="Lọc trạng thái mã ưu đãi"]','EXPIRED');assert.equal(await page.$$eval('tbody tr',els=>els.length),1);
+  assert.equal(await page.$$eval('[aria-label="Danh sách mã ưu đãi theo KOC"] section ul > li',els=>els.length),10);
+  await page.click('[aria-label="Chi tiết mã QA1"]');
+  await page.waitForFunction(()=>document.querySelector('[role="dialog"] h3')?.textContent.includes('QA1'));
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"] [aria-label="Chi tiết mã QA1"]');
+  await page.keyboard.press('Escape');
+  await page.select('[aria-label="Lọc trạng thái mã ưu đãi"]','EXPIRED');
+  await page.click('[aria-label="Lịch sử mã của Partner QA"]');
+  assert.equal(await page.$$eval('[role="dialog"] tbody tr',els=>els.length),1);
+  await page.waitForSelector('[role="dialog"] [aria-label="Chi tiết mã QA2"]');
+  await page.keyboard.press('Escape');
   await page.select('[aria-label="Lọc trạng thái mã ưu đãi"]','ALL');
   await page.click('[aria-label="Chi tiết mã QA0"]');await page.waitForSelector('[role="dialog"]');assert.ok((await page.$eval('[role="dialog"]',el=>el.textContent)).includes('1.000.000'));
-  await page.keyboard.press('Escape');
+  const extensionCalendar='[aria-label="Chọn hạn dùng mới"]';
+  const switchToTime=selector=>page.evaluate(selector=>[...document.querySelector(selector).querySelectorAll('button')].find(button=>button.textContent.trim().startsWith('Giờ (')).click(),selector);
+  const closeCalendar=selector=>page.evaluate(selector=>[...document.querySelector(selector).querySelectorAll('button')].find(button=>button.textContent.trim()==='Xong').click(),selector);
+  await page.setViewport({width:320,height:700});
+  await page.click('[aria-label="Hạn dùng mới · Giờ Việt Nam"]');
+  await page.waitForSelector(extensionCalendar);
+  assert.equal(await page.$eval(extensionCalendar, el=>el.scrollWidth<=el.clientWidth+1 && el.getBoundingClientRect().right<=innerWidth),true);
+  await switchToTime(extensionCalendar);
+  await page.locator(extensionCalendar+' [aria-label="23 giờ"]').click();
+  await page.locator(extensionCalendar+' [aria-label="59 phút"]').click();
+  await closeCalendar(extensionCalendar);
+  await page.evaluate(()=>[...document.querySelectorAll('[role="dialog"] button')].find(button=>button.textContent.trim()==='Đặt hạn dùng').click());
+  await page.waitForFunction(()=>!document.querySelector('[role="dialog"]'));
+  assert.match(extendedCoupon.expiresAt,/T16:59:00\.000Z$/);
+  await page.setViewport({width:1440,height:1000});
+  const openIssue=()=>page.evaluate(()=>[...document.querySelectorAll('button')].find(el=>el.textContent.includes('Phát hành mã cho KOC')).click());
+  await openIssue();
+  const candidate='[aria-label="Danh sách đối tác KOL"] button[aria-pressed]:not(:disabled)';
+  await page.waitForSelector(candidate);
+  const filterWidths=await page.$$eval('[aria-label="Điều kiện cấp mã"] button',buttons=>buttons.map(el=>el.getBoundingClientRect().width));
+  assert.ok(Math.abs(filterWidths[0]-filterWidths[1])<=1);
+  await page.click(candidate);
+  const expiryTrigger='[aria-label="Hết hạn · Giờ Việt Nam *"]';
+  const calendar='[aria-label="Chọn thời hạn mã"]';
+  await page.click(expiryTrigger);
+  await page.waitForSelector(calendar);
+  assert.equal(await page.$$eval(calendar+' [aria-label$=" giờ"]',els=>els.length),24);
+  assert.equal(await page.$$eval(calendar+' [aria-label$=" phút"]',els=>els.length),60);
+  await page.setViewport({width:390,height:844});
+  assert.equal(await page.$eval(calendar,el=>{
+    const dialog=el.closest('[role="dialog"]').getBoundingClientRect(), box=el.getBoundingClientRect();
+    return box.left>=dialog.left && box.right<=dialog.right && el.scrollWidth<=el.clientWidth+1;
+  }),true);
+  await page.setViewport({width:1440,height:1000});
+  await switchToTime(calendar);
+  await page.locator(calendar+' [aria-label="23 giờ"]').click();
+  await page.locator(calendar+' [aria-label="59 phút"]').click();
+  await page.evaluate(selector=>[...document.querySelector(selector).querySelectorAll('button')].find(el=>el.textContent.trim()==='Xong').click(),calendar);
+  await page.click('[role="dialog"] button[type="submit"]');
+  await page.waitForFunction(()=>!document.querySelector('[role="dialog"]'));
+  assert.match(issuedCoupon.expiresAt,/T16:59:00\.000Z$/);
   await page.screenshot({path:join(tmpdir(),'scanms-incentives-coupons.png')});
   await page.evaluate(()=>[...document.querySelectorAll('button')].find(el=>el.textContent.includes('Thưởng mốc tháng')).click());
   await page.waitForSelector('.monthly-reward-team-table');

@@ -8,6 +8,11 @@ const devPort = Number(process.env.VITE_DEV_PORT || 5173);
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Keep dependency pre-bundles separate from Vite instances used by local tests.
+  cacheDir: `node_modules/.vite-scanms-${devPort}`,
+  optimizeDeps: {
+    include: ["recharts"],
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

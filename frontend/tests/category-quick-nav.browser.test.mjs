@@ -59,7 +59,20 @@ test('homepage categories have consistent illustrations, correct destinations an
     await home();
     await mkdir('../artifacts/header-audit', { recursive: true });
     await page.$('.marketplace-header').then(el => el.screenshot({ path: '../artifacts/header-audit/header-desktop.png' }));
-    assert.equal(await page.$$eval('nav[aria-label="Khám phá SCANMS"] a, nav[aria-label="Khám phá SCANMS"] button', els => els.length), 3);
+    const trackingShortcut = 'nav[aria-label="Khám phá SCANMS"] a[href="/marketplace#tracking-section"]';
+    const shortcutWidths = await page.$$eval('nav[aria-label="Khám phá SCANMS"] a', links => links.map(link => link.getBoundingClientRect().width).filter(width => width > 0));
+    assert.equal(shortcutWidths.length, 3);
+    assert.ok(Math.max(...shortcutWidths) - Math.min(...shortcutWidths) < 1);
+    await page.click(trackingShortcut);
+    await page.waitForFunction(() => {
+      const section = document.querySelector('#tracking-section');
+      const header = document.querySelector('.marketplace-header');
+      if (!section || !header) return false;
+      const bounds = section.getBoundingClientRect();
+      return location.pathname === '/marketplace' && location.hash === '#tracking-section'
+        && bounds.top >= header.getBoundingClientRect().bottom - 1 && bounds.bottom <= innerHeight;
+    });
+    assert.equal(await page.$eval(trackingShortcut, link => link.getAttribute('aria-current')), 'location');
     for (const [role, destination] of [
       ['CUSTOMER', '/customer/orders'], ['COLLABORATOR', '/collaborator/dashboard'],
       ['SHOP_MANAGER', '/merchant/dashboard'], ['SYSTEM_MANAGER', '/admin/users'], ['SYSTEM_ADMIN', '/admin/analytics'],
@@ -80,7 +93,7 @@ test('homepage categories have consistent illustrations, correct destinations an
     }
     account = null;
     await page.evaluate(() => { localStorage.removeItem('token'); localStorage.removeItem('user'); dispatchEvent(new Event('auth-user-updated')); });
-    await page.click('button[aria-label="Tra cứu đơn"]');
+    await page.click('#tracking-section a[href="/tracking"]');
     await page.waitForFunction(() => location.pathname === '/tracking');
     await page.waitForSelector('form');
     await home();

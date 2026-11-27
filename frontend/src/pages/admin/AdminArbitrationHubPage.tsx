@@ -46,6 +46,7 @@ export default function AdminArbitrationHubPage() {
     <div className="w-full min-w-0 flex flex-col gap-3 text-[#1A1612]" id="admin-arbitration-hub">
       <HubTabs
         className="mb-0"
+        variant="framed"
         stretchTabs
         stretchTabColumns={2}
         tone="white"

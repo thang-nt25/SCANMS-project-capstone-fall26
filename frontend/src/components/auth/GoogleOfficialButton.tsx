@@ -5,6 +5,7 @@ interface GoogleOfficialButtonProps {
   onSuccess: (idToken: string) => void;
   onError?: (errMsg: string) => void;
   className?: string;
+  disabled?: boolean;
   text?: 'signin_with' | 'signup_with' | 'continue_with';
 }
 
@@ -12,6 +13,7 @@ export const GoogleOfficialButton: React.FC<GoogleOfficialButtonProps> = ({
   onSuccess,
   onError,
   className = '',
+  disabled = false,
   text = 'signin_with',
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +47,7 @@ export const GoogleOfficialButton: React.FC<GoogleOfficialButtonProps> = ({
     <button
       type="button"
       onClick={handleGoogleClick}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
       className={`w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs rounded-xl shadow-2xs hover:shadow-xs transition-all active:scale-[0.98] cursor-pointer disabled:cursor-wait disabled:opacity-60 ${className}`}
     >
       {isLoading ? (

@@ -25,3 +25,11 @@ export const getVietnamCurrentYearMonthString = (): string => {
   const { year, month } = getVietnamCurrentMonthYear();
   return `${year}-${month}`;
 };
+
+export const toVietnamDateTime = (instant: Date): string =>
+  new Date(instant.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 16);
+
+export const parseVietnamDateTime = (value: string): number =>
+  Date.parse(`${value}+07:00`);
+
+export const vietnamPickerNow = (): Date => new Date(toVietnamDateTime(new Date()));

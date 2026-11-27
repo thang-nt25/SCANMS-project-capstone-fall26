@@ -433,6 +433,12 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     null;
 
   const openChat = (store?: ChatStoreInfo, product?: ChatProductInfo) => {
+    const scope = getChatStorageScope();
+    if (scope !== 'guest' && !scope.endsWith(':CUSTOMER') && !scope.endsWith(':COLLABORATOR')) {
+      toast.info('Chat trên cổng mua sắm dành cho khách hàng và cộng tác viên.');
+      return;
+    }
+
     setIsOpen(true);
     setIsMinimized(false);
 

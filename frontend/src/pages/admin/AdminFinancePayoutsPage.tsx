@@ -261,7 +261,7 @@ export default function AdminFinancePayoutsPage() {
   return (
     <div className="w-full min-w-0 space-y-4 pb-12" id="admin-finance-payouts-page">
       {/* 2. Top Tabs */}
-      <div className="finance-main-tabs">
+      <div className="finance-main-tabs admin-workspace-tabs">
         <button
           type="button"
           aria-pressed={activeTab === 'kol'}
@@ -296,10 +296,6 @@ export default function AdminFinancePayoutsPage() {
         </button><button type="button" aria-pressed={activeTab === 'monthly'} onClick={() => { setRewardMonth(pendingWork?.monthly.months[0]); setActiveTab('monthly'); }} className="flex items-center gap-2"><span className="finance-tab-number">5</span><span>Thưởng tháng</span><FinanceWorkBadge count={pendingWork?.monthly.total} label="chính sách hoặc đề nghị thưởng chờ duyệt" /></button>
       </div>
       {workError && <div className="finance-work-notice" role="status"><span>Chưa cập nhật được số việc cần xử lý{pendingWork ? '; số đang hiện là lần kiểm tra gần nhất.' : '.'}</span><button type="button" onClick={() => void fetchPendingWork()}>Thử lại</button></div>}
-      {!workError && pendingWork && activeTab === 'escrow' && pendingWork.escrow > 0 && <div className="finance-work-notice" role="status"><span>
-        {(pendingWork.escrowWaitingExchange ?? 0) > 0 && <><strong>{pendingWork.escrowWaitingExchange} khoản đang chờ hoàn tất đổi hàng</strong>{pendingWork.escrow > (pendingWork.escrowWaitingExchange ?? 0) ? ' · ' : '. '}</>}
-        {pendingWork.escrow > (pendingWork.escrowWaitingExchange ?? 0) && <><strong>{pendingWork.escrow - (pendingWork.escrowWaitingExchange ?? 0)} khoản cần xem xét</strong> · Đổi trả, tranh chấp hoặc thẩm định chưa hoàn tất.</>}
-      </span></div>}
       {!workError && pendingWork && activeTab === 'customer' && pendingWork.customer > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.customer} yêu cầu rút tiền Customer chờ duyệt.</strong></span></div>}
       {!workError && pendingWork && activeTab === 'monthly' && pendingWork.monthly.total > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.monthly.total} việc chờ duyệt</strong> · {pendingWork.monthly.policies} chính sách · {pendingWork.monthly.grants} đề nghị thưởng</span><div>{pendingWork.monthly.months.map(month => <button type="button" key={month} aria-pressed={rewardMonth === month} onClick={() => setRewardMonth(month)}>Tháng {month.split('-').reverse().join('/')}</button>)}</div></div>}
       {activeTab === 'customer' && <AdminCustomerWithdrawals onChanged={fetchPendingWork}/>}
@@ -309,7 +305,7 @@ export default function AdminFinancePayoutsPage() {
       {activeTab === 'kol' && (
         <div className="space-y-4">
           {/* KPI Cards */}
-          <div className="finance-kpis grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="finance-kpis admin-stat-grid grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
                 Chờ phê duyệt
@@ -436,7 +432,7 @@ export default function AdminFinancePayoutsPage() {
                           </td>
 
                           <td className="p-3.5">
-                            <div className="payout-person-heading"><span className="payout-avatar">{item.collaboratorName.trim().split(/\s+/).slice(-2).map(part => part[0]).join('')}{item.collaboratorAvatar && <img src={item.collaboratorAvatar} alt="" onError={event => { event.currentTarget.hidden = true; }}/>}</span><button type="button" className="payout-person-name" onClick={() => setRiskItem(item)} title="Xem hồ sơ KOL"><strong>{item.collaboratorName}</strong></button></div>
+                            <div className="payout-person-heading"><span className="payout-avatar translate-y-1.5">{item.collaboratorName.trim().split(/\s+/).slice(-2).map(part => part[0]).join('')}{item.collaboratorAvatar && <img src={item.collaboratorAvatar} alt="" onError={event => { event.currentTarget.hidden = true; }}/>}</span><button type="button" className="payout-person-name" onClick={() => setRiskItem(item)} title="Xem hồ sơ KOL"><strong>{item.collaboratorName}</strong></button></div>
                             <div className="payout-person-tools">
                             {item.monthlyWithdrawalSummary && <button type="button" className="payout-month-total" onClick={() => setMonthlyItem(item)} title={`Tháng ${item.monthlyWithdrawalSummary.month.split('-').reverse().join('/')}`} aria-label={`Xem tổng yêu cầu rút tháng ${item.monthlyWithdrawalSummary.month} của ${item.collaboratorName}`}><span>Tháng {item.monthlyWithdrawalSummary.month.split('-').reverse().join('/')}:</span><strong>{formatMoney(item.monthlyWithdrawalSummary.totalGross)}</strong><span aria-hidden="true">↗</span></button>}
                             {item.risk ? <button type="button" onClick={() => setRiskItem(item)} className="payout-risk-trigger" aria-label={`Xem kiểm tra rủi ro của ${item.collaboratorName}`}>
@@ -513,7 +509,11 @@ export default function AdminFinancePayoutsPage() {
 
       {/* Tab 2: Bảo chứng Tạm giữ Escrow */}
 
-      {activeTab === 'escrow' && <EscrowFinanceReport onChanged={fetchPendingWork} />}
+      {activeTab === 'escrow' && <EscrowFinanceReport
+        onChanged={fetchPendingWork}
+        reviewCount={workError ? 0 : Math.max(0, (pendingWork?.escrow ?? 0) - (pendingWork?.escrowWaitingExchange ?? 0))}
+        exchangeCount={workError ? 0 : (pendingWork?.escrowWaitingExchange ?? 0)}
+      />}
       {activeTab === 'kol' && <div className="finance-pagination flex flex-wrap justify-between gap-3 items-center text-sm text-[#7D715E]">
         {loadError && <p role="alert" className="text-[#DC2626]">{loadError}</p>}
         <span>{total} yêu cầu</span><div className="flex gap-3 items-center"><button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Trước</button><span>Trang {page}</span><button disabled={page * 12 >= total || loading} onClick={() => setPage(page + 1)}>Sau</button></div>

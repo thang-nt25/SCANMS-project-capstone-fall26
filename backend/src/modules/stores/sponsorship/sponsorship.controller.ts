@@ -16,6 +16,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { SponsorshipService } from './sponsorship.service';
+import { SponsorshipPayosService } from './sponsorship-payos.service';
 import { SPONSORSHIP_PRICING } from './sponsorship-pricing';
 import {
   CancelSponsorshipDto,
@@ -29,7 +30,19 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('sponsored-placements')
 export class SponsorshipController {
-  constructor(private readonly service: SponsorshipService) {}
+  constructor(private readonly service: SponsorshipService, private readonly payos: SponsorshipPayosService) {}
+
+  @Post(':id/payment')
+  @Roles(UserRole.SHOP_MANAGER)
+  payment(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') ownerId: string) {
+    return this.payos.createLink(id, ownerId);
+  }
+
+  @Get(':id/payment')
+  @Roles(UserRole.SHOP_MANAGER)
+  paymentStatus(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') ownerId: string) {
+    return this.payos.status(id, ownerId);
+  }
 
   @Get('pricing')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)

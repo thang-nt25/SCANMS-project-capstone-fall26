@@ -7,6 +7,13 @@ import ts from 'typescript';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 const require = createRequire(import.meta.url);
+const dateTimeModule = { exports: {} };
+const dateTimeSource = readFileSync(new URL('../src/utils/date-time.utils.ts', import.meta.url), 'utf8');
+const dateTimeCode = ts.transpileModule(dateTimeSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+vm.runInNewContext(dateTimeCode, { exports: dateTimeModule.exports });
+
 function render(path, exported) {
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8')
     .replace("const [loadError, setLoadError] = useState('');", "const [loadError, setLoadError] = useState('Connection unavailable');")
@@ -17,6 +24,7 @@ function render(path, exported) {
   vm.runInNewContext(code, { module, exports: module.exports, require: name => {
     if (name === 'react-router-dom') return { useSearchParams: () => [new URLSearchParams(), () => {}], useNavigate: () => () => {} };
     if (name === '../ui/Modal') return { Modal: ({ isOpen, children }) => isOpen ? children : null };
+    if (name === '../../utils/date-time.utils') return dateTimeModule.exports;
     if (['react', 'react/jsx-runtime', 'lucide-react'].includes(name)) return require(name);
     return { registerPrivateCacheReset() {}, analyticsService: {}, referralLinksService: {}, toast: {} };
   } });

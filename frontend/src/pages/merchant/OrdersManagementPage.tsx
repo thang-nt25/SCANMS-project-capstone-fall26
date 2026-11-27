@@ -37,6 +37,7 @@ import {
 import { toast } from "../../utils/toast";
 import api from '../../services/api';
 import { Select } from "../../components/ui/Select";
+import { Modal } from "../../components/ui/Modal";
 import { productService, type Product } from "../../services/product.service";
 import {
   orderService,
@@ -370,6 +371,8 @@ export default function OrdersManagementPage({
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [ghnCreateError, setGhnCreateError] = useState<string | null>(null);
   const [confirmDeliveredOrder, setConfirmDeliveredOrder] = useState<StoreOrderRecord | null>(null);
+  const [deliveryConfirmationError, setDeliveryConfirmationError] = useState<string | null>(null);
+  const deliveryConfirmationInFlight = useRef(false);
   const [updatingFulfillment, setUpdatingFulfillment] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
   const trackingInputRef = useRef<HTMLInputElement>(null);
@@ -665,27 +668,34 @@ export default function OrdersManagementPage({
   };
 
   const handleExecuteDelivered = async () => {
-    if (!confirmDeliveredOrder) return;
+    if (!confirmDeliveredOrder || updatingFulfillment || deliveryConfirmationInFlight.current) return;
+    deliveryConfirmationInFlight.current = true;
+    setDeliveryConfirmationError(null);
     setUpdatingFulfillment(true);
     try {
       await orderService.updateOrderFulfillment(confirmDeliveredOrder.id, {
         status: "DELIVERED",
       });
       applyFulfillment(confirmDeliveredOrder.id, { status: 'DELIVERED' });
-      toast.success("Xác nhận giao hàng thành công!", {
-        description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã hoàn tất và bắt đầu chu kỳ đối soát thu nhập đối tác.`,
+      toast.success("Đã xác nhận giao hàng", {
+        description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã chuyển sang Đã giao.`,
       });
       setActionSuccessMsg(`Đã xác nhận giao thành công đơn #${confirmDeliveredOrder.externalOrderSn}!`);
       setTimeout(() => setActionSuccessMsg(null), 4000);
       setConfirmDeliveredOrder(null);
       setOrdersRefreshCount((c) => c + 1);
-    } catch (err: any) {
-      toast.error("Không thể cập nhật trạng thái đơn hàng", {
-        description: err.message || "Vui lòng kiểm tra kết nối mạng và thử lại.",
-      });
+    } catch (err: unknown) {
+      setDeliveryConfirmationError(err instanceof Error && err.message ? err.message : "Chưa thể xác nhận giao hàng. Vui lòng thử lại.");
     } finally {
+      deliveryConfirmationInFlight.current = false;
       setUpdatingFulfillment(false);
     }
+  };
+
+  const closeDeliveryConfirmation = () => {
+    if (deliveryConfirmationInFlight.current) return;
+    setDeliveryConfirmationError(null);
+    setConfirmDeliveredOrder(null);
   };
 
   const handleShopCancelOrder = async () => {
@@ -1757,7 +1767,7 @@ export default function OrdersManagementPage({
                                     </button>
 
                                     {/* Xác nhận đã giao */}
-                                    {(order.status === "PENDING" || order.status === "SHIPPING") && (
+                                    {order.status === "SHIPPING" && (
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2119,67 +2129,43 @@ export default function OrdersManagementPage({
         </div>
       )}
 
-      {/* Modal Xác nhận đã giao hàng thành công */}
       {confirmDeliveredOrder && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-[#EAE4D7] shadow-2xl p-6 text-left flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-6 h-6 text-[#059669]" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-extrabold text-[#1A1612] m-0">
-                  Xác nhận giao hàng thành công
-                </h3>
-                <p className="text-xs text-[#7D715E] mt-1 m-0">
-                  Đơn hàng <strong className="text-[#1A1612]">#{confirmDeliveredOrder.externalOrderSn}</strong>
-                </p>
-              </div>
-              <button
-                onClick={() => setConfirmDeliveredOrder(null)}
-                className="p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] p-3 text-xs text-[#7D715E] leading-relaxed">
-              Bạn có chắc chắn khách hàng đã nhận được kiện hàng này? Sau khi xác nhận:
-              <ul className="list-disc pl-4 mt-1.5 space-y-1 text-[#1A1612] font-medium">
-                <li>Trạng thái đơn hàng sẽ chuyển thành <span className="text-[#059669] font-bold">Hoàn thành</span>.</li>
-                <li>Hệ thống SCANMS sẽ bắt đầu ghi nhận và kích hoạt chu kỳ đối soát thu nhập cho đối tác CTV / KOL.</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#EAE4D7]">
-              <button
-                type="button"
-                onClick={() => setConfirmDeliveredOrder(null)}
-                className="px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] transition active:scale-95 cursor-pointer"
-              >
-                Hủy bỏ
+        <Modal
+          isOpen
+          onClose={closeDeliveryConfirmation}
+          title="Xác nhận đã giao hàng"
+          subtitle={<>Đơn <strong className="font-semibold text-ink">#{confirmDeliveredOrder.externalOrderSn}</strong></>}
+          icon={<CheckCircle2 size={20} className="text-brand-strong" aria-hidden="true" />}
+          maxWidth="lg"
+          stickyHeader
+          bodyClassName="space-y-3 sm:p-5"
+          footer={
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={closeDeliveryConfirmation} disabled={updatingFulfillment} className={manualButtonClass}>
+                Hủy
               </button>
               <button
                 type="button"
                 disabled={updatingFulfillment}
                 onClick={handleExecuteDelivered}
-                className="px-5 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                className={`${manualButtonClass} border-brand-border bg-brand! hover:bg-brand-strong!`}
               >
-                {updatingFulfillment ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Đang xử lý...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Xác nhận đã giao</span>
-                  </>
-                )}
+                {updatingFulfillment && <RefreshCw size={14} className="motion-safe:animate-spin" aria-hidden="true" />}
+                {updatingFulfillment ? 'Đang xác nhận…' : 'Xác nhận đã giao'}
               </button>
             </div>
+          }
+        >
+          <p className="text-sm text-muted">Xác nhận khi khách đã nhận kiện hàng.</p>
+          <div className="flex items-center justify-between gap-3 border-t border-line pt-3 text-sm text-ink">
+            <span>Trạng thái sau xác nhận</span>
+            <span className="shrink-0 rounded-lg border border-brand-border bg-brand-soft px-2.5 py-1 text-xs font-semibold">Đã giao</span>
           </div>
-        </div>
+          {confirmDeliveredOrder.attributedCollaborator && confirmDeliveredOrder.totalCommission > 0 && (
+            <p className="text-xs text-muted">Thù lao KOL chờ đối soát 14 ngày.</p>
+          )}
+          {deliveryConfirmationError && <p role="alert" className="text-sm text-danger">{deliveryConfirmationError}</p>}
+        </Modal>
       )}
 
       {/* ══ MODAL HỦY ĐƠN HÀNG (Shop chủ động) ══ */}

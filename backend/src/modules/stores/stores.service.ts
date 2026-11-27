@@ -359,7 +359,6 @@ export class StoresService {
     });
 
     await this.cache?.del?.('stores:marketplace');
-    await this.cache?.del?.('stores:sponsored_placements');
     await this.cache?.del?.(`stores:public:id:v2:${store.id}`);
     if (store.slug) {
       await this.cache?.del?.(`stores:public:slug:${store.slug}`);
@@ -562,25 +561,29 @@ export class StoresService {
    * Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối
    */
   async getSponsoredPlacements() {
-    const cacheKey = 'stores:sponsored_placements';
-    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
-    if (cached) return cached;
-
     const now = new Date();
     const booked = await this.prisma.sponsoredPlacement.findMany({
       where: { status: 'APPROVED', fundingType: 'PAID', amount: { gt: 0 },
-        paymentReference: { not: null }, paymentProofUrl: { not: null },
+        paymentReference: { not: null },
+        OR: [
+          { payosOrderCode: null, paymentProofUrl: { not: null } },
+          { payosOrderCode: { not: null }, paidAt: { not: null }, paymentIssue: null },
+        ],
         reviewedById: { not: null }, reviewedAt: { not: null },
         startsAt: { lte: now }, endsAt: { gt: now },
         store: { isDeleted: false, isActive: true, isVerified: true, onboardingStatus: 'VERIFIED', owner: { isActive: true } },
       },
-      select: { storeId: true, headline: true, endsAt: true },
+      select: {
+        id: true, storeId: true, headline: true, endsAt: true, productId: true, bannerImageUrl: true,
+        product: { select: { id: true, storeId: true, title: true, imageUrl: true, isActive: true, isDeleted: true, moderationStatus: true } },
+      },
       orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
     });
     // Only database bookings with reviewed payment evidence can buy a public position.
-    const placements = [
-      ...booked.map((row) => ({ ...row, endsAt: row.endsAt.toISOString() })),
-    ].filter((row, index, all) => all.findIndex((item) => item.storeId === row.storeId) === index).slice(0, 6);
+    const eligible = booked.filter(({ productId, product, storeId }) => !productId || (
+      product && product.storeId === storeId && product.isActive && !product.isDeleted && product.moderationStatus === 'APPROVED'
+    ));
+    const placements = eligible.filter((row, index, all) => all.findIndex((item) => item.storeId === row.storeId) === index).slice(0, 6);
     if (!placements.length) return [];
     const stores = await this.prisma.store.findMany({
       where: {
@@ -590,12 +593,16 @@ export class StoresService {
       },
       select: { id: true, name: true, logoUrl: true, description: true, isVerified: true },
     });
-    const result = placements.flatMap((placement) => {
+    return placements.flatMap((placement) => {
       const store = stores.find((candidate) => candidate.id === placement.storeId);
-      return store ? [{ store, headline: placement.headline.trim(), endsAt: placement.endsAt }] : [];
+      if (!store) return [];
+      const { id, product, bannerImageUrl } = placement;
+      return [{
+        id, store, headline: placement.headline.trim(), endsAt: placement.endsAt.toISOString(),
+        ...(bannerImageUrl ? { bannerImageUrl } : {}),
+        ...(product ? { product: { id: product.id, title: product.title, imageUrl: product.imageUrl } } : {}),
+      }];
     });
-    await this.cache?.set?.(cacheKey, result, 60);
-    return result;
   }
 
   async getMarketplaceStores() {

@@ -17,14 +17,23 @@ import {
   FileText,
   Copy,
   Check,
+  ClipboardCheck,
+  History,
 } from 'lucide-react';
 import { kycService } from '../../services/kyc.service';
+import { HubTabs } from '../../components/common/HubTabs';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { kycReviewItems } from '../../utils/kyc-review-items';
+import { useControlledTab } from '../../hooks/useControlledTab';
+
+const kycTabs = ['review', 'verified', 'history'] as const;
+type KycTab = (typeof kycTabs)[number];
+type ReviewFilter = 'OPEN' | 'ALL' | 'PENDING_APPROVAL' | 'NEEDS_INFO' | 'REJECTED' | 'FOLLOW_UP';
+const reviewHistoryKey = ['kyc-review-history'];
 
 function readKycMetadata(value: unknown): Record<string, any> {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, any>;
@@ -42,7 +51,7 @@ function readKycMetadata(value: unknown): Record<string, any> {
 function formatKycDate(value?: string | Date | null): string {
   if (!value) return 'Chưa có thông tin';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Chưa có thông tin' : date.toLocaleString('vi-VN');
+  return Number.isNaN(date.getTime()) ? 'Chưa có thông tin' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
 function normalizeVietnameseName(str: string): string {
@@ -56,6 +65,77 @@ function normalizeVietnameseName(str: string): string {
     .toUpperCase();
 }
 
+const reviewResultLabels = {
+  VERIFIED: 'Đã xác minh',
+  NEEDS_INFO: 'Yêu cầu bổ sung',
+  REJECTED: 'Đã từ chối',
+};
+
+function KycReviewHistory() {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const { data = [], isPending, isError, refetch } = useQuery({
+    queryKey: reviewHistoryKey,
+    queryFn: kycService.getKolReviewHistory,
+  });
+  const searchTerm = normalizeVietnameseName(search);
+  const results = data.filter(event =>
+    [event.applicantName, event.reviewerName ?? '', reviewResultLabels[event.status], event.note ?? '']
+      .some(value => normalizeVietnameseName(value).includes(searchTerm)),
+  );
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(results.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+
+  return (
+    <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] px-4 py-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <h2 className="text-sm font-semibold">Lịch sử thẩm định</h2>
+          {!isPending && !isError && <span className="text-xs text-[#7D715E]">{results.length.toLocaleString('vi-VN')} kết quả</span>}
+        </div>
+        <Input aria-label="Tìm trong lịch sử thẩm định" placeholder="Tìm hồ sơ, người xử lý…" value={search}
+          onChange={event => { setSearch(event.target.value); setPage(1); }}
+          icon={<Search aria-hidden="true" className="size-4" />} className="w-full sm:w-64" />
+      </div>
+      {isPending || isError || !results.length ? (
+        <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-10 text-center text-sm text-[#7D715E]" role={isError ? 'alert' : 'status'}>
+          {isPending ? 'Đang tải lịch sử…' : isError ? 'Chưa tải được lịch sử thẩm định.' : 'Không có lượt thẩm định phù hợp.'}
+          {isError && <Button variant="outline" size="sm" onClick={() => void refetch()}>Thử lại</Button>}
+        </div>
+      ) : (
+        <div className="overflow-x-auto" role="region" aria-label="Lịch sử xử lý hồ sơ" tabIndex={0}>
+          <table className="w-full min-w-[680px] border-collapse text-left text-xs">
+            <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[#655A49]">
+              <tr>
+                {['Hồ sơ đối tác', 'Kết quả', 'Người xử lý', 'Thời điểm', 'Lý do / ghi chú'].map(label => (
+                  <th key={label} scope="col" className="px-4 py-3 font-semibold">{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EAE4D7]">
+              {results.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(event => (
+                <tr key={event.id}>
+                  <td className="px-4 py-3 font-semibold">{event.applicantName}</td>
+                  <td className="px-4 py-3"><span className="whitespace-nowrap rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[#795A2D]">{reviewResultLabels[event.status]}</span></td>
+                  <td className="px-4 py-3">{event.reviewerName ?? 'Chưa ghi nhận'}</td>
+                  <td className="whitespace-nowrap px-4 py-3 tabular-nums"><time dateTime={event.reviewedAt}>{formatKycDate(event.reviewedAt)}</time></td>
+                  <td className="max-w-sm whitespace-pre-wrap px-4 py-3 wrap-anywhere">{event.note ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!isError && pageCount > 1 && <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#EAE4D7] px-4 py-3 text-xs">
+        <span>Trang {currentPage} / {pageCount}</span>
+        <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Trang trước</Button>
+        <Button variant="outline" size="sm" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Trang sau</Button>
+      </div>}
+    </Card>
+  );
+}
+
 export default function KycApprovalPage() {
   const [searchParams] = useSearchParams();
   const requestedUser = searchParams.get('userId');
@@ -64,7 +144,13 @@ export default function KycApprovalPage() {
   const openedTarget = useRef('');
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'UNVERIFIED' | 'VERIFIED' | 'REJECTED'>('UNVERIFIED');
+  const { activeTab, setActiveTab } = useControlledTab({ defaultTab: 'review' as KycTab, validTabs: kycTabs });
+  const [filterStatus, setFilterStatus] = useState<ReviewFilter>('OPEN');
+  const selectTab = (tab: KycTab, filter: ReviewFilter = 'OPEN') => {
+    setActiveTab(tab);
+    setFilterStatus(filter);
+    setSearch('');
+  };
 
   // Inspect modal
   const [inspectProfile, setInspectProfile] = useState<any | null>(null);
@@ -117,6 +203,7 @@ export default function KycApprovalPage() {
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['upgrade-applications'] });
+      queryClient.invalidateQueries({ queryKey: reviewHistoryKey });
       showToast(
         status === 'VERIFIED'
           ? 'Đã phê duyệt Đối tác, kích hoạt Hạng Đồng (10%) và cấp Tích Xanh kênh!'
@@ -308,11 +395,15 @@ export default function KycApprovalPage() {
       u.phone.includes(search) ||
       u.idCardNumber.includes(search) ||
       u.channelName.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === 'ALL' || u.kycStatus === filterStatus;
+    const matchStatus = activeTab === 'verified' ? u.reviewStatus === 'VERIFIED'
+      : filterStatus === 'OPEN' ? u.kycStatus === 'UNVERIFIED'
+      : filterStatus === 'FOLLOW_UP' ? u.isNeedsInfo || u.reviewStatus === 'REJECTED'
+      : filterStatus === 'ALL' || u.reviewStatus === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const pendingCount = displayKols.filter((u: any) => u.kycStatus === 'UNVERIFIED').length;
+  const pendingCount = displayKols.filter((u: any) => u.reviewStatus === 'PENDING_APPROVAL').length;
+  const needsInfoCount = displayKols.filter((u: any) => u.isNeedsInfo).length;
   const verifiedCount = displayKols.filter((u: any) => u.kycStatus === 'VERIFIED').length;
   const rejectedCount = displayKols.filter((u: any) => u.kycStatus === 'REJECTED').length;
   const totalCount = displayKols.length;
@@ -332,7 +423,7 @@ export default function KycApprovalPage() {
   }, [inspectProfile, requestedSection, requestedFocus]);
 
   const handleExportCsv = () => {
-    if (!displayKols || displayKols.length === 0) {
+    if (filteredKols.length === 0) {
       showToast('Không có dữ liệu đối tác để xuất báo cáo', 'error');
       return;
     }
@@ -352,7 +443,7 @@ export default function KycApprovalPage() {
       'Hạng bậc',
       'Ngày nộp',
     ];
-    const rows = displayKols.map((k: any) => [
+    const rows = filteredKols.map((k: any) => [
       `"${k.id || ''}"`,
       `"${(k.fullName || '').replace(/"/g, '""')}"`,
       `"${(k.email || '').replace(/"/g, '""')}"`,
@@ -378,7 +469,7 @@ export default function KycApprovalPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast(`Đã xuất báo cáo ${displayKols.length} hồ sơ đối tác thành công!`);
+    showToast(`Đã xuất báo cáo ${filteredKols.length} hồ sơ đối tác thành công!`);
   };
 
   return (
@@ -423,7 +514,22 @@ export default function KycApprovalPage() {
         </div>
       )}
 
-      {/* 4 Thẻ Thống Kê Theo Quy Trình Vận Hành */}
+      <HubTabs
+        className="-mb-1 max-sm:[&_[role=tab]]:flex-wrap max-sm:[&_[role=tab]]:gap-1 max-sm:[&_[role=tab]>span:nth-child(2)]:order-last max-sm:[&_[role=tab]>span:nth-child(2)]:basis-full"
+        variant="framed"
+        tone="white"
+        stretchTabs
+        stretchTabColumns={3}
+        tabs={[
+          { id: 'review', label: 'Thẩm định hồ sơ', icon: ClipboardCheck, badge: pendingCount + needsInfoCount || undefined },
+          { id: 'verified', label: 'Đối tác đã xác minh', icon: ShieldCheck },
+          { id: 'history', label: 'Lịch sử thẩm định', icon: History },
+        ]}
+        activeTab={activeTab}
+        onChange={(tab) => selectTab(tab as KycTab)}
+      />
+
+      {/* Thống kê hồ sơ */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
@@ -435,7 +541,7 @@ export default function KycApprovalPage() {
           {
             label: 'Chờ thẩm định',
             value: pendingCount,
-            filter: 'UNVERIFIED' as const,
+            filter: 'PENDING_APPROVAL' as const,
             icon: <Clock className="h-4 w-4 text-[#D97706]" />,
           },
           {
@@ -446,21 +552,22 @@ export default function KycApprovalPage() {
           },
           {
             label: 'Cần bổ sung / Từ chối',
-            value: rejectedCount,
-            filter: 'REJECTED' as const,
+            value: needsInfoCount + rejectedCount,
+            filter: 'FOLLOW_UP' as const,
             icon: <AlertCircle className="h-4 w-4 text-[#DC2626]" />,
           },
-        ].map((stat) => (
+        ].map((stat) => {
+          const selected = stat.filter === 'VERIFIED'
+            ? activeTab === 'verified'
+            : activeTab === 'review' && filterStatus === stat.filter;
+          return (
           <button
             type="button"
             key={stat.label}
-            aria-pressed={filterStatus === stat.filter}
-            onClick={() => {
-              setFilterStatus(stat.filter);
-              setSearch('');
-            }}
+            aria-pressed={selected}
+            onClick={() => stat.filter === 'VERIFIED' ? selectTab('verified') : selectTab('review', stat.filter)}
             className={`flex min-h-24 min-w-0 cursor-pointer flex-col justify-between gap-2 rounded-2xl border p-3 text-left transition-colors sm:p-4 ${
-              filterStatus === stat.filter
+              selected
                 ? 'border-[#C59B58] bg-[#FBF5EB]'
                 : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'
             }`}
@@ -473,12 +580,14 @@ export default function KycApprovalPage() {
             </div>
             <strong className="text-2xl font-bold tabular-nums text-[#1A1612]">{stat.value.toLocaleString('vi-VN')}</strong>
           </button>
-        ))}
+          );
+        })}
       </div>
 
+      {activeTab === 'history' ? <KycReviewHistory /> : <>
       {/* Bộ Lọc Tìm Kiếm & Trạng Thái */}
-      <Card className="grid grid-cols-1 items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3 shadow-none sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_auto]">
-        <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+      <Card className={`grid grid-cols-1 items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3 shadow-none ${activeTab === 'verified' ? 'sm:grid-cols-[minmax(0,1fr)_auto]' : 'sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_auto]'}`}>
+        <div className={`min-w-0 ${activeTab === 'review' ? 'sm:col-span-2 xl:col-span-1' : ''}`}>
         <Input
           aria-label="Tìm hồ sơ đối tác"
           placeholder="Tìm hồ sơ đối tác"
@@ -491,19 +600,21 @@ export default function KycApprovalPage() {
         />
         </div>
 
-        <Select
+        {activeTab === 'review' && <Select
           aria-label="Lọc trạng thái thẩm định"
           portal
           className="h-11 w-full rounded-lg"
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as any)}
+          onChange={(e) => setFilterStatus(e.target.value as ReviewFilter)}
           options={[
+            { value: 'OPEN', label: 'Đang xử lý' },
+            { value: 'PENDING_APPROVAL', label: 'Chờ thẩm định' },
+            { value: 'NEEDS_INFO', label: 'Chờ bổ sung' },
+            { value: 'FOLLOW_UP', label: 'Cần bổ sung / Từ chối' },
+            { value: 'REJECTED', label: 'Đã từ chối' },
             { value: 'ALL', label: 'Tất cả trạng thái' },
-            { value: 'UNVERIFIED', label: 'Chờ thẩm định' },
-            { value: 'VERIFIED', label: 'Đã xác minh' },
-            { value: 'REJECTED', label: 'Cần bổ sung / Từ chối' },
           ]}
-        />
+        />}
         <button
           type="button"
           onClick={handleExportCsv}
@@ -517,7 +628,7 @@ export default function KycApprovalPage() {
       {/* Bảng Danh Sách Hồ Sơ Đối Tác */}
       <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3 sm:px-5">
-          <h2 className="m-0 text-sm font-semibold text-[#1A1612]">Hồ sơ đối tác</h2>
+          <h2 className="m-0 text-sm font-semibold text-[#1A1612]">{activeTab === 'verified' ? 'Đối tác đã xác minh' : 'Hồ sơ đối tác'}</h2>
           <span className="whitespace-nowrap text-xs tabular-nums text-[#7D715E]" aria-live="polite">
             {filteredKols.length.toLocaleString('vi-VN')} kết quả
           </span>
@@ -680,7 +791,7 @@ export default function KycApprovalPage() {
                           setRejectReason('');
                         }}
                       >
-                        Thẩm định
+                        {u.kycStatus === 'VERIFIED' ? 'Xem chi tiết' : 'Thẩm định'}
                       </Button>
                     </td>
                   </tr>
@@ -690,6 +801,7 @@ export default function KycApprovalPage() {
           </table>
         </div>
       </Card>
+      </>}
 
       {/* MODAL THẨM ĐỊNH CHI TIẾT */}
       {inspectProfile && (
@@ -698,7 +810,7 @@ export default function KycApprovalPage() {
           onClose={() => setInspectProfile(null)}
           title={
             <span className="text-base font-bold text-[#1A1612]">
-              Thẩm định hồ sơ đối tác
+              {inspectProfile.kycStatus === 'VERIFIED' ? 'Chi tiết hồ sơ đối tác' : 'Thẩm định hồ sơ đối tác'}
             </span>
           }
           subtitle={

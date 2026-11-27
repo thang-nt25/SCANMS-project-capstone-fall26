@@ -1,8 +1,10 @@
 import { handleStoreImageError } from '@/utils/image-fallback.utils';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   UserPlus,
+  MoreHorizontal,
   Store,
   ShieldCheck,
   Search,
@@ -32,6 +34,7 @@ import {
 } from '../../services/order-address.service';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { toast } from '../../utils/toast';
+import { Modal } from '../../components/ui/Modal';
 
 const DEFAULT_CATEGORIES = [
   'Mỹ phẩm & Chăm sóc da chuyên sâu',
@@ -45,12 +48,51 @@ let cachedStoresList: AdminStoreOption[] = [];
 registerPrivateCacheReset(() => { cachedStaffList = []; cachedStoresList = []; });
 
 export const AdminPersonnelPage: React.FC = () => {
+  const [confirmation, setConfirmation] = useState<{ title: string; name: string; description: string; label: string; danger?: boolean } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const confirmationResolver = useRef<((accepted: boolean) => void) | null>(null);
+  const requestConfirmation = (details: NonNullable<typeof confirmation>) => {
+    if (confirmationResolver.current) return Promise.resolve(false);
+    setConfirmation(details);
+    return new Promise<boolean>((resolve) => { confirmationResolver.current = resolve; });
+  };
+  const closeConfirmation = () => {
+    if (confirming) return;
+    confirmationResolver.current?.(false);
+    confirmationResolver.current = null;
+    setConfirmation(null);
+  };
+  const finishConfirmation = () => {
+    confirmationResolver.current = null;
+    setConfirmation(null);
+    setConfirming(false);
+  };
+  useEffect(() => () => { confirmationResolver.current?.(false); }, []);
   const [staffList, setStaffList] = useState<InternalStaffMember[]>(() => cachedStaffList);
   const [stores, setStores] = useState<AdminStoreOption[]>(() => cachedStoresList);
   const [loading, setLoading] = useState(() => cachedStaffList.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'SHOP_MANAGER' | 'SYSTEM_MANAGER' | 'SYSTEM_ADMIN' | 'STORES'>('ALL');
   const [storeStatusFilter, setStoreStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'>('ALL');
+
+  const [staffPage, setStaffPage] = useState(1);
+  const [staffMenu, setStaffMenu] = useState<{ staff: InternalStaffMember; top: number; left: number } | null>(null);
+  const staffMenuRef = useRef<HTMLDivElement>(null);
+  const staffMenuTrigger = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => { setStaffPage(1); setStaffMenu(null); }, [searchQuery, roleFilter]);
+  useEffect(() => { setStaffMenu(null); }, [staffPage]);
+  useEffect(() => {
+    if (!staffMenu) return;
+    const outside = (event: PointerEvent) => { if (!staffMenuRef.current?.contains(event.target as Node) && !staffMenuTrigger.current?.contains(event.target as Node)) setStaffMenu(null); };
+    const keyboard = (event: KeyboardEvent) => { if (event.key === 'Escape') { setStaffMenu(null); staffMenuTrigger.current?.focus(); } };
+    const dismiss = () => setStaffMenu(null);
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', keyboard);
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    staffMenuRef.current?.querySelector('button')?.focus();
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', keyboard); window.removeEventListener('scroll', dismiss, true); window.removeEventListener('resize', dismiss); };
+  }, [staffMenu]);
 
   // 4 Core Locked Categories (Enterprise In-House Governance)
   const categories = DEFAULT_CATEGORIES;
@@ -231,7 +273,7 @@ export const AdminPersonnelPage: React.FC = () => {
   const handleToggleStatus = async (staff: InternalStaffMember) => {
     const nextStatus = !staff.isActive;
     const actionText = nextStatus ? 'kích hoạt' : 'vô hiệu hóa';
-    if (!window.confirm(`Bạn có chắc muốn ${actionText} tài khoản "${staff.fullName}"?`)) {
+    if (!await requestConfirmation({ title: nextStatus ? 'Kích hoạt tài khoản' : 'Vô hiệu hóa tài khoản', name: staff.fullName, description: nextStatus ? 'Nhân sự được truy cập lại theo quyền đã cấp.' : 'Nhân sự sẽ bị chặn truy cập tài khoản.', label: nextStatus ? 'Kích hoạt' : 'Vô hiệu hóa', danger: !nextStatus })) {
       return;
     }
     try {
@@ -242,11 +284,14 @@ export const AdminPersonnelPage: React.FC = () => {
       );
     } catch (err: any) {
       toast.error(err?.response?.data?.message || `Lỗi khi ${actionText} nhân sự`);
+    } finally {
+      finishConfirmation();
     }
   };
 
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (staffSubmitting) return;
     if (!staffForm.email.trim() || !staffForm.fullName.trim() || !staffForm.password.trim()) {
       toast.error('Vui lòng điền đầy đủ Email, Họ tên và Mật khẩu');
       return;
@@ -256,7 +301,7 @@ export const AdminPersonnelPage: React.FC = () => {
       return;
     }
     if (staffForm.role === 'SHOP_MANAGER' && !staffForm.storeId) {
-      toast.error('Giám đốc nhãn hàng bắt buộc phải được gán vào 1 gian hàng cụ thể');
+      toast.error('Vui lòng chọn cửa hàng phụ trách cho quản lý');
       return;
     }
 
@@ -307,6 +352,7 @@ export const AdminPersonnelPage: React.FC = () => {
 
   const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (storeSubmitting || uploadingLogo) return;
     if (!storeForm.name.trim()) {
       toast.error('Vui lòng nhập tên Cửa hàng / Nhãn hàng');
       return;
@@ -321,6 +367,11 @@ export const AdminPersonnelPage: React.FC = () => {
     }
     if (!storeForm.detailAddress.trim()) {
       toast.error('Vui lòng nhập địa chỉ chi tiết kho (số nhà, tên đường, KCN...)');
+      return;
+    }
+
+    if (!storeForm.contactName.trim() || !/^0[0-9]{9}$/.test(storeForm.contactPhone.trim())) {
+      toast.error('Nhập người liên hệ và điện thoại kho hợp lệ gồm 10 chữ số');
       return;
     }
 
@@ -342,8 +393,8 @@ export const AdminPersonnelPage: React.FC = () => {
         description: storeForm.description.trim() || undefined,
         logoUrl: storeForm.logoUrl.trim() || undefined,
         warehouseName: storeForm.warehouseName.trim() || `Kho Tổng ${storeForm.name.trim()}`,
-        contactName: `Bộ phận kho vận - ${storeForm.name.trim()}`,
-        contactPhone: storeForm.contactPhone?.trim() || '0901234567',
+        contactName: storeForm.contactName.trim(),
+        contactPhone: storeForm.contactPhone.trim(),
         warehouseAddress: fullAddress,
         provinceCode: storeForm.provinceCode,
         provinceName: storeForm.provinceName,
@@ -369,22 +420,25 @@ export const AdminPersonnelPage: React.FC = () => {
   const handleOpenStoreDetail = (store: AdminStoreOption) => {
     setSelectedStore(store);
     const wh = store.returnWarehouse || {};
+    const province = shippingProvinces.find((p) => String(p.code) === String(wh.provinceCode));
+    const district = province?.districts.find((d) => String(d.code) === String(wh.districtCode));
+    const ward = district?.wards.find((w) => String(w.code) === String(wh.wardCode));
     setEditStoreForm({
       name: store.name,
       categoryName: store.categoryName || DEFAULT_CATEGORIES[0],
       description: store.description || '',
       logoUrl: store.logoUrl || '',
       warehouseName: wh.warehouseName || `Kho Tổng ${store.name}`,
-      contactName: wh.contactName || 'Quản lý kho',
-      contactPhone: wh.contactPhone || '0901234567',
+      contactName: wh.contactName || '',
+      contactPhone: wh.contactPhone || '',
       provinceCode: wh.provinceCode || '',
-      provinceName: wh.provinceName || '',
+      provinceName: province?.name || wh.provinceName || '',
       districtCode: wh.districtCode || '',
-      districtName: wh.districtName || '',
+      districtName: district?.name || wh.districtName || '',
       wardCode: wh.wardCode || '',
-      wardName: wh.wardName || '',
+      wardName: ward?.name || wh.wardName || '',
       detailAddress: wh.detailAddress || wh.address || '',
-      warehouseAddress: wh.address || 'Khu Công Nghệ Cao, TP.Thủ Đức, TP.HCM',
+      warehouseAddress: wh.address || '',
       ghnDistrictId: wh.ghnDistrictId || 1442,
       ghnWardCode: wh.ghnWardCode || '20109',
       ownerId: store.ownerId || '',
@@ -397,7 +451,7 @@ export const AdminPersonnelPage: React.FC = () => {
   const handleToggleStoreStatus = async (store: AdminStoreOption) => {
     const nextStatus = !store.isActive;
     const actionText = nextStatus ? 'kích hoạt hoạt động' : 'tạm ngưng hoạt động';
-    if (!window.confirm(`Xác nhận ${actionText} nhãn hàng "${store.name}"?`)) {
+    if (!await requestConfirmation({ title: nextStatus ? 'Kích hoạt nhãn hàng' : 'Tạm ngưng nhãn hàng', name: store.name, description: nextStatus ? 'Khôi phục trạng thái hoạt động của nhãn hàng.' : 'Chuyển nhãn hàng sang trạng thái tạm ngưng.', label: nextStatus ? 'Kích hoạt' : 'Tạm ngưng', danger: !nextStatus })) {
       return;
     }
     try {
@@ -411,12 +465,14 @@ export const AdminPersonnelPage: React.FC = () => {
       }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || `Lỗi khi ${actionText}`);
+    } finally {
+      finishConfirmation();
     }
   };
 
   // Restore Soft-Deleted Store
   const handleRestoreStore = async (store: AdminStoreOption) => {
-    if (!window.confirm(`Xác nhận khôi phục hoạt động cho nhãn hàng "${store.name}" từ kho lưu trữ?`)) {
+    if (!await requestConfirmation({ title: 'Khôi phục nhãn hàng', name: store.name, description: 'Đưa nhãn hàng từ kho lưu trữ trở lại hoạt động.', label: 'Khôi phục' })) {
       return;
     }
     try {
@@ -428,13 +484,15 @@ export const AdminPersonnelPage: React.FC = () => {
       }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Lỗi khi khôi phục gian hàng');
+    } finally {
+      finishConfirmation();
     }
   };
 
   // Update Store Details
   const handleUpdateStore = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStore) return;
+    if (!selectedStore || editStoreSubmitting || uploadingEditLogo) return;
     if (!editStoreForm.name.trim()) {
       toast.error('Tên gian hàng không được để trống');
       return;
@@ -484,11 +542,7 @@ export const AdminPersonnelPage: React.FC = () => {
 
   // Archive Store (Soft Delete)
   const handleDeleteStore = async (store: AdminStoreOption) => {
-    if (
-      !window.confirm(
-        `Xác nhận chuyển nhãn hàng "${store.name}" vào Kho Lưu Trữ (xóa mềm)? Toàn bộ dữ liệu đơn hàng và hoa hồng vẫn được bảo lưu an toàn và có thể khôi phục lại bất kỳ lúc nào.`,
-      )
-    ) {
+    if (!await requestConfirmation({ title: 'Lưu trữ nhãn hàng', name: store.name, description: 'Chuyển vào kho lưu trữ. Dữ liệu đơn hàng và thù lao được bảo lưu, nhãn hàng có thể khôi phục.', label: 'Lưu trữ', danger: true })) {
       return;
     }
     try {
@@ -498,6 +552,8 @@ export const AdminPersonnelPage: React.FC = () => {
       loadData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Lỗi khi lưu trữ gian hàng');
+    } finally {
+      finishConfirmation();
     }
   };
 
@@ -509,6 +565,10 @@ export const AdminPersonnelPage: React.FC = () => {
     const matchRole = roleFilter === 'ALL' || s.role === roleFilter;
     return matchQuery && matchRole;
   });
+
+  const staffTotalPages = Math.max(1, Math.ceil(filteredStaff.length / 10));
+  const currentStaffPage = Math.min(staffPage, staffTotalPages);
+  const pagedStaff = filteredStaff.slice((currentStaffPage - 1) * 10, currentStaffPage * 10);
 
   const filteredStores = stores.filter((st) => {
     const matchQuery =
@@ -536,103 +596,33 @@ export const AdminPersonnelPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Tinh Gọn (Loại bỏ câu chữ thừa) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#EAE4D7]">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#1A1612] m-0">Quản trị Nhân sự & Cửa Hàng Trực Thuộc</h1>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-              {staffList.length} nhân sự • {stores.length} nhãn hàng
-            </span>
+      <section className="rounded-xl border border-[#EAE4D7] bg-white">
+        <div role="tablist" aria-label="Nhóm nhân sự" className="grid grid-cols-1 gap-2.5 p-3 sm:grid-cols-2 lg:grid-cols-5">
+          {([
+            ['ALL', 'Tất cả nhân sự', staffList.length],
+            ['SHOP_MANAGER', 'Quản lý cửa hàng', totalShopManagers],
+            ['SYSTEM_MANAGER', 'Vận hành', totalSystemManagers],
+            ['SYSTEM_ADMIN', 'Quản trị hệ thống', staffList.filter((s) => s.role === 'SYSTEM_ADMIN').length],
+            ['STORES', 'Cửa hàng & Kho', stores.length],
+          ] as const).map(([value, label, count], index) => (
+            <div key={value} className="min-w-0">
+              <button type="button" role="tab" aria-selected={roleFilter === value} onClick={() => setRoleFilter(value)} className={`flex h-[60px] w-full items-center justify-center gap-2 rounded-[10px] border px-3.5 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-[#C59B58] ${roleFilter === value ? 'border-[#EEDFC6] bg-[#FBF5EB] font-semibold text-[#8F682E]' : 'border-[#EAE4D7] bg-white font-medium text-[#655A49] hover:bg-[#FAF8F5]'}`}>
+                <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border bg-white text-xs font-normal tabular-nums ${roleFilter === value ? 'border-[#C59B58] text-[#8F682E]' : 'border-[#EAE4D7] text-[#7D715E]'}`}>{index + 1}</span>
+                <span className="min-w-0 text-center leading-[1.5]">{label}</span>
+                <span className="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-[7px] border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-medium tabular-nums text-[#8F682E]">{count}</span>
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3 border-t border-[#EAE4D7] p-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
+            <input aria-label="Tìm nhân sự hoặc cửa hàng" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={roleFilter === 'STORES' ? 'Tìm cửa hàng, ngành hàng…' : 'Tìm tên, email, điện thoại…'} className="h-[42px] w-full rounded-lg border border-[#EAE4D7] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#C59B58]" />
           </div>
+          <button type="button" onClick={handleOpenCreateStoreModal} className="inline-flex h-[42px] items-center gap-2 rounded-lg border border-[#EAE4D7] px-4 text-[13px] font-semibold hover:bg-[#FAF8F5]"><Store size={16} />Thêm cửa hàng</button>
+          <button type="button" onClick={() => setIsStaffModalOpen(true)} className="inline-flex h-[42px] items-center gap-2 rounded-lg bg-[#C59B58] px-4 text-[13px] font-semibold text-[#231D15] hover:bg-[#B88E4F]"><UserPlus size={16} />Bổ nhiệm nhân sự</button>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleOpenCreateStoreModal}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] hover:bg-[#F3EFE6] text-xs font-semibold transition cursor-pointer shadow-2xs"
-          >
-            <Store size={14} className="text-[#C59B58]" />
-            <span>Thêm Cửa Hàng</span>
-          </button>
-          <button
-            onClick={() => setIsStaffModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-semibold transition shadow-xs cursor-pointer"
-          >
-            <UserPlus size={14} />
-            <span>Bổ nhiệm Nhân sự</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Bộ Lọc Vai Trò & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder={roleFilter === 'STORES' ? 'Tìm tên nhãn hàng, ngành hàng...' : 'Tìm họ tên, email công ty, SĐT nhân sự...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#7D715E]/60 focus:outline-none focus:border-[#C59B58] transition"
-          />
-        </div>
-
-        {/* Tab switcher */}
-        <div className="flex items-center p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-medium self-start sm:self-auto overflow-x-auto">
-          <button
-            onClick={() => setRoleFilter('ALL')}
-            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
-              roleFilter === 'ALL'
-                ? 'bg-white text-[#1A1612] font-semibold shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612]'
-            }`}
-          >
-            Tất cả nhân sự
-          </button>
-          <button
-            onClick={() => setRoleFilter('SHOP_MANAGER')}
-            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
-              roleFilter === 'SHOP_MANAGER'
-                ? 'bg-white text-[#1A1612] font-semibold shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612]'
-            }`}
-          >
-            Quản lý Shop ({totalShopManagers})
-          </button>
-          <button
-            onClick={() => setRoleFilter('SYSTEM_MANAGER')}
-            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
-              roleFilter === 'SYSTEM_MANAGER'
-                ? 'bg-white text-[#1A1612] font-semibold shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612]'
-            }`}
-          >
-            Chuyên viên Vận hành ({totalSystemManagers})
-          </button>
-          <button
-            onClick={() => setRoleFilter('SYSTEM_ADMIN')}
-            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
-              roleFilter === 'SYSTEM_ADMIN'
-                ? 'bg-white text-[#1A1612] font-semibold shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612]'
-            }`}
-          >
-            Super Admin
-          </button>
-          <button
-            onClick={() => setRoleFilter('STORES')}
-            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              roleFilter === 'STORES'
-                ? 'bg-[#1A1612] text-white font-semibold shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612]'
-            }`}
-          >
-            <Store size={12} className={roleFilter === 'STORES' ? 'text-[#C59B58]' : ''} />
-            <span>Cửa hàng & Kho GHN</span>
-          </button>
-        </div>
-      </div>
+      </section>
 
       {/* 3. Vùng Nội Dung */}
       {loading ? (
@@ -643,65 +633,23 @@ export const AdminPersonnelPage: React.FC = () => {
       ) : roleFilter === 'STORES' ? (
         /* ================= TAB GIAN HÀNG & KHO GHN (BRAND GRID) ================= */
         <div className="space-y-4">
-          {/* Sub-Filter Vòng đời Cửa hàng */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs">
-              <button
-                type="button"
-                onClick={() => setStoreStatusFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-medium ${
-                  storeStatusFilter === 'ALL'
-                    ? 'bg-white text-[#1A1612] font-bold shadow-2xs border border-[#EEDFC6]'
-                    : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                Tất cả ({stores.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStoreStatusFilter('ACTIVE')}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-medium flex items-center gap-1 ${
-                  storeStatusFilter === 'ACTIVE'
-                    ? 'bg-white text-[#059669] font-bold shadow-2xs border border-[#EEDFC6]'
-                    : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
-                Đang hoạt động ({activeStoresCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStoreStatusFilter('PAUSED')}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-medium flex items-center gap-1 ${
-                  storeStatusFilter === 'PAUSED'
-                    ? 'bg-white text-[#D97706] font-bold shadow-2xs border border-[#EEDFC6]'
-                    : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
-                Tạm ngưng ({pausedStoresCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStoreStatusFilter('ARCHIVED')}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-medium flex items-center gap-1 ${
-                  storeStatusFilter === 'ARCHIVED'
-                    ? 'bg-white text-[#DC2626] font-bold shadow-2xs border border-[#FECACA]'
-                    : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                <Archive size={12} className="text-[#DC2626]" />
-                Kho lưu trữ ({archivedStoresCount})
-              </button>
+          <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:p-3" role="group" aria-label="Trạng thái cửa hàng">
+            <div className="grid grid-cols-2 gap-y-2 sm:grid-cols-4">
+              {([
+                ['ALL', 'Tất cả', stores.length],
+                ['ACTIVE', 'Hoạt động', activeStoresCount],
+                ['PAUSED', 'Tạm ngưng', pausedStoresCount],
+                ['ARCHIVED', 'Đã lưu trữ', archivedStoresCount],
+              ] as const).map(([value, label, count], index) => (
+                <div key={value} className="relative min-w-0 px-1.5">
+                  {index > 0 && <span aria-hidden="true" className={`pointer-events-none absolute left-0 top-1/2 h-5 w-px -translate-y-1/2 bg-[#EAE4D7] ${index === 2 ? 'hidden sm:block' : ''}`} />}
+                  <button type="button" aria-pressed={storeStatusFilter === value} onClick={() => setStoreStatusFilter(value)}
+                    className={`flex h-[42px] w-full items-center justify-center gap-2 rounded-lg border px-2 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-[#C59B58] ${storeStatusFilter === value ? 'border-[#EEDFC6] bg-[#FBF5EB] font-semibold text-[#231D15]' : 'border-transparent bg-white text-[#655A49] hover:bg-[#FAF8F5]'}`}>
+                    <span>{label}</span><span className="tabular-nums text-[#7D715E]">{count}</span>
+                  </button>
+                </div>
+              ))}
             </div>
-
-            <button
-              onClick={handleOpenCreateStoreModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer ml-auto"
-            >
-              <Store size={13} />
-              <span>Khởi tạo Nhãn hàng mới</span>
-            </button>
           </div>
 
           {filteredStores.length === 0 ? (
@@ -709,311 +657,129 @@ export const AdminPersonnelPage: React.FC = () => {
               Không tìm thấy gian hàng nào phù hợp với bộ lọc.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredStores.map((st) => {
-                const wh = st.returnWarehouse || {};
-                const isArchived = !!st.isDeleted;
-                return (
-                  <div
-                    key={st.id}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
-                      isArchived
-                        ? 'bg-[#FAF8F5]/80 border-[#EAE4D7] opacity-85'
-                        : 'bg-white border-[#EAE4D7] hover:border-[#C59B58] hover:shadow-xs'
-                    }`}
-                  >
-                    <div>
-                      {/* Top row: Avatar/Logo + Name + Badge */}
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {st.logoUrl ? (
-                            <img
-                              src={st.logoUrl} onError={handleStoreImageError}
-                              alt={st.name}
-                              className="w-10 h-10 rounded-xl object-cover border border-[#EEDFC6] shrink-0"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#C59B58] flex items-center justify-center font-bold text-xs shrink-0">
-                              {st.name.slice(0, 2).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <h3 className="font-bold text-xs text-[#1A1612] truncate m-0 leading-tight" title={st.name}>
-                              {st.name}
-                            </h3>
-                            <span className="text-[10px] text-[#7D715E] block truncate mt-0.5">
-                              {st.categoryName || 'Khối bán lẻ trực thuộc'}
-                            </span>
-                          </div>
+            <section aria-label="Danh sách cửa hàng" className="rounded-xl border border-[#EAE4D7] bg-white p-3 sm:p-4">
+              <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {filteredStores.map((st) => {
+                  const wh = st.returnWarehouse;
+                  const isArchived = !!st.isDeleted;
+                  const warehouseReady = !!(wh?.contactName?.trim() && wh.contactPhone?.trim() && wh.detailAddress?.trim() && Number(wh.ghnDistrictId) > 0 && wh.ghnWardCode?.trim());
+                  return (
+                    <article key={st.id} className="flex min-w-0 flex-col rounded-xl border border-[#EAE4D7] bg-white p-4 transition-colors hover:border-[#C59B58]">
+                      <header className="flex min-h-[60px] items-start gap-3">
+                        {st.logoUrl ? <img src={st.logoUrl} onError={handleStoreImageError} alt={st.name} className="h-10 w-10 shrink-0 rounded-lg border border-[#EAE4D7] object-contain" /> : <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#8F682E]">{st.name.slice(0, 2).toUpperCase()}</div>}
+                        <div className="min-w-0 flex-1">
+                          <h3 title={st.name} className="m-0 line-clamp-2 text-sm font-semibold leading-5 text-[#1A1612]">{st.name}</h3>
+                          <p title={st.categoryName || ''} className="m-0 mt-1 line-clamp-2 text-xs leading-4 text-[#7D715E]">{st.categoryName || 'Chưa cập nhật ngành hàng'}</p>
                         </div>
-
-                        {/* Status Badge */}
-                        {isArchived ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA] shrink-0">
-                            Đã lưu trữ
-                          </span>
-                        ) : st.isActive ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#059669] border border-[#EEDFC6] shrink-0 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
-                            Hoạt động
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#D97706] border border-[#F5D8D4] shrink-0 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
-                            Tạm ngưng
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Info lines */}
-                      <div className="space-y-1.5 py-2.5 border-y border-[#FAF8F5] text-[11px]">
-                        <div className="flex items-center justify-between text-[#7D715E]">
-                          <span>Quản lý phụ trách:</span>
-                          <span className="font-semibold text-[#1A1612] truncate max-w-[150px]">
-                            {st.owner?.role === 'SHOP_MANAGER' ? st.owner.fullName : 'Chưa phân công'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-[#7D715E]">
-                          <span>Quy mô sản phẩm:</span>
-                          <span className="font-mono font-bold text-[#1A1612]">
-                            {st._count?.products ?? 0} sản phẩm
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-[#7D715E]">
-                          <span>Kho bưu tá GHN:</span>
-                          <span className="text-[10px] font-mono text-[#8F682E] bg-[#FBF5EB] px-1.5 py-0.5 rounded border border-[#EEDFC6]">
-                            GHN {wh.ghnDistrictId || 1442}-{wh.ghnWardCode || '20109'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center justify-between gap-2 pt-3 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenStoreDetail(st)}
-                        className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-white text-xs font-semibold text-[#1A1612] transition cursor-pointer flex items-center gap-1"
-                      >
-                        <Eye size={12} className="text-[#8F682E]" />
-                        <span>Chi tiết</span>
-                      </button>
-
-                      {isArchived ? (
-                        <button
-                          type="button"
-                          onClick={() => handleRestoreStore(st)}
-                          className="px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#8F682E] transition cursor-pointer flex items-center gap-1 shadow-2xs"
-                        >
-                          <RotateCcw size={12} />
-                          <span>Khôi phục</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStoreStatus(st)}
-                          className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                            st.isActive
-                              ? 'border-[#EAE4D7] text-[#7D715E] hover:text-[#DC2626] hover:bg-white'
-                              : 'border-[#EEDFC6] text-[#059669] bg-[#FBF5EB] hover:bg-[#F3EFE6]'
-                          }`}
-                        >
-                          <Power size={11} />
-                          <span>{st.isActive ? 'Tạm ngưng' : 'Kích hoạt'}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        <span className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium ${isArchived ? 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]'}`}>
+                          {isArchived ? 'Đã lưu trữ' : st.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                        </span>
+                      </header>
+                      <dl className="my-3 flex-1 space-y-2.5 border-t border-[#EAE4D7] pt-3 text-[13px]">
+                        <div className="flex items-start justify-between gap-3"><dt className="shrink-0 text-[#7D715E]">Quản lý</dt><dd className="m-0 break-words text-right font-medium text-[#1A1612]">{st.owner?.role === 'SHOP_MANAGER' ? st.owner.fullName : 'Chưa phân công'}</dd></div>
+                        <div className="flex items-center justify-between gap-3"><dt className="text-[#7D715E]">Sản phẩm</dt><dd className="m-0 font-medium tabular-nums text-[#1A1612]">{st._count?.products ?? '—'}</dd></div>
+                        <div className="flex items-center justify-between gap-3"><dt className="text-[#7D715E]">Kho xuất hàng</dt><dd className={`m-0 text-right font-medium ${warehouseReady ? 'text-[#8F682E]' : 'text-[#7D715E]'}`}>{warehouseReady ? 'Đã cấu hình' : 'Chưa đủ thông tin'}</dd></div>
+                      </dl>
+                      <footer className="grid grid-cols-2 gap-2 border-t border-[#EAE4D7] pt-3">
+                        <button type="button" onClick={() => handleOpenStoreDetail(st)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 text-xs font-semibold text-[#231D15] transition-colors hover:bg-[#F3EFE6]"><Eye size={14} />Xem chi tiết</button>
+                        {isArchived ? <button type="button" onClick={() => handleRestoreStore(st)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-medium text-[#8F682E] transition-colors hover:bg-[#FAF8F5]"><RotateCcw size={14} />Khôi phục</button> : <button type="button" onClick={() => handleToggleStoreStatus(st)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-medium text-[#655A49] transition-colors hover:bg-[#FAF8F5]"><Power size={14} />{st.isActive ? 'Tạm ngưng' : 'Kích hoạt'}</button>}
+                      </footer>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
           )}
         </div>
       ) : (
         /* ================= TAB NHÂN SỰ NỘI BỘ ================= */
-        <div className="bg-white rounded-2xl border border-[#EAE4D7] overflow-hidden shadow-2xs">
+        <section aria-label="Danh sách nhân sự" className="overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-[#7D715E] uppercase tracking-wider text-[10px] font-bold">
-                  <th className="py-3 px-4">Nhân sự</th>
-                  <th className="py-3 px-4">Vai trò quản trị</th>
-                  <th className="py-3 px-4">Gian hàng điều hành</th>
-                  <th className="py-3 px-4">Liên hệ</th>
-                  <th className="py-3 px-4 text-center">Trạng thái</th>
-                  <th className="py-3 px-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#FAF8F5]">
-                {filteredStaff.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-[#7D715E]">
-                      Không tìm thấy nhân sự phù hợp với bộ lọc.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStaff.map((staff) => {
-                    const assignedStore = staff.stores?.[0];
-                    return (
-                      <tr key={staff.id} className="hover:bg-[#FAF8F5]/60 transition-colors">
-                        {/* Họ tên & Email */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#F3EFE6] border border-[#EEDFC6] flex items-center justify-center font-bold text-xs text-[#8F682E]">
-                              {staff.fullName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <strong className="block text-xs font-semibold text-[#1A1612]">
-                                {staff.fullName}
-                              </strong>
-                              <span className="text-[11px] text-[#7D715E] font-mono">{staff.email}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Vai trò */}
-                        <td className="py-3 px-4">
-                          {staff.role === 'SYSTEM_ADMIN' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#1A1612] text-white">
-                              <ShieldCheck size={10} className="text-[#C59B58]" />
-                              Super Admin
-                            </span>
-                          ) : staff.role === 'SYSTEM_MANAGER' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6]">
-                              Chuyên viên Vận hành
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
-                              <Store size={10} className="text-[#C59B58]" />
-                              Quản lý Shop
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Cửa hàng phụ trách */}
-                        <td className="py-3 px-4">
-                          {assignedStore ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-[#1A1612]">{assignedStore.name}</span>
-                              {assignedStore.isActive && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-[#7D715E] italic">
-                              {staff.role === 'SHOP_MANAGER' ? 'Chưa gán shop' : 'Toàn hệ thống'}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Liên hệ */}
-                        <td className="py-3 px-4 text-[#7D715E]">
-                          {staff.phoneNumber ? (
-                            <span className="font-mono text-[11px]">{staff.phoneNumber}</span>
-                          ) : (
-                            <span className="italic text-[11px]">Chưa cập nhật</span>
-                          )}
-                        </td>
-
-                        {/* Trạng thái */}
-                        <td className="py-3 px-4 text-center">
-                          {staff.isActive ? (
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#059669] border border-[#EEDFC6]">
-                              Hoạt động
-                            </span>
-                          ) : (
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF8F5] text-[#DC2626] border border-[#F5D8D4]">
-                              Vô hiệu hóa
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Thao tác */}
-                        <td className="py-3 px-4 text-right">
-                          {staff.role !== 'SYSTEM_ADMIN' && (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleStatus(staff)}
-                              className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition cursor-pointer ${
-                                staff.isActive
-                                  ? 'border-[#EAE4D7] text-[#7D715E] hover:text-[#DC2626] hover:bg-white'
-                                  : 'border-[#EEDFC6] text-[#059669] bg-[#FBF5EB] hover:bg-[#F3EFE6]'
-                              }`}
-                            >
-                              {staff.isActive ? 'Khóa' : 'Kích hoạt'}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+            <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-[13px]">
+              <colgroup><col style={{width:'30%'}} /><col style={{width:'18%'}} /><col style={{width:'22%'}} /><col style={{width:'12%'}} /><col style={{width:'12%'}} /><col style={{width:'6%'}} /></colgroup>
+              <thead className="bg-[#FAF8F5] text-xs font-medium text-[#7D715E]"><tr className="border-b border-[#EAE4D7]">
+                {['Nhân sự', 'Vai trò', 'Phụ trách', 'Điện thoại', 'Trạng thái', 'Thao tác'].map((label, index) => <th key={label} scope="col" className={`h-11 px-4 font-medium ${index === 5 ? 'text-right' : ''}`}>{label}</th>)}
+              </tr></thead>
+              <tbody className="divide-y divide-[#EAE4D7]">
+                {pagedStaff.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-[#7D715E]">Không tìm thấy nhân sự phù hợp.</td></tr> : pagedStaff.map((staff) => {
+                  const assignedStore = staff.stores?.[0];
+                  return <tr key={staff.id} className="h-[72px] transition-colors hover:bg-[#FAF8F5]">
+                    <td className="px-4 py-3"><div className="flex min-w-0 items-center gap-2.5"><span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#F3EFE6] text-xs font-semibold text-[#8F682E]">{staff.fullName?.charAt(0).toUpperCase() || '—'}</span><div className="min-w-0"><p title={staff.fullName} className="m-0 truncate text-[13px] font-semibold leading-5 text-[#1A1612]">{staff.fullName}</p><p title={staff.email} className="m-0 truncate text-xs leading-5 text-[#7D715E]">{staff.email}</p></div></div></td>
+                    <td className="px-4 py-3"><span className={`inline-flex h-6 max-w-full items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-[11px] font-medium ${staff.role === 'SYSTEM_ADMIN' ? 'border-[#231D15] bg-[#231D15] text-white' : staff.role === 'SYSTEM_MANAGER' ? 'border-[#EAE4D7] bg-white text-[#655A49]' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]'}`}>{staff.role === 'SHOP_MANAGER' ? <Store size={13} className="shrink-0" /> : <ShieldCheck size={13} className="shrink-0" />}{staff.role === 'SYSTEM_ADMIN' ? 'Quản trị hệ thống' : staff.role === 'SYSTEM_MANAGER' ? 'Vận hành' : 'Quản lý cửa hàng'}</span></td>
+                    <td className="px-4 py-3"><span title={assignedStore?.name || ''} className={`block truncate ${assignedStore ? 'font-medium text-[#1A1612]' : 'text-[#7D715E]'}`}>{assignedStore?.name || (staff.role === 'SHOP_MANAGER' ? 'Chưa phân công' : 'Toàn hệ thống')}</span>{staff.stores && staff.stores.length > 1 && <span title={staff.stores.slice(1).map(store => store.name).join(', ')} className="text-xs text-[#7D715E]">+{staff.stores.length - 1} cửa hàng</span>}</td>
+                    <td className="px-4 py-3 text-xs tabular-nums text-[#655A49]">{staff.phoneNumber || <span className="text-[#7D715E]">Chưa cập nhật</span>}</td>
+                    <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-[#655A49]"><span aria-hidden="true" className={`size-1.5 rounded-full ${staff.isActive ? 'bg-[#059669]' : 'bg-[#DC2626]'}`} />{staff.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}</span></td>
+                    <td className="px-4 py-3 text-right">{staff.role === 'SYSTEM_ADMIN' ? <span aria-label="Không có thao tác khả dụng" className="text-[#7D715E]">—</span> : <button type="button" aria-label={`Thao tác nhân sự ${staff.fullName}`} aria-haspopup="dialog" aria-expanded={staffMenu?.staff.id === staff.id} onClick={(event) => {
+                      if (staffMenu?.staff.id === staff.id) { setStaffMenu(null); return; }
+                      staffMenuTrigger.current = event.currentTarget;
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      setStaffMenu({ staff, left: Math.max(8, Math.min(rect.right - 224, window.innerWidth - 232)), top: rect.bottom + 58 < window.innerHeight ? rect.bottom + 6 : rect.top - 58 });
+                    }} className="inline-flex size-[34px] items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#655A49] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#C59B58]"><MoreHorizontal size={17} /></button>}</td>
+                  </tr>;
+                })}
               </tbody>
             </table>
           </div>
-        </div>
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] px-4 py-3 text-xs text-[#7D715E]">
+            <span className="tabular-nums">{filteredStaff.length ? `${(currentStaffPage - 1) * 10 + 1}–${Math.min(currentStaffPage * 10, filteredStaff.length)}` : '0'} / {filteredStaff.length} nhân sự</span>
+            {staffTotalPages > 1 && <nav aria-label="Phân trang nhân sự" className="flex items-center gap-3"><button type="button" disabled={currentStaffPage === 1} onClick={() => setStaffPage(currentStaffPage - 1)} className="h-8 rounded-lg border border-[#EAE4D7] bg-white px-3 hover:bg-[#FBF5EB] disabled:opacity-40">Trước</button><span className="tabular-nums">{currentStaffPage}/{staffTotalPages}</span><button type="button" disabled={currentStaffPage === staffTotalPages} onClick={() => setStaffPage(currentStaffPage + 1)} className="h-8 rounded-lg border border-[#EAE4D7] bg-white px-3 hover:bg-[#FBF5EB] disabled:opacity-40">Sau</button></nav>}
+          </footer>
+        </section>
       )}
+      {staffMenu && createPortal(<div ref={staffMenuRef} role="dialog" aria-label="Thao tác nhân sự" style={{top: staffMenu.top, left: staffMenu.left}} className="fixed z-[60] w-56 rounded-lg border border-[#EAE4D7] bg-white p-1.5 shadow-lg"><button type="button" onClick={() => { const staff = staffMenu.staff; setStaffMenu(null); void handleToggleStatus(staff); }} className={`flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-[13px] hover:bg-[#FAF8F5] ${staffMenu.staff.isActive ? 'text-[#DC2626]' : 'text-[#8F682E]'}`}><Power size={15} />{staffMenu.staff.isActive ? 'Vô hiệu hóa tài khoản' : 'Kích hoạt tài khoản'}</button></div>, document.body)}
 
       {/* ================= MODAL 1: BỔ NHIỆM NHÂN SỰ NỘI BỘ ================= */}
       {isStaffModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#EAE4D7] bg-[#FAF8F5]">
-              <div className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-[#C59B58]" />
-                <h2 className="text-sm font-bold text-[#1A1612] m-0">Bổ nhiệm nhân sự mới</h2>
-              </div>
-              <button
-                onClick={() => setIsStaffModalOpen(false)}
-                className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-md hover:bg-[#EAE4D7]/40 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateStaff} className="p-5 space-y-3.5">
+        <Modal isOpen onClose={() => { if (!staffSubmitting) setIsStaffModalOpen(false); }} title="Bổ nhiệm nhân sự" stickyHeader maxWidth="2xl" className="max-w-[600px]" bodyClassName="p-4 sm:p-5"
+          footer={<div className="flex justify-end gap-2">
+            <button type="button" disabled={staffSubmitting} onClick={() => setIsStaffModalOpen(false)} className="h-[42px] rounded-lg border border-[#EAE4D7] bg-white px-5 text-sm disabled:opacity-50">Hủy</button>
+            <button type="submit" form="create-staff-form" disabled={staffSubmitting} className="inline-flex h-[42px] items-center gap-2 rounded-lg bg-[#C59B58] px-5 text-sm font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50">{staffSubmitting && <Loader2 size={16} className="animate-spin" />}{staffSubmitting ? 'Đang lưu…' : 'Bổ nhiệm nhân sự'}</button>
+          </div>}>
+<form id="create-staff-form" onSubmit={handleCreateStaff} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                   Vai trò quản trị <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setStaffForm((prev) => ({ ...prev, role: 'SHOP_MANAGER' }))}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                    className={`h-[42px] rounded-lg border text-[13px] font-semibold flex items-center justify-center gap-2 transition cursor-pointer ${
                       staffForm.role === 'SHOP_MANAGER'
                         ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8F682E]'
                         : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#EEDFC6]'
                     }`}
                   >
                     <Store size={14} />
-                    <span>Giám đốc Shop</span>
+                    <span>Quản lý cửa hàng</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setStaffForm((prev) => ({ ...prev, role: 'SYSTEM_MANAGER' }))}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                    className={`h-[42px] rounded-lg border text-[13px] font-semibold flex items-center justify-center gap-2 transition cursor-pointer ${
                       staffForm.role === 'SYSTEM_MANAGER'
                         ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8F682E]'
                         : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#EEDFC6]'
                     }`}
                   >
                     <ShieldCheck size={14} />
-                    <span>Chuyên viên Vận hành</span>
+                    <span>Vận hành</span>
                   </button>
                 </div>
               </div>
 
-              {staffForm.role === 'SHOP_MANAGER' && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+              <div className={staffForm.role === 'SHOP_MANAGER' ? '' : 'invisible'} aria-hidden={staffForm.role !== 'SHOP_MANAGER'} inert={staffForm.role !== 'SHOP_MANAGER'}>
+                  <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                     Cửa hàng phụ trách <span className="text-[#DC2626]">*</span>
                   </label>
+                  <div className="relative">
                   <select
+                    disabled={staffForm.role !== 'SHOP_MANAGER'}
                     value={staffForm.storeId || ''}
                     onChange={(e) => setStaffForm((prev) => ({ ...prev, storeId: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                    aria-label="Cửa hàng phụ trách" className="h-[42px] w-full appearance-none! rounded-lg border border-[#EAE4D7] bg-white px-3 pr-10 py-0 text-sm leading-[40px] focus:outline-none focus:border-[#C59B58] [&::picker-icon]:hidden"
                   >
+                    <option value="">Chọn cửa hàng phụ trách</option>
                     {stores
                       .filter((st) => !st.isDeleted)
                       .map((st) => {
@@ -1025,11 +791,12 @@ export const AdminPersonnelPage: React.FC = () => {
                         );
                       })}
                   </select>
+                    <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs leading-none text-[#7D715E]">▼</span>
+                  </div>
                 </div>
-              )}
 
               <div>
-                <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                   Họ và tên nhân sự <span className="text-[#DC2626]">*</span>
                 </label>
                 <input
@@ -1037,13 +804,13 @@ export const AdminPersonnelPage: React.FC = () => {
                   placeholder="Ví dụ: Trần Quản Lý"
                   value={staffForm.fullName}
                   onChange={(e) => setStaffForm((prev) => ({ ...prev, fullName: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                  className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                  <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                     Email công ty <span className="text-[#DC2626]">*</span>
                   </label>
                   <input
@@ -1051,11 +818,11 @@ export const AdminPersonnelPage: React.FC = () => {
                     placeholder="brand.sora@scanms.vn"
                     value={staffForm.email}
                     onChange={(e) => setStaffForm((prev) => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                    className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                  <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                     Số điện thoại
                   </label>
                   <input
@@ -1063,26 +830,26 @@ export const AdminPersonnelPage: React.FC = () => {
                     placeholder="0901234567"
                     value={staffForm.phoneNumber || ''}
                     onChange={(e) => setStaffForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                    className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                   Mật khẩu khởi tạo <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password" type={showPassword ? 'text' : 'password'}
                     placeholder="Tối thiểu 6 ký tự"
                     value={staffForm.password}
                     onChange={(e) => setStaffForm((prev) => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-3 py-2 pr-9 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                    className="h-[42px] w-full px-3 pr-10 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -1090,56 +857,28 @@ export const AdminPersonnelPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EAE4D7]">
-                <button
-                  type="button"
-                  onClick={() => setIsStaffModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-xs font-medium text-[#7D715E] hover:bg-[#FAF8F5] transition cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={staffSubmitting}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-semibold transition disabled:opacity-50 cursor-pointer"
-                >
-                  {staffSubmitting && <RefreshCw className="w-3 h-3 animate-spin" />}
-                  Xác nhận bổ nhiệm
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+</form>
+        </Modal>
       )}
 
       {/* ================= MODAL 2: KHỞI TẠO CỬA HÀNG (Widescreen 2 Cột, Logo Upload, Address Chuẩn Customer) ================= */}
       {isStoreModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#EAE4D7] bg-[#FAF8F5]">
-              <div className="flex items-center gap-2">
-                <Store className="w-4 h-4 text-[#C59B58]" />
-                <h2 className="text-sm font-bold text-[#1A1612] m-0">Khởi tạo Cửa hàng / Nhãn hàng mới</h2>
-              </div>
-              <button
-                onClick={() => setIsStoreModalOpen(false)}
-                className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-md hover:bg-[#EAE4D7]/40 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateStore} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Modal isOpen onClose={() => { if (!storeSubmitting) setIsStoreModalOpen(false); }} title="Tạo cửa hàng" stickyHeader maxWidth="5xl" className="max-w-[960px]" bodyClassName="p-4 sm:p-5"
+          footer={<div className="flex justify-end gap-2">
+            <button type="button" disabled={storeSubmitting} onClick={() => setIsStoreModalOpen(false)} className="h-[42px] rounded-lg border border-[#EAE4D7] bg-white px-5 text-sm disabled:opacity-50">Hủy</button>
+            <button type="submit" form="create-store-form" disabled={storeSubmitting || uploadingLogo} className="inline-flex h-[42px] items-center gap-2 rounded-lg bg-[#C59B58] px-5 text-sm font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50">{storeSubmitting && <Loader2 size={16} className="animate-spin" />}{storeSubmitting ? 'Đang lưu…' : 'Tạo cửa hàng'}</button>
+          </div>}>
+<form id="create-store-form" onSubmit={handleCreateStore} className="space-y-4">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-0 md:divide-x md:divide-[#EAE4D7]">
                 {/* Cột 1: Thông tin thương hiệu & Logo Upload */}
-                <div className="space-y-3.5">
+                <div className="space-y-4 md:pr-5">
                   <div className="text-xs font-bold text-[#1A1612] uppercase tracking-wider pb-1 border-b border-[#FAF8F5]">
-                    1. Thông tin Nhãn hàng
+                    Thông tin cửa hàng
                   </div>
 
                   {/* Logo Upload (Ảnh thật, không dùng URL text) */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                    <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                       Ảnh đại diện / Logo nhãn hàng
                     </label>
                     <div className="flex items-center gap-3">
@@ -1189,28 +928,28 @@ export const AdminPersonnelPage: React.FC = () => {
 
                   {/* Store Name */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                      Tên Cửa hàng / Nhãn hàng <span className="text-[#DC2626]">*</span>
+                    <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                      Tên cửa hàng <span className="text-[#DC2626]">*</span>
                     </label>
                     <input
                       type="text"
                       placeholder="Ví dụ: Sora Skincare & Cosmetics"
                       value={storeForm.name}
                       onChange={(e) => setStoreForm((prev) => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                      className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                     />
                   </div>
 
                   {/* Category Selection (Locked to 4 In-House Core Categories) */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                      Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
+                    <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                      Ngành hàng <span className="text-[#DC2626]">*</span>
                     </label>
 
                     <select
                       value={storeForm.categoryName}
                       onChange={(e) => setStoreForm((prev) => ({ ...prev, categoryName: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                      className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                     >
                       {categories.map((cat) => (
                         <option key={cat} value={cat}>
@@ -1222,29 +961,37 @@ export const AdminPersonnelPage: React.FC = () => {
 
                   {/* Description */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                      Mô tả định vị nhãn hàng
+                    <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                      Giới thiệu cửa hàng
                     </label>
                     <textarea
                       rows={2}
                       placeholder="Giới thiệu sứ mệnh và dòng sản phẩm..."
                       value={storeForm.description || ''}
                       onChange={(e) => setStoreForm((prev) => ({ ...prev, description: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58] resize-none"
+                      className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58] resize-y min-h-[80px] py-2"
                     />
                   </div>
                 </div>
 
                 {/* Cột 2: Cấu hình Kho xuất hàng GHN (Chuẩn Customer: Tỉnh/Thành -> Quận/Huyện -> Phường/Xã -> Số nhà) */}
-                <div className="space-y-3.5">
+                <div className="space-y-4 md:pl-5">
                   <div className="text-xs font-bold text-[#1A1612] uppercase tracking-wider pb-1 border-b border-[#FAF8F5] flex items-center gap-1.5">
                     <MapPin size={13} className="text-[#C59B58]" />
-                    <span>2. Kho xuất hàng GHN (Pickup Warehouse)</span>
+                    <span>Kho xuất hàng GHN</span>
                   </div>
 
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-[13px] font-medium">Người liên hệ *
+                      <input required value={storeForm.contactName} onChange={(e) => setStoreForm((prev) => ({ ...prev, contactName: e.target.value }))} className="mt-1.5 h-[42px] w-full rounded-lg border border-[#EAE4D7] px-3 text-sm outline-none focus:border-[#C59B58]" />
+                    </label>
+                    <label className="text-[13px] font-medium">Điện thoại kho *
+                      <input required type="tel" value={storeForm.contactPhone} onChange={(e) => setStoreForm((prev) => ({ ...prev, contactPhone: e.target.value }))} className="mt-1.5 h-[42px] w-full rounded-lg border border-[#EAE4D7] px-3 text-sm outline-none focus:border-[#C59B58]" />
+                    </label>
+                  </div>
                   {/* Tên kho */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                    <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                       Tên kho xuất hàng
                     </label>
                     <input
@@ -1252,14 +999,14 @@ export const AdminPersonnelPage: React.FC = () => {
                       placeholder="Ví dụ: Kho Mát Dược Mỹ Phẩm GMP Thủ Đức"
                       value={storeForm.warehouseName || ''}
                       onChange={(e) => setStoreForm((prev) => ({ ...prev, warehouseName: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                      className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                     />
                   </div>
 
 
                   {/* Tỉnh / Thành phố */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                    <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                       Tỉnh / Thành phố <span className="text-[#DC2626]">*</span>
                     </label>
                     <CustomSelect
@@ -1283,9 +1030,9 @@ export const AdminPersonnelPage: React.FC = () => {
                   </div>
 
                   {/* Quận / Huyện & Phường / Xã */}
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                         Quận / Huyện <span className="text-[#DC2626]">*</span>
                       </label>
                       <CustomSelect
@@ -1314,7 +1061,7 @@ export const AdminPersonnelPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                         Phường / Xã <span className="text-[#DC2626]">*</span>
                       </label>
                       <CustomSelect
@@ -1343,7 +1090,7 @@ export const AdminPersonnelPage: React.FC = () => {
 
                   {/* Địa chỉ chi tiết */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                    <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                       Địa chỉ chi tiết (Số nhà, tên đường, KCN) <span className="text-[#DC2626]">*</span>
                     </label>
                     <input
@@ -1351,7 +1098,7 @@ export const AdminPersonnelPage: React.FC = () => {
                       placeholder="Ví dụ: Lô E2a-7, Đường D1, Khu Công nghệ cao"
                       value={storeForm.detailAddress}
                       onChange={(e) => setStoreForm((prev) => ({ ...prev, detailAddress: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                      className="h-[42px] w-full px-3 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                     />
                   </div>
 
@@ -1374,34 +1121,16 @@ export const AdminPersonnelPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-5 mt-5 border-t border-[#EAE4D7]">
-                <button
-                  type="button"
-                  onClick={() => setIsStoreModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-[#FAF8F5] transition cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={storeSubmitting}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
-                >
-                  {storeSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  Khởi tạo Cửa hàng
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+</form>
+        </Modal>
       )}
 
       {/* ================= MODAL 3: XEM CHI TIẾT & CHỈNH SỬA GIAN HÀNG ================= */}
       {isStoreDetailOpen && selectedStore && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+          <div className={`bg-white rounded-2xl border border-[#EAE4D7] shadow-xl w-full ${isEditStoreMode ? 'max-w-[960px]' : 'max-w-[880px]'} overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col`}>
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#EAE4D7] bg-[#FAF8F5] shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#EAE4D7] bg-white shrink-0">
               <div className="flex items-center gap-3">
                 {selectedStore.logoUrl ? (
                   <img
@@ -1416,10 +1145,10 @@ export const AdminPersonnelPage: React.FC = () => {
                 )}
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-[#1A1612] m-0">{selectedStore.name}</h2>
+                    <h2 className="text-lg font-bold text-[#1A1612] m-0">{isEditStoreMode ? 'Chỉnh sửa cửa hàng' : selectedStore.name}</h2>
                     {selectedStore.isDeleted ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
-                        Đã lưu trữ (xóa mềm)
+                        Đã lưu trữ
                       </span>
                     ) : selectedStore.isActive ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#059669] border border-[#EEDFC6]">
@@ -1432,22 +1161,12 @@ export const AdminPersonnelPage: React.FC = () => {
                     )}
                   </div>
                   <span className="text-xs text-[#7D715E] block mt-0.5">
-                    {selectedStore.categoryName} • Thù lao cơ sở: {selectedStore.defaultCommissionRate || 10}%
+                    {isEditStoreMode ? selectedStore.name : selectedStore.categoryName || 'Chưa cập nhật ngành hàng'}
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {!isEditStoreMode && !selectedStore.isDeleted && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditStoreMode(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-bold hover:bg-[#F3EFE6] transition cursor-pointer"
-                  >
-                    <Edit2 size={12} />
-                    <span>Chỉnh sửa</span>
-                  </button>
-                )}
                 <button
                   onClick={() => setIsStoreDetailOpen(false)}
                   className="text-[#7D715E] hover:text-[#1A1612] p-1.5 rounded-md hover:bg-[#EAE4D7]/40 transition cursor-pointer"
@@ -1461,39 +1180,31 @@ export const AdminPersonnelPage: React.FC = () => {
             <div className="p-6 overflow-y-auto flex-1">
               {/* Lưu ý nếu gian hàng đã lưu trữ */}
               {selectedStore.isDeleted && (
-                <div className="mb-5 p-3 rounded-xl bg-[#FEF2F2] border border-[#FECACA] flex items-center justify-between gap-3 text-xs text-[#DC2626]">
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs text-[#7D715E]">
                   <div className="flex items-center gap-2">
                     <Archive size={16} />
-                    <span>Gian hàng này hiện đang ở trạng thái <strong>Lưu trữ (xóa mềm)</strong>. Lịch sử đơn hàng và đối soát vẫn được bảo lưu an toàn.</span>
+                    <span>Cửa hàng đã lưu trữ. Lịch sử đơn hàng và đối soát được giữ lại.</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRestoreStore(selectedStore)}
-                    className="px-3 py-1 rounded-lg bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold transition cursor-pointer shrink-0 flex items-center gap-1"
-                  >
-                    <RotateCcw size={12} />
-                    <span>Khôi phục ngay</span>
-                  </button>
                 </div>
               )}
 
               {isEditStoreMode ? (
                 /* ================= EDIT MODE ================= */
-                <form onSubmit={handleUpdateStore} className="space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <form id="edit-store-form" onSubmit={handleUpdateStore} className="space-y-5">
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-0 md:divide-x md:divide-[#EAE4D7]">
                     {/* Cột 1: Thông tin thương hiệu */}
-                    <div className="space-y-3.5">
-                      <div className="text-xs font-bold text-[#1A1612] uppercase tracking-wider pb-1 border-b border-[#FAF8F5]">
-                        Thông tin Gian hàng
+                    <div className="grid content-start gap-4 md:grid-rows-[20px_76px_68px_68px_68px_106px] md:pr-6">
+                      <div className="text-sm font-semibold text-[#1A1612]">
+                        Thông tin cửa hàng
                       </div>
 
                       {/* Logo Upload */}
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Ảnh đại diện / Logo nhãn hàng
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                          Logo cửa hàng
                         </label>
                         <div className="flex items-center gap-3">
-                          <div className="relative w-14 h-14 rounded-xl border border-[#EEDFC6] bg-[#FAF8F5] overflow-hidden flex items-center justify-center shrink-0">
+                          <div className="relative w-12 h-12 rounded-xl border border-[#EEDFC6] bg-[#FAF8F5] overflow-hidden flex items-center justify-center shrink-0">
                             {editStoreForm.logoUrl ? (
                               <img
                                 src={editStoreForm.logoUrl}
@@ -1513,7 +1224,7 @@ export const AdminPersonnelPage: React.FC = () => {
                           <div className="flex flex-col gap-1 min-w-0">
                             <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] text-xs font-semibold text-[#1A1612] cursor-pointer transition shadow-2xs">
                               <Upload size={13} className="text-[#B88E4F]" />
-                              <span>{uploadingEditLogo ? 'Đang tải lên...' : editStoreForm.logoUrl ? 'Đổi ảnh logo' : 'Tải ảnh logo'}</span>
+                              <span>{uploadingEditLogo ? 'Đang tải lên...' : editStoreForm.logoUrl ? 'Đổi logo' : 'Tải logo'}</span>
                               <input
                                 type="file"
                                 accept="image/png,image/jpeg,image/jpg,image/webp"
@@ -1538,51 +1249,34 @@ export const AdminPersonnelPage: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Tên Gian hàng / Nhãn hàng <span className="text-[#DC2626]">*</span>
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                          Tên cửa hàng <span className="text-[#DC2626]">*</span>
                         </label>
                         <input
                           type="text"
                           value={editStoreForm.name}
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, name: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                          className="h-[42px] w-full px-3 py-0 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                         />
                       </div>
 
                       {/* Edit Store Category (Locked after store creation) */}
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                          Ngành hàng <span className="text-[#DC2626]">*</span>
                         </label>
 
-                        <select
-                          disabled
-                          value={editStoreForm.categoryName}
-                          onChange={(e) => setEditStoreForm((prev) => ({ ...prev, categoryName: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-[#F3EFE6] text-[#7D715E] cursor-not-allowed focus:outline-none"
-                          title="Ngành hàng kinh doanh được khóa cố định theo cửa hàng nội bộ"
-                        >
-                          {editStoreForm.categoryName && !categories.includes(editStoreForm.categoryName) && (
-                            <option value={editStoreForm.categoryName}>
-                              {editStoreForm.categoryName}
-                            </option>
-                          )}
-                          {categories.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
-                        </select>
+                        <div title="Ngành hàng được khóa theo cửa hàng" className="flex h-[42px] items-center rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-sm text-[#655A49]">{editStoreForm.categoryName || 'Chưa cập nhật'}</div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Giám đốc Nhãn hàng phân công
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                          Quản lý phụ trách
                         </label>
-                        <select
+                        <div className="relative">                        <select
                           value={editStoreForm.ownerId}
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, ownerId: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                          aria-label="Quản lý phụ trách" className="appearance-none! leading-[40px] pr-9! h-[42px] w-full px-3 py-0 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                         >
                           <option value="">-- Chưa chỉ định --</option>
                           {staffList
@@ -1592,52 +1286,54 @@ export const AdminPersonnelPage: React.FC = () => {
                                 {stf.fullName} ({stf.email})
                               </option>
                             ))}
-                        </select>
+                        </select><span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#7D715E]">▼</span></div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Mô tả định vị
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                          Giới thiệu cửa hàng
                         </label>
                         <textarea
                           rows={3}
                           value={editStoreForm.description}
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, description: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58] resize-none"
+                          className="h-[42px] w-full px-3 py-0 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58] h-[80px]! py-2! resize-y"
                         />
                       </div>
                     </div>
 
                     {/* Cột 2: Cấu hình Kho xuất GHN (Chuẩn Customer) */}
-                    <div className="space-y-3.5">
-                      <div className="text-xs font-bold text-[#1A1612] uppercase tracking-wider pb-1 border-b border-[#FAF8F5]">
-                        Cấu hình Kho xuất hàng GHN
+                    <div className="grid content-start gap-4 border-t border-[#EAE4D7] pt-5 md:grid-rows-[20px_76px_68px_68px_68px_106px] md:border-t-0 md:pl-6 md:pt-0">
+                      <div className="text-sm font-semibold text-[#1A1612]">
+                        Kho xuất hàng GHN
                       </div>
 
+                      <div className="space-y-1.5">
+                        <p className="m-0 text-[13px] font-medium">Người phụ trách kho</p>
+                        <div className="flex min-h-[48px] flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                          <span className="font-semibold">{editStoreForm.contactName || 'Chưa cập nhật người liên hệ'}</span>
+                          <span className="tabular-nums text-[#7D715E]">{editStoreForm.contactPhone || 'Chưa cập nhật điện thoại'}</span>
+                        </div>
+                      </div>
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Tên điểm kho
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                          Tên kho
                         </label>
                         <input
                           type="text"
                           value={editStoreForm.warehouseName}
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, warehouseName: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                          className="h-[42px] w-full px-3 py-0 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                         />
-                      </div>
-
-                      {/* Thông tin liên hệ kho tự động đồng bộ theo Shop Manager phụ trách */}
-                      <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[11px] text-[#7D715E] flex items-center justify-between">
-                        <span>Người phụ trách kho & SĐT tự động đồng bộ theo <strong>Shop Manager</strong>.</span>
-                        <span className="font-bold text-[#8F682E]">{selectedStore.owner?.fullName || 'Chưa gán'}</span>
                       </div>
 
                       {/* Tỉnh / Thành phố */}
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                           Tỉnh / Thành phố
                         </label>
                         <CustomSelect
+                          className="[&>button]:h-[42px] [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:bg-white [&>button]:py-0 [&>button]:font-normal"
                           value={editStoreForm.provinceCode}
                           onChange={(code) => {
                             const p = shippingProvinces.find((item) => String(item.code) === String(code));
@@ -1657,12 +1353,13 @@ export const AdminPersonnelPage: React.FC = () => {
                       </div>
 
                       {/* Quận / Huyện & Phường / Xã */}
-                      <div className="grid grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                             Quận / Huyện
                           </label>
                           <CustomSelect
+                          className="[&>button]:h-[42px] [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:bg-white [&>button]:py-0 [&>button]:font-normal"
                             value={editStoreForm.districtCode}
                             onChange={(code) => {
                               const d = editSelectedProvince?.districts.find(
@@ -1687,10 +1384,11 @@ export const AdminPersonnelPage: React.FC = () => {
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
                             Phường / Xã
                           </label>
                           <CustomSelect
+                          className="[&>button]:h-[42px] [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:bg-white [&>button]:py-0 [&>button]:font-normal"
                             value={editStoreForm.wardCode}
                             onChange={(code) => {
                               const w = editSelectedDistrict?.wards.find(
@@ -1715,140 +1413,57 @@ export const AdminPersonnelPage: React.FC = () => {
 
                       {/* Địa chỉ chi tiết */}
                       <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Địa chỉ chi tiết (Số nhà, tên đường, KCN)
+                        <label className="block text-[13px] font-medium text-[#1A1612] mb-1.5">
+                          Địa chỉ chi tiết
                         </label>
-                        <input
-                          type="text"
+                        <textarea rows={3}
                           value={editStoreForm.detailAddress}
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, detailAddress: e.target.value }))}
                           placeholder="Ví dụ: Lô B4 KCN Tân Bình, Tây Thạnh"
-                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                          className="h-[80px] w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-sm bg-white focus:outline-none focus:border-[#C59B58]"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions in Edit Mode */}
-                  <div className="flex items-center justify-between pt-4 border-t border-[#EAE4D7]">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteStore(selectedStore)}
-                      className="px-3 py-2 rounded-lg border border-[#F5D8D4] text-[#DC2626] hover:bg-[#FEF2F2] text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Trash2 size={13} />
-                      <span>Chuyển vào Kho Lưu Trữ (xóa mềm)</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsEditStoreMode(false)}
-                        className="px-4 py-2 rounded-lg border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-[#FAF8F5] transition cursor-pointer"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={editStoreSubmitting}
-                        className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
-                      >
-                        {editStoreSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                        Lưu thay đổi
-                      </button>
-                    </div>
-                  </div>
                 </form>
               ) : (
                 /* ================= VIEW MODE ================= */
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* Block 1: Brand & Manager */}
-                    <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
-                      <div className="text-xs font-bold text-[#1A1612] uppercase tracking-wider">
-                        Phân công Điều hành
-                      </div>
+                <div className="space-y-5 text-sm text-[#1A1612]">
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-0 md:divide-x md:divide-[#EAE4D7]">
+                    <section className="space-y-3 md:pr-5">
+                      <h3 className="m-0 text-xs font-medium text-[#7D715E]">Quản lý phụ trách</h3>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-sm">
-                          {selectedStore.owner?.role === 'SHOP_MANAGER' ? (selectedStore.owner?.fullName?.[0] || 'Q') : '—'}
-                        </div>
-                        <div>
-                          <div className="font-bold text-xs text-[#1A1612]">
-                            {selectedStore.owner?.role === 'SHOP_MANAGER' ? selectedStore.owner.fullName : 'Chưa phân công'}
-                          </div>
-                          <div className="text-[11px] text-[#7D715E] font-mono">
-                            {selectedStore.owner?.role === 'SHOP_MANAGER' ? (selectedStore.owner?.email || 'N/A') : 'Chờ bổ nhiệm Shop Manager'}
-                          </div>
-                        </div>
+                        <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]">{selectedStore.owner?.role === 'SHOP_MANAGER' ? selectedStore.owner.fullName?.[0] : '—'}</div>
+                        <div className="min-w-0"><p className="m-0 font-semibold">{selectedStore.owner?.role === 'SHOP_MANAGER' ? selectedStore.owner.fullName : 'Chưa phân công'}</p><p className="m-0 mt-1 break-all text-xs text-[#7D715E]">{selectedStore.owner?.role === 'SHOP_MANAGER' ? selectedStore.owner.email || 'Chưa cập nhật email' : 'Chưa có quản lý phụ trách'}</p></div>
                       </div>
-
-                      {selectedStore.description && (
-                        <div className="pt-2 border-t border-[#EAE4D7] text-xs text-[#7D715E] leading-relaxed">
-                          {selectedStore.description}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Block 2: Performance stats */}
-                    <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
-                      <div className="text-xs font-bold text-[#1A1612] uppercase tracking-wider">
-                        Quy mô Sản phẩm
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-2xl font-bold font-mono text-[#1A1612]">
-                            {selectedStore._count?.products ?? 0}
-                          </div>
-                          <div className="text-[11px] text-[#059669] font-medium">Sản phẩm mở bán tiếp thị</div>
-                        </div>
-                        <span className="px-3 py-1.5 rounded-lg bg-white border border-[#EEDFC6] text-xs font-mono font-bold text-[#8F682E]">
-                          10% Hoa hồng gốc
-                        </span>
-                      </div>
-                    </div>
+                    </section>
+                    <section className="space-y-3 border-t border-[#EAE4D7] pt-4 md:border-t-0 md:pl-5 md:pt-0">
+                      <h3 className="m-0 text-xs font-medium text-[#7D715E]">Thông tin cửa hàng</h3>
+                      <dl className="m-0 space-y-2.5">
+                        <div className="flex justify-between gap-3"><dt className="text-[#7D715E]">Sản phẩm</dt><dd className="m-0 font-semibold tabular-nums">{selectedStore._count?.products ?? '—'}</dd></div>
+                        <div className="flex justify-between gap-3"><dt className="text-[#7D715E]">Thù lao cơ sở</dt><dd className="m-0 font-semibold tabular-nums">{selectedStore.defaultCommissionRate != null ? `${selectedStore.defaultCommissionRate}%` : 'Chưa cập nhật'}</dd></div>
+                      </dl>
+                    </section>
                   </div>
-
-                  {/* Warehouse Card */}
-                  <div className="p-4 rounded-xl bg-white border border-[#EAE4D7] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#1A1612] uppercase tracking-wider">
-                        <MapPin size={14} className="text-[#C59B58]" />
-                        <span>Kho xuất hàng bưu cục GHN vệ tinh</span>
-                      </div>
-                      <span className="font-mono text-xs text-[#8F682E] bg-[#FBF5EB] px-2 py-0.5 rounded border border-[#EEDFC6]">
-                        Mã GHN: {selectedStore.returnWarehouse?.ghnDistrictId || 1442} - {selectedStore.returnWarehouse?.ghnWardCode || '20109'}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-1">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-[#7D715E] block">Tên điểm kho</span>
-                        <div className="font-semibold text-xs text-[#1A1612] mt-0.5">
-                          {selectedStore.returnWarehouse?.warehouseName || `Kho Tổng ${selectedStore.name}`}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-[#7D715E] block">Liên hệ điều phối</span>
-                        <div className="font-semibold text-xs text-[#1A1612] mt-0.5">
-                          {selectedStore.returnWarehouse?.contactName || 'Quản kho'} ({selectedStore.returnWarehouse?.contactPhone || '0901234567'})
-                        </div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <span className="text-[10px] uppercase font-bold text-[#7D715E] block">Địa chỉ kho lấy hàng thực tế</span>
-                        <div className="font-medium text-xs text-[#1A1612] mt-0.5">
-                          {selectedStore.returnWarehouse?.address || 'Khu Công Nghệ Cao, TP.Thủ Đức, TP.HCM'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <section className="space-y-2"><h3 className="m-0 text-xs font-medium text-[#7D715E]">Giới thiệu</h3><p className="m-0 whitespace-pre-wrap break-words leading-6">{selectedStore.description?.trim() || 'Chưa cập nhật'}</p></section>
+                  <section className="space-y-4 border-t border-[#EAE4D7] pt-4">
+                    <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-[#B88E4F]" />Kho xuất hàng</h3>
+                    <dl className="m-0 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-0 md:divide-x md:divide-[#EAE4D7]">
+                      <div className="space-y-1.5 md:pr-5"><dt className="text-xs text-[#7D715E]">Tên kho</dt><dd className="m-0 break-words font-medium">{selectedStore.returnWarehouse?.warehouseName?.trim() || 'Chưa cập nhật'}</dd></div>
+                      <div className="space-y-1.5 md:pl-5"><dt className="text-xs text-[#7D715E]">Người liên hệ</dt><dd className="m-0 font-medium">{selectedStore.returnWarehouse?.contactName?.trim() || 'Chưa cập nhật'}</dd><dd className="m-0 tabular-nums">{selectedStore.returnWarehouse?.contactPhone?.trim() || 'Chưa cập nhật điện thoại'}</dd></div>
+                    </dl>
+                    <div className="space-y-1.5"><p className="m-0 text-xs text-[#7D715E]">Địa chỉ lấy hàng</p><p className="m-0 break-words leading-6">{selectedStore.returnWarehouse?.address?.trim() || [selectedStore.returnWarehouse?.detailAddress, selectedStore.returnWarehouse?.wardName, selectedStore.returnWarehouse?.districtName, selectedStore.returnWarehouse?.provinceName].filter(Boolean).join(', ') || 'Chưa cập nhật'}</p></div>
+                    <p className="m-0 flex flex-wrap gap-x-4 gap-y-1 text-xs leading-5 text-[#7D715E]"><span>Mã địa bàn GHN</span><span>Quận/huyện: {selectedStore.returnWarehouse?.ghnDistrictId || 'Chưa cập nhật'}</span><span>Phường/xã: {selectedStore.returnWarehouse?.ghnWardCode?.trim() || 'Chưa cập nhật'}</span></p>
+                  </section>
 
                   {/* Actions in View Mode */}
-                  <div className="flex items-center justify-between pt-4 border-t border-[#EAE4D7]">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[#EAE4D7]">
                     {selectedStore.isDeleted ? (
                       <button
                         type="button"
                         onClick={() => handleRestoreStore(selectedStore)}
-                        className="px-4 py-2 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                        className="h-[42px] px-4 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#8F682E] text-sm font-medium transition flex items-center gap-2"
                       >
                         <RotateCcw size={13} />
                         <span>Khôi phục hoạt động</span>
@@ -1857,14 +1472,14 @@ export const AdminPersonnelPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleToggleStoreStatus(selectedStore)}
-                        className={`px-4 py-2 rounded-lg border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        className={`h-[42px] px-4 rounded-lg border text-sm font-medium transition flex items-center gap-2 ${
                           selectedStore.isActive
                             ? 'border-[#EAE4D7] text-[#7D715E] hover:text-[#DC2626] hover:bg-white'
                             : 'border-[#EEDFC6] text-[#059669] bg-[#FBF5EB] hover:bg-[#F3EFE6]'
                         }`}
                       >
                         <Power size={13} />
-                        <span>{selectedStore.isActive ? 'Tạm ngưng gian hàng' : 'Kích hoạt hoạt động'}</span>
+                        <span>{selectedStore.isActive ? 'Tạm ngưng cửa hàng' : 'Kích hoạt cửa hàng'}</span>
                       </button>
                     )}
 
@@ -1872,19 +1487,68 @@ export const AdminPersonnelPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setIsEditStoreMode(true)}
-                        className="px-5 py-2 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                        className="h-[42px] px-5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-sm font-semibold transition flex items-center gap-2"
                       >
                         <Edit2 size={13} />
-                        <span>Chỉnh sửa thông tin</span>
+                        <span>Chỉnh sửa</span>
                       </button>
                     )}
                   </div>
                 </div>
               )}
             </div>
+            {isEditStoreMode && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:px-6 border-t border-[#EAE4D7]">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteStore(selectedStore)}
+                      className="h-[42px] px-4 rounded-lg border border-[#F5D8D4] text-[#DC2626] hover:bg-[#FEF2F2] text-sm font-semibold transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Trash2 size={13} />
+                      <span>Lưu trữ cửa hàng</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditStoreMode(false)}
+                        className="h-[42px] px-4 rounded-lg border border-[#EAE4D7] text-sm font-semibold text-[#7D715E] hover:bg-[#FAF8F5] transition cursor-pointer"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="submit" form="edit-store-form"
+                        disabled={editStoreSubmitting || uploadingEditLogo}
+                        className="inline-flex items-center gap-1.5 h-[42px] px-5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-sm font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
+                      >
+                        {editStoreSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                        {editStoreSubmitting ? 'Đang lưu…' : 'Lưu thay đổi'}
+                      </button>
+                    </div>
+                  </div>
+            )}
           </div>
         </div>
       )}
+      {confirmation && <Modal isOpen title={confirmation.title} maxWidth="lg" stickyHeader
+        onClose={closeConfirmation}
+        footer={<div className="flex justify-end gap-2">
+          <button type="button" disabled={confirming} onClick={closeConfirmation} className="h-[42px] rounded-lg border border-[#EAE4D7] bg-white px-5 text-sm font-medium text-[#231D15] hover:bg-[#FAF8F5] disabled:opacity-60">Hủy</button>
+          <button type="button" disabled={confirming} onClick={() => {
+            if (confirming) return;
+            setConfirming(true);
+            confirmationResolver.current?.(true);
+          }} className={`inline-flex h-[42px] min-w-[140px] items-center justify-center gap-2 rounded-lg border px-5 text-sm font-semibold transition-colors disabled:opacity-60 ${confirmation.danger ? 'border-[#DC2626] bg-[#DC2626] text-white hover:bg-[#B91C1C]' : 'border-[#B88E4F] bg-[#C59B58] text-[#231D15] hover:bg-[#B88E4F]'}`}>
+            {confirming && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+            {confirming ? 'Đang xử lý…' : confirmation.label}
+          </button>
+        </div>}
+      >
+        <div aria-busy={confirming} className="space-y-2 text-sm">
+          <p className="m-0 font-semibold text-ink [overflow-wrap:anywhere]">{confirmation.name}</p>
+          <p className="m-0 leading-6 text-muted">{confirmation.description}</p>
+        </div>
+      </Modal>}
     </div>
   );
 };

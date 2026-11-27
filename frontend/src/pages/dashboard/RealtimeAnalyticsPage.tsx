@@ -36,6 +36,9 @@ import type {
 import { authService } from '../../services/auth.service';
 import { downloadReport, vietnamDateRange } from '@/utils/report-export';
 
+const chartMetricLabels = { revenue: 'Doanh thu', commission: 'Thù lao KOC' } as const;
+const chartMetrics = ['revenue', 'commission'] as const;
+
 // Ambient Golden Smooth Sparkline for KPI Cards
 const Sparkline = ({ stroke = '#C59B58', id = 'spark' }: { stroke?: string; id?: string }) => (
   <svg
@@ -157,7 +160,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [isCustomOpen, setIsCustomOpen] = useState<boolean>(false);
-  const [activeChartTab, setActiveChartTab] = useState<'revenue' | 'commission'>('revenue');
+  const [activeChartTab, setActiveChartTab] = useState<(typeof chartMetrics)[number]>('revenue');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [appliedDates, setAppliedDates] = useState<{ startDate: string; endDate: string } | null>(null);
   const [inHouseStores, setInHouseStores] = useState<any[]>([]);
@@ -305,8 +308,8 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
         {/* Right Action Controls: Tab Switcher + Date Dropdown + Refresh + Export */}
         {headerTabs && <div className="w-full min-w-0">{headerTabs}</div>}
         <div className="w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 shadow-2xs">
-        <div className="analytics-report-toolbar grid w-full min-w-0 grid-cols-2 items-stretch gap-2.5 xl:w-[var(--analytics-controls-width)]" style={{ '--analytics-controls-width': headerTabs ? `calc((100% - ${(headerColumnCount - 1) * 10}px) / ${headerColumnCount})` : 'min(100%, 520px)' } as React.CSSProperties}>
-          <div className="min-w-0">
+        <div className="analytics-report-toolbar grid w-full min-w-0 grid-cols-2 items-stretch gap-2.5" style={{ '--analytics-control-width': headerTabs ? `calc((100% - ${(headerColumnCount - 1) * 10}px) / ${headerColumnCount})` : 'min(100%, 255px)' } as React.CSSProperties}>
+          <div className="min-w-0 xl:w-[var(--analytics-control-width)]">
             <DateRangeDropdown
               range={range}
               setRange={(r) => { setRange(r); setIsCustomOpen(false); }}
@@ -317,7 +320,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
           <button
             onClick={handleExportCsv}
             disabled={loading || !!error || !timeSeries.length}
-            className="inline-flex h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-2 text-xs font-medium text-[#8F682E] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+            className="inline-flex h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-2 text-xs font-medium text-[#8F682E] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer xl:w-[var(--analytics-control-width)] xl:justify-self-end"
           >
             <Download className="w-3.5 h-3.5 text-[#B88E4F]" />
             <span>Xuất báo cáo</span>
@@ -360,7 +363,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
       {/* 2. Top 4 Metric KPI Cards - Exactly 4 in 1 Row, Smooth Ambient Wave Background */}
       {!overview && <div role="status" className="rounded-2xl border border-dashed border-[#EEDFC6] bg-white p-8 text-center text-sm text-[#7D715E]">{loading ? 'Đang tải báo cáo…' : 'Chưa có báo cáo để hiển thị.'}</div>}
       <div className={`space-y-4 ${!overview ? 'hidden' : ''}`} aria-busy={isRefreshing}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className={`grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 ${isAdmin ? 'admin-stat-grid' : ''}`}>
           {/* Card 1: Doanh thu thực thu */}
           <div className="relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs hover:border-[#C59B58]/60 transition-colors">
             <Sparkline stroke="#C59B58" id="spark-rev" />
@@ -451,7 +454,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Revenue Growth Chart Card — Smooth Spline Recharts Curve */}
           <div className="space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs lg:col-span-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5">
               <div className="flex items-center gap-2">
                 {activeChartTab === 'revenue' ? (
                   <>
@@ -461,37 +464,30 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
                 ) : (
                   <>
                     <Coins className="w-4 h-4 text-[#D97706]" />
-                    <h3 className="text-base font-bold text-[#1A1612]">Biến động hoa hồng đối tác</h3>
+                    <h3 className="text-base font-bold text-[#1A1612]">Biến động thù lao KOC</h3>
                   </>
                 )}
               </div>
 
-              {/* Sub-tabs for switching metrics displayed in Chart */}
-              <div className="flex items-center rounded-xl border border-[#EAE4D7] bg-[#F3EFE6] p-1 text-xs font-semibold">
-                <button
-                  type="button"
-                  aria-pressed={activeChartTab === 'revenue'}
-                  onClick={() => setActiveChartTab('revenue')}
-                  className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
-                    activeChartTab === 'revenue'
-                      ? 'bg-white text-[#1A1612] font-bold shadow-2xs'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  Doanh thu
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={activeChartTab === 'commission'}
-                  onClick={() => setActiveChartTab('commission')}
-                  className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
-                    activeChartTab === 'commission'
-                      ? 'bg-white text-[#1A1612] font-bold shadow-2xs'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  Hoa hồng
-                </button>
+              <div
+                role="group"
+                aria-label="Chỉ số trên biểu đồ"
+                className="relative grid w-full min-w-0 grid-cols-2 gap-2.5 rounded-[10px] border border-line bg-white p-1 sm:w-60
+                  before:pointer-events-none before:absolute before:top-1/2 before:left-1/2 before:h-[18px] before:w-px before:-translate-1/2 before:bg-line"
+              >
+                {chartMetrics.map((metric) => (
+                  <button
+                    key={metric}
+                    type="button"
+                    aria-pressed={activeChartTab === metric}
+                    onClick={() => setActiveChartTab(metric)}
+                    className="flex h-9 min-w-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-[7px] border border-transparent bg-white px-2 text-[13px] font-semibold text-[#655A49]
+                      transition-colors duration-150 hover:bg-canvas aria-pressed:border-brand aria-pressed:bg-brand-soft aria-pressed:text-brand-dark
+                      focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-strong motion-reduce:transition-none"
+                  >
+                    {chartMetricLabels[metric]}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -537,7 +533,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
                     <Tooltip
                       formatter={(value: any) => [
                         formatCurrency(Number(value)),
-                        activeChartTab === 'revenue' ? 'Doanh thu' : 'Hoa hồng đối tác',
+                        chartMetricLabels[activeChartTab],
                       ]}
                       contentStyle={{
                         backgroundColor: '#FFFFFF',
@@ -554,7 +550,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
                         key="area-revenue"
                         type="monotone"
                         dataKey="revenue"
-                        name="Doanh thu"
+                        name={chartMetricLabels.revenue}
                         stroke="#C59B58"
                         strokeWidth={2.5}
                         fillOpacity={1}
@@ -567,7 +563,7 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
                         key="area-commission"
                         type="monotone"
                         dataKey="commission"
-                        name="Hoa hồng đối tác"
+                        name={chartMetricLabels.commission}
                         stroke="#D97706"
                         strokeWidth={2.5}
                         fillOpacity={1}

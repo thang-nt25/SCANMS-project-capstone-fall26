@@ -7,46 +7,151 @@ import {
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { authService } from "../../services/auth.service";
-import { ArrowLeft, ClipboardList, Megaphone, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ClipboardList, Clock3, Megaphone, ShieldCheck, X } from 'lucide-react';
 import { SponsoredBookingForm, sponsorshipMoney } from './SponsoredBookingForm';
+import { SponsoredReviewDetails } from './SponsoredReviewDetails';
+import { handleStoreImageError } from '@/utils/image-fallback.utils';
 import { Select } from '../ui/Select';
 
 const labels = {
-  REQUESTED: "Chờ duyệt",
-  APPROVED: "Đã duyệt",
+  REQUESTED: "Chờ duyệt nội dung",
+  AWAITING_PAYMENT: "Chờ thanh toán",
+  PAYMENT_REVIEW: "Cần đối soát",
+  APPROVED: "Đã duyệt để hiển thị",
   REJECTED: "Từ chối",
   CANCELLED: "Đã hủy",
   EXPIRED: 'Đã hết hạn',
 };
-const inputClass =
-  "w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612] focus:outline-[#C59B58]";
+const reviewDecisions = [
+  { value: 'APPROVE', label: 'Duyệt', icon: Check },
+  { value: 'REJECT', label: 'Từ chối', icon: X },
+] as const;
 const when = (date: string) => new Date(date).toLocaleString("vi-VN");
+
+function SponsorshipDecisionForm({ headline, cancel = false, embedded = true, pending, error, panelRef, onClose, onSubmit }: {
+  headline: string;
+  cancel?: boolean;
+  embedded?: boolean;
+  pending: boolean;
+  error?: string;
+  panelRef?: React.Ref<HTMLElement>;
+  onClose?: () => void;
+  onSubmit: (decision: 'APPROVE' | 'REJECT', note: string) => void;
+}) {
+  const [decision, setDecision] = useState<'APPROVE' | 'REJECT'>('APPROVE');
+  const [note, setNote] = useState('');
+  const [validationError, setValidationError] = useState('');
+  function handleSubmit(event: FormEvent<HTMLFormElement>, choice: 'APPROVE' | 'REJECT') {
+    event.preventDefault();
+    const trimmed = note.trim();
+    if (trimmed.length < 5) {
+      setValidationError('Nhập ghi chú hoặc lý do tối thiểu 5 ký tự.');
+      return;
+    }
+    setValidationError('');
+    onSubmit(choice, trimmed);
+  }
+  return (
+    <section
+      ref={panelRef}
+      tabIndex={-1}
+      className={`overflow-hidden rounded-xl border border-[#EEDFC6] bg-white shadow-2xs focus:outline-none ${embedded ? 'mt-4' : 'm-4'}`}
+      aria-label={
+        cancel ? "Form hủy tài trợ" : "Form xét duyệt tài trợ"
+      }
+    >
+      <header className="flex items-center gap-3 border-b border-[#EAE4D7] bg-[#FBF5EB] px-4 py-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-[#EEDFC6] bg-white text-[#795A2D]" aria-hidden="true">
+          {cancel ? <X size={17} /> : <ShieldCheck size={17} />}
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold">{cancel ? 'Hủy gói' : 'Xét duyệt nội dung'}</h3>
+          <p className="mt-0.5 truncate text-xs text-[#655A49]" title={headline}>{headline}</p>
+        </div>
+      </header>
+      <form
+        onSubmit={(event) =>
+          handleSubmit(event, decision)
+        }
+      >
+        <div className={`grid ${cancel ? '' : '@min-[550px]:grid-cols-[210px_minmax(0,1fr)]'}`}>
+          {!cancel && (
+            <div className="min-w-0 border-b border-[#EAE4D7] px-4 py-3.5 @min-[550px]:border-r @min-[550px]:border-b-0">
+              <fieldset disabled={pending}>
+                <legend className="mb-2 text-xs font-semibold text-[#655A49]">Quyết định</legend>
+                <div className="grid grid-cols-2 gap-2 @min-[550px]:grid-cols-1">
+                  {reviewDecisions.map(({ value, label, icon: Icon }) => (
+                    <label key={value} className="relative flex min-h-10 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-[#EAE4D7] px-2.5 py-1.5 text-xs font-medium text-[#231D15] has-checked:border-[#B88E4F] has-checked:bg-[#FBF5EB] has-checked:font-semibold has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-[#795A2D]">
+                      <input type="radio" name="reviewDecision" value={value} checked={decision === value} onChange={() => setDecision(value)}
+                        className="absolute inset-0 m-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed" />
+                      <Icon size={15} className="shrink-0 text-[#795A2D]" aria-hidden="true" />
+                      <span className="flex-1">{label}</span>
+                      <span aria-hidden="true" className={`size-3 shrink-0 rounded-full border ${decision === value ? 'border-[#795A2D] bg-[#795A2D] ring-2 ring-inset ring-[#FBF5EB]' : 'border-[#B5A58D]'}`} />
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          )}
+          <label className="flex min-w-0 flex-col gap-2 px-4 py-3.5 text-xs font-semibold text-[#655A49]">
+            {cancel ? 'Lý do hủy' : 'Ghi chú cho shop'}
+            <textarea
+              className="min-h-20 w-full flex-1 resize-y rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-sm font-normal text-[#1A1612] focus-visible:outline-2 focus-visible:outline-[#795A2D]"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              minLength={5}
+              maxLength={2000}
+              disabled={pending}
+              required
+            />
+          </label>
+        </div>
+        {(validationError || error) && <p role="alert" className="px-4 pb-3 text-xs text-[#B91C1C]">{validationError || error}</p>}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3">
+          {cancel ? (
+            <p className="text-xs text-[#655A49]">Hủy gói không tự hoàn phí.</p>
+          ) : decision === 'APPROVE' && (
+            <p className="flex items-center gap-1.5 text-xs text-[#655A49]">
+              <Clock3 size={14} className="shrink-0 text-[#795A2D]" aria-hidden="true" /> Giữ chỗ tối đa 30 phút, trước giờ chạy.
+            </p>
+          )}
+          <div className="ml-auto flex gap-2">
+            {onClose && <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onClose}>
+              Đóng
+            </Button>}
+            <Button type="submit" variant="gold" size="sm" loading={pending}>
+              {cancel ? 'Xác nhận hủy' : decision === 'APPROVE' ? 'Xác nhận duyệt' : 'Xác nhận từ chối'}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </section>
+  );
+}
 
 /** The same workflow serves owners and platform reviewers; ownership is enforced again by BE. */
 export function SponsoredPlacementsPanel({
   admin = false,
   embedded = false,
   storefront,
+  storeId = '',
+  paymentReturnId,
 }: {
   admin?: boolean;
   embedded?: boolean;
   storefront?: { name: string; logoUrl: string };
+  storeId?: string;
+  paymentReturnId?: string | null;
 }) {
   const cache = useQueryClient();
   const user = authService.getCurrentUser();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState(admin ? 'REQUESTED' : '');
-  const [selected, setSelected] = useState<{
-    row: Sponsorship;
-    cancel: boolean;
-  } | null>(null);
-  const [decision, setDecision] = useState<"APPROVE" | "REJECT">("APPROVE");
-  const [note, setNote] = useState("");
-  const [clientError, setClientError] = useState("");
+  const [selected, setSelected] = useState<Sponsorship | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [renewal, setRenewal] = useState<(Sponsorship & { formStartsAt: string; formEndsAt: string }) | null>(null);
   const separateHistory = embedded && !admin;
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(Boolean(paymentReturnId));
   const historyHeading = useRef<HTMLHeadingElement>(null);
   const historyButton = useRef<HTMLButtonElement>(null);
   const bookingSection = useRef<HTMLDivElement>(null);
@@ -82,10 +187,35 @@ export function SponsoredPlacementsPanel({
     enabled: !!user && ['SHOP_MANAGER', 'SYSTEM_ADMIN', 'SYSTEM_MANAGER'].includes(user.role),
     staleTime: 60000,
   });
+  const products = useQuery({
+    queryKey: ['sponsorship-products', user?.id, storeId],
+    queryFn: ({ signal }) => sponsorshipService.products(storeId, signal),
+    enabled: !admin && user?.role === 'SHOP_MANAGER' && Boolean(storeId),
+  });
+  const paymentStatus = useQuery({
+    queryKey: ['sponsorship-payment', user?.id, paymentReturnId],
+    queryFn: () => sponsorshipService.checkPayment(paymentReturnId ?? ''),
+    enabled: historyOpen && Boolean(paymentReturnId) && user?.role === 'SHOP_MANAGER',
+    refetchInterval: query => !query.state.data || query.state.data.status === 'AWAITING_PAYMENT' ? 10_000 : false,
+    retry: false,
+  });
+  useEffect(() => {
+    if (paymentStatus.data && paymentStatus.data.status !== 'AWAITING_PAYMENT') {
+      void cache.invalidateQueries({ queryKey: ['sponsorships'] });
+      void cache.invalidateQueries({ queryKey: ['marketplace-sponsored-placements'] });
+    }
+  }, [cache, paymentStatus.data]);
+  const paymentLink = useMutation({
+    mutationFn: sponsorshipService.startPayment,
+    onSuccess: ({ checkoutUrl }) => {
+      window.location.assign(checkoutUrl);
+    },
+  });
   useEffect(() => {
     const nextExpiry = Math.min(...(query.data?.items ?? [])
-      .filter(row => ['REQUESTED', 'APPROVED'].includes(row.status))
-      .map(row => Date.parse(row.endsAt)).filter(time => time > Date.now()));
+      .map(row => row.status === 'AWAITING_PAYMENT' && row.paymentDeadline ? Date.parse(row.paymentDeadline)
+        : ['REQUESTED', 'APPROVED'].includes(row.status) ? Date.parse(row.endsAt) : NaN)
+      .filter(time => time > Date.now()));
     if (!Number.isFinite(nextExpiry)) return;
     const timer = window.setTimeout(() => void query.refetch(), Math.min(2147483647, Math.max(100, nextExpiry - Date.now() + 100)));
     return () => window.clearTimeout(timer);
@@ -95,37 +225,39 @@ export function SponsoredPlacementsPanel({
     const duration = Math.min(31, Math.max(1, Math.ceil((Date.parse(row.endsAt) - Date.parse(row.startsAt)) / 86400000))) * 86400000;
     const local = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setRenewal({ ...row, formStartsAt: local(start), formEndsAt: local(new Date(start.getTime() + duration)) });
-    setSuccessMessage(''); setClientError(''); mutation.reset();
+    setSuccessMessage(''); mutation.reset();
     setHistoryOpen(false);
     window.requestAnimationFrame(() => bookingSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
   const mutation = useMutation({
-    mutationFn: async ({
-      form,
-      action,
-    }: {
-      form: HTMLFormElement;
-      action: "request" | "review" | "cancel";
-    }) => {
-      const data = new FormData(form);
-      if (action === "request") {
+    mutationFn: async (input:
+      | { action: 'request'; form: HTMLFormElement; data: FormData }
+      | { action: 'cancel'; id: string; note: string }
+      | { action: 'review'; id: string; decision: 'APPROVE' | 'REJECT'; note: string }
+    ) => {
+      if (input.action === "request") {
+        const { form, data } = input;
         const startsAt = new Date(String(data.get("startsAt"))).toISOString();
         const endsAt = new Date(String(data.get("endsAt"))).toISOString();
+        const productId = String(data.get('productId') ?? '');
+        const bannerImageUrl = String(data.get('bannerImageUrl') ?? '');
         const payload = {
           headline: String(data.get("headline")).trim(),
           startsAt,
           endsAt,
           quotedAmount: Number(data.get('quotedAmount')),
+          ...(productId ? { productId } : {}),
+          ...(bannerImageUrl ? { bannerImageUrl } : {}),
           ...(renewal ? { renewsPlacementId: renewal.id } : {}),
         };
         const duration = Date.parse(endsAt) - Date.parse(startsAt);
         if (
           duration < 3600000 ||
           duration > 31 * 86400000 ||
-          Date.parse(endsAt) <= Date.now()
+          Date.parse(startsAt) <= Date.now()
         )
           throw new Error(
-            "Lịch phải còn hiệu lực và kéo dài từ 1 giờ đến 31 ngày.",
+            "Lịch phải bắt đầu trong tương lai và kéo dài từ 1 giờ đến 31 ngày.",
           );
         const serialized = JSON.stringify(payload);
         if (pendingRequest.current?.payload !== serialized)
@@ -139,54 +271,53 @@ export function SponsoredPlacementsPanel({
         });
         pendingRequest.current = null;
         form.reset();
-      } else if (selected && action === "cancel") {
-        await sponsorshipService.cancel(selected.row.id, note.trim());
-      } else if (selected) {
-        await sponsorshipService.review(selected.row.id, {
-          decision,
-          note: note.trim(),
-          ...(decision === "APPROVE"
-            ? {
-                fundingType: "PAID",
-                amount: Number(data.get("amount")),
-                paymentReference: String(data.get("reference")).trim(),
-                paymentProofUrl: String(data.get("proof")).trim(),
-              }
-            : {}),
+      } else if (input.action === "cancel") {
+        await sponsorshipService.cancel(input.id, input.note);
+      } else {
+        await sponsorshipService.review(input.id, {
+          decision: input.decision,
+          note: input.note,
         });
       }
     },
-    onSuccess: async (_, { action }) => {
+    onSuccess: async (_, input) => {
+      const { action } = input;
+      const approved = input.action === 'review' && input.decision === 'APPROVE';
       setRenewal(null);
       setPage(1);
-      setStatus(action === 'request' ? 'REQUESTED' : action === 'cancel' ? 'CANCELLED' : decision === 'APPROVE' ? 'APPROVED' : 'REJECTED');
-      setSuccessMessage(action === 'request' ? (renewal ? 'Đã gửi đăng ký gia hạn. Phí mới đã được lưu, chờ thanh toán và Admin duyệt lại.' : 'Đã gửi đăng ký. Phí đã được lưu, chờ Admin hướng dẫn thanh toán và xét duyệt.') : 'Đã cập nhật đăng ký quảng cáo.');
+      setStatus(action === 'request' ? 'REQUESTED' : action === 'cancel' ? 'CANCELLED' : approved ? 'AWAITING_PAYMENT' : 'REJECTED');
+      setSuccessMessage(action === 'request'
+        ? 'Đã gửi đăng ký. Nút thanh toán sẽ xuất hiện trong Lịch sử khi nội dung được duyệt.'
+        : approved
+          ? 'Đã duyệt nội dung và giữ chỗ. Chủ shop có thể thanh toán qua payOS.'
+          : 'Đã cập nhật đăng ký quảng cáo.');
       setSelected(null);
-      setNote("");
       await cache.invalidateQueries({ queryKey: ["sponsorships"] });
       await cache.invalidateQueries({ queryKey: ["marketplace-sponsored-placements"] });
     },
   });
-  function submit(
-    event: FormEvent<HTMLFormElement>,
-    action: "request" | "review" | "cancel",
-  ) {
+  function submitRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mutation.isPending) return;
-    setClientError("");
     setSuccessMessage('');
-    if (action !== "request" && note.trim().length < 5) {
-      setClientError("Vui lòng nhập căn cứ/lý do tối thiểu 5 ký tự.");
-      return;
-    }
-    mutation.mutate({ form: event.currentTarget, action });
+    mutation.mutate({ form: event.currentTarget, data: new FormData(event.currentTarget), action: 'request' });
   }
-  const error = clientError || mutation.error?.message;
-  const bookingError = error || pricing.error?.message;
+  const bookingError = (mutation.variables?.action === 'request' ? mutation.error?.message : undefined) || pricing.error?.message;
   const feedback = successMessage && (
     <p role="status" className="my-3 rounded-lg bg-[#FBF5EB] px-3 py-2 text-sm text-[#795A2D]">{successMessage}</p>
   );
   const historyTotal = historyCount.data?.total;
+  const cancelForm = selected && (
+    <SponsorshipDecisionForm key={selected.id} headline={selected.headline} cancel embedded={admin}
+      pending={mutation.isPending} panelRef={reviewPanel}
+      error={mutation.variables?.action === 'cancel' ? mutation.error?.message : undefined}
+      onClose={() => { setSelected(null); mutation.reset(); }}
+      onSubmit={(_, note) => {
+        if (mutation.isPending) return;
+        setSuccessMessage('');
+        mutation.mutate({ action: 'cancel', id: selected.id, note });
+      }} />
+  );
   const history = (
     <>
       {(!separateHistory || !!status || (historyTotal ?? query.data?.total ?? 0) > 0) && (
@@ -233,26 +364,30 @@ export function SponsoredPlacementsPanel({
           <span>{status ? 'Không có đăng ký ở trạng thái này' : 'Gian hàng chưa có đăng ký quảng bá'}</span>
         </div>
       )}
-      <div className="divide-y divide-[#EAE4D7] rounded-b-xl border-x border-[#EAE4D7] bg-white">
+      <div className={admin ? 'grid gap-3 bg-[#FAF8F5] p-3 sm:p-4' : 'divide-y divide-[#EAE4D7] rounded-b-xl border-x border-[#EAE4D7] bg-white'}>
         {query.data?.items.map((row) => (
           <article
             key={row.id}
-            className="border-b border-[#EAE4D7] p-4 text-xs last:rounded-b-xl"
+            className={admin ? 'min-w-0 rounded-xl border border-[#EAE4D7] bg-white text-xs shadow-2xs' : 'border-b border-[#EAE4D7] p-4 text-xs last:rounded-b-xl'}
           >
-            <details open={!separateHistory || undefined} className="group">
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-3 [&::-webkit-details-marker]:hidden">
-                <span className="block min-w-0">
-                  {admin && <span className="mb-1 block text-[#7D715E]">{row.store.name}</span>}
-                  <span className="block wrap-anywhere text-sm font-semibold">{row.headline}</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-[#7D715E]">{when(row.startsAt)} → {when(row.endsAt)}</span>
-                  {row.fundingType === 'PAID' && <span className="mt-1 block text-xs font-medium tabular-nums">{row.amount == null ? 'Chưa ghi nhận phí' : sponsorshipMoney(Number(row.amount))}</span>}
+            <details open={!separateHistory || row.id === paymentReturnId || row.status === 'AWAITING_PAYMENT' || undefined} className="group">
+              <summary className={`flex cursor-pointer list-none items-start justify-between gap-2 [&::-webkit-details-marker]:hidden ${admin ? 'flex-wrap rounded-t-xl bg-[#FBF5EB]/65 px-4 py-3 sm:items-center' : ''}`}>
+                <span className={admin ? 'flex min-w-0 items-center gap-3' : 'block min-w-0'}>
+                  {admin && row.store.logoUrl && <img src={row.store.logoUrl} onError={handleStoreImageError} alt="" className="size-9 shrink-0 rounded-lg border border-[#EEDFC6] bg-white object-contain" />}
+                  <span className="min-w-0">
+                    {admin && <span className="mb-1 block text-xs text-[#7D715E]">{row.store.name}</span>}
+                    <span className={`block wrap-anywhere font-semibold ${admin ? 'text-base' : 'text-sm'}`}>{row.headline}</span>
+                    {!admin && <span className="mt-1 block text-xs leading-relaxed text-[#7D715E]">{when(row.startsAt)} → {when(row.endsAt)}</span>}
+                    {!admin && row.fundingType === 'PAID' && <span className="mt-1 block text-xs font-medium tabular-nums">{row.amount == null ? 'Chưa ghi nhận phí' : sponsorshipMoney(Number(row.amount))}</span>}
+                  </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
                   <span className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[11px] text-[#795A2D]">{labels[row.status]}</span>
                   <ChevronDown className="text-[#7D715E] transition-transform group-open:rotate-180" size={14} aria-hidden="true" />
                 </span>
               </summary>
-              <div className="mt-3 space-y-2 border-t border-[#EAE4D7] pt-3">
+              <div className={admin ? 'space-y-3 border-t border-[#EAE4D7] p-4' : 'mt-3 space-y-2 border-t border-[#EAE4D7] pt-3'}>
+            {admin && <SponsoredReviewDetails booking={row} />}
             {(row.fundingType === "PLATFORM_GRANT" || row.paymentReference) && (
               <p className="mt-2 text-xs">
                 {row.fundingType === "PLATFORM_GRANT"
@@ -267,166 +402,55 @@ export function SponsoredPlacementsPanel({
               </p>
             )}
             {row.status === 'EXPIRED' && <div className="sp-expired-notice mt-[12px] py-[12px] px-[14px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[12px] leading-[1.6] [&_strong]:text-[#795A2D] [&_strong]:text-[12px] [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:text-[#7D715E]"><strong>Gói đã hết hạn lúc {when(row.endsAt)}</strong><p>Gói này không còn hiển thị trên trang chủ.{!admin && ' Bạn có muốn gia hạn để tiếp tục quảng bá gian hàng?'}</p></div>}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {!admin && row.status === 'EXPIRED' && <Button variant="gold" disabled={mutation.isPending} onClick={() => startRenewal(row)}>Gia hạn gói</Button>}
-              {admin && row.status === "REQUESTED" && (
-                <Button
-                  variant="gold"
-                  disabled={mutation.isPending}
-                  onClick={() => {
-                    mutation.reset();
-                    setClientError("");
-                    setSelected({ row, cancel: false });
-                    setNote("");
-                    setDecision("APPROVE");
-                  }}
-                >
-                  Xét duyệt
+            <div className={`mt-3 flex flex-wrap gap-2 ${admin ? 'border-t border-[#EAE4D7] pt-3' : ''}`}>
+              {row.status === 'AWAITING_PAYMENT' && row.paymentDeadline && (
+                <p className="w-full text-xs text-[#795A2D]">Giữ chỗ đến {when(row.paymentDeadline)}</p>
+              )}
+              {row.status === 'PAYMENT_REVIEW' && (
+                <p className="w-full text-xs text-[#795A2D]">
+                  {row.receivedAmount != null && <>Đã nhận {sponsorshipMoney(Number(row.receivedAmount))}. </>}
+                  {row.paymentIssue || 'Khoản chuyển cần kiểm tra trước khi xử lý.'}
+                </p>
+              )}
+              {admin && row.payosOrderCode && row.paymentStartedAt && (
+                <p className="w-full text-xs text-[#7D715E]">Mã payOS <span className="font-mono">{row.payosOrderCode}</span></p>
+              )}
+              {!admin && row.status === 'AWAITING_PAYMENT' && row.amount != null && (
+                <Button variant="gold" loading={paymentLink.isPending && paymentLink.variables === row.id}
+                  disabled={paymentLink.isPending} onClick={() => paymentLink.mutate(row.id)}>
+                  Thanh toán {sponsorshipMoney(Number(row.amount))}
                 </Button>
               )}
-              {["REQUESTED", "APPROVED"].includes(row.status) && (
+              {paymentLink.isError && paymentLink.variables === row.id && <p role="alert" className="w-full text-xs text-[#DC2626]">{paymentLink.error.message}</p>}
+              {!admin && row.status === 'EXPIRED' && <Button variant="gold" disabled={mutation.isPending} onClick={() => startRenewal(row)}>Gia hạn gói</Button>}
+              {(["REQUESTED", "APPROVED"].includes(row.status) || (row.status === 'AWAITING_PAYMENT' && !row.paymentStartedAt)) && (
                 <Button
                   variant="outline"
                   disabled={mutation.isPending}
                   onClick={() => {
                     mutation.reset();
-                    setClientError("");
-                    setSelected({ row, cancel: true });
-                    setNote("");
+                    setSelected(row);
                   }}
                 >
                   Hủy gói
                 </Button>
               )}
             </div>
+              {admin && (selected?.id === row.id ? cancelForm : row.status === 'REQUESTED' && (
+                <SponsorshipDecisionForm headline={row.headline} pending={mutation.isPending}
+                  error={mutation.variables?.action === 'review' && mutation.variables.id === row.id ? mutation.error?.message : undefined}
+                  onSubmit={(decision, note) => {
+                    if (mutation.isPending) return;
+                    setSuccessMessage('');
+                    mutation.mutate({ action: 'review', id: row.id, decision, note });
+                  }} />
+              ))}
               </div>
             </details>
           </article>
         ))}
       </div>
-      {selected && (
-        <section
-          ref={reviewPanel}
-          tabIndex={-1}
-          className="m-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4"
-          aria-label={
-            selected.cancel ? "Form hủy tài trợ" : "Form xét duyệt tài trợ"
-          }
-        >
-          <h3 className="font-bold">
-            {selected.cancel ? "Hủy gói" : "Xét duyệt"} —{" "}
-            {selected.row.store.name}
-          </h3>
-          <form
-            className="mt-3 space-y-3"
-            onSubmit={(event) =>
-              submit(event, selected.cancel ? "cancel" : "review")
-            }
-          >
-            {!selected.cancel && (
-              <>
-                <label className="block text-sm">
-                  Kết quả
-                  <select
-                    className={inputClass}
-                    value={decision}
-                    onChange={(event) =>
-                      setDecision(event.target.value as typeof decision)
-                    }
-                  >
-                    <option value="APPROVE">Đồng ý</option>
-                    <option value="REJECT">Từ chối</option>
-                  </select>
-                </label>
-                {decision === "APPROVE" && (
-                  <>
-                    <p className="text-sm text-[#7D715E]">
-                      Chỉ duyệt sau khi kiểm tra tiền đã nhận và chứng từ thanh toán quảng cáo.
-                    </p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="text-sm">
-                          Số tiền đã xác minh (₫)
-                          <input
-                            className={inputClass}
-                            type="number"
-                            name="amount"
-                            required
-                            min={1}
-                            max={1000000000}
-                            step={1}
-                            defaultValue={selected.row.amount ?? (pricing.data ? Math.ceil((Date.parse(selected.row.endsAt) - Date.parse(selected.row.startsAt)) / 86400000) * pricing.data.dailyRate : '')}
-                          />
-                        </label>
-                        <label className="text-sm">
-                          Mã đối soát duy nhất
-                          <input
-                            className={inputClass}
-                            name="reference"
-                            required
-                            minLength={6}
-                            maxLength={100}
-                          />
-                        </label>
-                        <label className="text-sm sm:col-span-2">
-                          Liên kết chứng từ HTTPS
-                          <input
-                            className={inputClass}
-                            type="url"
-                            name="proof"
-                            pattern="https://.*"
-                            required
-                            maxLength={2000}
-                          />
-                        </label>
-                      </div>
-                  </>
-                )}
-              </>
-            )}
-            <label className="block text-sm">
-              {selected.cancel
-                ? "Lý do hủy"
-                : "Căn cứ xét duyệt / hướng dẫn cho Shop"}
-              <textarea
-                className={inputClass}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                minLength={5}
-                maxLength={2000}
-                required
-              />
-            </label>
-            {selected.cancel && (
-              <p className="text-sm text-[#7D715E]">
-                Dừng hiển thị không đồng nghĩa đã hoàn phí. Khoản có thu phí cần
-                xử lý đối soát riêng.
-              </p>
-            )}
-            {error && (
-              <p role="alert" className="text-sm text-[#DC2626]">
-                {error}
-              </p>
-            )}
-            <div className="flex gap-2">
-              <Button type="submit" variant="gold" loading={mutation.isPending}>
-                Xác nhận
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={mutation.isPending}
-                onClick={() => {
-                  setSelected(null);
-                  mutation.reset();
-                  setClientError("");
-                }}
-              >
-                Đóng
-              </Button>
-            </div>
-          </form>
-        </section>
-      )}
+      {!admin && cancelForm}
       </div>
       {(query.data?.totalPages ?? 0) > 1 && query.data && (
         <div className="flex shrink-0 items-center justify-end border-t border-[#EAE4D7] px-4 py-2 gap-2 text-xs [&_button]:min-h-8 [&_button]:rounded-lg [&_button]:text-xs">
@@ -457,12 +481,11 @@ export function SponsoredPlacementsPanel({
     if (selected) {
       setSelected(null);
       mutation.reset();
-      setClientError('');
     }
     window.requestAnimationFrame(() => historyButton.current?.focus());
   }
   return (
-    <Card className={`sp-workspace @container min-w-0 bg-white text-[#1A1612] shadow-none ${embedded ? 'rounded-none border-0' : 'mt-5 p-4 sm:p-5'}`}>
+    <Card className={`sp-workspace @container min-w-0 bg-white text-[#1A1612] shadow-none ${embedded ? 'rounded-none border-0' : 'p-4 sm:p-5'}`}>
       <div hidden={historyOpen}>
         <div className="sp-heading mb-3 flex min-w-0 items-center justify-between gap-2">
           <h2 className="m-0 flex items-center gap-2 text-sm font-semibold"><Megaphone size={18} className="shrink-0 text-[#B88E4F]" aria-hidden="true" /> Quảng bá gian hàng</h2>
@@ -477,8 +500,9 @@ export function SponsoredPlacementsPanel({
         {feedback}
         {bookingError && !selected && <p role="alert" className="my-3 rounded-lg border border-red-200 px-3 py-2 text-sm text-[#DC2626]">{bookingError}</p>}
         {!admin && <div ref={bookingSection}><SponsoredBookingForm key={renewal?.id ?? 'new'} pricing={pricing.data} pending={mutation.isPending} storefront={storefront}
-          renewal={renewal ? { headline: renewal.headline, startsAt: renewal.formStartsAt, endsAt: renewal.formEndsAt } : null}
-          onCancelRenewal={() => setRenewal(null)} onSubmit={(event) => submit(event, 'request')} /></div>}
+          products={products.data} productsLoading={products.isLoading} productsFailed={products.isError} onRetryProducts={() => void products.refetch()}
+          renewal={renewal ? { headline: renewal.headline, startsAt: renewal.formStartsAt, endsAt: renewal.formEndsAt, product: renewal.product, bannerImageUrl: renewal.bannerImageUrl } : null}
+          onCancelRenewal={() => setRenewal(null)} onSubmit={submitRequest} /></div>}
       </div>
       {separateHistory ? historyOpen && (
         <section aria-labelledby="sponsorship-history-title" className="rounded-xl border border-[#EAE4D7] bg-white">
@@ -490,6 +514,25 @@ export function SponsoredPlacementsPanel({
               <ArrowLeft size={14} aria-hidden="true" /> Quay lại đăng ký
             </button>
           </header>
+          {paymentReturnId && (
+            <div className="border-b border-[#EAE4D7] bg-[#FBF5EB] px-4 py-3 text-sm text-[#795A2D]" role="status">
+              {paymentStatus.isError
+                ? 'Chưa kiểm tra được trạng thái thanh toán. Hãy thử lại.'
+                : paymentStatus.data ? labels[paymentStatus.data.status] : 'Đang kiểm tra trạng thái thanh toán…'}
+              {(paymentStatus.isError || paymentStatus.data?.status === 'AWAITING_PAYMENT') && (
+                <button type="button" onClick={() => void paymentStatus.refetch()} className="ml-2 font-semibold underline">Kiểm tra lại</button>
+              )}
+              {paymentStatus.data?.status === 'AWAITING_PAYMENT' && !query.data?.items.some(row => row.id === paymentReturnId) && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {paymentStatus.data.deadline && <span>Giữ chỗ đến {when(paymentStatus.data.deadline)}</span>}
+                  <Button variant="gold" loading={paymentLink.isPending} onClick={() => paymentLink.mutate(paymentReturnId)}>
+                    Thanh toán {sponsorshipMoney(paymentStatus.data.amount)}
+                  </Button>
+                  {paymentLink.isError && <p role="alert" className="w-full text-xs text-[#DC2626]">{paymentLink.error.message}</p>}
+                </div>
+              )}
+            </div>
+          )}
           {successMessage && <div className="px-4">{feedback}</div>}
           {history}
         </section>

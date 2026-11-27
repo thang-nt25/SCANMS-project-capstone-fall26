@@ -19,6 +19,43 @@ import {
   SocialPlatform,
   ShopOnboardingStatus,
 } from '@prisma/client';
+import { createHash } from 'node:crypto';
+
+const KOL_REVIEW_ACTION = 'KOL_APPLICATION_REVIEWED';
+type KolReviewStatus = ReviewUpgradeApplicationDto['status'];
+
+function legacyKolReview(value: unknown): {
+  status: KolReviewStatus;
+  reviewedAt: Date;
+  reviewerId: string | null;
+  note: string | null;
+} | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const metadata = value as Record<string, unknown>;
+  if (metadata.reviewHistoryRecorded) return null;
+  const saved = metadata.legacyReview as Record<string, unknown> | undefined;
+  const status = saved?.status ?? metadata.reviewStatus;
+  if (status !== 'VERIFIED' && status !== 'NEEDS_INFO' && status !== 'REJECTED') return null;
+  const time = saved?.reviewedAt ?? (status === 'VERIFIED' ? metadata.verifiedAt : metadata.reviewedAt);
+  if (typeof time !== 'string' || !Number.isFinite(Date.parse(time))) return null;
+  const actor = saved?.reviewerId ?? metadata.reviewedById;
+  const reviewerId = status === 'VERIFIED' && typeof actor === 'string'
+    && /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(actor)
+    ? actor
+    : null;
+  const reason = saved?.note ?? metadata.rejectionReason;
+  return {
+    status,
+    reviewedAt: new Date(time),
+    reviewerId,
+    note: status !== 'VERIFIED' && typeof reason === 'string' ? reason : null,
+  };
+}
+
+function preserveLegacyKolReview(value: unknown) {
+  const legacy = legacyKolReview(value);
+  return legacy ? { legacyReview: { ...legacy, reviewedAt: legacy.reviewedAt.toISOString() } } : {};
+}
 
 function slugify(text: string): string {
   return text
@@ -84,6 +121,7 @@ export class KycService {
       const existingMeta = (profile?.socialLinksJson as any) || {};
       const updatedMeta = {
         ...existingMeta,
+        ...preserveLegacyKolReview(existingMeta),
         reviewStatus: 'PENDING_APPROVAL',
         needsInfo: false,
         rejectionReason: null,
@@ -275,6 +313,7 @@ export class KycService {
       frontCardUrl: dto.frontCardUrl || null,
       backCardUrl: dto.backCardUrl || null,
       submittedAt: new Date().toISOString(),
+      ...preserveLegacyKolReview(user.collaboratorProfile?.socialLinksJson),
       reviewStatus: 'PENDING_APPROVAL',
       needsInfo: false,
       rejectionReason: null,
@@ -620,6 +659,58 @@ export class KycService {
     };
   }
 
+  async getKolReviewHistory() {
+    const [logs, profiles] = await this.prisma.$transaction([
+      this.prisma.auditLog.findMany({
+        where: { action: KOL_REVIEW_ACTION },
+        select: { id: true, createdAt: true, details: true, user: { select: { fullName: true } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      }),
+      this.prisma.collaboratorProfile.findMany({
+        select: { id: true, socialLinksJson: true, user: { select: { fullName: true } } },
+      }),
+    ], { isolationLevel: 'RepeatableRead' });
+    const entries = logs.map(log => {
+      const details = log.details as {
+        applicantName: string; status: KolReviewStatus; note: string | null; legacyReviewerId?: string | null;
+      };
+      return {
+        id: log.id,
+        applicantName: details.applicantName,
+        status: details.status,
+        note: details.note,
+        reviewedAt: log.createdAt,
+        reviewerName: log.user?.fullName ?? null,
+        legacyReviewerId: details.legacyReviewerId ?? null,
+      };
+    });
+    for (const profile of profiles) {
+      const legacy = legacyKolReview(profile.socialLinksJson);
+      if (!legacy) continue;
+      entries.push({
+        id: profile.id,
+        applicantName: profile.user.fullName,
+        status: legacy.status,
+        note: legacy.note,
+        reviewedAt: legacy.reviewedAt,
+        reviewerName: null,
+        legacyReviewerId: legacy.reviewerId,
+      });
+    }
+    const reviewerIds = [...new Set(entries.flatMap(entry => entry.legacyReviewerId ? [entry.legacyReviewerId] : []))];
+    const reviewers = reviewerIds.length ? await this.prisma.user.findMany({
+      where: { id: { in: reviewerIds } },
+      select: { id: true, fullName: true },
+    }) : [];
+    const reviewerNames = new Map(reviewers.map(user => [user.id, user.fullName]));
+    return entries
+      .sort((a, b) => b.reviewedAt.getTime() - a.reviewedAt.getTime() || b.id.localeCompare(a.id))
+      .map(({ legacyReviewerId, ...entry }) => ({
+        ...entry,
+        reviewerName: entry.reviewerName ?? (legacyReviewerId ? reviewerNames.get(legacyReviewerId) ?? null : null),
+      }));
+  }
+
   /**
    * Admin duyệt hồ sơ KOL
    */
@@ -649,7 +740,39 @@ export class KycService {
       );
     }
 
-    let bronzeTierId: string | undefined = undefined;
+    const currentJson =
+      profile.socialLinksJson && typeof profile.socialLinksJson === 'object' && !Array.isArray(profile.socialLinksJson)
+        ? profile.socialLinksJson
+        : {};
+    let bronzeTierId: string | undefined;
+    const reviewedAt = new Date();
+    const priorReview = legacyKolReview(currentJson);
+    const recordReview = async (tx: Pick<PrismaService, 'auditLog'>, note: string | null) => {
+      const applicantName = profile.user.fullName;
+      if (priorReview) {
+        const digest = createHash('sha256').update(`${profileId}:${priorReview.reviewedAt.toISOString()}`).digest('hex');
+        const eventId = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-${digest.slice(12, 16)}-${digest.slice(16, 20)}-${digest.slice(20, 32)}`;
+        await tx.auditLog.upsert({
+          where: { eventId },
+          update: {},
+          create: {
+            eventId,
+            action: KOL_REVIEW_ACTION,
+            createdAt: priorReview.reviewedAt,
+            details: { profileId, applicantName, status: priorReview.status, note: priorReview.note, legacyReviewerId: priorReview.reviewerId },
+          },
+        });
+      }
+      await tx.auditLog.create({
+        data: {
+          action: KOL_REVIEW_ACTION,
+          userId: reviewerId,
+          createdAt: reviewedAt,
+          details: { profileId, applicantName, status: dto.status, note },
+        },
+      });
+    };
+
     if (dto.status === 'VERIFIED') {
       const bronzeTier = await this.prisma.collaboratorTier.findFirst({
         where: {
@@ -665,11 +788,6 @@ export class KycService {
         bronzeTierId = bronzeTier.id;
       }
     }
-
-    const currentJson =
-      profile.socialLinksJson && typeof profile.socialLinksJson === 'object'
-        ? (profile.socialLinksJson as Record<string, any>)
-        : {};
 
     if (dto.status === 'VERIFIED') {
       const updatedProfile = await this.prisma.$transaction(async (tx) => {
@@ -702,7 +820,8 @@ export class KycService {
               rejectionReason: null,
               requestedItems: [],
               channelsVerified: true,
-              verifiedAt: new Date().toISOString(),
+              verifiedAt: reviewedAt.toISOString(),
+              reviewHistoryRecorded: true,
               ...(reviewerId ? { reviewedById: reviewerId } : {}),
             },
           },
@@ -717,6 +836,7 @@ export class KycService {
             type: 'KOL_APPROVED',
           },
         });
+        await recordReview(tx, dto.note?.trim() || null);
 
         return updated;
       });
@@ -748,7 +868,8 @@ export class KycService {
             needsInfo,
             rejectionReason: note,
             requestedItems,
-            reviewedAt: new Date().toISOString(),
+            reviewedAt: reviewedAt.toISOString(),
+            reviewHistoryRecorded: true,
           },
         },
       });
@@ -761,6 +882,7 @@ export class KycService {
           type: needsInfo ? 'KOL_NEEDS_INFO' : 'KOL_REJECTED',
         },
       });
+      await recordReview(tx, note);
 
       return updated;
     });
@@ -924,9 +1046,10 @@ export class KycService {
   /**
    * Phê duyệt hoặc từ chối KYC cũ
    */
-  async reviewKyc(profileId: string, dto: ReviewKycDto) {
+  async reviewKyc(profileId: string, dto: ReviewKycDto, reviewerId: string) {
     return this.reviewKolApplication(profileId, {
       status: dto.status === KycStatus.VERIFIED ? 'VERIFIED' : 'REJECTED',
-    });
+      note: dto.note,
+    }, reviewerId);
   }
 }

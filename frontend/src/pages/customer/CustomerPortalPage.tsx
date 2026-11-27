@@ -97,6 +97,8 @@ export type ProfileSubTab = 'info' | 'addresses' | 'security';
 let cachedCustomerOrders: CustomerOrder[] = [];
 registerPrivateCacheReset(() => { cachedCustomerOrders = []; });
 
+type ReceiptState = Pick<CustomerOrder, 'status' | 'completedAt'>;
+
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -215,6 +217,8 @@ export default function CustomerPortalPage() {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const receiptInFlight = useRef(false);
+  const receivedOrders = useRef(new Map<string, ReceiptState>());
   const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
   const [openedNotification, setOpenedNotification] = useState<AppNotification | null>(null);
   const [reviewOrder, setReviewOrder] = useState<CustomerOrder | null>(null);
@@ -711,7 +715,11 @@ export default function CustomerPortalPage() {
         status: statusParam,
         search: search || undefined,
       });
-      const loadedOrders = res.orders || [];
+      const loadedOrders = (res.orders || []).flatMap(order => {
+        const receipt = receivedOrders.current.get(order.id);
+        if (!receipt || order.status !== 'DELIVERED') return [order];
+        return orderStatusFilter === 'ALL' ? [{ ...order, ...receipt }] : [];
+      });
       if (sequence !== ordersRequestSequence.current) return;
       orderListsCache.current.set(cacheKey, loadedOrders);
       cachedCustomerOrders = loadedOrders;
@@ -759,21 +767,37 @@ export default function CustomerPortalPage() {
   };
 
   const handleConfirmReceipt = async (order: CustomerOrder) => {
+    if (receiptInFlight.current || receivedOrders.current.has(order.id)) return;
+    receiptInFlight.current = true;
     setConfirmingOrderId(order.id);
     try {
-      await customerService.confirmReceipt(order.id);
-      const updatedOrder = await customerService.getOrderDetails(order.id);
+      const result = await customerService.confirmReceipt(order.id).catch(async (error: unknown) => {
+        const latest = await customerService.getOrderDetails(order.id, true).catch(() => null);
+        if (latest?.status === 'COMPLETED') return latest;
+        refreshOrdersRef.current();
+        throw error;
+      });
+      const receipt = { status: result.status, completedAt: result.completedAt };
+      const updatedOrder = { ...order, ...receipt };
+      receivedOrders.current.set(order.id, receipt);
+      const updateList = (list: CustomerOrder[]) => list.map(item =>
+        item.id === order.id && item.status === 'DELIVERED' ? { ...item, ...receipt } : item,
+      );
+      orderListsCache.current.clear();
+      cachedCustomerOrders = updateList(cachedCustomerOrders);
+      setOrders(updateList);
       setSelectedOrderDetails(current => current?.id === updatedOrder.id ? updatedOrder : current);
-      setDetailRefreshVersion(value => value + 1);
       toast.success('Đơn hàng đã hoàn tất. Bạn có thể gửi đánh giá đã xác minh.');
       if (getCustomerOrderActions(updatedOrder).review) {
         setSelectedOrderDetails(null);
         setReviewOrder(updatedOrder);
       }
-      await Promise.all([fetchOrders(), fetchProfile()]);
+      refreshOrdersRef.current();
+      void fetchProfile();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
     } finally {
+      receiptInFlight.current = false;
       setConfirmingOrderId(null);
     }
   };
@@ -1087,6 +1111,7 @@ export default function CustomerPortalPage() {
               <div className="w-full max-w-[1200px]">
                 <CustomerCompletedOrderDetail
                   key={detailOrderId} orderId={detailOrderId} refreshVersion={detailRefreshVersion}
+                  receipt={receivedOrders.current.get(detailOrderId)}
                   onChat={handleOpenChat} onReorder={handleReorder}
                   onReview={setReviewOrder} onViewReviews={setViewedReviewOrder} onReturn={setReturnOrder}
                   onCancel={order => setCancellingOrderId(order.id)}
@@ -1503,7 +1528,7 @@ export default function CustomerPortalPage() {
                                 {isDelivered && !hasReturnRequest && (
                                   <button
                                     type="button"
-                                    disabled={confirmingOrderId === order.id}
+                                    disabled={confirmingOrderId !== null}
                                     onClick={() => handleConfirmReceipt(order)}
                                     className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] disabled:opacity-50 cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
@@ -1512,7 +1537,7 @@ export default function CustomerPortalPage() {
                                     ) : (
                                       <CheckCircle2 size={14} />
                                     )}
-                                    <span>Đã nhận hàng</span>
+                                    <span>{confirmingOrderId === order.id ? 'Đang xác nhận…' : 'Đã nhận hàng'}</span>
                                   </button>
                                 )}
 

@@ -10,3 +10,5 @@ export function sponsorshipQuote(startsAt: Date, endsAt: Date) {
   const days = Math.ceil((endsAt.getTime() - startsAt.getTime()) / 86400000);
   return { days, amount: days * SPONSORSHIP_PRICING.dailyRate };
 }
+// Orders and wallet top-ups use at most 48 bits. Keep webhook routing disjoint.
+export const SPONSORSHIP_PAYOS_CODE_BASE = 2 ** 48;

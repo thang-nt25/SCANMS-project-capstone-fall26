@@ -54,7 +54,7 @@ import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveD
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemunerationSummary';
 import { CampaignCardBubble } from '../../components/chat/CampaignCardBubble';
-import { parseCampaignCard } from '@/utils/chat-explorer';
+import { parseCampaignCard, parseCouponProposalCard } from '@/utils/chat-explorer';
 import { ExclusiveDealCardBubble } from '../../components/chat/ExclusiveDealCardBubble';
 import { ProductInquiryCardBubble, type ProductInquiryCardData } from '../../components/chat/ProductInquiryCardBubble';
 import { CouponProposalCardBubble } from '../../components/chat/CouponProposalCardBubble';
@@ -242,15 +242,6 @@ function isProfaneText(text: string): boolean {
 
 
 
-
-function tryParseCouponProposalCard(text: string) {
-  if (!text || !text.startsWith('{')) return null;
-  try {
-    const obj = JSON.parse(text);
-    if (['COUPON_PROPOSAL', 'COUPON_PROPOSAL_APPROVED'].includes(obj.type)) return obj;
-  } catch {}
-  return null;
-}
 
 function tryParseExclusiveDealCard(text: string) {
   try {
@@ -698,7 +689,7 @@ function CustomerCouponPicker({ storeId, anchor, onClose, onSelectCoupon }: {
     setLoadError('');
     setCoupons([]);
     if (!storeId) { setLoading(false); setLoadError('Chưa chọn gian hàng.'); return; }
-    api.get('/coupons/stores/' + storeId + '/available').then(response => {
+    api.get('/stores/' + storeId + '/coupons/shareable').then(response => {
       if (!active) return;
       const rows = response?.data?.data ?? response?.data ?? response;
       if (!Array.isArray(rows)) throw new Error('Invalid coupon list');
@@ -1506,7 +1497,7 @@ export default function ChatBoxPage({
   const canSeeAffiliateDeals = isShop || currentUser?.role === 'COLLABORATOR';
   const visibleMessages = canSeeAffiliateDeals
     ? messages
-    : messages.filter((message) => !tryParseExclusiveDealCard(message.messageText));
+    : messages.filter((message) => !tryParseExclusiveDealCard(message.messageText) && !parseCouponProposalCard(message.messageText));
 
   const pinnedDeals = useMemo(() => {
     if (!canSeeAffiliateDeals || !messages || messages.length === 0) return [];
@@ -3039,14 +3030,13 @@ export default function ChatBoxPage({
                             return <ProductInquiryCardBubble card={inquiryCard} isMine={isMine} />;
                           }
 
-                          const couponProposalCard = tryParseCouponProposalCard(msg.messageText);
+                          const couponProposalCard = parseCouponProposalCard(msg.messageText);
                           if (couponProposalCard) {
                             return (
                               <CouponProposalCardBubble
                                 card={couponProposalCard}
-                                isMine={isMine}
                                 isShop={isShop}
-                                activeConv={activeConv}
+                                storeName={activeConv?.store?.name}
                               />
                             );
                           }
