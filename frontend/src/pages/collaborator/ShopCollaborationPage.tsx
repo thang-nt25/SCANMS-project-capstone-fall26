@@ -2856,11 +2856,6 @@ setActiveTab('samples');
             void reloadCooperations();
             void loadConversationsAndStores();
           }}
-          onNavigateBlocker={(key) => {
-            if (key === 'SAMPLE') setActiveTab('samples');
-            else if (key === 'VOUCHER') navigate('/collaborator/coupons');
-            else setActiveTab('messages');
-          }}
         />
       )}
       {couponProposalStore && (

@@ -3091,16 +3091,6 @@ export default function ShopKolHubPage() {
               );
             }
           }}
-          onNavigateBlocker={(key) => {
-            if (key === 'SAMPLE') {
-              setActiveTab('samples');
-            } else if (key === 'VOUCHER') {
-              setShowQuickCouponModal(true);
-            } else {
-              setViewMode('ALL_DEALS');
-              setSearchParams({ tab: 'deals' }, { replace: true });
-            }
-          }}
         />
       )}
     </div>

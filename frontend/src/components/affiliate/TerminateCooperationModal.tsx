@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldAlert, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, ShieldAlert, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
@@ -34,7 +34,6 @@ interface TerminateCooperationModalProps {
   mode: 'shop' | 'kol';
   onClose: () => void;
   onTerminated: () => void;
-  onNavigateBlocker?: (key: 'DEAL' | 'KPI' | 'VOUCHER' | 'SAMPLE') => void;
 }
 
 export function TerminateCooperationModal({
@@ -45,7 +44,6 @@ export function TerminateCooperationModal({
   mode,
   onClose,
   onTerminated,
-  onNavigateBlocker,
 }: TerminateCooperationModalProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -236,19 +234,6 @@ export function TerminateCooperationModal({
                           >
                             {row.count}
                           </span>
-                          {blocked && onNavigateBlocker && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onClose();
-                                onNavigateBlocker(row.key);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-lg border border-[#EEDFC6] bg-white px-2 py-1 text-[11px] font-semibold text-[#8C6226] hover:bg-[#FBF5EB] cursor-pointer"
-                            >
-                              <span>Xử lý</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     );
