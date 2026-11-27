@@ -1,29 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
 import ts from 'typescript';
 
-test('a disabled voucher query never reports endless loading and buyer queries use their own key', async () => {
-  let config;
-  const paths = [];
-  const source = readFileSync(new URL('../src/hooks/useCustomerVouchers.ts', import.meta.url), 'utf8');
-  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-  const module = { exports: {} };
-  vm.runInNewContext(code, { module, exports: module.exports, Date, require: name => {
-    if (name === 'react') return { useEffect() {}, useState: fn => [fn(), () => {}] };
-    if (name === '@tanstack/react-query') return { useQuery: options => { config = options; return { isLoading: Boolean(options.enabled), isError: false }; }, useQueryClient: () => ({}) };
-    if (name === '@/services/api') return { get: async path => { paths.push(path); return []; } };
-    return { voucherExpiryState: () => 'active', VOUCHER_SOON_WINDOW_MS: 86400000 };
-  } });
-  const { useCustomerVouchers } = module.exports;
-  assert.equal(useCustomerVouchers(undefined).loading, false);
-  assert.equal(config.enabled, false);
-  for (const buyer of ['customer', 'kol', 'shop', 'manager', 'admin']) {
-    assert.equal(useCustomerVouchers(buyer).loading, true);
-    assert.equal(config.enabled, true);
-    assert.equal(config.queryKey[1], buyer);
-    await config.queryFn({ signal: undefined });
-  }
-  assert.equal(paths.filter(path => path === '/coupons/available').length, 5);
+const readSource = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+
+test('a variant must be both discounted and in stock to qualify for the banner', () => {
+  const { outputText } = ts.transpileModule(readSource('utils/marketplace.utils.ts'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  });
+  const exports = {};
+  new Function('exports', outputText)(exports);
+  const { hasCatalogDiscount } = exports;
+  const product = {
+    price: 100,
+    origPrice: 100,
+    stockQuantity: 2,
+    variants: [{ price: '100', listPrice: '150', stockQuantity: 0 }, { price: '150', listPrice: '150', stockQuantity: 2 }],
+  };
+  assert.equal(hasCatalogDiscount(product), true);
+  assert.equal(hasCatalogDiscount(product, true), false);
+  product.variants[0].stockQuantity = 1;
+  assert.equal(hasCatalogDiscount(product, true), true);
+  assert.equal(hasCatalogDiscount({ price: 100, origPrice: 150, stockQuantity: 1 }, true), true);
+});
+
+test('marketplace promotes discounted products and redirects the former public voucher page', () => {
+  const discountPath = '/search?discount=true&inStock=true';
+  const hero = readSource('components/marketplace/MarketplaceHero.tsx');
+  const routes = readSource('routes/AppRoutes.tsx');
+  assert.ok(hero.includes("to={hasDiscounts ? discountedCatalogPath : '/search'}"));
+  assert.ok(routes.includes(`path="/offers" element={<Navigate to="${discountPath}" replace />}`));
+  assert.doesNotMatch(hero, /to="\/offers"/);
+});
+
+test('buyer voucher screens do not fetch a catalog of KOC codes', () => {
+  assert.doesNotMatch(readSource('pages/customer/CustomerVouchersTab.tsx'), /useCustomerVouchers|\/coupons\/available/);
+  assert.doesNotMatch(readSource('pages/public/ShopPage.tsx'), /usePublicVoucherDiscovery|\/coupons\/available/);
 });

@@ -43,7 +43,7 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
             'Access-Control-Allow-Headers': 'content-type,authorization,x-skip-cache', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Content-Type': 'application/json' };
           if (request.method() === 'OPTIONS') return request.respond({ status: 204, headers });
           let data = {};
-          if (url.pathname === '/api/orders/track') data = { orders: [order], totalFound: 1 };
+          if (['/api/orders/track', '/api/orders/track/mine'].includes(url.pathname)) data = { orders: [order], totalFound: 1 };
           if (url.pathname === '/api/customer/orders') data = { orders: [order], total: 1 };
           if (url.pathname === '/api/customer/profile') data = { user: { id: 'qa-customer', fullName: 'Khách kiểm thử' }, stats: {} };
           if (url.pathname.includes('/shipping/ghn/track/')) {
@@ -64,20 +64,30 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
         return request.continue();
       });
       const section = 'section[aria-label="Hành trình GHN QA-GHN-ORDER"]';
+      const journeyToggle = 'main details:has(summary) > summary';
       await page.goto(`${base}/tracking?phone=0900000000&sn=QA-TRACKING`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector(journeyToggle);
+      assert.match(await page.$eval('main', el => el.innerText), /Phí giao hàng\s+29\.001/);
+      assert.equal(await page.$eval('ol[aria-label="Tiến trình đơn hàng"] [aria-current="step"]', el => el.innerText.includes('Đang giao')), true);
+      const progress = 'ol[aria-label="Tiến trình đơn hàng"]';
+      assert.equal(await page.$$eval(`${progress} > li > div > svg`, icons => icons.length), 4);
+      assert.deepEqual(await page.$$eval(`${progress} > li > span`, lines => lines.map(line => getComputedStyle(line).backgroundColor)), [
+        'rgb(197, 155, 88)', 'rgb(197, 155, 88)', 'rgb(234, 228, 215)',
+      ]);
+      await page.click(journeyToggle);
       await page.waitForSelector(`${section} a[href="tel:0900000000"]`);
       assert.match(await page.$eval(section, el => el.innerText), /Bưu tá kiểm thử/);
       assert.match(await page.$eval(section, el => el.innerText), /Shipper đang đi giao/);
-      assert.match(await page.$eval(section, el => el.innerText), /Trạng thái bưu kiện/);
+      assert.ok(await page.$(`${section} ol[aria-label="Các mốc giao hàng"]`));
       assert.equal(requestedEnvironments[0], 'TEST', 'public tracking explicitly requests the order environment');
-      await page.waitForFunction(sel => document.querySelector(sel)?.querySelectorAll('ol[aria-label="Lịch sử chi tiết"] li').length === 4, {}, section);
+      await page.waitForFunction(sel => document.querySelector(sel)?.querySelectorAll('ol[aria-label="Lịch sử vận chuyển"] li').length === 4, {}, section);
       const stopped = polls; await delay(1200); assert.equal(polls, stopped, 'terminal deliveries stop polling');
 
       stage = 'delivering'; polls = 0;
       await page.goto(`${base}/customer/orders?orderId=${id}`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(`${section} a[href="tel:0900000000"]`);
       assert.match(await page.$eval(section, el => el.innerText), /Shipper đang đi giao/);
-      assert.match(await page.$eval(section, el => el.innerText), /Trạng thái bưu kiện/);
+      assert.ok(await page.$(`${section} ol[aria-label="Các mốc giao hàng"]`));
       assert.equal(requestedEnvironments.at(-1), 'TEST', 'customer order details explicitly request the same environment');
       await page.screenshot({ path: join(tmpdir(), 'scanms-ghn-tracking-desktop.png'), fullPage: true });
       assert.ok(polls > 0, 'customer details call the same GHN endpoint');
@@ -85,11 +95,14 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
       stage = 'ready_to_pick'; polls = 0;
       await page.setViewport({ width: 390, height: 844 });
       await page.goto(`${base}/tracking?phone=0900000000&sn=QA-TRACKING`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector(journeyToggle);
+      await page.click(journeyToggle);
       await page.waitForSelector(`${section} ol[aria-label="Các mốc giao hàng"]`);
       assert.equal(await page.$$eval(`${section} ol[aria-label="Các mốc giao hàng"] li`, els => els.length), 5);
       assert.equal(await page.$$eval(`${section} a[href^="tel:"]`, els => els.length), 0);
       assert.match(await page.$eval(section, el => el.innerText), /Chưa có xác nhận từ GHN/);
       assert.equal(await page.$eval(section, el => el.scrollWidth <= el.clientWidth + 1), true);
+      assert.equal(await page.$eval('main', el => el.scrollWidth <= el.clientWidth + 1), true);
       await page.screenshot({ path: join(tmpdir(), 'scanms-ghn-tracking-mobile.png'), fullPage: true });
 
       simulation = true;
@@ -98,9 +111,19 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
         stage = status;
         for (const route of [`/tracking?phone=0900000000&sn=QA-TRACKING`, `/customer/orders?orderId=${id}`]) {
           await page.goto(base + route, { waitUntil: 'domcontentloaded' });
-          await page.waitForFunction(sel => document.querySelector(sel)?.innerText.includes('Trạng thái mô phỏng'), {}, section);
+          if (route.startsWith('/tracking')) {
+            await page.waitForSelector(journeyToggle);
+            await page.click(journeyToggle);
+          }
+          await page.waitForFunction(
+            (sel, title, count) => {
+              const history = document.querySelector(sel)?.querySelectorAll('ol[aria-label="Lịch sử vận chuyển"] li');
+              return history?.length === count && history[count - 1].textContent.includes(title);
+            },
+            {}, section, labels[status], simulationStates.indexOf(status) + 1,
+          );
           assert.equal(await page.$$eval(`${section} ol[aria-label="Các mốc giao hàng"] li`, els => els.length), 5);
-          assert.equal(await page.$$eval(`${section} ol[aria-label="Lịch sử chi tiết"] li`, els => els.length), simulationStates.indexOf(status) + 1);
+          assert.equal(await page.$$eval(`${section} ol[aria-label="Lịch sử vận chuyển"] li`, els => els.length), simulationStates.indexOf(status) + 1);
           assert.match(await page.$eval(section, el => el.innerText), new RegExp(labels[status]));
           assert.equal(await page.$$eval(`${section} a[href^="tel:"]`, els => els.length), 0);
           if (['delivering', 'delivered'].includes(status)) {

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   canRespondToDeal,
   DealInputSchema,
+  dealKpiDisplay,
 } from "../src/features/deals/deal-policy";
 import {
   ProductInputSchema,
@@ -14,8 +15,16 @@ import { canReviewVipExceptions } from "../src/features/workspace/policy";
 import { mergeMessages } from "../src/services/realtime/messages";
 import { validateInput } from "../src/utils/validate-input";
 test("KOL starts at overview and has five task-specific destinations", () => {
-  assert.deepEqual(ROLE_TABS.COLLABORATOR, ["workspace", "marketing", "cooperation", "wallet", "account"]);
-  for (const role of RoleSchema.options.filter((role) => role !== "COLLABORATOR")) {
+  assert.deepEqual(ROLE_TABS.COLLABORATOR, [
+    "workspace",
+    "marketing",
+    "cooperation",
+    "wallet",
+    "account",
+  ]);
+  for (const role of RoleSchema.options.filter(
+    (role) => role !== "COLLABORATOR",
+  )) {
     assert.ok(!ROLE_TABS[role].includes("marketing"));
     assert.ok(!ROLE_TABS[role].includes("wallet"));
   }
@@ -52,22 +61,46 @@ test("only the counterparty can respond to a pending VIP agreement", () => {
 const deal = {
   productId: "98fc42f4-f231-4f41-9d2a-95d0314cb285",
   proposedCommissionRate: "20",
-  targetRevenue: "2000000",
+  targetOrders: "30",
   commitmentDays: "14",
   salesCommitment: "Video review and sales campaign",
   videoReviewCommitment: true,
   scopeType: "SINGLE_PRODUCT",
 };
-test("VIP supports revenue KPI and rates above 16 while rejecting rates beyond 25", () => {
+test("VIP uses an integer order KPI and rates above 16 while rejecting rates beyond 25", () => {
   assert.equal(DealInputSchema.parse(deal).proposedCommissionRate, 20);
   assert.equal(
     DealInputSchema.safeParse({ ...deal, proposedCommissionRate: 26 }).success,
     false,
   );
   assert.equal(
-    DealInputSchema.safeParse({ ...deal, targetRevenue: 0 }).success,
+    DealInputSchema.safeParse({ ...deal, targetOrders: 0 }).success,
     false,
   );
+  for (const targetOrders of [1.5, -1, "", undefined])
+    assert.equal(
+      DealInputSchema.safeParse({ ...deal, targetOrders }).success,
+      false,
+    );
+  assert.equal(
+    DealInputSchema.safeParse({
+      ...deal,
+      targetOrders: undefined,
+      targetRevenue: 1000000,
+    }).success,
+    false,
+  );
+});
+test("VIP display preserves the KPI unit of existing agreements", () => {
+  assert.deepEqual(
+    dealKpiDisplay({ targetOrders: 30, targetRevenue: 1000000 }),
+    { label: "KPI số đơn", value: "30 đơn" },
+  );
+  assert.deepEqual(dealKpiDisplay({ targetRevenue: 1000000 }), {
+    label: "KPI doanh thu (cũ)",
+    value: "1.000.000 đ",
+  });
+  assert.equal(dealKpiDisplay({}).value, "Chưa có dữ liệu");
 });
 test("group scope needs at least two distinct products", () => {
   assert.equal(

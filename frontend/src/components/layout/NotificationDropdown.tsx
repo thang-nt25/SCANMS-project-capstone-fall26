@@ -499,7 +499,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
                           </strong>
                           {!n.isRead && <span className="shrink-0 w-[5px] h-[5px] mt-[6px] rounded-full bg-[#C59B58]" aria-label="Chưa đọc" />}
                         </span>
-                        <span className="scanms-notification-message [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden [overflow-wrap:anywhere] mt-[3px] text-[color:#7D715E]! text-[11px] leading-[1.55] [&[data-expanded='true']]:block" data-expanded={expanded}>
+                        <span className="scanms-notification-message [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden [overflow-wrap:anywhere] mt-[3px] text-[color:#7D715E]! text-[11px] leading-[1.55] [&[data-expanded='true']]:block [&[data-expanded='true']]:whitespace-pre-line" data-expanded={expanded}>
                           {n.message}
                         </span>
                       </span>
@@ -507,6 +507,11 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
                     <div className={`scanms-notification-meta flex items-center justify-between flex-wrap gap-[3px_8px] min-h-[20px] ${productImageUrl ? 'm-[3px_0_0_61px]' : 'm-[3px_0_0_38px]'} text-[color:#8A642C]! text-[10px] leading-[1.5] [&_>_time]:inline-flex [&_>_time]:items-center [&_>_time]:gap-[4px] [&_>_time]:text-[color:#7D715E]! [&_>_time_>_svg]:shrink-0`}>
                       <time dateTime={n.createdAt}><Clock size={10} aria-hidden="true" />{formatTimeAgo(n.createdAt)}</time>
                       {isLive && <span>Phiên live</span>}
+                      {n.type === 'KOL_NEEDS_INFO' && (
+                        <button type="button" onClick={() => void handleNotificationClick(n)} className="cursor-pointer rounded px-1 py-0.5 font-semibold text-[#795A2D] hover:underline">
+                          Bổ sung hồ sơ
+                        </button>
+                      )}
                     {(n.message.length > 100 || n.title.length > 52) && (
                       <button
                         type="button"

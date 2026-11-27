@@ -1,8 +1,9 @@
+import { DateTimePicker } from '../common/DateTimePicker';
+import { Select } from '../ui/Select';
 import { handleProductImageError } from '@/utils/image-fallback.utils';
-import { useState, useEffect, useMemo, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, type FormEvent } from 'react';
 import {
   AlertCircle,
-  CheckCircle2,
   X,
   Search,
   Loader2,
@@ -31,10 +32,11 @@ interface ProposePromotionModalProps {
 const money = (val: unknown) =>
   val == null ? 'Chưa cấu hình' : `${Number(val).toLocaleString('vi-VN')} ₫`;
 
-const toLocalDateTimeString = (date: Date) =>
-  new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
+const VIETNAM_OFFSET = '+07:00';
+const toVietnamDateTime = (date: Date) =>
+  new Date(date.getTime() + 7 * 3600000).toISOString().slice(0, 16);
+const parseVietnamDateTime = (value: string) => Date.parse(`${value}${VIETNAM_OFFSET}`);
+const vietnamPickerNow = () => new Date(toVietnamDateTime(new Date()));
 
 const EMPTY_ARRAY: any[] = [];
 
@@ -69,15 +71,18 @@ export function ProposePromotionModal({
 
   // Schedule & Reason (Common)
   const [startsAt, setStartsAt] = useState<string>(
-    toLocalDateTimeString(new Date(Date.now() + 15 * 60 * 1000)),
+    toVietnamDateTime(new Date(Date.now() + 15 * 60 * 1000)),
   );
   const [endsAt, setEndsAt] = useState<string>(
-    toLocalDateTimeString(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+    toVietnamDateTime(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
   );
-  const [reason, setReason] = useState<string>('Chiến dịch kích cầu thúc đẩy doanh số cùng Đối tác Tiếp thị.');
+  const [reason, setReason] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showMakerCheckerInfo, setShowMakerCheckerInfo] = useState<boolean>(false);
+
+  const submitLock = useRef(false);
+  const schedulePopoverRoot = useRef<HTMLDivElement>(null);
 
   // Catalog list normalization
   const availableCatalog = useMemo(() => {
@@ -105,6 +110,10 @@ export function ProposePromotionModal({
     setIsManualPriceOverride(false);
     setCustomProposedPrice('');
     setErrorMessage(null);
+    setReason('');
+    const start = new Date(Date.now() + 15 * 60000);
+    setStartsAt(toVietnamDateTime(start));
+    setEndsAt(toVietnamDateTime(new Date(start.getTime() + 7 * 86400000)));
   }, [initialProduct, initialSelected, availableCatalog, isOpen]);
 
   // Keyboard escape listener
@@ -134,12 +143,10 @@ export function ProposePromotionModal({
       0,
   );
 
-  const floorPrice =
-    selectedVariant?.floorPrice != null
-      ? Number(selectedVariant.floorPrice)
-      : activeProduct?.floorPrice != null
-        ? Number(activeProduct.floorPrice)
-        : null;
+  const affectedVariants = selectedVariant ? [selectedVariant] : variants.length ? variants : [activeProduct];
+  const affectedFloors = affectedVariants.map((item: any) => item?.floorPrice ?? activeProduct?.floorPrice);
+  const floorPrice = affectedFloors.length && affectedFloors.every((value: any) => value != null && Number.isFinite(Number(value)))
+    ? Math.max(...affectedFloors.map(Number)) : null;
 
   // Compute calculated proposed price for Single Mode
   const computedProposedPrice = useMemo(() => {
@@ -162,7 +169,10 @@ export function ProposePromotionModal({
     floorPrice != null && singleBelowFloor
       ? estimateMaxLossPerUnit(computedProposedPrice, floorPrice)
       : 0;
-  const singleAboveOrEqualList = listPrice > 0 && computedProposedPrice >= listPrice;
+  const singleAboveOrEqualList = affectedVariants.some((item: any) => {
+    const price = Number(item?.listPrice ?? item?.price ?? listPrice);
+    return price > 0 && computedProposedPrice >= price;
+  });
   const singlePriceValid = computedProposedPrice > 0 && !singleAboveOrEqualList;
   const singleSavings = Math.max(0, listPrice - computedProposedPrice);
   const singleEffectivePercent = listPrice > 0 ? Math.round((singleSavings / listPrice) * 100) : 0;
@@ -188,7 +198,7 @@ export function ProposePromotionModal({
 
       const isBelow = pFloor != null && finalPrice < pFloor;
       const isAbove = pList > 0 && finalPrice >= pList;
-      const isValid = finalPrice > 0 && !isBelow && !isAbove;
+      const isValid = pFloor != null && finalPrice > 0 && !isBelow && !isAbove;
       const shortfall = isBelow && pFloor != null ? pFloor - finalPrice : 0;
 
       return {
@@ -228,19 +238,26 @@ export function ProposePromotionModal({
   };
 
   const handleApplyDuration = (days: number) => {
-    const start = new Date(startsAt).getTime() || Date.now();
-    setEndsAt(toLocalDateTimeString(new Date(start + days * 24 * 60 * 60 * 1000)));
+    const start = parseVietnamDateTime(startsAt) || Date.now();
+    setEndsAt(toVietnamDateTime(new Date(start + days * 24 * 60 * 60 * 1000)));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submitting || submitLock.current) return;
     setErrorMessage(null);
-
-    if (reason.trim().length < 5) {
-      setErrorMessage('Vui lòng nhập căn cứ thương mại / lý do tối thiểu 5 ký tự.');
+    const startTime = parseVietnamDateTime(startsAt), endTime = parseVietnamDateTime(endsAt);
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime || endTime <= Date.now() || startTime < Date.now() - 60000 || endTime - startTime > 366 * 86400000) {
+      setErrorMessage('Chọn thời gian hợp lệ: kết thúc sau bắt đầu, tối đa 366 ngày.');
       return;
     }
 
+    if (reason.trim().length < 10) {
+      setErrorMessage('Vui lòng nhập lý do từ 10 đến 1.000 ký tự.');
+      return;
+    }
+
+    submitLock.current = true;
     setSubmitting(true);
     try {
       if (mode === 'single') {
@@ -264,8 +281,8 @@ export function ProposePromotionModal({
           productId: activeProduct.id,
           variantId: selectedVariantId || undefined,
           proposedPrice: computedProposedPrice,
-          startsAt: new Date(startsAt).toISOString(),
-          endsAt: new Date(endsAt).toISOString(),
+          startsAt: new Date(startTime).toISOString(),
+          endsAt: new Date(endTime).toISOString(),
           reason: reason.trim(),
         });
 
@@ -288,8 +305,8 @@ export function ProposePromotionModal({
             productId: item.product.id,
             proposedPrice: item.proposedPrice,
           })),
-          startsAt: new Date(startsAt).toISOString(),
-          endsAt: new Date(endsAt).toISOString(),
+          startsAt: new Date(startTime).toISOString(),
+          endsAt: new Date(endTime).toISOString(),
           reason: reason.trim(),
         });
 
@@ -301,625 +318,104 @@ export function ProposePromotionModal({
     } catch (err: any) {
       setErrorMessage(requestError(err));
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   };
 
   if (!isOpen) return null;
 
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="promo-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#1A1612]/60 backdrop-blur-xs animate-in fade-in duration-150"
-    >
-      <div className="promotion-light-dialog">
-        {/* HEADER: LUXURY VÀNG CAM NÂU GRADIENT (LIKE KOL HEADER) */}
-        <header className="promotion-light-header">
-          <div className="flex items-center gap-3">
-            <h2 id="promo-modal-title" className="text-lg font-semibold tracking-tight">
-              <span>Đề xuất giảm giá</span>
-            </h2>
-
-            {/* Maker-Checker Popover Pill */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowMakerCheckerInfo((prev) => !prev)}
-                className="inline-flex size-8 items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FBF5EB]"
-                title="Xem quy chế thẩm duyệt Maker-Checker"
-              >
-                <span className="sr-only">Cơ chế duyệt</span>
-                <HelpCircle className="w-3.5 h-3.5" />
-              </button>
-
-              {showMakerCheckerInfo && (
-                <div className="absolute left-0 top-full mt-2 w-80 p-3.5 rounded-2xl bg-white border border-[#EAE4D7] text-[#1A1612] shadow-2xl z-50 text-xs animate-in fade-in zoom-in-95 space-y-1">
-                  <div className="font-bold text-[#8C6226] flex items-center gap-1.5 text-xs">
-                    Phê duyệt đề xuất
-                  </div>
-                  <p className="text-[11px] text-[#7D715E] leading-relaxed">
-                    Đề xuất sẽ được gửi tới <strong>Chuyên viên Vận hành / Ban Quản Trị</strong> phê duyệt. Khi duyệt thành công, mức giá ưu đãi sẽ tự động kích hoạt đồng bộ trên toàn hệ thống đúng thời gian đã thiết lập.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Mode Switcher Tabs */}
-            {!initialProduct && availableCatalog.length > 1 && (
-              <div className="promotion-mode-switch">
-                <button
-                  type="button"
-                  onClick={() => setMode('single')}
-                  className={`py-1 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    mode === 'single'
-                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
-                      : 'border-transparent bg-white text-[#7D715E]'
-                  }`}
-                >
-                  Một sản phẩm
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('batch')}
-                  className={`py-1 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    mode === 'batch'
-                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
-                      : 'border-transparent bg-white text-[#7D715E]'
-                  }`}
-                >
-                  Nhiều sản phẩm
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-[#7D715E] hover:bg-[#FBF5EB]"
-              title="Đóng cửa sổ"
-              aria-label="Đóng cửa sổ"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
-
-        {/* 2-COLUMN BODY */}
-        <form onSubmit={handleSubmit} className="promotion-light-body">
-          {/* LEFT COLUMN: Products & MAP Compliance Visualizer (5 Cols) */}
-          <section className="promotion-light-products">
-            {mode === 'single' ? (
-              /* SINGLE MODE LEFT PANE */
-              <div className="space-y-3">
-                <div className="text-xs font-bold text-[#7D715E] uppercase tracking-wider">
-                  Sản phẩm áp dụng
-                </div>
-
-                {/* If multiple products available in catalog */}
-                {!initialProduct && availableCatalog.length > 1 && (
-                  <div>
-                    <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                      Chọn sản phẩm trong kho
-                    </label>
-                    <select
-                      value={selectedProductId}
-                      onChange={(e) => {
-                        setSelectedProductId(e.target.value);
-                        setSelectedVariantId('');
-                        setIsManualPriceOverride(false);
-                      }}
-                      className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
-                    >
-                      {availableCatalog.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title} · Niêm yết: {money(p.price)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Product Detail Card */}
-                {activeProduct && (
-                  <div className="rounded-xl border border-[#EAE4D7] bg-white p-3.5 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <img
-                        src={getSafeProductImageUrl(activeProduct.imageUrl, activeProduct.title, '')} onError={handleProductImageError}
-                        alt={activeProduct.title}
-                        className="w-16 h-16 rounded-xl object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span className="font-bold text-xs text-[#1A1612] line-clamp-2" title={activeProduct.title}>
-                          {activeProduct.title}
-                        </span>
-                        <div className="text-[11px] text-[#7D715E] mt-1 flex items-center gap-2">
-                          <span>SKU: <strong className="font-mono text-[#1A1612]">{activeProduct.sku || 'N/A'}</strong></span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Variant Selector */}
-                    {variants.length > 0 && (
-                      <div className="pt-2 border-t border-[#EAE4D7]">
-                        <label className="text-[11px] font-bold text-[#7D715E] block mb-1">
-                          Phân loại SKU ({variants.length} biến thể)
-                        </label>
-                        <select
-                          value={selectedVariantId}
-                          onChange={(e) => setSelectedVariantId(e.target.value)}
-                          className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1.5 text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
-                        >
-                          <option value="">Tất cả biến thể ({variants.length} SKU)</option>
-                          {variants.map((v: any) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name} · {money(v.price ?? listPrice)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 3-Tier Price Breakdown Box */}
-                <div className="rounded-xl border border-[#EAE4D7] bg-white p-3.5 space-y-3">
-                  <div className="text-xs font-bold text-[#1A1612] flex items-center justify-between">
-                    <span>Giá xem trước</span>
-                    <span className="text-[11px] text-[#7D715E]">Đơn vị: VNĐ</span>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between py-1 border-b border-[#FAF8F5]">
-                      <span className="text-[#7D715E]">Giá niêm yết</span>
-                      <strong className="text-[#1A1612] font-mono text-sm">{money(listPrice)}</strong>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 py-1 border-b border-[#FAF8F5]">
-                      <span className="text-[#8C6226] font-semibold inline-flex items-center gap-1 whitespace-nowrap">
-                        2. Ngưỡng an toàn:
-                        <span
-                          title={`Giá sàn MAP gốc: ${money(floorPrice)}. Mức giá >= ${money(minSafePrice)} bảo toàn không lỗ khi áp tối đa Voucher 10% + Hoa hồng 25%.`}
-                          className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
-                        >
-                          ?
-                        </span>
-                      </span>
-                      <strong className="text-[#8C6226] font-mono text-sm whitespace-nowrap">{money(minSafePrice)}</strong>
-                    </div>
-
-                    <div className="promotion-proposed-price">
-                      <span className="font-bold text-[#2A1E11]">Giá sau giảm</span>
-                      <strong className={`font-mono text-base font-bold ${singleBelowFloor ? 'text-[#DC2626]' : 'text-[#8C6226]'}`}>
-                        {money(computedProposedPrice)}
-                      </strong>
-                    </div>
-                  </div>
-
-                  {/* Savings / Discount Summary */}
-                  <div className="flex items-center justify-between text-xs text-[#7D715E] pt-0.5">
-                    <span>Khách tiết kiệm:</span>
-                    <span className="font-semibold text-[#1A1612] font-mono">
-                      {money(singleSavings)} (-{singleEffectivePercent}%)
-                    </span>
-                  </div>
-
-                  {/* Realtime Compliance Alert & KOL Commission Buffer Note */}
-                  {singleBelowFloor ? (
-                    <div className="p-2.5 rounded-xl bg-[#FFFBEB] border-2 border-[#D97706] text-xs text-[#92400E] space-y-1.5">
-                      <div className="flex items-center justify-between gap-2 font-bold">
-                        <span className="inline-flex items-center gap-1.5">
-                          <AlertCircle className="w-4 h-4 text-[#D97706] shrink-0" />
-                          <span>Xả hàng dưới sàn · Chuyển SYSTEM_ADMIN</span>
-                        </span>
-                        <span
-                          title={`Thấp hơn ngưỡng an toàn ${money(minSafePrice)}. Lỗ tối đa ước tính ${money(singleMaxLoss)}/sp nếu dính đủ Voucher 10% + Deal 25%.`}
-                          className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FEF3C7] border border-[#D97706] text-[10px] font-bold text-[#92400E] cursor-help shrink-0"
-                        >
-                          !
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#FDE68A]">
-                        <span className="font-semibold text-[#92400E]">Lỗ tối đa ước tính:</span>
-                        <span className="font-mono font-extrabold text-[#DC2626]">
-                          {money(singleMaxLoss)} / sản phẩm
-                        </span>
-                      </div>
-                    </div>
-                  ) : singleAboveOrEqualList ? (
-                    <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#DC2626] flex items-center gap-2 font-bold">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                      <span>Giá đề xuất phải thấp hơn {money(listPrice)}</span>
-                    </div>
-                  ) : (
-                    <div className="p-2.5 rounded-xl bg-[#FBF5EB] border border-[#C59B58]/50 text-xs text-[#6B4B1B] flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 font-bold text-[#8C6226]">
-                        <CheckCircle2 className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                        <span>An toàn · Gửi SYSTEM_MANAGER duyệt</span>
-                      </div>
-                      <span className="font-mono font-bold text-[#8C6226] whitespace-nowrap">
-                        +{money(computedProposedPrice - (minSafePrice || 0))}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* BATCH MODE LEFT PANE */
-              <div className="flex-1 flex flex-col min-h-0 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-[#1A1612]">
-                    Danh sách sản phẩm ({totalBatchSelected}/{availableCatalog.length} đã chọn)
-                  </span>
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      type="button"
-                      onClick={handleSelectAllBatch}
-                      className="text-[#8C6226] font-semibold hover:underline cursor-pointer"
-                    >
-                      Chọn tất cả
-                    </button>
-                    <span className="text-[#EAE4D7]">|</span>
-                    <button
-                      type="button"
-                      onClick={handleClearAllBatch}
-                      className="text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
-                    >
-                      Bỏ chọn
-                    </button>
-                  </div>
-                </div>
-
-                {/* Search Bar */}
-                <div className="relative mb-2.5">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#7D715E]" />
-                  <input
-                    type="text"
-                    value={batchSearchQuery}
-                    onChange={(e) => setBatchSearchQuery(e.target.value)}
-                    placeholder="Tìm theo tên sản phẩm hoặc SKU..."
-                    className="w-full pl-8.5 pr-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#7D715E]/60 focus:border-[#C59B58] focus:outline-none"
-                  />
-                </div>
-
-                {/* Scrollable Products List */}
-                <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
-                  {filteredBatchCatalog.map((p) => {
-                    const isChecked = batchSelectedIds.includes(p.id);
-                    const itemCal = batchItemsWithCalculations.find((it) => it.product.id === p.id);
-                    const pList = Number(p.listPrice ?? p.price ?? 0);
-                    const pFloor = p.floorPrice != null ? Number(p.floorPrice) : null;
-
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => handleToggleBatchProduct(p.id)}
-                        className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border transition cursor-pointer text-xs ${
-                          isChecked
-                            ? itemCal && !itemCal.isValid
-                              ? 'bg-[#FEF2F2] border-[#FECACA]'
-                              : 'bg-white border-[#C59B58] shadow-xs'
-                            : 'bg-white/60 border-[#EAE4D7] opacity-60 hover:opacity-100 hover:bg-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {}}
-                            className="rounded text-[#C59B58] pointer-events-none accent-[#C59B58]"
-                          />
-                          <img
-                            src={getSafeProductImageUrl(p.imageUrl, p.title, '')} onError={handleProductImageError}
-                            alt={p.title}
-                            className="w-9 h-9 rounded-lg object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <span className="font-semibold text-xs text-[#1A1612] block truncate" title={p.title}>
-                              {p.title}
-                            </span>
-                            <div className="text-[10px] text-[#7D715E] mt-0.5 flex items-center gap-2">
-                              <span>Gốc: <strong className="font-mono text-[#1A1612]">{money(pList)}</strong></span>
-                              <span>· MAP: <strong className="font-mono text-[#8C6226]">{money(pFloor)}</strong></span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {isChecked && itemCal && (
-                          <div className="text-right shrink-0">
-                            <span className={`font-mono font-bold text-xs block ${itemCal.isValid ? 'text-[#8C6226]' : 'text-[#DC2626]'}`}>
-                              {money(itemCal.proposedPrice)}
-                            </span>
-                            <span className="text-[10px] font-semibold mt-0.5 block">
-                              {itemCal.isValid ? (
-                                <span className="text-[#059669]">Hợp lệ</span>
-                              ) : (
-                                <span className="text-[#DC2626]">Vi phạm MAP (-{money(itemCal.shortfall)})</span>
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+  const range = (values: number[]) => {
+    if (!values.length) return 'Chưa cấu hình';
+    const low = Math.min(...values), high = Math.max(...values);
+    return low === high ? money(low) : `${money(low)} – ${money(high)}`;
+  };
+  const previewTargets = selectedVariant ? [selectedVariant] : variants.length ? variants : [activeProduct];
+  const previewPrices: number[] = previewTargets.filter(Boolean).map((item: any) => Number(item.listPrice ?? item.price ?? listPrice));
+  const previewFloors: number[] = previewTargets.filter(Boolean).map((item: any) => item.floorPrice ?? activeProduct?.floorPrice).filter((value: any) => value != null).map(Number);
+  const belowActualFloor = floorPrice != null && computedProposedPrice < floorPrice;
+  const belowFloorVariants = computedProposedPrice > 0 ? (selectedVariant ? [selectedVariant] : variants)
+    .filter((variant: any) => {
+      const floor = variant.floorPrice ?? activeProduct?.floorPrice;
+      return floor != null && Number.isFinite(Number(floor)) && computedProposedPrice < Number(floor);
+    })
+    .map((variant: any) => variant.name || variant.sku)
+    .filter(Boolean) : [];
+  const inputClass = 'w-full min-w-0 border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58]';
+  const productContent = (item: any) => <span className="flex min-w-0 items-center gap-2"><img src={getSafeProductImageUrl(item.imageUrl, item.title, '')} onError={handleProductImageError} alt="" className="size-8! shrink-0 rounded-md border border-[#EAE4D7] bg-white object-contain"/><span className="min-w-0 text-left"><strong className="line-clamp-2 text-xs font-semibold">{item.title}</strong><span className="block text-[11px] text-[#7D715E] tabular-nums">{money(item.listPrice ?? item.price)}{item.sku ? ` · SKU ${item.sku}` : ''}</span></span></span>;
+  return <div ref={schedulePopoverRoot} role="dialog" aria-modal="true" aria-labelledby="promo-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/40 p-3 backdrop-blur-xs">
+    <div className="promotion-light-dialog">
+      <header className="promotion-light-header">
+        <div className="flex items-center gap-2"><h2 id="promo-modal-title">Đề xuất giảm giá</h2><div className="relative"><button type="button" aria-label="Cơ chế duyệt" aria-expanded={showMakerCheckerInfo} onClick={() => setShowMakerCheckerInfo(value => !value)} className="grid size-7 place-items-center text-[#7D715E]"><HelpCircle size={16}/></button>
+          {showMakerCheckerInfo && <p className="absolute left-0 top-full z-50 mt-1 w-60 rounded-lg border border-[#EAE4D7] bg-white p-3 text-xs leading-relaxed shadow-lg">Đề xuất chờ Vận hành duyệt. Trường hợp dưới ngưỡng bảo toàn thu cần Admin duyệt ngoại lệ.</p>}
+        </div></div>
+        <div className="flex items-center gap-3">{!initialProduct && availableCatalog.length > 1 && <div className="promotion-mode-switch" role="group" aria-label="Phạm vi giảm giá">{(['single', 'batch'] as const).map(value => <button type="button" key={value} disabled={submitting} aria-pressed={mode === value} onClick={() => { setMode(value); setErrorMessage(null); }} className="border border-transparent px-3 text-xs font-semibold aria-pressed:border-[#EEDFC6] aria-pressed:bg-[#FBF5EB] aria-pressed:text-[#79592C]">{value === 'single' ? 'Một sản phẩm' : 'Nhiều sản phẩm'}</button>)}</div>}
+          <button type="button" aria-label="Đóng cửa sổ" disabled={submitting} onClick={onClose} className="grid size-8 place-items-center rounded-lg text-[#7D715E] hover:bg-[#FBF5EB]"><X size={18}/></button>
+        </div>
+      </header>
+      <form id="promotion-proposal-form" onSubmit={handleSubmit} className="promotion-light-body" data-mode={mode}>
+        <fieldset disabled={submitting} className="contents">
+          <section className="promotion-light-products space-y-3">
+            <h3 className="text-sm font-semibold">Sản phẩm</h3>
+            {mode === 'single' ? <>
+              <Select aria-label="Sản phẩm giảm giá" portal value={activeProduct?.id || ''} disabled={!!initialProduct || availableCatalog.length < 2}
+                triggerContent={activeProduct ? productContent(activeProduct) : undefined}
+                options={availableCatalog.map(item => ({ value: item.id, label: `${item.title} ${item.sku || ''}`, content: productContent(item) }))}
+                onChange={event => { setSelectedProductId(event.target.value); setSelectedVariantId(''); setIsManualPriceOverride(false); setErrorMessage(null); }} className="promotion-product-select w-full" />
+              {variants.length > 0 && <Select aria-label="Biến thể giảm giá" portal value={selectedVariantId} onChange={event => setSelectedVariantId(event.target.value)}
+                options={[{ value: '', label: `Tất cả biến thể (${variants.length} SKU)` }, ...variants.map((variant: any) => ({ value: variant.id, label: `${variant.name}${variant.sku ? ` · ${variant.sku}` : ''} · ${money(variant.listPrice ?? variant.price ?? listPrice)}` }))]} className="w-full" />}
+            </> : <>
+              <div className="flex items-center justify-between gap-2 text-xs"><span className="text-[#7D715E]">Đã chọn {totalBatchSelected}/{availableCatalog.length}</span><div className="flex gap-3"><button type="button" onClick={handleSelectAllBatch} className="text-[#90682F]">Chọn tất cả</button><button type="button" onClick={handleClearAllBatch} className="text-[#7D715E]">Bỏ chọn</button></div></div>
+              <label className="relative block"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]"/><input aria-label="Tìm sản phẩm giảm giá" value={batchSearchQuery} onChange={event => setBatchSearchQuery(event.target.value)} placeholder="Tìm tên, SKU…" className={`${inputClass} pl-9`}/></label>
+              <div className="max-h-80 overflow-y-auto divide-y divide-[#EAE4D7]">{filteredBatchCatalog.map(item => {
+                const calculated = batchItemsWithCalculations.find(value => value.product.id === item.id);
+                return <label key={item.id} className="flex min-h-16 cursor-pointer items-center gap-2 py-2"><input type="checkbox" checked={batchSelectedIds.includes(item.id)} onChange={() => handleToggleBatchProduct(item.id)} aria-label={`Chọn ${item.title}`}/><span className="min-w-0 flex-1">{productContent(item)}</span>{calculated && <span className={`shrink-0 text-right text-[11px] tabular-nums ${calculated.isValid ? 'text-[#90682F]' : 'text-[#DC2626]'}`}>{money(calculated.proposedPrice)}{!calculated.isValid && <small className="mt-1 block">Cần điều chỉnh</small>}</span>}</label>;
+              })}{!filteredBatchCatalog.length && <p className="py-6 text-center text-xs text-[#7D715E]">Không có sản phẩm phù hợp.</p>}</div>
+            </>}
           </section>
-
-          {/* RIGHT COLUMN: Configuration & Dual Discount Controls (7 Cols) */}
-          <section className="promotion-light-settings">
-            <div className="space-y-3">
-              {/* SECTION 1: DISCOUNT MECHANISM SWITCHER */}
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                  Phương thức tính giảm giá
-                </label>
-
-                {/* Tabs: % vs ₫ */}
-                <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDiscountType('PERCENTAGE');
-                      setIsManualPriceOverride(false);
-                    }}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center cursor-pointer ${
-                      discountType === 'PERCENTAGE'
-                        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
-                        : 'text-[#7D715E] hover:text-[#1A1612]'
-                    }`}
-                  >
-                    <span>Theo phần trăm</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDiscountType('FIXED_AMOUNT');
-                      setIsManualPriceOverride(false);
-                    }}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center cursor-pointer ${
-                      discountType === 'FIXED_AMOUNT'
-                        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#715126]'
-                        : 'text-[#7D715E] hover:text-[#1A1612]'
-                    }`}
-                  >
-                    <span>Theo số tiền</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* SECTION 2: INPUT CONTROLS ACCORDING TO TYPE */}
-              {discountType === 'PERCENTAGE' ? (
-                <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#1A1612]">Mức giảm (%)</span>
-
-                  </div>
-
-                  {/* Quick Preset Pills */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-[#7D715E] font-medium whitespace-nowrap">Gợi ý nhanh:</span>
-                    <div className="flex items-center gap-1.5">
-                      {[10, 15, 20, 25].map((pct) => (
-                        <button
-                          key={pct}
-                          type="button"
-                          onClick={() => handlePresetPercent(pct)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                            discountPercent === pct && !isManualPriceOverride
-                              ? 'border-[#D7BD94] bg-[#FBF5EB] text-[#715126]'
-                              : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#F3EFE6]'
-                          }`}
-                        >
-                          -{pct}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Custom Percent Input */}
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="number"
-                        min="1"
-                        max="90"
-                        step="1"
-                        value={discountPercent}
-                        onChange={(e) => {
-                          setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value));
-                          setIsManualPriceOverride(false);
-                        }}
-                        onBlur={() =>
-                          setDiscountPercent((prev) =>
-                            prev === '' ? 15 : Math.max(1, Math.min(90, Number(prev)))
-                          )
-                        }
-                        className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-1.5 text-sm font-bold text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
-                      />
-                      <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">%</span>
-                    </div>
-
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#1A1612]">Mức giảm tiền cố định (₫)</span>
-                    <span className="text-[11px] text-[#7D715E]">Trừ trực tiếp vào giá niêm yết</span>
-                  </div>
-
-                  {/* Quick Preset Pills for Fixed Amount */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-[#7D715E] font-medium whitespace-nowrap">Mức giảm:</span>
-                    <div className="flex items-center gap-1.5">
-                      {[30000, 50000, 100000, 150000].map((amt) => (
-                        <button
-                          key={amt}
-                          type="button"
-                          onClick={() => {
-                            setFixedDiscountAmount(amt);
-                            setIsManualPriceOverride(false);
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                            fixedDiscountAmount === amt && !isManualPriceOverride
-                              ? 'border-[#D7BD94] bg-[#FBF5EB] text-[#715126]'
-                              : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#F3EFE6]'
-                          }`}
-                        >
-                          -{Number(amt / 1000)}K
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Fixed Amount Input */}
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1000"
-                      step="1000"
-                      value={fixedDiscountAmount}
-                      onChange={(e) => {
-                        setFixedDiscountAmount(e.target.value === '' ? '' : Number(e.target.value));
-                        setIsManualPriceOverride(false);
-                      }}
-                      onBlur={() =>
-                        setFixedDiscountAmount((prev) =>
-                          prev === '' ? 50000 : Math.max(1000, Number(prev))
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-1.5 text-sm font-bold font-mono text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
-                    />
-                    <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">VNĐ</span>
-                  </div>
-                </div>
-              )}
-
-              {/* SECTION 3: CAMPAIGN DURATION (SCHEDULE) */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-[#1A1612]">
-                    Thời gian áp dụng
-                  </label>
-                  <div className="flex items-center gap-1 text-[11px]">
-                    <span className="text-[#7D715E]">Gợi ý:</span>
-                    {[3, 7, 14, 30].map((days) => (
-                      <button
-                        key={days}
-                        type="button"
-                        onClick={() => handleApplyDuration(days)}
-                        className="px-1.5 py-0.5 rounded border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] cursor-pointer"
-                      >
-                        {days} ngày
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="text-[10px] text-[#7D715E] block mb-0.5">Bắt đầu từ</label>
-                    <input
-                      type="datetime-local" lang="vi-VN"
-                      value={startsAt}
-                      onChange={(e) => setStartsAt(e.target.value)}
-                      className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#7D715E] block mb-0.5">Kết thúc vào</label>
-                    <input
-                      type="datetime-local" lang="vi-VN"
-                      value={endsAt}
-                      min={startsAt}
-                      onChange={(e) => setEndsAt(e.target.value)}
-                      className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 4: COMMERCIAL BASIS & PURPOSE */}
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-0.5">
-                  Lý do đề xuất <span className="text-[#DC2626]">*</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Ví dụ: Chiến dịch Flash Sale cuối tuần, xả kho định kỳ hoặc kết hợp KOL Live đẩy mạnh doanh số..."
-                  className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1.5 text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none resize-none"
-                  required
-                />
-              </div>
-
-              {errorMessage && (
-                <div className="p-2.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#DC2626] font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{errorMessage}</span>
-                </div>
-              )}
+          <section className="promotion-light-settings space-y-3">
+            <h3 className="text-sm font-semibold">Mức giảm</h3>
+            <div className="promotion-discount-tabs grid grid-cols-2 gap-2" role="group" aria-label="Cách giảm giá">{(['PERCENTAGE','FIXED_AMOUNT'] as const).map(value => <button type="button" key={value} aria-pressed={discountType === value} onClick={() => { setDiscountType(value); setIsManualPriceOverride(false); }} className="h-10 border border-transparent bg-white text-xs font-semibold text-[#655A49] aria-pressed:border-[#EEDFC6] aria-pressed:bg-[#FBF5EB] aria-pressed:text-[#79592C]">{value === 'PERCENTAGE' ? 'Theo %' : 'Theo số tiền'}</button>)}</div>
+            <div className="grid items-center gap-2 sm:grid-cols-[minmax(100px,1fr)_minmax(0,2fr)]"><label htmlFor="promotion-discount" className="sr-only">Mức giảm {discountType === 'PERCENTAGE' ? '(%)' : '(₫)'}</label>
+              <input id="promotion-discount" type="number" min={discountType === 'PERCENTAGE' ? 1 : 1000} max={discountType === 'PERCENTAGE' ? 90 : undefined} step={discountType === 'PERCENTAGE' ? 1 : 1000} required
+                value={discountType === 'PERCENTAGE' ? discountPercent : fixedDiscountAmount} onChange={event => { const value = event.target.value === '' ? '' : Number(event.target.value); if (discountType === 'PERCENTAGE') setDiscountPercent(value); else setFixedDiscountAmount(value); setIsManualPriceOverride(false); }} className={`${inputClass} font-semibold tabular-nums`}/>
+              <div className="grid grid-cols-4 gap-2">{(discountType === 'PERCENTAGE' ? [10,15,20,25] : [30000,50000,100000,150000]).map(value => <button type="button" key={value} aria-pressed={Number(discountType === 'PERCENTAGE' ? discountPercent : fixedDiscountAmount) === value} onClick={() => { if (discountType === 'PERCENTAGE') handlePresetPercent(value); else { setFixedDiscountAmount(value); setIsManualPriceOverride(false); } }} className="h-8 border border-[#EAE4D7] text-xs tabular-nums aria-pressed:border-[#C59B58] aria-pressed:bg-[#FBF5EB]">{discountType === 'PERCENTAGE' ? `${value}%` : `${value/1000}K`}</button>)}</div>
             </div>
           </section>
-        </form>
-
-        {/* FIXED FOOTER */}
-        <footer className="promotion-light-footer">
-          <div className="text-xs text-[#7D715E]">
-            {mode === 'single' ? (
-              <span>
-                Áp dụng cho <strong className="text-[#1A1612] font-bold">1 sản phẩm</strong>
-              </span>
-            ) : (
-              <span>
-                Áp dụng cho <strong className="text-[#1A1612] font-bold">{totalBatchSelected}</strong> sản phẩm đã chọn
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
-            >
-              Hủy
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={
-                submitting ||
-                (mode === 'single' ? !singlePriceValid : totalBatchSelected === 0 || anyBatchViolating)
-              }
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-5 py-2 text-sm font-semibold text-[#715126] hover:bg-[#F3EFE6] disabled:opacity-40"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Đang gửi đề xuất...</span>
-                </>
-              ) : (
-                <span>
-                  {mode === 'single'
-                    ? 'Gửi đề xuất'
-                    : `Gửi đề xuất (${totalBatchSelected} SP)`}
-                </span>
-              )}
-            </button>
-          </div>
-        </footer>
-      </div>
+          {mode === 'single' && (
+              <section className="promotion-light-preview" aria-label="Xem trước giá"><h3 className="mb-2 text-sm font-semibold">Xem trước giá</h3>
+                <dl className="space-y-3 text-xs">
+                  <div className="promotion-proposed-price">
+                    <dt className="font-semibold">Giá sau giảm</dt>
+                    <dd className={`text-2xl font-bold tabular-nums ${belowActualFloor ? 'text-[#DC2626]' : 'text-[#231D15]'}`}>{computedProposedPrice > 0 ? money(computedProposedPrice) : '—'}</dd>
+                    {!selectedVariantId && variants.length > 1 && <dd className="text-[11px] text-[#7D715E]">Cùng một giá cho cả {variants.length} biến thể</dd>}
+                  </div>
+                  <div className="flex items-start justify-between gap-3"><dt className="text-[#7D715E]">Giá niêm yết</dt><dd className="text-right font-medium tabular-nums">{range(previewPrices)}</dd></div>
+                  <div className="flex items-start justify-between gap-3"><dt className="inline-flex items-center gap-1 text-[#7D715E]">Giá sàn <span title={`Ngưỡng bảo toàn thu: ${money(minSafePrice)}. Công thức: giá sàn / (90% × 75%), giả định voucher 10% và thù lao 25%; không phải giá sàn gốc.`} className="cursor-help"><HelpCircle size={13}/></span></dt><dd className="text-right font-medium tabular-nums">{range(previewFloors)}</dd></div>
+                  <div className="flex items-start justify-between gap-3"><dt className="text-[#7D715E]">Khách tiết kiệm</dt><dd className="text-right tabular-nums">{range(previewPrices.map(value => Math.max(0, value - computedProposedPrice)))}{previewPrices.every(value => value === listPrice) ? ` (${singleEffectivePercent}%)` : ''}</dd></div>
+                </dl>
+                {belowFloorVariants.length > 0 && <p className="mt-3 text-xs leading-relaxed text-[#715126]">Dưới giá sàn: {belowFloorVariants.join(', ')}.</p>}
+                {(floorPrice == null || !singlePriceValid || singleBelowFloor) && <p className={`mt-3 border-t border-[#EAE4D7] pt-3 text-xs ${!singlePriceValid || floorPrice == null ? 'text-[#DC2626]' : 'text-[#90682F]'}`}>
+                  {floorPrice == null ? 'Thiếu giá sàn; cần bổ sung trước khi gửi.' : singleAboveOrEqualList ? 'Giá sau giảm phải thấp hơn giá hiện tại của các biến thể.' : singleBelowFloor ? 'Cần Admin duyệt ngoại lệ.' : 'Nhập mức giảm hợp lệ.'}
+                  {singleBelowFloor && singleMaxLoss > 0 && <span className="mt-1 block text-[11px]" title="Ước tính theo kịch bản voucher 10% và thù lao 25%">Thiếu hụt tối đa dự kiến: {money(singleMaxLoss)}/sản phẩm.</span>}
+                </p>}
+              </section>
+          )}
+          <section className="promotion-light-schedule space-y-3">
+            <div className="space-y-2"><h4 className="text-xs font-medium">Thời gian áp dụng <span className="ml-1 text-[11px] font-normal text-[#7D715E]">· Giờ Việt Nam</span></h4><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <DateTimePicker label="Bắt đầu" popoverTitle="Chọn thời điểm bắt đầu" compact required
+                value={startsAt} onChange={setStartsAt} disabled={submitting}
+                getCurrentDate={vietnamPickerNow} popoverPortalRef={schedulePopoverRoot} />
+              <DateTimePicker label="Kết thúc" popoverTitle="Chọn thời điểm kết thúc" compact required
+                value={endsAt} onChange={setEndsAt} disabled={submitting} minDateTime={startsAt}
+                getCurrentDate={vietnamPickerNow} popoverPortalRef={schedulePopoverRoot} />
+            </div><div className="grid grid-cols-4 gap-2">{[3,7,14,30].map(days => <button type="button" key={days} onClick={() => handleApplyDuration(days)} className="h-8 border border-[#EAE4D7] text-[11px] hover:bg-[#FBF5EB]">{days} ngày</button>)}</div></div>
+            <div><label htmlFor="promotion-reason" className="mb-1 block text-xs font-medium">Lý do đề xuất <span className="text-[#DC2626]">*</span></label><textarea id="promotion-reason" value={reason} onChange={event => setReason(event.target.value)} required minLength={10} maxLength={1000} placeholder="Nhập lý do…" className={`${inputClass} h-[72px]! resize-none py-2`}/><p className="mt-1 text-right text-[10px] text-[#7D715E]">{reason.length}/1.000 · Tối thiểu 10 ký tự</p></div>
+            {errorMessage && <p role="alert" className="flex items-start gap-2 text-xs leading-relaxed text-[#DC2626]"><AlertCircle size={15} className="shrink-0"/>{errorMessage}</p>}
+          </section>
+        </fieldset>
+      </form>
+      <footer className="promotion-light-footer"><span className="text-xs text-[#7D715E]">{mode === 'single' ? `1 sản phẩm${selectedVariantId ? ' · 1 biến thể' : variants.length ? ` · ${variants.length} biến thể` : ''}` : `${totalBatchSelected} sản phẩm`}</span><div className="flex gap-2"><button type="button" disabled={submitting} onClick={onClose} className="border border-[#EAE4D7] bg-white px-4 text-xs">Hủy</button><button type="submit" form="promotion-proposal-form" disabled={submitting || (mode === 'single' ? !singlePriceValid || floorPrice == null : totalBatchSelected === 0 || anyBatchViolating)} className="inline-flex items-center gap-2 border border-[#B88E4F] bg-[#C59B58] px-4 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50">{submitting && <Loader2 size={15} className="animate-spin"/>}{submitting ? 'Đang gửi…' : 'Gửi đề xuất'}</button></div></footer>
     </div>
-  );
+  </div>;
 }

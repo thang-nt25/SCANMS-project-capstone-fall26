@@ -188,8 +188,8 @@ export class FinanceReportController {
   @Get('admin/payouts/escrow')
   @Header('Cache-Control', 'private, no-store')
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  escrow(@Query('page') page?: string) {
-    return this.reports.escrow(page === undefined ? 1 : Number(page));
+  escrow(@Query('page') page?: string, @Query('reviewOnly') reviewOnly?: string) {
+    return this.reports.escrow(page === undefined ? 1 : Number(page), reviewOnly === 'true');
   }
   @Get('admin/payouts/escrow/:id/movements')
   @Header('Cache-Control', 'private, no-store')

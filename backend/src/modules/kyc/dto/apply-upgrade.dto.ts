@@ -6,6 +6,8 @@ import {
   IsEnum,
   IsIn,
   IsArray,
+  ArrayMaxSize,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -321,6 +323,14 @@ export class ReviewUpgradeApplicationDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
+  requestedItems?: string[];
 }
 
 export class ReviewShopApplicationDto {

@@ -9,17 +9,20 @@ interface Props {
   min?: string;
   variant?: 'button' | 'field';
   disabled?: boolean;
+  compact?: boolean;
   onChange: (value: string) => void;
   label?: string;
 }
 
-export function VietnamMonthPicker({ value, max, min = '1900-01', variant = 'button', disabled, onChange, label = 'Kỳ thưởng' }: Props) {
+export function VietnamMonthPicker({ value, max, min = '1900-01', variant = 'button', disabled, compact, onChange, label = 'Kỳ thưởng' }: Props) {
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(Number(value.slice(0, 4)));
   const [draft, setDraft] = useState(`${value.slice(5, 7)}/${value.slice(0, 4)}`);
   const field = useRef<HTMLInputElement>(null);
   useEffect(() => { setDraft(`${value.slice(5, 7)}/${value.slice(0, 4)}`); }, [value]);
   const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7);
+  const firstYear = Number(min.slice(0, 4));
+  const lastYear = Number(max.slice(0, 4));
   const choose = (next: string) => { if (next < min || next > max) return; field.current?.setCustomValidity(''); setDraft(`${next.slice(5,7)}/${next.slice(0,4)}`); onChange(next); setOpen(false); };
   const control = 'flex size-11 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F] disabled:opacity-35';
 
@@ -38,16 +41,16 @@ export function VietnamMonthPicker({ value, max, min = '1900-01', variant = 'but
       <button type="button" aria-label="Chọn kỳ áp dụng" aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => { setYear(Number(value.slice(0,4))); setOpen(true); }} className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[#B88E4F] transition hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F]"><CalendarDays size={19}/></button>
     </div> : <button type="button" aria-label={`Chọn ${label.toLowerCase()}`} aria-haspopup="dialog" aria-expanded={open} disabled={disabled}
       onClick={() => { setYear(Number(value.slice(0, 4))); setOpen(true); }}
-      className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-[#EEDFC6] bg-white px-4 py-2 text-left transition hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F] disabled:opacity-50 sm:w-auto sm:min-w-52">
-      <CalendarDays size={20} className="shrink-0 text-[#B88E4F]" />
-      <span className="flex-1"><span className="block text-xs text-[#7D715E]">{label}</span><span className="block text-sm font-semibold text-[#1A1612]">Tháng {Number(value.slice(5, 7))}/{value.slice(0, 4)}</span></span>
+      className={`flex items-center rounded-xl border border-[#EEDFC6] bg-white text-left transition hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F] disabled:opacity-50 ${compact ? 'min-h-10 gap-2 px-3' : 'min-h-12 w-full gap-3 px-4 py-2 sm:w-auto sm:min-w-52'}`}>
+      <CalendarDays size={compact ? 16 : 20} className="shrink-0 text-[#B88E4F]" />
+      <span className="flex-1">{!compact && <span className="block text-xs text-[#7D715E]">{label}</span>}<span className="block text-sm font-semibold text-[#1A1612]">Tháng {Number(value.slice(5, 7))}/{value.slice(0, 4)}</span></span>
       <ChevronDown size={16} className="text-[#7D715E]" />
     </button>}
     {createPortal(<Modal isOpen={open} onClose={() => setOpen(false)} title={variant === 'field' ? 'Chọn kỳ áp dụng' : `Chọn ${label.toLowerCase()}`} maxWidth="sm">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" aria-label="Năm trước" disabled={year <= Number(min.slice(0,4))} className={control} onClick={() => setYear(year - 1)}><ChevronLeft size={18} /></button>
-        <label className="flex items-center gap-2 text-sm text-[#7D715E]">Năm<input aria-label="Năm thưởng" type="number" min={1900} max={Number(max.slice(0,4))} key={year} defaultValue={year} onBlur={event => { const value = Number(event.target.value); if (value >= 1900 && value <= Number(max.slice(0,4))) setYear(value); else event.target.value = String(year); }} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }} className="h-11 w-24 rounded-xl border border-[#EAE4D7] bg-white text-center text-base font-semibold tabular-nums text-[#1A1612]"/></label>
-        <button type="button" aria-label="Năm sau" disabled={year >= Number(max.slice(0, 4))} className={control} onClick={() => setYear(year + 1)}><ChevronRight size={18} /></button>
+        <button type="button" aria-label="Năm trước" disabled={year <= firstYear} className={control} onClick={() => setYear(year - 1)}><ChevronLeft size={18} /></button>
+        <label className="flex items-center gap-2 text-sm text-[#7D715E]">Năm<input aria-label={compact ? 'Năm báo cáo' : 'Năm thưởng'} type="number" min={firstYear} max={lastYear} key={year} defaultValue={year} onBlur={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= firstYear && value <= lastYear) setYear(value); else event.target.value = String(year); }} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }} className="h-11 w-24 rounded-xl border border-[#EAE4D7] bg-white text-center text-base font-semibold tabular-nums text-[#1A1612]"/></label>
+        <button type="button" aria-label="Năm sau" disabled={year >= lastYear} className={control} onClick={() => setYear(year + 1)}><ChevronRight size={18} /></button>
       </div>
       <div className="grid grid-cols-3 gap-2" role="group" aria-label={`Các tháng năm ${year}`}>
         {Array.from({ length: 12 }, (_, index) => {

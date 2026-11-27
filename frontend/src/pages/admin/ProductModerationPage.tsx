@@ -193,14 +193,22 @@ export default function ProductModerationPage() {
         )}
       </div>
 
-      <Modal isOpen={Boolean(selected)} onClose={() => setSelected(null)} title="Hồ sơ kiểm duyệt sản phẩm" subtitle={selected?.store?.name || 'Thông tin do Shop cung cấp'} icon={<ClipboardCheck className="h-5 w-5" />} maxWidth="3xl" stickyHeader className="moderation-review-modal max-w-[1020px]"
+      <Modal
+        isOpen={Boolean(selected)}
+        onClose={() => setSelected(null)}
+        title="Hồ sơ kiểm duyệt sản phẩm"
+        subtitle={selected?.store?.name || 'Thông tin do Shop cung cấp'}
+        icon={<ClipboardCheck className="size-4" />}
+        maxWidth="3xl"
+        stickyHeader
+        className="moderation-review-modal max-w-[1020px] [&>.modal-header]:py-2.5 [&>.modal-header_h3]:text-base"
+        bodyClassName="pt-3 [scrollbar-gutter:stable] sm:pt-3.5"
         footer={selected && <div className="moderation-review-footer flex flex-wrap items-center justify-between gap-3.5 py-1 [&>p]:max-w-[340px] [&>p]:text-[11px] [&>p]:leading-7 [&>p]:text-[#7D715E] [&>div]:flex [&>div]:flex-wrap [&>div]:gap-2 [&>div]:max-sm:w-full [&_button]:min-h-10 [&_button]:max-sm:flex-[1_1_150px]"><p>{isOwnProductSubmission(selected, actorId) ? 'Hồ sơ do bạn tạo/gửi. Cần người kiểm duyệt khác.' : isPending ? 'Sản phẩm chỉ lên sàn sau khi được duyệt.' : selected.moderationStatus === 'REJECTED' ? 'Hồ sơ đã bị từ chối.' : 'Hồ sơ đã được phê duyệt.'}</p>{isPending && <div><Button variant="outline" className="moderation-review-reject" disabled={savingId === selected.id || isOwnProductSubmission(selected, actorId)} icon={<XCircle size={14} />} onClick={() => { setRejectionTarget(selected); setRejectionReason(''); }}>Từ chối có lý do</Button><Button variant="gold" icon={<BadgeCheck size={14} />} loading={savingId === selected.id} disabled={isOwnProductSubmission(selected, actorId)} onClick={() => void moderate(selected, 'APPROVED')}>Phê duyệt sản phẩm</Button></div>}</div>}>
-        {selected && <div className="moderation-review-content flex flex-col gap-5">
+        {selected && <div className="moderation-review-content flex flex-col gap-4">
           <div className="moderation-review-overview grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
             <div className="moderation-review-gallery min-w-0">
               <div className="moderation-review-photo grid aspect-square place-items-center overflow-hidden rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] max-sm:max-h-[280px] [&>a]:size-full [&_img]:size-full [&_img]:object-contain">{gallery[galleryIndex] ? <a href={gallery[galleryIndex]} target="_blank" rel="noreferrer" aria-label="Mở ảnh sản phẩm lớn"><img src={gallery[galleryIndex]} alt={selected.title} /></a> : <ImageIcon size={40} />}</div>
               {gallery.length > 1 && <div className="moderation-review-thumbnails mt-2.5 flex gap-2 overflow-x-auto pb-1 [&>button]:size-13 [&>button]:shrink-0 [&>button]:cursor-pointer [&>button]:overflow-hidden [&>button]:rounded-lg [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button[aria-pressed=true]]:border-2 [&>button[aria-pressed=true]]:border-[#C59B58] [&_img]:size-full [&_img]:object-contain">{gallery.map((url,index) => <button type="button" key={url} aria-label={`Xem ảnh ${index + 1}`} aria-pressed={galleryIndex === index} onClick={() => setGalleryIndex(index)}><img src={url} alt={`Ảnh sản phẩm ${index + 1}`} /></button>)}</div>}
-              <p className="moderation-review-image-hint mt-2.5 flex items-center gap-1.5 text-[10px] text-[#7D715E]"><ImageIcon size={13} />{gallery.length} ảnh sản phẩm · Bấm ảnh để phóng to</p>
             </div>
             <div className="moderation-review-workspace min-w-0">
             <div className="moderation-review-summary [&>h2]:mt-3 [&>h2]:mb-5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:leading-relaxed [&>h2]:wrap-anywhere">
@@ -221,17 +229,47 @@ export default function ProductModerationPage() {
             </div>
             </div>
           </div>
-          <div className="moderation-review-tabs flex flex-wrap gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#F3EFE6] p-1.5" role="group" aria-label="Các nhóm thông tin hồ sơ">{([
-            { value:'INFO', label:'Thông tin' }, { value:'EVIDENCE', label:'Minh chứng' }, { value:'DESCRIPTION', label:'Mô tả' }, { value:'VARIANTS', label:'Phân loại' },
-          ] as const).map(tab => <button key={tab.value} type="button" className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[#7D715E] transition aria-pressed:bg-white aria-pressed:text-[#8C6226] aria-pressed:shadow-sm focus-visible:outline-2 focus-visible:outline-[#C59B58] max-sm:flex-1 max-sm:px-2 max-sm:text-[11px] [&>span]:rounded [&>span]:bg-[#FBF5EB] [&>span]:px-1 [&>span]:text-[10px]" aria-pressed={reviewTab === tab.value} aria-controls="moderation-review-tab-content" onClick={() => setReviewTab(tab.value)}>{tab.label}{tab.value === 'VARIANTS' && <span>{selected.variants?.length || 0}</span>}</button>)}</div>
-          <div id="moderation-review-tab-content" className="moderation-review-tab-content min-h-[150px]" role="region" aria-label={reviewTab === 'INFO' ? 'Thông tin sản phẩm và gian hàng' : reviewTab === 'EVIDENCE' ? 'Tài liệu minh chứng' : reviewTab === 'DESCRIPTION' ? 'Mô tả sản phẩm' : 'Phân loại sản phẩm'}>
-            {reviewTab === 'INFO' && <div className="moderation-review-info-grid grid grid-cols-1 gap-5 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+          <div
+            className="moderation-review-tabs grid grid-cols-4 gap-2 rounded-xl border border-[#EAE4D7] bg-white p-1.5 [&>button+button]:before:absolute [&>button+button]:before:inset-y-2.5 [&>button+button]:before:-left-[5px] [&>button+button]:before:w-px [&>button+button]:before:bg-[#EAE4D7] [&>button+button]:before:content-['']"
+            role="group"
+            aria-label="Các nhóm thông tin hồ sơ"
+          >
+            {([
+              { value: 'INFO', label: 'Thông tin' },
+              { value: 'EVIDENCE', label: 'Minh chứng' },
+              { value: 'DESCRIPTION', label: 'Mô tả' },
+              { value: 'VARIANTS', label: 'Phân loại' },
+            ] as const).map(tab => (
+              <button
+                key={tab.value}
+                type="button"
+                className="relative flex min-h-10 min-w-0 cursor-pointer flex-wrap items-center justify-center gap-x-1.5 rounded-lg border border-transparent px-1.5 py-1.5 text-center text-[11px] font-semibold leading-tight text-[#655A49] transition-colors hover:bg-[#FAF8F5] aria-pressed:border-[#EEDFC6] aria-pressed:bg-[#FBF5EB] aria-pressed:text-[#795A2D] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-[#C59B58] sm:px-3 sm:text-xs"
+                aria-pressed={reviewTab === tab.value}
+                aria-controls="moderation-review-tab-content"
+                onClick={() => setReviewTab(tab.value)}
+              >
+                {tab.label}
+                {tab.value === 'VARIANTS' && <span className="rounded bg-[#F3EFE6] px-1 text-[10px] tabular-nums">{selected.variants?.length || 0}</span>}
+              </button>
+            ))}
+          </div>
+          <div id="moderation-review-tab-content" className="moderation-review-tab-content relative min-h-[150px] w-full min-w-0" role="region" aria-label={reviewTab === 'INFO' ? 'Thông tin sản phẩm và gian hàng' : reviewTab === 'EVIDENCE' ? 'Tài liệu minh chứng' : reviewTab === 'DESCRIPTION' ? 'Mô tả sản phẩm' : 'Phân loại sản phẩm'}>
+            {/* Keep the information panel in flow so its height stays the reference for every tab. */}
+            <div
+              className={`moderation-review-info-grid grid grid-cols-1 gap-5 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] ${reviewTab !== 'INFO' ? 'invisible' : ''}`}
+              inert={reviewTab !== 'INFO'}
+              aria-hidden={reviewTab !== 'INFO'}
+            >
               <section className="moderation-review-declarations [&>h3]:mb-3.5 [&>h3]:text-[13px] [&>h3]:font-bold [&>div]:grid [&>div]:gap-3.5"><h3>Thông tin công bố</h3><div><ReviewField title="Xuất xứ" value={selected.origin} /><ReviewField title="Thành phần" value={selected.ingredients} /><ReviewField title="Nhãn mác" value={selected.labelInfo} /></div></section>
               <div className="moderation-review-shop-card self-start rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 [&>span]:mb-3 [&>span]:flex [&>span]:items-center [&>span]:gap-1.5 [&>span]:text-[11px] [&>span]:text-[#7D715E] [&>strong]:text-[13px] [&>strong]:leading-7 [&_dl]:mt-4 [&_dl]:grid [&_dl]:gap-3 [&_dt]:mb-1 [&_dt]:text-[10px] [&_dt]:text-[#7D715E] [&_dd]:text-xs [&_dd]:wrap-anywhere [&>p]:mt-4 [&>p]:border-t [&>p]:border-[#EAE4D7] [&>p]:pt-3 [&>p]:text-[10px] [&>p]:text-[#7D715E]"><span><Store size={16} />Gian hàng cung cấp</span><strong>{selected.store?.name || 'Chưa cung cấp'}</strong><dl><div><dt>Chủ gian hàng</dt><dd>{selected.store?.owner?.fullName || 'Chưa cung cấp'}</dd></div>{selected.store?.owner?.email && <div><dt>Email liên hệ</dt><dd>{selected.store.owner.email}</dd></div>}</dl><p>{selected.createdAt ? 'Gửi ngày ' + new Date(selected.createdAt).toLocaleString('vi-VN', { timeZone:'Asia/Ho_Chi_Minh' }) : 'Chưa có ngày gửi hồ sơ'}</p></div>
-            </div>}
+            </div>
+            {reviewTab !== 'INFO' && (
+              <div key={reviewTab} tabIndex={0} className="absolute inset-0 min-w-0 overflow-y-auto overscroll-y-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#C59B58]">
             {reviewTab === 'EVIDENCE' && <div className="moderation-review-evidence grid grid-cols-1 gap-4 sm:grid-cols-2"><ProofReviewField title="Nguồn gốc / xuất xứ" links={selected.originProofLinks} images={selected.originProofImages} /><ProofReviewField title="Nhãn mác / thông tin công bố" links={selected.labelProofLinks} images={selected.labelProofImages} /></div>}
             {reviewTab === 'DESCRIPTION' && <ReviewField title="Nội dung mô tả sản phẩm" value={selected.description} />}
             {reviewTab === 'VARIANTS' && (selected.variants?.length ? <div className="moderation-review-variants grid gap-2.5 [&>div]:flex [&>div]:items-center [&>div]:gap-3 [&>div]:rounded-xl [&>div]:border [&>div]:border-[#EAE4D7] [&>div]:p-3 [&>div>div]:min-w-0 [&>div>div]:flex-1 [&_strong]:text-xs [&_p]:mt-1 [&_p]:text-[10px] [&_p]:text-[#7D715E] [&>div>span:last-child]:text-xs [&>div>span:last-child]:font-semibold">{selected.variants.map(variant => <div key={variant.id}><span className="moderation-review-variant-image grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] text-[#B88E4F] [&>img]:size-full [&>img]:object-contain">{variant.imageUrl ? <img src={variant.imageUrl} alt={variant.name} /> : <ImageIcon size={20} />}</span><div><strong>{variant.name}</strong><p>SKU: {variant.sku} · Tồn: {Number(variant.stockQuantity || 0).toLocaleString('vi-VN')}</p></div><span>{money(Number(variant.price ?? selected.price))}</span></div>)}</div> : <div className="moderation-review-no-variants grid justify-items-center gap-3 rounded-2xl border border-dashed border-[#EEDFC6] bg-[#FBF5EB] p-6 text-center text-xs [&>p]:leading-7 [&>p]:text-[#7D715E]"><Package size={24} /><strong>Không có phân loại riêng</strong><p>Sản phẩm sử dụng SKU, giá bán và tồn kho trong phần tóm tắt.</p></div>)}
+              </div>
+            )}
           </div>
           {selected.moderationStatus === 'REJECTED' && selected.moderationReason && <p className="moderation-rejection-note rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 text-xs leading-7 text-[#1A1612]">Lý do từ chối: {selected.moderationReason}</p>}
         </div>}

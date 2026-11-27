@@ -23,6 +23,7 @@ export interface ImageUploadDropzoneProps {
   required?: boolean;
   className?: string;
   variant?: 'compact' | 'document' | 'channel';
+  conciseDocument?: boolean;
 }
 
 export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
@@ -35,6 +36,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   required = false,
   className = '',
   variant = 'compact',
+  conciseDocument = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -114,7 +116,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
             {required && <span className="text-[#C59B58]"> *</span>}
           </span>
           {value && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#059669] bg-[#F0FDF4] px-2 py-0.5 rounded-full border border-[#DCFCE7]">
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${conciseDocument ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#795A2D]' : 'border-[#DCFCE7] bg-[#F0FDF4] text-[#059669]'}`}>
               <CheckCircle2 size={11} /> Đã đính kèm
             </span>
           )}
@@ -131,13 +133,16 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
 
         <div
           onClick={() => !value && fileInputRef.current?.click()}
-          className={`flex items-center gap-3.5 min-h-[72px] p-3 rounded-xl transition-all duration-200 ${
+          className={`flex items-center p-3 rounded-xl transition-all duration-200 ${conciseDocument ? 'min-h-[88px] flex-wrap gap-x-3 gap-y-2 border border-[#EAE4D7] bg-white' : 'min-h-[72px] gap-3.5'} ${
+            conciseDocument ? '' :
             value
               ? 'bg-white border border-[#EAE4D7] shadow-2xs'
               : 'border-2 border-dashed border-[#EEDFC6] bg-[#FAF8F5]/80 hover:bg-[#FBF5EB]/50 hover:border-[#C59B58] cursor-pointer'
           }`}
         >
-          {value ? (
+          {value && conciseDocument ? (
+            <img src={value} alt={label} className="h-[52px] w-20 shrink-0 rounded-md! border border-[#EAE4D7] bg-[#FAF8F5] p-0.5 object-contain" />
+          ) : value ? (
             <button
               type="button"
               className="shrink-0 w-14 h-12 p-0.5 overflow-hidden rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] cursor-pointer hover:opacity-90 transition group relative"
@@ -160,18 +165,22 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           )}
 
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-[#1A1612] truncate">
+            {conciseDocument && value && !uploading ? (
+              <button type="button" onClick={() => window.open(value, '_blank', 'noopener,noreferrer')} className="whitespace-nowrap text-xs font-semibold text-[#795A2D] hover:underline">
+                Xem ảnh
+              </button>
+            ) : <p className="text-xs font-semibold text-[#1A1612] truncate">
               {uploading
                 ? 'Đang tải ảnh lên…'
                 : value
                   ? 'Đã tải ảnh lên'
                   : 'Tải ảnh lên'}
-            </p>
-            <p className="text-[11px] text-[#7D715E] mt-0.5">
+            </p>}
+            {(!conciseDocument || !value) && <p className="text-[11px] text-[#7D715E] mt-0.5">
               {value
                 ? 'Bấm vào ảnh để xem kích thước đầy đủ'
                 : 'PNG, JPG, WEBP · Tối đa 5 MB'}
-            </p>
+            </p>}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>

@@ -18,6 +18,8 @@ export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  searchText?: string;
+  content?: ReactNode;
 }
 
 export interface SelectProps {
@@ -29,11 +31,16 @@ export interface SelectProps {
   options?: SelectOption[];
   placeholder?: string;
   selectedLabel?: string;
+  triggerContent?: ReactNode;
+  searchPlaceholder?: string;
   disabled?: boolean;
   required?: boolean;
   className?: string;
+  menuClassName?: string;
   style?: CSSProperties;
   'aria-label'?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   children?: ReactNode;
   searchable?: boolean;
   placement?: 'bottom' | 'top' | 'auto';
@@ -91,11 +98,16 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       options: optionsProp,
       placeholder,
       selectedLabel,
+      triggerContent,
+      searchPlaceholder = 'Tìm nhanh...',
       disabled = false,
       required = false,
       className,
+      menuClassName,
       style,
       'aria-label': ariaLabel,
+      'aria-invalid': ariaInvalid,
+      'aria-describedby': ariaDescribedBy,
       searchable,
       placement = 'auto',
       align = 'left',
@@ -197,7 +209,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     const filteredOptions = useMemo(() => {
       if (!searchQuery.trim()) return options;
       const q = searchQuery.toLowerCase().trim();
-      return options.filter((opt) => opt.label.toLowerCase().includes(q));
+      return options.filter((opt) => [opt.label, opt.searchText].some(text => text?.toLowerCase().includes(q)));
     }, [options, searchQuery]);
 
     const focusOption = useCallback((edge: 'first' | 'last') => {
@@ -318,6 +330,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
           aria-expanded={isOpen}
           aria-controls={isOpen ? listId : undefined}
           aria-label={ariaLabel}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
           onKeyDown={event => {
@@ -338,9 +352,9 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
             className
           )}
         >
-          <span className="truncate block font-medium">
+          {triggerContent ?? <span className="truncate block font-medium">
             {displayLabel}
-          </span>
+          </span>}
           <ChevronDown
             className={cn(
               'w-4 h-4 text-[#7D715E] shrink-0 transition-transform duration-200',
@@ -360,7 +374,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
             tabIndex={-1}
             className={cn(
               'bg-white border border-[#EEDFC6] rounded-2xl shadow-xl py-1.5 max-h-60 flex flex-col overflow-hidden',
-              portal ? 'fixed z-[120]' : cn('absolute z-50 min-w-0 w-full animate-in fade-in zoom-in-95 duration-150', align === 'right' ? 'right-0' : 'left-0', openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5')
+              portal ? 'fixed z-[120]' : cn('absolute z-50 min-w-0 w-full animate-in fade-in zoom-in-95 duration-150', align === 'right' ? 'right-0' : 'left-0', openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'),
+              menuClassName
             )}
             style={portal ? menuStyle : { colorScheme: 'light' }}
           >
@@ -373,12 +388,13 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm nhanh..."
+                    placeholder={searchPlaceholder}
                     className="w-full min-h-11 pl-8 pr-9 py-1.5 text-base sm:text-sm bg-white border border-[#EAE4D7] rounded-xl text-[#1A1612] placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => {
                       menuKeyDown(e);
                       e.stopPropagation();
+                      if (e.key === 'Enter') e.preventDefault();
                       if (e.key === 'Escape') { e.preventDefault(); setIsOpen(false); }
                     }}
                   />
@@ -413,13 +429,14 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                       onClick={() => handleSelect(opt)}
                       className={cn(
                         'w-full min-h-11 text-left px-3.5 py-2.5 text-sm transition flex items-center justify-between cursor-pointer select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#B88E4F]',
+                        opt.content && 'gap-2 border-b border-[#EAE4D7] px-3 py-2 last:border-b-0',
                         isSelected
                           ? 'bg-[#FBF5EB] text-[#B88E4F] font-bold hover:bg-[#F3EFE6]'
                           : 'text-[#1A1612] hover:bg-[#F3EFE6] hover:text-[#B88E4F] font-normal',
                         opt.disabled && 'opacity-40 cursor-not-allowed bg-transparent text-[#7D715E]'
                       )}
                     >
-                      <span className="truncate pr-2">{opt.label}</span>
+                      {opt.content ?? <span className="truncate pr-2">{opt.label}</span>}
                       {isSelected && (
                         <Check className="w-4 h-4 text-[#C59B58] shrink-0 ml-auto" />
                       )}

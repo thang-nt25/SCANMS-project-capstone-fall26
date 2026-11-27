@@ -199,6 +199,7 @@ export const DealSchema = z.object({
   proposedCommissionRate: MoneySchema,
   approvedCommissionRate: MoneySchema.nullish(),
   targetRevenue: MoneySchema.nullish(),
+  targetOrders: z.number().int().nonnegative().nullish(),
   commitmentDays: z.number().optional(),
   scopeType: z.string().optional(),
   scopeProducts: z.array(z.object({ productId: z.string() })).optional(),
@@ -216,6 +217,9 @@ export const DealSchema = z.object({
   vipVoucherCode: z.string().nullish(),
 });
 export type Deal = z.infer<typeof DealSchema>;
+// The Admin endpoint returns a queue object (items + server statistics),
+// whereas Shop/KOL endpoints return a proposal array.
+export const ExceptionQueueSchema = z.object({ items: z.array(DealSchema) });
 export const MessageSchema = z.object({
   id: z.string(),
   conversationId: z.string(),
@@ -290,6 +294,7 @@ export const statusLabels: Record<string, string> = {
   RECEIVED: "Đã nhận hàng mẫu",
   VIDEO_SUBMITTED: "Chờ nghiệm thu video",
   REVISION_REQUIRED: "Cần sửa video",
+  APPEALED: "Đang chờ trọng tài",
   OVERDUE: "Quá hạn",
   DELIVERY_ISSUE: "Sự cố giao nhận",
   EXPIRED: "Hết hạn",

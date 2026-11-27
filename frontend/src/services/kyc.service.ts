@@ -153,6 +153,15 @@ export interface UpgradeStatusResponse {
   } | null;
 }
 
+export interface KycReviewEvent {
+  id: string;
+  applicantName: string;
+  status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED';
+  note: string | null;
+  reviewedAt: string;
+  reviewerName: string | null;
+}
+
 export const kycService = {
   async getMyKyc(options: { forceRefresh?: boolean } = {}): Promise<KycProfile> {
     const res: any = await api.get('/kyc/profile', options.forceRefresh
@@ -203,6 +212,11 @@ export const kycService = {
     return res.data;
   },
 
+  async getKolReviewHistory(): Promise<KycReviewEvent[]> {
+    const res = await api.get('/kyc/admin/review-history');
+    return res.data;
+  },
+
   async reviewKyc(profileId: string, status: 'VERIFIED' | 'REJECTED', note?: string) {
     const res: any = await api.patch(`/kyc/admin/${profileId}/review`, { status, note });
     return res.data;
@@ -212,8 +226,9 @@ export const kycService = {
     profileId: string,
     status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED',
     note?: string,
+    requestedItems?: string[],
   ) {
-    const res: any = await api.patch(`/kyc/admin/kol/${profileId}/review`, { status, note });
+    const res: any = await api.patch(`/kyc/admin/kol/${profileId}/review`, { status, note, requestedItems });
     return res.data;
   },
 

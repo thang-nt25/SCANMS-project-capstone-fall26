@@ -28,7 +28,6 @@ test("buyer cannot enter operations, personnel or merchant commands", () => {
     "pricing",
     "payouts",
     "finance-reports",
-    "kyc",
     "staff",
     "product-edit",
     "manual-orders",
@@ -44,6 +43,7 @@ test("buyer cannot enter operations, personnel or merchant commands", () => {
     "notifications",
     "wallet",
     "coupons",
+    "kyc",
   ])
     assert.equal(canOpenModule("CUSTOMER", feature), true);
 });
@@ -75,7 +75,6 @@ test("KOC has earning workflows without merchant or operations decisions", () =>
     "wallet",
     "social",
     "kyc",
-    "campaigns",
   ])
     assert.equal(canOpenModule("COLLABORATOR", feature), true);
   for (const feature of ["payouts", "pricing", "product-edit", "staff"])

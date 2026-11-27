@@ -49,6 +49,7 @@ export default function AdminSecurityAuditHubPage() {
         activeTab={activeTab}
         onChange={(tabId) => setActiveTab(tabId as SecurityAuditTab)}
         stretchTabs
+        variant="framed"
         tone="white"
         className="mb-0"
       />

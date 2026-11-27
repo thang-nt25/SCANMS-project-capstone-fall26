@@ -19,7 +19,10 @@ export interface StoreSettings {
   taxCode?: string;
   contactPhone?: string;
   contactEmail?: string;
+  businessAddress?: string;
   warehouseAddress?: string;
+  returnWarehouseAddress?: string;
+  returnWarehouse?: { address?: string | null } | null;
   payoutBankName?: string | null;
   payoutBankAccountNumber?: string | null;
   payoutBankAccountName?: string | null;
@@ -27,15 +30,19 @@ export interface StoreSettings {
   isVerified?: boolean;
   onboardingData?: {
     companyName?: string | null;
+    businessName?: string | null;
+    registeredBusinessName?: string | null;
     representativeName?: string | null;
     businessType?: string | null;
     taxCode?: string | null;
     contactPhone?: string | null;
     contactEmail?: string | null;
+    businessAddress?: string | null;
     bankName?: string | null;
     bankAccountNumber?: string | null;
     bankAccountName?: string | null;
     warehouseAddress?: string | null;
+    returnWarehouseAddress?: string | null;
     payoutBankName?: string | null;
     payoutBankAccountNumber?: string | null;
     payoutBankAccountName?: string | null;

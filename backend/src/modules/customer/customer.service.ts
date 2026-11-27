@@ -601,6 +601,7 @@ export class CustomerService {
       );
       return completed;
     });
+    await this.cacheService?.delPrefix(`customer:orders:${userId}:`);
     return {
       message: 'Đã xác nhận nhận hàng. Bạn có thể đánh giá sản phẩm.',
       order: updated,

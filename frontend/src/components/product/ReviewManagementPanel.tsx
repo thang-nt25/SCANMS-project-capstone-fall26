@@ -1,9 +1,10 @@
 import { handleProductImageError } from '@/utils/image-fallback.utils';
 import { useEffect, useRef, useState } from 'react';
-import { Star, X, Search, ExternalLink, MessageSquareQuote, AlertTriangle, Send, Flag } from 'lucide-react';
+import { Star, X, Search, ExternalLink, MessageSquareQuote, AlertTriangle, Send, Flag, Clock } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from '@/utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
+import { Select } from '@/components/ui/Select';
 
 const unwrap = (res: any) => res?.data?.data ?? res?.data ?? res;
 
@@ -89,11 +90,12 @@ export function ReviewManagementDialog({ admin, onClose }: { admin: boolean; onC
   );
 }
 
-export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
+export function ReviewManagementPanel({ admin = false, standalone = false }: { admin?: boolean; standalone?: boolean }) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError,setLoadError] = useState('');
   const [filter, setFilter] = useState('ALL');
+  const [visibility, setVisibility] = useState('ALL');
   const [search,setSearch] = useState('');
   const [action, setAction] = useState<{ id: string; kind: 'reply' | 'report' | 'resolve'; decision?: 'KEEP' | 'HIDE' } | null>(null);
   const [text, setText] = useState('');
@@ -159,6 +161,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
   const shown = reviews.filter((review) => {
     const term=search.trim().toLocaleLowerCase('vi');
     if(term && ![review.product?.title,review.customerName,review.comment].some(value=>String(value||'').toLocaleLowerCase('vi').includes(term)))return false;
+    if (visibility !== 'ALL' && review.status !== visibility) return false;
     if (filter === 'ALL') return true;
     if (filter === 'PENDING') return admin ? pending(review) : !review.reply;
     if (filter === 'LOW') return review.rating <= 2;
@@ -167,85 +170,77 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
 
   // Calculate metrics
   const rated = reviews.filter(review => Number.isFinite(Number(review.rating)) && Number(review.rating)>=1 && Number(review.rating)<=5);
-  const avgRating = rated.length > 0 ? (rated.reduce((sum,review)=>sum+Number(review.rating),0)/rated.length).toFixed(1) : '—';
+  const avgRating = rated.length > 0 ? (rated.reduce((sum,review)=>sum+Number(review.rating),0)/rated.length).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—';
 
   const filterTabs = [
     { key: 'ALL', label: 'Tất cả', count: reviews.length },
     { key: 'PENDING', label: admin ? 'Cần xử lý' : 'Chưa phản hồi', count: admin ? countPending : countUnreplied },
-    { key: 'APPROVED', label: 'Đang hiển thị', count: countApproved },
     { key: 'LOW', label: '1–2 sao', count: countLow },
-    { key: 'HIDDEN', label: 'Đã ẩn', count: countHidden },
   ];
 
+  const hasMetrics = !loading && !(loadError && !reviews.length);
+  const metrics = [
+    { label: 'Điểm trung bình', value: avgRating, icon: Star, rating: true },
+    { label: 'Tổng đánh giá', value: reviews.length, icon: MessageSquareQuote },
+    { label: admin ? 'Cần xử lý' : 'Chưa phản hồi', value: admin ? countPending : countUnreplied, icon: Clock },
+  ];
+  const searchField = (
+    <label className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#EAE4D7] bg-white px-3 text-[#B88E4F] focus-within:border-[#C59B58]">
+      <Search size={16} aria-hidden="true" className="shrink-0" /><span className="sr-only">Tìm đánh giá</span>
+      <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm sản phẩm, khách hàng, nội dung…" className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-[#1A1612] outline-none" />
+      {search && <button type="button" aria-label="Xóa tìm kiếm" onClick={() => setSearch('')} className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-[#FBF5EB]"><X size={14} /></button>}
+    </label>
+  );
+
   return (
-    <div className="review-management space-y-4 text-left text-[#1A1612]">
-      {/* 3 Thẻ chỉ số tổng quan nhanh */}
-      <div className="review-metrics grid grid-cols-3 gap-3">
-        <div className="p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] font-bold text-sm shadow-2xs">
-            <Star size={18} aria-hidden="true"/>
+    <div className={`review-management space-y-4 text-left text-[#1A1612] ${standalone ? 'review-management-standalone' : ''}`}>
+      <section aria-label="Tổng quan và bộ lọc đánh giá" className={standalone ? 'grid gap-3' : 'overflow-hidden rounded-xl border border-[#EAE4D7] bg-white'}>
+        <dl className={`m-0 grid grid-cols-3 ${standalone ? 'gap-2 sm:gap-3' : 'divide-x divide-[#EAE4D7]'} ${admin && !standalone ? 'admin-stat-grid' : ''}`}>
+          {metrics.map(({ label, value, icon: Icon, rating }) => (
+            <div key={label} className={`flex min-w-0 flex-col justify-center gap-2 ${standalone ? 'min-h-[88px] rounded-xl border border-[#EAE4D7] bg-white px-2.5 py-2.5 sm:px-4' : 'min-h-20 px-3 py-3 sm:px-4'}`}>
+              <dt className="flex min-w-0 items-center justify-between gap-1 text-xs leading-4 text-[#7D715E]">
+                <span>{label}</span>
+                {standalone && <span aria-hidden="true" className="hidden size-7 shrink-0 place-items-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] sm:grid"><Icon size={15} /></span>}
+              </dt>
+              <dd className="m-0 flex items-baseline gap-1.5 text-xl font-bold leading-none tabular-nums sm:text-2xl">
+                {rating && !standalone && <Star size={16} aria-hidden="true" className="hidden shrink-0 self-center text-[#B88E4F] sm:block" />}
+                {hasMetrics ? value : '—'}
+                {rating && <span className="whitespace-nowrap text-xs font-normal text-[#7D715E] sm:text-sm">/ 5</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className={`grid items-center gap-2 ${standalone ? 'rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:grid-cols-[minmax(0,1fr)_180px] xl:grid-cols-[minmax(220px,1fr)_minmax(300px,0.9fr)_180px]' : 'grid-cols-2 border-t border-[#EAE4D7] p-2 sm:grid-cols-[minmax(0,1fr)_180px] sm:px-3'}`}>
+          {standalone && <div className="min-w-0 sm:col-span-2 xl:col-span-1">{searchField}</div>}
+          <div role="group" aria-label="Bộ lọc đánh giá" className={`grid grid-cols-3 ${standalone ? 'gap-1.5' : 'col-span-2 divide-x divide-[#EAE4D7] sm:col-span-1'}`}>
+            {filterTabs.map((tab) => (
+              <div key={tab.key} className={standalone ? 'min-w-0' : 'min-w-0 px-1'}>
+                <button type="button" onClick={() => setFilter(tab.key)} aria-pressed={filter === tab.key}
+                  className={`flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-1 text-xs font-medium transition-colors sm:text-[13px] ${standalone ? 'min-h-10' : 'min-h-[38px]'} ${filter === tab.key ? 'border-[#EEDFC6] bg-[#FBF5EB] font-semibold text-[#805B27]' : `${standalone ? 'border-[#EAE4D7]' : 'border-transparent'} bg-white text-[#655A49] hover:bg-[#FAF8F5]`}`}>
+                  <span>{tab.label}</span><span className="tabular-nums">{hasMetrics ? tab.count : '—'}</span>
+                </button>
+              </div>
+            ))}
           </div>
-          <div>
-            <span className="text-[11px] text-[#7D715E] block">Điểm trung bình</span>
-            <strong className="text-base font-bold text-[#1A1612]">{loading ? '—' : avgRating} / 5</strong>
+          <div className={standalone ? 'min-w-0' : 'col-span-2 min-w-0 sm:col-span-1 sm:border-l sm:border-[#EAE4D7] sm:pl-3'}>
+            <Select
+              aria-label="Trạng thái hiển thị đánh giá"
+              value={visibility}
+              onChange={({ target }) => setVisibility(target.value)}
+              options={[
+                { value: 'ALL', label: 'Tất cả trạng thái' },
+                { value: 'APPROVED', label: `Đang hiển thị (${countApproved})` },
+                { value: 'HIDDEN', label: `Đã ẩn (${countHidden})` },
+              ]}
+              className={`min-h-0 w-full rounded-lg px-3 py-0 shadow-none sm:text-[13px] ${standalone ? 'h-10' : 'h-[38px]'}`}
+              menuClassName="rounded-xl"
+              align="right"
+              portal
+            />
           </div>
         </div>
-
-        <div className="p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] font-bold text-sm shadow-2xs">
-            <MessageSquareQuote size={18} aria-hidden="true"/>
-          </div>
-          <div>
-            <span className="text-[11px] text-[#7D715E] block">Tổng đánh giá</span>
-            <strong className="text-base font-bold text-[#1A1612]">{loading || (loadError && !reviews.length) ? '—' : reviews.length} nhận xét</strong>
-          </div>
-        </div>
-
-        <div className="p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center text-[#D97706] font-bold text-sm shadow-2xs">
-            <AlertTriangle size={18} aria-hidden="true"/>
-          </div>
-          <div>
-            <span className="text-[11px] text-[#7D715E] block">{admin ? 'Cần xử lý' : 'Chưa phản hồi'}</span>
-            <strong className="text-base font-bold text-[#1A1612]">
-              {loading || (loadError && !reviews.length) ? '—' : admin ? countPending : countUnreplied} đánh giá
-            </strong>
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar: Bộ lọc tab bên trái + Nút Làm mới bên phải */}
-      <div className="review-filters grid w-full grid-cols-2 items-stretch gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-3">
-        <div className="contents" role="group" aria-label="Bộ lọc đánh giá">
-          {filterTabs.map((tab) => {
-            const isSelected = filter === tab.key;
-            return (
-              <button
-                type="button"
-                key={tab.key}
-                onClick={() => setFilter(tab.key)}
-                aria-pressed={isSelected}
-                className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                  isSelected
-                    ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F] shadow-2xs'
-                    : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    isSelected ? 'bg-[#C59B58] text-white' : 'bg-[#EAE4D7]/70 text-[#7D715E]'
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <label className="review-search"><Search size={16}/><span className="sr-only">Tìm đánh giá</span><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm sản phẩm, khách hàng, nội dung…"/>{search&&<button type="button" aria-label="Xóa tìm kiếm" onClick={()=>setSearch('')}><X size={14}/></button>}</label>
-      </div>
+        {!standalone && <div className="border-t border-[#EAE4D7] p-3">{searchField}</div>}
+      </section>
 
       {/* Danh sách bài đánh giá */}
       {loading ? (
@@ -253,7 +248,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
       ) : loadError ? <div role="alert" className="review-empty">Không tải được đánh giá.<button type="button" onClick={()=>void load()}>Thử lại</button></div> : !shown.length ? (
         <div className="review-empty">
           <Star className="w-8 h-8 mx-auto text-[#C59B58]/40 stroke-1" />
-          <h4 className="text-xs font-medium text-[#1A1612] m-0">{search || filter!=='ALL' ? 'Không có đánh giá phù hợp' : 'Chưa có đánh giá'}</h4>
+          <h4 className="text-xs font-medium text-[#1A1612] m-0">{search || filter!=='ALL' || visibility !== 'ALL' ? 'Không có đánh giá phù hợp' : 'Chưa có đánh giá'}</h4>
         </div>
       ) : (
         <div className="review-list">

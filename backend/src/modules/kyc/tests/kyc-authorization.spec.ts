@@ -13,6 +13,7 @@ describe('KYC HTTP authorization (real RolesGuard)', () => {
   const service = {
     getPendingKycList: jest.fn(),
     getUpgradeApplications: jest.fn(),
+    getKolReviewHistory: jest.fn(),
     reviewKyc: jest.fn(),
     reviewKolApplication: jest.fn(),
     reviewShopApplication: jest.fn(),
@@ -21,6 +22,7 @@ describe('KYC HTTP authorization (real RolesGuard)', () => {
   const routes = [
     ['get', '/kyc/admin/pending', 'getPendingKycList'],
     ['get', '/kyc/admin/applications', 'getUpgradeApplications'],
+    ['get', '/kyc/admin/review-history', 'getKolReviewHistory'],
     ['patch', '/kyc/admin/profile-id/review', 'reviewKyc'],
     ['patch', '/kyc/admin/kol/profile-id/review', 'reviewKolApplication'],
   ] as const;

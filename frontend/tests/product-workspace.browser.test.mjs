@@ -32,7 +32,14 @@ test('compact product actions, video filters and review empty/error states',{ski
  await clickText('Video KOL');await page.waitForSelector('.kol-video-picker-item');assert.equal(await page.$$eval('.kol-video-picker-item',els=>els.length),2);assert.equal(await page.$eval('.kol-video-review-modal',el=>el.getBoundingClientRect().width),960);
  await page.type('[aria-label="Tìm video KOL"]','KOL 1');await page.waitForFunction(()=>document.querySelectorAll('.kol-video-picker-item').length===1);assert.match(await page.$eval('.kol-video-picker',el=>el.textContent),/KOL 1/);await page.screenshot({path:join(tmpdir(),'scanms-video-workspace.png')});
  await page.click('[aria-label="Đóng cửa sổ duyệt video"]');failVideos=true;await clickText('Video KOL');await page.waitForSelector('.kol-video-empty[role=alert]');failVideos=false;await page.click('.kol-video-empty button');await page.waitForSelector('.kol-video-picker-item');await page.click('[aria-label="Đóng cửa sổ duyệt video"]');
- await clickText('Đánh giá');await page.waitForSelector('.review-empty');assert.match(await page.$eval('.review-management-dialog',el=>el.textContent),/— \/ 5/);assert.equal(await page.$eval('.review-management-dialog',el=>el.getBoundingClientRect().width),1040);await page.screenshot({path:join(tmpdir(),'scanms-review-workspace.png')});
+ await clickText('Đánh giá');await page.waitForSelector('.review-empty');assert.match(await page.$eval('.review-management-dialog',el=>el.textContent),/—\s*\/ 5/);assert.equal(await page.$eval('.review-management-dialog',el=>el.getBoundingClientRect().width),1040);await page.screenshot({path:join(tmpdir(),'scanms-review-workspace.png')});
+ const reviewStatus = '[aria-label="Trạng thái hiển thị đánh giá"]';
+ await page.focus(reviewStatus);await page.keyboard.press('ArrowDown');
+ await page.waitForSelector('.review-management-dialog [role="option"][aria-selected="true"]');
+ assert.equal(await page.$eval('.review-management-dialog [role="listbox"]',el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)');
+ assert.equal(await page.$eval('.review-management-dialog [role="option"][aria-selected="true"]',el=>getComputedStyle(el).backgroundColor),'rgb(251, 245, 235)');
+ await page.keyboard.press('End');await page.keyboard.press('Enter');
+ assert.equal(await page.$eval(reviewStatus,el=>el.textContent.trim()),'Đã ẩn (0)');
  await page.setViewport({width:390,height:844});assert.equal(await page.$eval('.review-management-dialog',el=>el.scrollWidth<=el.clientWidth),true);await page.keyboard.press('Escape');
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForSelector('.product-toolbar');failReviews=true;await clickText('Đánh giá');await page.waitForSelector('.review-empty[role=alert]');failReviews=false;await page.click('.review-empty button');await page.waitForSelector('.review-empty:not([role=alert])');assert.deepEqual(errors,[]);
  } finally {await browser.close();}

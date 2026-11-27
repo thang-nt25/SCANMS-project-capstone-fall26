@@ -68,6 +68,29 @@ describe('sample inbox and badge Shop scope', () => {
     });
   });
 
+  it('reads the latest action inbox after approval instead of serving a stale pending snapshot', async () => {
+    const { service, prisma } = fixture();
+    Object.assign(service, {
+      cacheService: {
+        get: jest.fn().mockResolvedValue([{ id: 'request', status: 'PENDING' }]),
+        set: jest.fn(),
+      },
+    });
+    prisma.sampleProductRequest.findMany
+      .mockResolvedValueOnce([{ id: 'request', status: 'PENDING' }])
+      .mockResolvedValueOnce([{ id: 'request', status: 'APPROVED' }]);
+    expect(await service.getRequestsForShop('staff')).toEqual([
+      { id: 'request', status: 'PENDING' },
+    ]);
+    expect(await service.getRequestsForShop('staff')).toEqual([
+      { id: 'request', status: 'APPROVED' },
+    ]);
+    expect(prisma.sampleProductRequest.findMany).toHaveBeenCalledTimes(2);
+    // Access is re-evaluated on every refresh, including after revocation.
+    prisma.store.findFirst.mockResolvedValueOnce(null);
+    await expect(service.getRequestsForShop('staff')).rejects.toThrow(NotFoundException);
+  });
+
   it('allows assigned staff to read a sample detail belonging to the assigned Shop', async () => {
     const { service, prisma } = fixture();
     await expect(

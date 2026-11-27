@@ -1,12 +1,13 @@
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Package, Tag } from 'lucide-react';
+import { Package, ShieldCheck, Tag } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import ProductModerationPage from './ProductModerationPage';
 import ProductPricingPage from '../shared/ProductPricingPage';
 
-const PRODUCT_PRICING_TABS = ['moderation', 'pricing'] as const;
+const PRODUCT_PRICING_TABS = ['moderation', 'pricing', 'promotions'] as const;
 type ProductPricingTab = (typeof PRODUCT_PRICING_TABS)[number];
 
 export default function AdminProductPricingHubPage() {
@@ -14,6 +15,7 @@ export default function AdminProductPricingHubPage() {
     defaultTab: 'moderation',
     validTabs: PRODUCT_PRICING_TABS,
   });
+  const [pendingCount, setPendingCount] = useState(0);
 
   const user = authService.getCurrentUser();
   if (user && user.role === 'SHOP_MANAGER') {
@@ -37,8 +39,14 @@ export default function AdminProductPricingHubPage() {
     },
     {
       id: 'pricing',
-      label: 'Giá sàn & Giảm giá',
+      label: 'Giá sàn MAP',
+      icon: ShieldCheck,
+    },
+    {
+      id: 'promotions',
+      label: 'Đề xuất giảm giá',
       icon: Tag,
+      badge: pendingCount > 0 ? pendingCount : undefined,
     },
   ];
 
@@ -46,8 +54,9 @@ export default function AdminProductPricingHubPage() {
     <div className="w-full min-w-0 flex flex-col gap-3 text-[#1A1612]" id="admin-product-pricing-hub">
       <HubTabs
         className="mb-0"
+        variant="framed"
         stretchTabs
-        stretchTabColumns={2}
+        stretchTabColumns={3}
         tone="white"
         tabs={tabs}
         activeTab={activeTab}
@@ -55,11 +64,17 @@ export default function AdminProductPricingHubPage() {
       />
 
       <div className="w-full min-w-0">
-        <div style={{ display: activeTab === 'moderation' ? 'block' : 'none' }}>
+        <div role="tabpanel" aria-labelledby="hub-tab-moderation" hidden={activeTab !== 'moderation'}>
           {visitedTabs['moderation'] && <ProductModerationPage />}
         </div>
-        <div style={{ display: activeTab === 'pricing' ? 'block' : 'none' }}>
-          {visitedTabs['pricing'] && <ProductPricingPage reviewer />}
+        <div hidden={activeTab === 'moderation'}>
+          {(visitedTabs.pricing || visitedTabs.promotions) && (
+            <ProductPricingPage
+              reviewer
+              pricingSection={activeTab === 'promotions' ? 'promotions' : 'floor'}
+              onPendingCountChange={setPendingCount}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -36,6 +36,7 @@ import {
 import { colors } from "../../theme/tokens";
 import { Avatar, Icon } from "../../components/commerce";
 import { AttachmentPicker, type Attachment } from "./AttachmentPicker";
+import { DealMessageCard } from "./DealMessageCard";
 interface Ack {
   ok: boolean;
   error?: string;
@@ -301,16 +302,7 @@ export function ChatScreen({ route, navigation }: ScreenProps<"Chat">) {
                   <Text numberOfLines={2} style={styles.quoteText}>{summary(item.replyTo)}</Text>
                 </Pressable>}
                 {structured ? (
-                  <>
-                    <Text>Thông tin đề nghị thỏa thuận VIP</Text>
-                    {session!.user.role !== "CUSTOMER" && (
-                      <Button
-                        title="Xem thỏa thuận và trạng thái"
-                        secondary
-                        onPress={() => navigation.navigate("Deals")}
-                      />
-                    )}
-                  </>
+                  session!.user.role !== "CUSTOMER" ? <DealMessageCard text={item.messageText || ""} /> : <Text>Thông tin thỏa thuận</Text>
                 ) : (
                   <Text selectable style={{ fontSize: 14, lineHeight: 21, color: colors.ink }}>
                     {item.messageText}

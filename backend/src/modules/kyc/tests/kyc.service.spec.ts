@@ -1,6 +1,85 @@
 import { BadRequestException } from '@nestjs/common';
-import { ShopOnboardingStatus, UserRole } from '@prisma/client';
+import { KycStatus, ShopOnboardingStatus, UserRole } from '@prisma/client';
 import { KycService } from '../kyc.service';
+
+describe('KycService collaborator review feedback', () => {
+  it.each([
+    ['NEEDS_INFO', KycStatus.UNVERIFIED, 'KOL_NEEDS_INFO'],
+    ['REJECTED', KycStatus.REJECTED, 'KOL_REJECTED'],
+  ] as const)('sends the selected items with a %s decision', async (status, kycStatus, type) => {
+    const profile = {
+      id: 'profile-1',
+      userId: 'user-1',
+      user: { fullName: 'Đối tác kiểm thử' },
+      socialLinksJson: { backCardUrl: '/original-back.jpg' },
+    };
+    const update = jest.fn().mockResolvedValue(profile);
+    const create = jest.fn().mockResolvedValue({});
+    const logReview = jest.fn().mockResolvedValue({});
+    const transaction = jest.fn(async callback =>
+      callback({ collaboratorProfile: { update }, notification: { create }, auditLog: { create: logReview } }),
+    );
+    const service = new KycService({
+      collaboratorProfile: { findUnique: jest.fn().mockResolvedValue(profile) },
+      $transaction: transaction,
+    } as any);
+
+    await service.reviewKolApplication(profile.id, {
+      status,
+      note: 'Ảnh mặt trước bị mờ.',
+      requestedItems: ['Ảnh CCCD mặt trước', 'Ảnh CCCD mặt trước'],
+    }, 'manager-1');
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: profile.id },
+      data: {
+        kycStatus,
+        socialLinksJson: expect.objectContaining({
+          backCardUrl: '/original-back.jpg',
+          requestedItems: ['Ảnh CCCD mặt trước'],
+          rejectionReason: 'Ảnh mặt trước bị mờ.',
+          reviewStatus: status,
+          needsInfo: status === 'NEEDS_INFO',
+        }),
+      },
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: profile.userId,
+        type,
+        message: 'Ảnh mặt trước bị mờ.\n\nMục cần chỉnh sửa:\n• Ảnh CCCD mặt trước',
+      }),
+    });
+    expect(logReview).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'manager-1',
+        createdAt: expect.any(Date),
+        details: { profileId: profile.id, applicantName: profile.user.fullName, status, note: 'Ảnh mặt trước bị mờ.' },
+      }),
+    });
+  });
+
+  it('returns audited decisions and recorded legacy details without inventing a reviewer', async () => {
+    const earlier = new Date('2026-10-01T10:00:00Z');
+    const later = new Date('2026-10-02T10:00:00Z');
+    const service = new KycService({
+      auditLog: { findMany: jest.fn().mockResolvedValue([{
+        id: 'audit-1', createdAt: later, user: { fullName: 'Quản lý A' },
+        details: { applicantName: 'Đối tác A', status: 'VERIFIED', note: null },
+      }]) },
+      collaboratorProfile: { findMany: jest.fn().mockResolvedValue([
+        { id: 'already-audited', user: { fullName: 'Đối tác A' }, socialLinksJson: { reviewHistoryRecorded: true, reviewStatus: 'VERIFIED', verifiedAt: later.toISOString() } },
+        { id: 'legacy-1', user: { fullName: 'Đối tác B' }, socialLinksJson: { reviewStatus: 'REJECTED', reviewedAt: earlier.toISOString(), rejectionReason: 'Thiếu giấy tờ.' } },
+      ]) },
+      $transaction: (promises: Promise<unknown>[]) => Promise.all(promises),
+    } as any);
+
+    await expect(service.getKolReviewHistory()).resolves.toEqual([
+      { id: 'audit-1', applicantName: 'Đối tác A', reviewerName: 'Quản lý A', status: 'VERIFIED', note: null, reviewedAt: later },
+      { id: 'legacy-1', applicantName: 'Đối tác B', reviewerName: null, status: 'REJECTED', note: 'Thiếu giấy tờ.', reviewedAt: earlier },
+    ]);
+  });
+});
 
 describe('KycService shop onboarding', () => {
   let service: KycService;

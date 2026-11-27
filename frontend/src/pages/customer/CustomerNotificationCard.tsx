@@ -22,7 +22,10 @@ const categoryInfo = {
 
 export function CustomerNotificationCard({ item, category, busy, onOpen, onMarkRead }: CustomerNotificationCardProps) {
   const { label, icon: Icon } = categoryInfo[category];
-  const action = item.data?.withdrawalId ? 'Xem yêu cầu rút' : item.data?.returnRequestId || item.data?.returnId ? 'Xem hồ sơ đổi trả' : categoryInfo[category].action;
+  const action = item.type === 'KOL_NEEDS_INFO' ? 'Bổ sung hồ sơ'
+    : item.type === 'KOL_REJECTED' ? 'Xem lý do từ chối'
+      : item.data?.withdrawalId ? 'Xem yêu cầu rút'
+        : item.data?.returnRequestId || item.data?.returnId ? 'Xem hồ sơ đổi trả' : categoryInfo[category].action;
   const date = new Date(item.createdAt);
   const validDate = Number.isFinite(date.getTime());
   const productImageUrl = category === 'ORDER' && typeof item.data?.productImageUrl === 'string'

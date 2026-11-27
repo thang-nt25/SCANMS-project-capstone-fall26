@@ -79,6 +79,7 @@ export interface ReferralOrderItem {
   commissionEarned?: number;
   externalOrderSn?: string;
   productTitle?: string;
+  productImage?: string | null;
   products: Array<{
     id?: string;
     title: string;

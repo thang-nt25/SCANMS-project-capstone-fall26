@@ -30,10 +30,10 @@ describe('Public voucher discovery and redemption UUID compatibility', () => {
   afterAll(async () => { await app?.close(); });
   beforeEach(() => jest.clearAllMocks());
 
-  it('publishes vouchers for seeded UUID v5 shops without login', async () => {
+  it('does not publish vouchers for seeded UUID v5 shops', async () => {
     const response = await request(app.getHttpServer()).get(`/coupons/stores/${storeId}/available?productId=${productId}`).expect(200);
-    expect(response.body).toEqual([{ code: 'SHOP10K97' }]);
-    expect(service.getPublicStoreCoupons).toHaveBeenCalledWith(storeId, productId);
+    expect(response.body).toEqual([]);
+    expect(service.getPublicStoreCoupons).not.toHaveBeenCalled();
   });
   it('continues supporting ordinary UUID v4 shops', async () => {
     await request(app.getHttpServer()).get('/coupons/stores/12345678-1234-4123-8123-123456789abc/available').expect(200);

@@ -20,7 +20,7 @@ export interface HubTabsProps {
   compact?: boolean;
   stretchTabs?: boolean;
   stretchTabColumns?: 2 | 3 | 4 | 5 | 6;
-  variant?: 'default' | 'pills';
+  variant?: 'default' | 'pills' | 'framed';
   tone?: 'default' | 'light' | 'white';
 }
 
@@ -115,7 +115,7 @@ export function HubTabs({
           {actions && <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">{actions}</div>}
         </div>
       ) : (
-        <div className={`w-full ${tone === 'white' ? 'bg-white' : tone === 'light' ? 'bg-[#FAF8F5]' : 'bg-[#F3EFE6]'} ${compact ? 'p-1 rounded-xl' : 'p-1.5 rounded-2xl'} border border-[#EAE4D7] shadow-2xs ${stretchTabs ? 'flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between' : 'flex flex-wrap items-center justify-between gap-2'}`}>
+        <div className={`w-full ${tone === 'white' ? 'bg-white' : tone === 'light' ? 'bg-[#FAF8F5]' : 'bg-[#F3EFE6]'} ${compact ? 'p-1 rounded-xl' : 'p-1.5 rounded-2xl'} border border-[#EAE4D7] shadow-2xs ${stretchTabs ? 'flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between' : 'flex flex-wrap items-center justify-between gap-2'} ${variant === 'framed' ? 'admin-workspace-tabs' : ''}`}>
           <div
             className={stretchTabs
               ? `grid w-full min-w-0 flex-1 gap-1.5 ${

@@ -49,10 +49,10 @@ export function AccountSettingsScreen() {
             onPress={() => open("wallet")}
           />
         )}
-        {(role === "COLLABORATOR" || role === "SHOP_MANAGER") && (
+        {(role === "COLLABORATOR" || role === "CUSTOMER") && (
           <MenuRow
             icon="check-circle"
-            title="Xác minh KYC"
+            title={role === "CUSTOMER" ? "Đăng ký KOL/KOC" : "Xác minh KYC"}
             onPress={() => open("kyc")}
           />
         )}

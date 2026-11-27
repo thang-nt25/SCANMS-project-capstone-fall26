@@ -60,7 +60,7 @@ export function Wordmark() {
         <Text style={{ color: colors.strong, fontStyle: "italic" }}>MS</Text>
         <Text style={{ color: colors.brand, fontSize: 13 }}> ✦</Text>
       </Text>
-      <Text style={c.wordmarkSub}>AFFILIATE MARKETPLACE</Text>
+      <Text style={c.wordmarkSub}>COLLABORATOR &amp; AFFILIATE NETWORK</Text>
     </View>
   );
 }

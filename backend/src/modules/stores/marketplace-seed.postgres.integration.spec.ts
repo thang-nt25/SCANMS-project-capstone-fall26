@@ -17,13 +17,11 @@ import { StoresController } from './stores.controller';
 import { StoresService } from './stores.service';
 import { SponsorshipController } from './sponsorship/sponsorship.controller';
 import { SponsorshipService } from './sponsorship/sponsorship.service';
+import { SponsorshipPayosService } from './sponsorship/sponsorship-payos.service';
 import { ProductsController } from '../products/products.controller';
 import { ProductsService } from '../products/products.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { GhnService } from '../shipping/ghn.service';
-import { LiveSessionsController } from '../live-sessions/live-sessions.controller';
-import { LiveSessionsService } from '../live-sessions/live-sessions.service';
-import { LiveGovernanceService } from '../live-sessions/live-governance.service';
 import { buildDataset } from '../../../prisma/seeds/build-dataset';
 import { applyDataset } from '../../../prisma/seeds/seed.database';
 import { parseDatabaseTarget } from '../../../prisma/seeds/seed.config';
@@ -94,10 +92,11 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
           JwtModule.register({ secret }),
           PassportModule.register({ defaultStrategy: 'jwt' }),
         ],
-        controllers: [StoresController, LiveSessionsController, SponsorshipController, ProductsController],
+        controllers: [StoresController, SponsorshipController, ProductsController],
         providers: [
           StoresService,
           SponsorshipService,
+          SponsorshipPayosService,
           ProductsService,
           { provide: CacheService, useValue: { delPrefix: jest.fn().mockResolvedValue(0) } },
           JwtStrategy,
@@ -106,16 +105,6 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
             useValue: new ConfigService({ JWT_SECRET: secret }),
           },
           { provide: PrismaService, useValue: prisma },
-          // Payment/governance collaborators are deliberately not invoked by public read or pin APIs.
-          {
-            provide: LiveSessionsService,
-            useValue: new LiveSessionsService(
-              prisma as never,
-              {} as never,
-              {} as never,
-            ),
-          },
-          { provide: LiveGovernanceService, useValue: {} },
         ],
       }).compile();
       app = module.createNestApplication({ logger: false });
@@ -270,10 +259,10 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
       }
     });
 
-    it('persists sponsorship request → approval → public display → cancellation with ownership and evidence checks', async () => {
+    it('holds approved content for payment and never publishes an unpaid placement', async () => {
       process.env.MARKETPLACE_SPONSORED_PLACEMENTS = '[]';
       const now = Date.now();
-      const payload = { requestKey: randomUUID(), headline: 'Gian hàng đối tác được sàn cấp vị trí', startsAt: new Date(now - 60000).toISOString(), endsAt: new Date(now + 7200000).toISOString() };
+      const payload = { requestKey: randomUUID(), headline: 'Quảng bá gian hàng', startsAt: new Date(now + 3600000).toISOString(), endsAt: new Date(now + 7200000).toISOString(), quotedAmount: 100000 };
       const http = app.getHttpServer();
       await request(http).post('/api/sponsored-placements').send(payload).expect(401);
       await request(http).post('/api/sponsored-placements').auth(customerToken, { type: 'bearer' }).send(payload).expect(403);
@@ -290,12 +279,15 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
       await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(adminToken, { type: 'bearer' }).send({ decision: 'APPROVE', note: 'Thiếu chứng từ đối soát', fundingType: 'PAID', amount: 100000 }).expect(400);
       // Exercise the DB check as well as DTO/service validation: NULL must not bypass CHECK.
       await expect(prisma.sponsoredPlacement.update({ where: { id }, data: { status: 'APPROVED', reviewedById: seedId('user:admin'), reviewedAt: new Date(), reviewNote: 'Thiếu thông tin hình thức cấp' } })).rejects.toThrow();
-      const approved = await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(adminToken, { type: 'bearer' }).send({ decision: 'APPROVE', note: 'Sàn cấp miễn phí có ghi nhận', fundingType: 'PLATFORM_GRANT', amount: 0 }).expect(200);
-      expect(approved.body.status).toBe('APPROVED');
+      const approved = await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(adminToken, { type: 'bearer' }).send({ decision: 'APPROVE', note: 'Đã kiểm tra nội dung quảng bá' }).expect(200);
+      expect(approved.body.status).toBe('AWAITING_PAYMENT');
+      expect(approved.body.paymentDeadline).toBeTruthy();
+      await expect(prisma.sponsoredPlacement.update({ where: { id }, data: { status: 'APPROVED' } })).rejects.toThrow();
+      await request(http).get(`/api/sponsored-placements/${id}/payment`).auth(shopTwoToken, { type: 'bearer' }).expect(404);
+      const payment = await request(http).get(`/api/sponsored-placements/${id}/payment`).auth(ownerToken, { type: 'bearer' }).expect(200);
+      expect(payment.body).toMatchObject({ amount: 100000, status: 'AWAITING_PAYMENT' });
       const publicRows = await request(http).get('/api/stores/public/placements').expect(200);
-      expect(publicRows.body).toHaveLength(1);
-      expect(publicRows.body[0].store.id).toBe(seedId('store:0'));
-      expect(publicRows.body[0].paymentProofUrl).toBeUndefined();
+      expect(publicRows.body).toEqual([]);
       expect(await prisma.notification.count({ where: { userId: seedId('shop-owner:0'), type: 'SPONSORSHIP_REVIEWED' } })).toBe(1);
       await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(adminToken, { type: 'bearer' }).send({ decision: 'REJECT', note: 'Không duyệt lần hai' }).expect(409);
       await request(http).patch(`/api/sponsored-placements/${id}/cancel`).auth(ownerToken, { type: 'bearer' }).send({ note: 'Dừng lịch hiển thị' }).expect(200);
@@ -322,53 +314,6 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
       expect(quote).toHaveBeenCalledWith('Địa chỉ kiểm thử', 1400, Number(variant.price) * 2, seedId('store:0'), response.shippingPackage);
       await expect(carrier.quoteCart(seedId('store:1'), 'Địa chỉ kiểm thử', [{ productId, quantity: 1 }])).rejects.toThrow('không thuộc gian hàng');
       await expect(carrier.quoteCart(seedId('store:0'), 'Địa chỉ kiểm thử', [{ productId, variantId: randomUUID(), quantity: 1 }])).rejects.toThrow('Phân loại');
-    });
-
-    it('reads both active live sessions with their seeded pins and zero real viewers', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/live-sessions/public/list')
-        .expect(200);
-      expect(response.body).toHaveLength(2);
-      for (const session of response.body) {
-        expect(session.pinnedProduct?.id).toBe(
-          data.products.find((product) => product.storeId === session.storeId)
-            ?.id,
-        );
-        expect(session.viewerCount).toBe(0);
-        expect(session.governance).toBeUndefined();
-      }
-    });
-
-    it('persists an authorized pin and rejects customer/cross-shop/foreign-product attempts', async () => {
-      const url = `/api/live-sessions/${seedId('live:0')}/pinned-product`;
-      const productId = seedId('product:1');
-      await request(app.getHttpServer())
-        .post(url)
-        .send({ productId })
-        .expect(401);
-      for (const token of [customerToken, shopTwoToken])
-        await request(app.getHttpServer())
-          .post(url)
-          .auth(token, { type: 'bearer' })
-          .send({ productId })
-          .expect(403);
-      await request(app.getHttpServer())
-        .post(url)
-        .auth(ownerToken, { type: 'bearer' })
-        .send({ productId: seedId('product:3') })
-        .expect(400);
-      await request(app.getHttpServer())
-        .post(url)
-        .auth(ownerToken, { type: 'bearer' })
-        .send({ productId })
-        .expect(201);
-      const response = await request(app.getHttpServer())
-        .get('/api/live-sessions/public/list')
-        .expect(200);
-      expect(
-        response.body.find((row: { id: string }) => row.id === seedId('live:0'))
-          .pinnedProduct.id,
-      ).toBe(productId);
     });
   },
 );

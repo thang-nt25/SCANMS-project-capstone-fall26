@@ -14,7 +14,7 @@ import {
 describe('Sponsorship booking invariants', () => {
   const now = Date.now();
   const window = {
-    startsAt: new Date(now + 1000),
+    startsAt: new Date(now + 3600000),
     endsAt: new Date(now + 7200000),
   };
   it('requires a valid future window lasting 1h–31d', () => {
@@ -23,7 +23,7 @@ describe('Sponsorship booking invariants', () => {
     ).not.toThrow();
     for (const end of [
       new Date(now - 1),
-      new Date(now + 2000),
+      new Date(now + 3602000),
       new Date(now + 40 * 86400000),
       new Date('invalid'),
     ]) {
@@ -52,6 +52,7 @@ describe('Sponsorship booking invariants', () => {
       $executeRaw: jest.fn(),
       $queryRaw: jest.fn(),
       store: { findFirst: jest.fn().mockResolvedValue({ id: 'shop' }) },
+      product: { findFirst: jest.fn(), findMany: jest.fn() },
       sponsoredPlacement: {
         count: jest.fn().mockResolvedValue(0),
         findUnique: jest.fn().mockResolvedValue(row),
@@ -95,7 +96,10 @@ describe('Sponsorship booking invariants', () => {
     const result = await service.list('owner', UserRole.SHOP_MANAGER, { page: 1, status: 'EXPIRED' });
     expect(result.items[0].status).toBe('EXPIRED');
     expect(tx.sponsoredPlacement.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { store: { ownerId: 'owner' }, status: { in: ['REQUESTED', 'APPROVED'] }, endsAt: { lte: expect.any(Date) } },
+      where: { store: { ownerId: 'owner' }, OR: [
+        { status: { in: ['REQUESTED', 'APPROVED'] }, endsAt: { lte: expect.any(Date) } },
+        { status: 'AWAITING_PAYMENT', paymentDeadline: { lte: expect.any(Date) } },
+      ] },
     }));
   });
   it('keeps expired approvals outside the approved filter', async () => {
@@ -145,18 +149,6 @@ describe('Sponsorship booking invariants', () => {
       }),
     ).rejects.toThrow(ForbiddenException);
   });
-  it('requires actual manual reconciliation evidence for a paid booking', async () => {
-    const { service, tx } = setup(pending());
-    await expect(
-      service.review('p', 'admin', UserRole.SYSTEM_ADMIN, {
-        decision: 'APPROVE',
-        note: 'Đối soát',
-        fundingType: 'PAID',
-        amount: 100000,
-      }),
-    ).rejects.toThrow(BadRequestException);
-    expect(tx.sponsoredPlacement.updateMany).not.toHaveBeenCalled();
-  });
   it('rejects a tampered quote before writing a booking', async () => {
     const { service, tx } = setup();
     await expect(service.request('owner', {
@@ -176,43 +168,40 @@ describe('Sponsorship booking invariants', () => {
     }) });
     expect(tx.sponsoredPlacement.create.mock.calls[0][0].data.paymentReference).toBeUndefined();
   });
-  it('rejects approval with a different amount than the stored quote', async () => {
-    const { service, tx } = setup(pending());
-    await expect(service.review('placement', 'admin', UserRole.SYSTEM_ADMIN, {
-      decision: 'APPROVE', note: 'Đối soát thanh toán', fundingType: 'PAID', amount: 200000,
-      paymentReference: 'BANK-123456', paymentProofUrl: 'https://example.com/receipt',
-    })).rejects.toThrow(BadRequestException);
-    expect(tx.sponsoredPlacement.updateMany).not.toHaveBeenCalled();
-  });
-  it('rejects free grants even when an administrator requests approval', async () => {
-    const { service, tx } = setup(pending());
-    await expect(service.review('placement', 'admin', UserRole.SYSTEM_ADMIN, {
-      decision: 'APPROVE', note: 'Sàn cấp miễn phí',
-      fundingType: 'PLATFORM_GRANT', amount: 0,
-    })).rejects.toThrow(BadRequestException);
-    expect(tx.sponsoredPlacement.updateMany).not.toHaveBeenCalled();
-  });
-  it('approves a reconciled paid booking atomically with audit and owner notification', async () => {
-    const { service, tx } = setup(pending());
-    await service.review('placement', 'admin', UserRole.SYSTEM_ADMIN, {
-      decision: 'APPROVE',
-      note: 'Đã kiểm tra tiền nhận',
-      fundingType: 'PAID',
-      amount: 100000,
-      paymentReference: 'BANK-123456',
-      paymentProofUrl: 'https://example.com/receipt',
+  it('stores the selected product and image only after validating product ownership and eligibility', async () => {
+    const { service, tx } = setup();
+    const payload = {
+      headline: 'Quảng bá Shop', requestKey: 'request',
+      startsAt: window.startsAt.toISOString(), endsAt: window.endsAt.toISOString(), quotedAmount: 100000,
+      productId: 'product', bannerImageUrl: 'https://res.cloudinary.com/demo/image/upload/v1/scanms/sponsorship/serum.webp',
+    };
+    await expect(service.request('owner', payload)).rejects.toThrow(BadRequestException);
+    expect(tx.sponsoredPlacement.create).not.toHaveBeenCalled();
+    expect(tx.product.findFirst).toHaveBeenCalledWith({
+      where: { id: payload.productId, storeId: 'shop', isDeleted: false, isActive: true, moderationStatus: 'APPROVED' },
+      select: { id: true },
     });
-    expect(tx.sponsoredPlacement.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'placement', status: 'REQUESTED' },
-        data: expect.objectContaining({
-          status: 'APPROVED',
-          fundingType: 'PAID',
-          amount: 100000,
-          paymentReference: 'BANK-123456',
-        }),
-      }),
-    );
+    tx.product.findFirst.mockResolvedValue({ id: payload.productId });
+    await service.request('owner', payload);
+    expect(tx.sponsoredPlacement.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      productId: payload.productId, bannerImageUrl: payload.bannerImageUrl,
+    }) });
+  });
+  it.each([UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER])('reserves an unpaid slot on content approval by %s', async role => {
+    const { service, tx } = setup(pending());
+    await service.review('placement', 'reviewer', role, { decision: 'APPROVE', note: 'Approved banner content' });
+    expect(tx.sponsoredPlacement.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ OR: expect.arrayContaining([
+        { status: 'AWAITING_PAYMENT', paymentDeadline: { gt: expect.any(Date) } },
+      ]) }),
+    }));
+    const [{ data }] = tx.sponsoredPlacement.updateMany.mock.calls[0];
+    expect(data).toMatchObject({
+      status: 'AWAITING_PAYMENT', fundingType: 'PAID', amount: 100000,
+      paymentDeadline: expect.any(Date), payosOrderCode: expect.any(String),
+    });
+    expect(data.paymentReference).toBeUndefined();
+    expect(data.paymentDeadline.getTime()).toBeLessThanOrEqual(window.startsAt.getTime());
     expect(tx.auditLog.create).toHaveBeenCalledTimes(1);
     expect(tx.notification.create).toHaveBeenCalledTimes(1);
   });

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ExternalLink, FileText, History, Package, Scale, Truck } from 'lucide-react';
+import { ExternalLink, FileText, History, Info, Package, Scale, Truck } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 import { returnService, type ReturnDetail } from '@/services/return.service';
 import { toast } from '@/utils/toast';
 import { returnReasonLabel, returnStatusLabel } from '@/utils/return-status.utils';
@@ -12,6 +13,8 @@ type Liability = 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON';
 export type ReturnDetailPanel = 'products' | 'evidence' | 'shipping' | 'handling' | 'history';
 const reasonLabels: Record<string,string> = { SHOP_REQUESTED_REVIEW: 'Shop đề nghị xem xét', CUSTOMER_DISAGREES: 'Khách không đồng ý với Shop', MANAGER_REVIEW_SHOP_REJECTION: 'Xem xét quyết định từ chối của Shop' };
 const rulingLabels: Record<string,string> = { APPROVE_REFUND: 'Chấp thuận hoàn tiền', APPROVE_EXCHANGE: 'Chấp thuận đổi hàng', UPHOLD_SHOP: 'Giữ quyết định của Shop' };
+const rulingSelectClass = 'h-[42px] min-h-[42px] w-full rounded-lg py-0 shadow-none [&>span]:leading-tight';
+const rulingMenuClass = 'rounded-xl p-1 [&_[role=option]]:min-h-10 [&_[role=option]]:rounded-md [&_[role=option]]:py-1.5 [&_[role=option]]:pr-2 [&_[role=option]]:pl-8 [&_[role=option]]:relative [&_[role=option]>svg]:absolute [&_[role=option]>svg]:left-2 [&_[role=option]:disabled]:opacity-75 [&_[aria-selected=true]]:text-[#795A2D]';
 
 export function ReturnOversightDetail({ snapshot, onChanged, activePanel, onPanelChange, handlingActions, shippingActions }: {
   snapshot: ReturnDetail; onChanged: (openDispute?: boolean) => Promise<void>;
@@ -20,25 +23,29 @@ export function ReturnOversightDetail({ snapshot, onChanged, activePanel, onPane
 }) {
   const [panel, setPanel] = useState<ReturnDetailPanel>(activePanel || 'products');
   useEffect(() => { if (activePanel) setPanel(activePanel); }, [activePanel]);
-  const [ruling, setRuling] = useState<Ruling>('APPROVE_REFUND');
+  const [ruling, setRuling] = useState<Ruling | ''>('');
   const [liability, setLiability] = useState<Liability | ''>('');
   const [notes, setNotes] = useState('');
+  const [notesTouched, setNotesTouched] = useState(false);
   const detail = useQuery({ queryKey: ['return-detail', snapshot.id], queryFn: () => returnService.getOne(snapshot.id), staleTime: 0 });
   const request = detail.data;
   const resolve = useMutation({ mutationFn: (data: { id: string; ruling: Ruling; liability: Liability; notes: string }) => returnService.resolveDispute(data.id, { ruling: data.ruling, liability: data.liability, notes: data.notes }),
-    onSuccess: async () => { await onChanged(); toast.success('Đã lưu quyết định phân xử.'); },
-    onError: (error: Error) => toast.error(error.message || 'Không thể lưu quyết định.') });
+    onSuccess: async () => { await onChanged(); toast.success('Đã lưu quyết định phân xử.'); } });
   const openReview = useMutation({ mutationFn: () => returnService.openRejectedReview(snapshot.id),
     onSuccess: async () => { await onChanged(true); toast.success('Đã mở hồ sơ phân xử.'); },
     onError: (error: Error) => toast.error(error.message || 'Không thể mở phân xử.') });
   const busy = resolve.isPending || openReview.isPending;
   const canUphold = !request?.customerShipment?.receivedAt;
-  const missingTracking = liability === 'LOGISTICS_FAULT' && !request?.order.outboundGhnTrackingNumber;
-  const invalidRuling = ruling === 'UPHOLD_SHOP' && (!canUphold || liability === 'LOGISTICS_FAULT');
+  const hasTracking = Boolean(request?.order.outboundGhnTrackingNumber);
+  const upholdBlockedReason = !canUphold ? 'Shop đã nhận hàng trả' : liability === 'LOGISTICS_FAULT' ? 'GHN chịu trách nhiệm' : '';
   const canResolve = request?.dispute?.status === 'OPEN';
+  const notesTooShort = notes.trim().length < 20;
+  const notesError = notesTouched && notesTooShort;
+  const canSave = !busy && Boolean(ruling && liability) && !notesTooShort
+    && !(ruling === 'UPHOLD_SHOP' && upholdBlockedReason) && !(liability === 'LOGISTICS_FAULT' && !hasTracking);
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy || !request?.dispute || !canResolve || !liability || notes.trim().length < 20 || invalidRuling || missingTracking) return;
+    if (!canSave || !request?.dispute || !canResolve || !ruling || !liability) return;
     resolve.mutate({ id: request.dispute.id, ruling, liability, notes: notes.trim() });
   }
   const products = request ? caseProducts(request) : [];
@@ -73,15 +80,83 @@ export function ReturnOversightDetail({ snapshot, onChanged, activePanel, onPane
             <section><h5>Kết luận vận hành</h5><strong>{request.dispute.ruling ? rulingLabels[request.dispute.ruling] || request.dispute.ruling : 'Chưa có quyết định'}</strong>{request.dispute.resolutionNotes && <div className="return-arbitration-notes"><h6>Ghi chú quyết định</h6><p>{request.dispute.resolutionNotes}</p></div>}</section></div>
         </section>}
         {request.status === 'SHOP_REJECTED' && !request.dispute && <section className="return-detail-box"><h4>Xem xét quyết định của Shop</h4><p>Mở phân xử để xác minh thêm; thao tác này chưa kết luận bên nào có lỗi.</p><button type="button" className="return-primary" disabled={busy} onClick={() => openReview.mutate()}>{openReview.isPending ? 'Đang mở…' : 'Mở phân xử'}</button></section>}
-        {canResolve && <form className="return-ruling-form" onSubmit={submit}><h4>Quyết định phân xử</h4>
-          <label>Quyết định<select value={ruling} disabled={busy} onChange={event => setRuling(event.target.value as Ruling)}><option value="APPROVE_REFUND">Chấp thuận hoàn tiền</option><option value="APPROVE_EXCHANGE">Chấp thuận đổi hàng</option>{canUphold && <option value="UPHOLD_SHOP" disabled={liability === 'LOGISTICS_FAULT'}>Giữ quyết định của Shop</option>}</select></label>
-          <label>Bên chịu trách nhiệm<select value={liability} disabled={busy} onChange={event => { const next=event.target.value as Liability; setLiability(next); if(next==='LOGISTICS_FAULT' && ruling==='UPHOLD_SHOP')setRuling('APPROVE_REFUND'); }}><option value="">Chọn bên chịu trách nhiệm</option><option value="LOGISTICS_FAULT" disabled={!request.order.outboundGhnTrackingNumber}>GHN / vận chuyển</option><option value="SHOP_FAULT">Shop / hàng hóa</option><option value="CUSTOMER_REASON">Khách đổi ý</option></select></label>
-          <label className="return-ruling-notes">Căn cứ phân xử<textarea value={notes} required minLength={20} maxLength={3000} rows={3} disabled={busy} onChange={event=>setNotes(event.target.value)}/><small>Tối thiểu 20 ký tự · {notes.trim().length}/3000</small></label>
-          {!request.order.outboundGhnTrackingNumber && <p className="return-warning">Chưa có vận đơn GHN gốc; chưa thể quy trách nhiệm cho GHN.</p>}
-          {!canUphold && <p className="return-warning">Shop đang giữ hàng khách trả; cần phương án trả hàng hoặc bồi hoàn trước khi đóng hồ sơ.</p>}
-          <details className="return-process-help"><summary>Nguyên tắc xử lý</summary><p>Chỉ kết luận khi đã kiểm tra bằng chứng. Hoàn cho khách không chờ GHN bồi hoàn cho Shop. Hoàn tiền và thu hồi thu nhập được ghi cùng giao dịch khi ví khách sẵn sàng; nếu chưa, hồ sơ tiếp tục chờ đối soát.</p></details>
-          <button type="submit" className="return-primary" disabled={busy || !liability || notes.trim().length<20 || invalidRuling || missingTracking}>{resolve.isPending ? 'Đang lưu…' : 'Lưu quyết định'}</button>
-        </form>}
+        {canResolve && (
+          <form className="return-ruling-form rounded-xl border border-[#EAE4D7] bg-white" onSubmit={submit} aria-busy={resolve.isPending}>
+            <h4 className="border-b border-[#EAE4D7] px-4 py-3 text-sm font-semibold sm:px-5">Quyết định phân xử</h4>
+            <div className="grid gap-4 px-4 py-4 sm:grid-cols-2 sm:px-5">
+              <div className="grid min-w-0 content-start gap-1.5">
+                <label htmlFor="return-ruling-choice" className="text-xs font-semibold text-[#514737]">Quyết định <span className="text-[#DC2626]">*</span></label>
+                <Select
+                  id="return-ruling-choice" value={ruling} placeholder="Chọn quyết định"
+                  disabled={busy} portal className={rulingSelectClass} menuClassName={rulingMenuClass}
+                  options={[
+                    { value: 'APPROVE_REFUND', label: rulingLabels.APPROVE_REFUND },
+                    { value: 'APPROVE_EXCHANGE', label: rulingLabels.APPROVE_EXCHANGE },
+                    {
+                      value: 'UPHOLD_SHOP', label: rulingLabels.UPHOLD_SHOP, disabled: Boolean(upholdBlockedReason),
+                      content: upholdBlockedReason ? (
+                        <span className="grid gap-0.5 leading-tight">
+                          {rulingLabels.UPHOLD_SHOP}
+                          <span className="text-[11px]">{upholdBlockedReason}</span>
+                        </span>
+                      ) : undefined,
+                    },
+                  ]}
+                  onChange={event => { setRuling(event.target.value as Ruling); resolve.reset(); }}
+                />
+              </div>
+              <div className="grid min-w-0 content-start gap-1.5">
+                <label htmlFor="return-ruling-liability" className="text-xs font-semibold text-[#514737]">Bên chịu trách nhiệm <span className="text-[#DC2626]">*</span></label>
+                <Select
+                  id="return-ruling-liability" value={liability} placeholder="Chọn bên chịu trách nhiệm"
+                  disabled={busy} portal className={rulingSelectClass} menuClassName={rulingMenuClass}
+                  options={[
+                    {
+                      value: 'LOGISTICS_FAULT', label: 'GHN / vận chuyển', disabled: !hasTracking,
+                      content: !hasTracking ? (
+                        <span className="grid gap-0.5 leading-tight">
+                          GHN / vận chuyển
+                          <span className="text-[11px]">Chưa có vận đơn GHN gốc</span>
+                        </span>
+                      ) : undefined,
+                    },
+                    { value: 'SHOP_FAULT', label: 'Shop / hàng hóa' },
+                    { value: 'CUSTOMER_REASON', label: 'Khách đổi ý' },
+                  ]}
+                  onChange={event => {
+                    const next = event.target.value as Liability;
+                    setLiability(next);
+                    if (next === 'LOGISTICS_FAULT' && ruling === 'UPHOLD_SHOP') setRuling('');
+                    resolve.reset();
+                  }}
+                />
+              </div>
+              <div className="grid min-w-0 gap-1.5 sm:col-span-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="return-ruling-notes" className="text-xs font-semibold text-[#514737]">Căn cứ phân xử <span className="text-[#DC2626]">*</span></label>
+                  <span className="text-[11px] tabular-nums text-[#7D715E]">{notes.length.toLocaleString('vi-VN')}/3.000</span>
+                </div>
+                <textarea
+                  id="return-ruling-notes" value={notes} required minLength={20} maxLength={3000} rows={3} disabled={busy}
+                  aria-invalid={notesError} aria-describedby={notesError ? 'return-ruling-notes-error' : undefined}
+                  placeholder="Nhập kết luận và bằng chứng làm căn cứ…"
+                  className="min-h-20 w-full resize-y rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] aria-invalid:border-[#DC2626]"
+                  onBlur={() => setNotesTouched(true)}
+                  onChange={event => { setNotes(event.target.value); if (resolve.isError) resolve.reset(); }}
+                />
+                {notesError && <p id="return-ruling-notes-error" className="text-xs text-[#DC2626]">Nhập ít nhất 20 ký tự.</p>}
+              </div>
+              {resolve.isError && <p role="alert" className="text-xs text-[#DC2626] sm:col-span-2">{resolve.error.message || 'Không thể lưu quyết định.'}</p>}
+            </div>
+            <div className="flex flex-wrap items-start justify-between gap-3 border-t border-[#EAE4D7] px-4 py-3 sm:flex-nowrap sm:px-5">
+              <details className="return-process-help min-w-0">
+                <summary className="min-h-[42px]"><Info size={15} aria-hidden="true" />Nguyên tắc xử lý</summary>
+                <p>Kiểm tra bằng chứng trước khi kết luận. Hoàn tiền cho khách độc lập với bồi hoàn GHN. Khi ví sẵn sàng, khoản hoàn và phần thu nhập bị thu hồi được ghi cùng giao dịch. Hồ sơ chờ đối soát nếu ví chưa sẵn sàng.</p>
+              </details>
+              <button type="submit" className="ml-auto h-[42px] shrink-0 cursor-pointer rounded-lg border border-[#C59B58] bg-[#C59B58] px-4 text-xs font-semibold text-[#231D15] transition-colors hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:border-[#EAE4D7] disabled:bg-[#F3EFE6] disabled:text-[#7D715E]" disabled={!canSave}>{resolve.isPending ? 'Đang lưu…' : 'Lưu quyết định'}</button>
+            </div>
+          </form>
+        )}
       </>}
       {panel === 'history' && <ReturnTimeline request={request} compact/>}
     </div>}

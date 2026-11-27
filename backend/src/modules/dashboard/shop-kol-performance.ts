@@ -4,7 +4,12 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { QueryReferralOrdersDto } from './dto/dashboard-analytics.dto';
 import { VIETNAM_OFFSET_MS, vietnamDayStart } from './analytics-time';
 
-/** Periods use Vietnam calendar days; summary covers ALL pages, not only 20 rows. */
+const STATUS_GROUPS: Record<string, OrderStatus[]> = {
+  DELIVERED_GROUP: [OrderStatus.DELIVERED, OrderStatus.COMPLETED],
+  RETURNS_GROUP: [OrderStatus.RETURN_REQUESTED, OrderStatus.DISPUTED, OrderStatus.RETURNED],
+};
+
+/** Periods use Vietnam calendar days; summary covers ALL pages. */
 export function shopKolOrderFilter(
   storeId: string | null,
   kolId: string,
@@ -20,6 +25,7 @@ export function shopKolOrderFilter(
   if (
     query.status &&
     query.status !== 'ALL' &&
+    !STATUS_GROUPS[query.status] &&
     !Object.values(OrderStatus).includes(query.status as OrderStatus)
   )
     throw new BadRequestException('Trạng thái đơn hàng không hợp lệ.');
@@ -43,7 +49,7 @@ export function shopKolOrderFilter(
     ...(storeId ? { storeId } : {}),
     store: { isDeleted: false, deletedAt: null },
     ...(query.status && query.status !== 'ALL'
-      ? { status: query.status as OrderStatus }
+      ? { status: STATUS_GROUPS[query.status] ? { in: STATUS_GROUPS[query.status] } : query.status as OrderStatus }
       : {}),
     createdAt: { ...(start ? { gte: start } : {}), lte: now },
   };
@@ -60,7 +66,7 @@ export async function readShopKolPerformance(
   const where = shopKolOrderFilter(storeId, kolId, query);
   const completedWhere: Prisma.OrderWhereInput = {
     AND: [
-      where,
+      shopKolOrderFilter(storeId, kolId, { ...query, status: 'ALL' }),
       { status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] } },
     ],
   };
@@ -86,7 +92,16 @@ export async function readShopKolPerformance(
               unitPrice: true,
               appliedCommissionRate: true,
               calculatedCommissionAmount: true,
-              product: { select: { title: true } },
+              variant: { select: { imageUrl: true } },
+              product: { select: {
+                title: true, imageUrl: true,
+                mediaAssets: {
+                  where: { assetType: 'IMAGE', isDeleted: false },
+                  orderBy: [{ isFeatured: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+                  take: 1,
+                  select: { urlOrContent: true },
+                },
+              } },
             },
           },
           commissions: {
@@ -147,6 +162,7 @@ export async function readShopKolPerformance(
           order.orderItems.length > 1
             ? `${title} (+${order.orderItems.length - 1})`
             : title,
+        productImage: first?.variant?.imageUrl || first?.product.imageUrl || first?.product.mediaAssets?.[0]?.urlOrContent || null,
         finalAmount: Number(order.finalAmount),
         orderTotal: Number(order.finalAmount),
         commissionAmount: amount,

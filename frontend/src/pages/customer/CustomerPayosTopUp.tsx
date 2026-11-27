@@ -6,6 +6,7 @@ import { walletService, type PayosWalletTopUp } from '../../services/wallet.serv
 import { VIETNAM_BANKS } from '../../config/banks.config';
 import { formatMoney } from '../../utils/marketplace.utils';
 import { toast } from '../../utils/toast';
+import TopUpAmountInput from '../../components/wallet/TopUpAmountInput';
 
 const OPEN = ['CREATING', 'PENDING', 'UNDERPAID', 'PROCESSING'];
 const AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
@@ -221,13 +222,11 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
                     <span className="text-[11px] text-[#7D715E]">VNĐ</span>
                   </div>
                   <div className="flex items-center gap-2 min-h-[44px] px-3.5 border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/15 rounded-xl bg-white transition-all">
-                    <input
+                    <TopUpAmountInput
                       id="cw-payos-amount"
-                      type="text"
-                      inputMode="numeric"
-                      value={amount ? Number(open && request ? request.amount : amount).toLocaleString('vi-VN') : ''}
+                      value={open && request ? String(request.amount) : amount}
                       disabled={!ready || creating || open}
-                      onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
+                      onAmountChange={setAmount}
                       placeholder="Tối thiểu 10.000"
                       className="w-full min-w-0 py-3 border-0 outline-none bg-transparent text-[#1A1612] text-2xl font-bold tabular-nums disabled:opacity-100 disabled:text-[#1A1612]"
                     />

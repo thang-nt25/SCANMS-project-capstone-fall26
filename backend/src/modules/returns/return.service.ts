@@ -577,7 +577,11 @@ export class ReturnService {
         this.prisma.dispute.findMany({
           where,
           include: { returnRequest: { include: detailInclude } },
-          orderBy: { openedAt: 'asc' },
+          orderBy: [
+            { returnRequest: { submittedAt: 'desc' } },
+            { openedAt: 'desc' },
+            { id: 'desc' },
+          ],
           skip,
           take: pageSize,
         }),

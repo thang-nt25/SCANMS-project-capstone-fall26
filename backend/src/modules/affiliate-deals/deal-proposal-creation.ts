@@ -25,9 +25,9 @@ export async function createDealProposal(
   if (dto.videoReviewCommitment !== true)
     throw new BadRequestException('Cần cam kết thực hiện video review.');
   const kpi =
-    dto.targetOrders != null || dto.targetRevenue == null
-      ? validateDealKpi(dto.targetOrders, dto.commitmentDays)
-      : validateRevenueKpi(dto.targetRevenue, dto.commitmentDays);
+    dto.targetRevenue != null
+      ? { ...validateRevenueKpi(dto.targetRevenue, dto.commitmentDays), targetOrders: null }
+      : { ...validateDealKpi(dto.targetOrders, dto.commitmentDays), targetRevenue: null };
   const rate = Number(dto.proposedCommissionRate);
   if (!Number.isFinite(rate) || rate < 10 || rate > 25)
     throw new BadRequestException('Hoa hồng VIP phải từ 10% đến 25%.');
@@ -262,8 +262,8 @@ export async function createDealProposal(
           details: {
             proposalId: proposal.id,
             scopeType: scope.scopeType,
-            targetOrders: 'targetOrders' in kpi ? kpi.targetOrders : null,
-            targetRevenue: 'targetRevenue' in kpi ? kpi.targetRevenue : null,
+            targetRevenue: kpi.targetRevenue,
+            targetOrders: kpi.targetOrders,
             rate,
           },
         },

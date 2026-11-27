@@ -52,33 +52,31 @@ test('both Shop sample dialogs keep the full GHN quota error visible without dec
           throw new Error(`${route}: ${error.message}; ${await page.evaluate(() => document.body.innerText.slice(-1800))}`);
         });
         await page.evaluate(() => [...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Tạo vận đơn GHN').click());
-        await page.waitForSelector('form button[type="submit"]');
-        if (route.startsWith('/merchant/orders')) {
-          for (const width of [1280, 390]) {
-            await page.setViewport({ width, height: 720 });
+        await page.waitForSelector('dialog[open] button[type="submit"]');
+        for (const width of [1280, 390]) {
+            await page.setViewport({ width, height: 420 });
             const geometry = await page.$eval('[aria-labelledby="sample-shipping-title"]', dialog => {
               const rect = dialog.getBoundingClientRect();
               const scroll = dialog.querySelector('form > div');
               scroll.scrollTop = 0;
               const titleBefore = dialog.querySelector('h3').getBoundingClientRect().top;
-              const closeBefore = dialog.querySelector('[aria-label]').getBoundingClientRect().top;
+              const submitBefore = dialog.querySelector('button[type="submit"]').getBoundingClientRect().top;
               scroll.scrollTop = scroll.scrollHeight;
               const close = dialog.querySelector('[aria-label]').getBoundingClientRect();
               const submit = dialog.querySelector('button[type="submit"]').getBoundingClientRect();
-              return { fits: rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight, noOverflow: dialog.scrollWidth <= dialog.clientWidth, controlsVisible: close.top >= rect.top && submit.bottom <= rect.bottom, titleScrolls: dialog.querySelector('h3').getBoundingClientRect().top < titleBefore, closeStays: Math.abs(close.top - closeBefore) < 1 };
+              return { fits: rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight, noOverflow: dialog.scrollWidth <= dialog.clientWidth, controlsVisible: close.top >= rect.top && submit.bottom <= rect.bottom, titleStays: Math.abs(dialog.querySelector('h3').getBoundingClientRect().top - titleBefore) < 1, submitStays: Math.abs(submit.top - submitBefore) < 1 };
             });
-            assert.deepEqual(geometry, { fits: true, noOverflow: true, controlsVisible: true, titleScrolls: true, closeStays: true });
+            assert.deepEqual(geometry, { fits: true, noOverflow: true, controlsVisible: true, titleStays: true, submitStays: true });
             if (width === 1280) {
-              assert.equal(await page.$eval('[aria-labelledby="sample-shipping-title"]', dialog => dialog.getBoundingClientRect().width), 680);
+              assert.equal(await page.$eval('[aria-labelledby="sample-shipping-title"]', dialog => dialog.getBoundingClientRect().width), 540);
               assert.equal(await page.$eval('[aria-labelledby="sample-shipping-title"]', dialog => {
-                const headings = [...dialog.querySelectorAll('h4')].map(el => el.getBoundingClientRect());
-                return Math.abs(headings[0].left - headings[1].left) < 1 && headings[1].top > headings[0].bottom;
-              }), true, 'shipping sections are stacked in one column');
+                const options = [...dialog.querySelectorAll('fieldset label > span')].map(el => el.getBoundingClientRect());
+                return options.every(option => option.height === 40) && Math.abs(options[0].width - options[1].width) < 1;
+              }), true, 'shipping modes have equal width and height');
             }
             await page.screenshot({ path: join(tmpdir(), `scanms-sample-shipping-${width}.png`) });
-          }
         }
-        await page.$eval('form', form => form.requestSubmit());
+        await page.click('dialog[open] button[type="submit"]');
         await page.waitForFunction(() => [...document.querySelectorAll('[role="alert"]')].some(el => el.textContent.includes('không phải số suất mẫu')));
         const alert = await page.$eval('form [role="alert"]', el => ({ text: el.innerText, overflow: getComputedStyle(el.querySelector('p:last-child')).textOverflow }));
         assert.ok(alert.text.includes(message));
