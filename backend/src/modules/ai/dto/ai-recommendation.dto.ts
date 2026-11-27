@@ -268,6 +268,15 @@ export class KolMatchResultDto {
     type: KolLifetimeStatsSummaryDto,
   })
   lifetimeStats: KolLifetimeStatsSummaryDto;
+
+  @ApiPropertyOptional({ description: 'ID bản ghi hợp tác hiện tại giữa Shop và KOL (nếu có)' })
+  cooperationId?: string;
+
+  @ApiPropertyOptional({ description: 'Trạng thái hợp tác hiện tại giữa Shop và KOL' })
+  cooperationStatus?: string;
+
+  @ApiPropertyOptional({ description: 'True nếu KOL là người chủ động gửi đề nghị hợp tác' })
+  requestedByKol?: boolean;
 }
 
 export class TargetProductSummaryDto {

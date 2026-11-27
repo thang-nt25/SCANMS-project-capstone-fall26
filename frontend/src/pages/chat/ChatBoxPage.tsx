@@ -96,6 +96,11 @@ function ChatAvatar({
           alt={name}
           className="absolute inset-0 h-full w-full object-cover"
           onError={() => setFailedSource(src)}
+          onLoad={(e) => {
+            if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
+              setFailedSource(src);
+            }
+          }}
         />
       )}
     </span>
@@ -1325,6 +1330,7 @@ interface ChatBoxPageProps {
   className?: string;
   initialProductContext?: ProductContextData;
   initialConversations?: Conversation[];
+  cooperationStatus?: string | null;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1344,6 +1350,9 @@ interface GlobalChatSessionCache {
   userId: string | null;
   conversations: Conversation[];
   messagesByConvId: Map<string, ChatMessage[]>;
+  fetchedMessagesAt: Map<string, number>;
+  dealStatesById: Record<string, any>;
+  lastListFetchedAt: number;
   activeConvId: string | null;
 }
 
@@ -1351,6 +1360,9 @@ const chatSessionCache: GlobalChatSessionCache = {
   userId: null,
   conversations: [],
   messagesByConvId: new Map(),
+  fetchedMessagesAt: new Map(),
+  dealStatesById: {},
+  lastListFetchedAt: 0,
   activeConvId: null,
 };
 
@@ -1369,6 +1381,7 @@ export default function ChatBoxPage({
   className = '',
   initialProductContext,
   initialConversations,
+  cooperationStatus,
 }: ChatBoxPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1385,6 +1398,9 @@ export default function ChatBoxPage({
     chatSessionCache.userId = currentUser?.id || null;
     chatSessionCache.conversations = [];
     chatSessionCache.messagesByConvId.clear();
+    chatSessionCache.fetchedMessagesAt.clear();
+    chatSessionCache.dealStatesById = {};
+    chatSessionCache.lastListFetchedAt = 0;
     chatSessionCache.activeConvId = null;
   }
   const isShop = currentUser?.role === 'SHOP_MANAGER';
@@ -1487,8 +1503,9 @@ export default function ChatBoxPage({
       setExplorerConversationId(activeConvId);
     }
   }, [searchRequestKey, activeConvId]);
-  const [dealStates, setDealStates] = useState<Record<string, any>>({});
+  const [dealStates, setDealStates] = useState<Record<string, any>>(() => chatSessionCache.dealStatesById);
   const onDealStateChange = useCallback((id: string, state: any) => {
+    chatSessionCache.dealStatesById[id] = state;
     setDealStates(previous => ({ ...previous, [id]: state }));
   }, []);
   const [showCustomerToolsMenu, setShowCustomerToolsMenu] = useState(false);
@@ -1571,7 +1588,19 @@ export default function ChatBoxPage({
     setNewMessageCount(0);
   }, []);
 
-  const markConversationRead = useCallback(async (conversationId: string) => {
+  const lastReadPatchAtRef = useRef<Map<string, number>>(new Map());
+  const markConversationRead = useCallback(async (conversationId: string, force = false) => {
+    const conv = conversationsRef.current.find(item => item.id === conversationId);
+    const cachedMsgs = chatSessionCache.messagesByConvId.get(conversationId) || [];
+    const hasUnreadInList =
+      (conv?._count?.chatMessages ?? 0) > 0 ||
+      Boolean(conv?.chatMessages?.some(m => !m.isRead && m.senderId !== currentUser?.id)) ||
+      cachedMsgs.some(m => !m.isRead && m.senderId !== currentUser?.id);
+    if (!force && !hasUnreadInList) return;
+    const now = Date.now();
+    const lastSent = lastReadPatchAtRef.current.get(conversationId) || 0;
+    if (now - lastSent < (force ? 800 : 3000)) return;
+    lastReadPatchAtRef.current.set(conversationId, now);
     try {
       await api.patch(`/chat/conversations/${conversationId}/read`);
       setConversations(previous => {
@@ -1583,24 +1612,61 @@ export default function ChatBoxPage({
       });
       onConversationRead?.(conversationId);
     } catch { /* Keep unread state when the receipt could not be saved. */ }
-  }, [onConversationRead]);
+  }, [onConversationRead, currentUser?.id]);
 
+
+  const initialConversationsRef = useRef<Conversation[] | undefined>(initialConversations);
+  initialConversationsRef.current = initialConversations;
+  const prefetchedConvIdsRef = useRef<Set<string>>(new Set());
+
+  const prefetchConversations = useCallback((list: Conversation[]) => {
+    const candidates = list
+      .filter((c) => UUID_REGEX.test(c.id) && !chatSessionCache.messagesByConvId.has(c.id) && !prefetchedConvIdsRef.current.has(c.id))
+      .slice(0, 8);
+    if (!candidates.length) return;
+    candidates.forEach((c) => prefetchedConvIdsRef.current.add(c.id));
+    void Promise.all(
+      candidates.map(async (c) => {
+        try {
+          const res: any = await api.get(`/chat/conversations/${c.id}/messages?take=50`);
+          const msgs: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
+          if (!chatSessionCache.messagesByConvId.has(c.id)) {
+            chatSessionCache.messagesByConvId.set(c.id, msgs);
+            chatSessionCache.fetchedMessagesAt.set(c.id, Date.now());
+          }
+        } catch {
+          prefetchedConvIdsRef.current.delete(c.id);
+        }
+      }),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!initialConversations || initialConversations.length === 0) return;
+    setConversations((prev) => {
+      const mergedMap = new Map(prev.map((c) => [c.id, c]));
+      for (const conv of initialConversations) {
+        if (!conv?.id) continue;
+        if (onlyCustomerChats && !conv.customerId) continue;
+        const existing = mergedMap.get(conv.id);
+        mergedMap.set(conv.id, existing ? { ...existing, ...conv } : conv);
+      }
+      const next = [...mergedMap.values()];
+      chatSessionCache.conversations = next;
+      return next;
+    });
+    prefetchConversations(initialConversations);
+  }, [initialConversations, onlyCustomerChats, prefetchConversations]);
 
   useEffect(() => {
     let isMounted = true;
     setConversationError('');
-    // A newly selected partner must never show the previously opened person's messages.
-    if (targetCollaboratorId || effectiveTargetStoreId) {
-      setActiveConvId(null);
-      activeConvIdRef.current = null;
-      setMessages([]);
-    }
 
-    const setupContext = async (list: Conversation[]) => {
-      if (!isMounted) return;
+    const setupContext = async (list: Conversation[]): Promise<boolean> => {
+      if (!isMounted) return false;
       if (requestedConversationId) {
         const selected = list.find((conversation) => conversation.id === requestedConversationId);
-        if (selected) { openConversationRef.current(selected); return; }
+        if (selected) { await openConversationRef.current(selected); return true; }
       }
       if (effectiveTargetStoreId) {
         const effectiveStoreId = LEGACY_ID_MAP[effectiveTargetStoreId] || effectiveTargetStoreId;
@@ -1608,8 +1674,10 @@ export default function ChatBoxPage({
           (c) => c.storeId === effectiveStoreId || c.store?.id === effectiveStoreId
         );
         if (matching) {
-          openConversationRef.current(matching);
-        } else if (UUID_REGEX.test(effectiveStoreId)) {
+          await openConversationRef.current(matching);
+          return true;
+        }
+        if (UUID_REGEX.test(effectiveStoreId)) {
           try {
             const res: any = await api.post('/chat/conversations', {
               storeId: effectiveStoreId,
@@ -1619,11 +1687,14 @@ export default function ChatBoxPage({
             if (isMounted && realConv && realConv.id) {
               setConversations((prev) => {
                 const filtered = prev.filter((c) => c.id !== realConv.id);
-                return [realConv, ...filtered];
+                const next = [realConv, ...filtered];
+                chatSessionCache.conversations = next;
+                return next;
               });
-              openConversationRef.current(realConv);
+              await openConversationRef.current(realConv);
+              return true;
             }
-          } catch (err) {
+          } catch {
             const draftConv: any = {
               id: `draft-${effectiveStoreId}`,
               storeId: effectiveStoreId,
@@ -1631,7 +1702,8 @@ export default function ChatBoxPage({
               chatMessages: [],
             };
             if (isMounted) {
-              openConversationRef.current(draftConv);
+              await openConversationRef.current(draftConv);
+              return true;
             }
           }
         }
@@ -1641,17 +1713,22 @@ export default function ChatBoxPage({
           (c) => c.collaboratorId === effectiveCollabId || c.collaborator?.id === effectiveCollabId
         );
         if (matching) {
-          openConversationRef.current(matching);
-        } else if (UUID_REGEX.test(effectiveCollabId)) {
+          await openConversationRef.current(matching);
+          return true;
+        }
+        if (UUID_REGEX.test(effectiveCollabId)) {
           try {
             const res: any = await api.post('/chat/conversations', { collaboratorId: effectiveCollabId });
             const realConv = res?.data || res;
             if (isMounted && realConv && realConv.id) {
               setConversations((prev) => {
                 const filtered = prev.filter((c) => c.id !== realConv.id);
-                return [realConv, ...filtered];
+                const next = [realConv, ...filtered];
+                chatSessionCache.conversations = next;
+                return next;
               });
-              openConversationRef.current(realConv);
+              await openConversationRef.current(realConv);
+              return true;
             }
           } catch (err) {
             if (isMounted) setConversationError('Không mở được hội thoại với nhà sáng tạo này. Vui lòng thử lại.');
@@ -1671,42 +1748,69 @@ export default function ChatBoxPage({
             lastMessageAt: new Date().toISOString(),
           };
           if (isMounted) {
-            openConversationRef.current(draftConv);
+            await openConversationRef.current(draftConv);
+            return true;
           }
         }
       } else if (activeConvIdRef.current) {
         const currentActive = list.find((c) => c.id === activeConvIdRef.current);
         if (currentActive) {
-          openConversationRef.current(currentActive);
+          await openConversationRef.current(currentActive);
+          return true;
         } else if (list.length > 0) {
-          openConversationRef.current(list[0]);
+          await openConversationRef.current(list[0]);
+          return true;
         }
       } else if (list.length > 0) {
-        openConversationRef.current(list[0]);
+        await openConversationRef.current(list[0]);
+        return true;
       }
+      return false;
     };
 
     // 1. Setup ngay lập tức nếu đã có danh sách hội thoại từ props hoặc cache (0ms!)
-    const immediateList = (initialConversations && initialConversations.length > 0)
-      ? initialConversations
+    const immediateList = (initialConversationsRef.current && initialConversationsRef.current.length > 0)
+      ? initialConversationsRef.current
       : conversationsRef.current.length > 0
       ? conversationsRef.current
       : chatSessionCache.conversations.length > 0
       ? chatSessionCache.conversations
       : null;
 
+    let resolvedFromImmediate = false;
     if (immediateList && immediateList.length > 0) {
       const filtered = immediateList.filter((conversation) => {
         if (onlyCustomerChats && !conversation.customerId) return false;
-        // Empty conversations still need their composer when a partner is selected.
         return true;
       });
       if (filtered.length > 0) {
-        setupContext(filtered);
+        prefetchConversations(filtered);
+        const targetId = targetCollaboratorId
+          ? (LEGACY_ID_MAP[targetCollaboratorId] || targetCollaboratorId)
+          : effectiveTargetStoreId
+            ? (LEGACY_ID_MAP[effectiveTargetStoreId] || effectiveTargetStoreId)
+            : null;
+        const alreadyHasMatch = !targetId || filtered.some((c) =>
+          targetCollaboratorId
+            ? (c.collaboratorId === targetId || c.collaborator?.id === targetId)
+            : (c.storeId === targetId || c.store?.id === targetId),
+        );
+        if (alreadyHasMatch) {
+          resolvedFromImmediate = true;
+          void setupContext(filtered);
+        }
       }
     }
 
-    // 2. Đồng bộ ngầm với server (không chặn luồng hiển thị)
+    // Tránh gọi lại /chat/conversations liên tục nếu vừa đồng bộ trong 15 giây gần nhất và đã mở được hội thoại từ cache
+    const listFresh = Date.now() - chatSessionCache.lastListFetchedAt < 15_000 && chatSessionCache.conversations.length > 0;
+    if (resolvedFromImmediate && listFresh && listAttempt === 0) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    // 2. Đồng bộ ngầm với server (không chặn hoặc xóa hội thoại đang mở)
     api
       .get('/chat/conversations')
       .then((res: any) => {
@@ -1719,15 +1823,15 @@ export default function ChatBoxPage({
           if (onlyCustomerChats && !conversation.customerId) return false;
           return true;
         });
-        // A newly invited Shop has no server conversation yet. Keep the active
-        // local draft when refreshing summaries, so its composer stays usable.
         setConversations((previous) => {
           const draft = previous.find((conversation) => conversation.id === activeConvIdRef.current && conversation.id.startsWith('draft-'));
           return draft ? [draft, ...list] : list;
         });
         chatSessionCache.conversations = list;
-        if (!activeConvIdRef.current || activeConvIdRef.current.startsWith('draft-')) {
-          setupContext(list);
+        chatSessionCache.lastListFetchedAt = Date.now();
+        prefetchConversations(list);
+        if (!resolvedFromImmediate || !activeConvIdRef.current || activeConvIdRef.current.startsWith('draft-')) {
+          void setupContext(list);
         }
       })
       .catch((err) => {
@@ -1738,7 +1842,7 @@ export default function ChatBoxPage({
     return () => {
       isMounted = false;
     };
-  }, [effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation, requestedConversationId, onlyCustomerChats, listAttempt, initialConversations]);
+  }, [effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation, requestedConversationId, onlyCustomerChats, listAttempt, prefetchConversations]);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -1791,7 +1895,7 @@ export default function ChatBoxPage({
           return updated;
         });
         if (msg.senderId !== currentUser?.id && document.visibilityState === 'visible') {
-          void markConversationRead(msg.conversationId);
+          void markConversationRead(msg.conversationId, true);
         }
         if (nearBottomRef.current || msg.senderId === currentUser?.id) setTimeout(() => scrollToBottom(true), 50);
         else setNewMessageCount(count => count + 1);
@@ -1909,15 +2013,14 @@ export default function ChatBoxPage({
       return prev;
     });
 
-    // Hiển thị ngay lập tức nếu đã có tin nhắn trong bộ nhớ cache (0ms delay)
+    // Hiển thị ngay lập tức nếu đã từng tải hội thoại này trong phiên (kể cả hội thoại 0 tin nhắn -> 0ms delay!)
+    const hasCachedEntry = chatSessionCache.messagesByConvId.has(conv.id);
     const cached = chatSessionCache.messagesByConvId.get(conv.id);
-    if (cached && cached.length > 0) {
+    if (hasCachedEntry && cached) {
       setMessages(cached);
       setIsLoadingMsgs(false);
-      setTimeout(() => scrollToBottom(), 10);
+      requestAnimationFrame(() => scrollToBottom());
     } else {
-      // Conversation summaries omit message IDs, attachments and sender details.
-      // Only render full messages from history or the per-conversation cache.
       setMessages([]);
       setIsLoadingMsgs(true);
     }
@@ -1925,31 +2028,46 @@ export default function ChatBoxPage({
     setOldestMsgId(undefined);
 
     if (UUID_REGEX.test(conv.id)) {
+      socket.emit('join_conversation', { conversationId: conv.id });
+
+      const lastFetched = chatSessionCache.fetchedMessagesAt.get(conv.id) || 0;
+      const isFresh = hasCachedEntry && Date.now() - lastFetched < 12_000;
+      if (isFresh) {
+        if (document.visibilityState === 'visible') void markConversationRead(conv.id);
+        return;
+      }
+
       try {
         const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`);
         const msgs: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
         if (activeConvIdRef.current !== conv.id) return;
+        const hadPrev = hasCachedEntry;
+        const wasNearBottom = nearBottomRef.current;
         setMessages(previous => {
           const merged = [...new Map([...msgs, ...previous.filter(message => message.conversationId === conv.id && !msgs.some(item => item.id === message.id))].map(message => [message.id, message])).values()]
             .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           chatSessionCache.messagesByConvId.set(conv.id, merged);
+          chatSessionCache.fetchedMessagesAt.set(conv.id, Date.now());
           return merged;
         });
         setHasMore(msgs.length === 50);
         setOldestMsgId(msgs[0]?.id);
         if (document.visibilityState === 'visible') await markConversationRead(conv.id);
+        if (!hadPrev || wasNearBottom) {
+          requestAnimationFrame(() => scrollToBottom());
+        }
       } catch (err) {
-        if (activeConvIdRef.current === conv.id) setMessageError('Không tải được tin nhắn. Vui lòng thử lại.');
+        if (activeConvIdRef.current === conv.id && !hasCachedEntry) {
+          setMessageError('Không tải được tin nhắn. Vui lòng thử lại.');
+        }
         console.error(err);
       } finally {
         if (activeConvIdRef.current === conv.id) {
           setIsLoadingMsgs(false);
-          setTimeout(() => scrollToBottom(), 50);
         }
       }
-
-      socket.emit('join_conversation', { conversationId: conv.id });
     } else {
+      chatSessionCache.messagesByConvId.set(conv.id, []);
       setIsLoadingMsgs(false);
     }
   };
@@ -1996,6 +2114,10 @@ export default function ChatBoxPage({
 
 
   const sendMessage = useCallback(() => {
+    if (isBlockedCoop) {
+      showErrorToast('Quan hệ hợp tác giữa hai bên đang bị khóa. Không thể gửi tin nhắn mới.');
+      return;
+    }
     const trimmed = inputText.trim();
     if (!trimmed || !activeConvId || sendingRef.current) return;
 
@@ -2193,6 +2315,64 @@ export default function ChatBoxPage({
   const isCustomerChat = Boolean(activeConv?.customerId) || onlyCustomerChats;
   const isCollaboratorChat = Boolean(activeConv?.collaboratorId) && !isCustomerChat;
 
+  const [fetchedCoopStatus, setFetchedCoopStatus] = useState<string | null>(null);
+  useEffect(() => {
+    if (cooperationStatus !== undefined) return;
+    const partnerStoreId = activeConv?.storeId || activeConv?.store?.id || effectiveTargetStoreId;
+    const partnerCollabId = activeConv?.collaboratorId || targetCollaboratorId;
+    if (!isCollaboratorChat || (!partnerStoreId && !partnerCollabId)) {
+      setFetchedCoopStatus(null);
+      return;
+    }
+    let active = true;
+    const loadCoop = async () => {
+      try {
+        if (isShop) {
+          const res: any = await api.get('/store-collaborators/shop', { headers: { 'x-skip-cache': '1' } });
+          const body = res?.data || res;
+          const all = [
+            ...(body?.members || []),
+            ...(body?.pendingRequests || []),
+            ...(body?.closedRelations || []),
+          ];
+          const found = all.find((r: any) => (r.collaboratorId || r.collaborator?.id) === partnerCollabId);
+          if (active) setFetchedCoopStatus(found?.status || null);
+        } else if (currentUser?.role === 'COLLABORATOR' && partnerStoreId) {
+          const res: any = await api.get('/store-collaborators/my-invitations', { headers: { 'x-skip-cache': '1' } });
+          const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+          const found = list.find((r: any) => r.storeId === partnerStoreId);
+          if (active) setFetchedCoopStatus(found?.status || null);
+        }
+      } catch {
+        if (active) setFetchedCoopStatus(null);
+      }
+    };
+    void loadCoop();
+    window.addEventListener('scanms_cooperation_changed', loadCoop);
+    return () => {
+      active = false;
+      window.removeEventListener('scanms_cooperation_changed', loadCoop);
+    };
+  }, [cooperationStatus, isCollaboratorChat, isShop, currentUser?.role, activeConv?.storeId, activeConv?.store?.id, activeConv?.collaboratorId, effectiveTargetStoreId, targetCollaboratorId]);
+
+  const effectiveCoopStatus = cooperationStatus !== undefined ? cooperationStatus : fetchedCoopStatus;
+  const isClosedCoop =
+    isCollaboratorChat &&
+    effectiveCoopStatus !== undefined &&
+    effectiveCoopStatus !== 'APPROVED';
+  const isBlockedCoop = isCollaboratorChat && effectiveCoopStatus === 'BLOCKED';
+  const closedCoopReason = isBlockedCoop
+    ? 'Quan hệ hợp tác giữa hai bên đang bị khóa. Không thể gửi tin nhắn hoặc đề xuất mới.'
+    : effectiveCoopStatus === 'TERMINATED'
+      ? 'Quan hệ hợp tác đã chấm dứt — đã khóa Đề xuất Deal / Mã ưu đãi mới; hai bên vẫn có thể nhắn tin trao đổi để kết nối lại.'
+      : effectiveCoopStatus === 'REJECTED'
+        ? 'Hợp tác đang ở trạng thái Đã từ chối — đã khóa Đề xuất Deal / Mã ưu đãi mới; hai bên vẫn có thể nhắn tin trao đổi để kết nối lại.'
+        : effectiveCoopStatus === 'PENDING'
+          ? 'Đang chờ xác nhận hợp tác — hai bên vẫn có thể nhắn tin trao đổi, nhưng cần chấp nhận hợp tác trước khi tạo Deal / Mã ưu đãi mới.'
+          : isClosedCoop
+            ? 'Chưa liên kết hợp tác — hãy gửi hoặc chấp nhận lời mời hợp tác trước khi tạo Deal / Mã ưu đãi mới.'
+            : '';
+
   useEffect(() => {
     setShowExclusiveOffer(false);
   }, [activeConvId]);
@@ -2382,7 +2562,7 @@ export default function ChatBoxPage({
 
   const getOtherAvatarUrl = (conv: Conversation) => {
     if (currentUser?.role === 'COLLABORATOR') {
-      return conv.store?.owner?.avatarUrl || conv.store?.logoUrl || undefined;
+      return conv.store?.logoUrl || conv.store?.owner?.avatarUrl || undefined;
     }
     if (conv.customerId) return conv.customer?.avatarUrl || undefined;
     return (
@@ -2422,9 +2602,10 @@ export default function ChatBoxPage({
       <button
         id="btn-chat-exclusive-deal"
         type="button"
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#B88E4F] bg-[#231D15] px-3 py-2 text-xs font-bold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-xs"
+        disabled={isClosedCoop}
+        className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#B88E4F] bg-[#231D15] px-3 py-2 text-xs font-bold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-xs disabled:cursor-not-allowed disabled:opacity-45"
         onClick={() => setShowExclusiveDealModal(true)}
-        title="Ký kết thỏa thuận hợp tác phân phối độc quyền 1-1 với nhà sáng tạo"
+        title={isClosedCoop ? closedCoopReason : 'Ký kết thỏa thuận hợp tác phân phối độc quyền 1-1 với nhà sáng tạo'}
       >
         <Handshake className="w-3.5 h-3.5 text-[#C59B58]" />
         <span className="hidden sm:inline">Đề xuất Thỏa thuận Độc quyền</span>
@@ -2872,9 +3053,10 @@ export default function ChatBoxPage({
                   <button
                     type="button"
                     id="btn-collab-propose-coupon"
+                    disabled={isClosedCoop}
                     onClick={() => setShowProposeCouponModal(true)}
-                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-2xs"
-                    title="Đề xuất mã ưu đãi định danh KOC với Shop"
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-2xs disabled:cursor-not-allowed disabled:opacity-45"
+                    title={isClosedCoop ? closedCoopReason : 'Đề xuất mã ưu đãi định danh KOC với Shop'}
                   >
                     <Tag className="w-3.5 h-3.5 text-[#B88E4F]" />
                     <span className="hidden sm:inline">Mã ưu đãi định danh</span>
@@ -2882,9 +3064,10 @@ export default function ChatBoxPage({
                   <button
                     type="button"
                     id="btn-collab-propose-deal"
+                    disabled={isClosedCoop}
                     onClick={() => setShowKocDealModal(true)}
-                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#B88E4F] bg-[#231D15] px-2.5 py-1.5 text-xs font-bold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-xs"
-                    title="Đề xuất Thỏa thuận Thù lao VIP với Nhãn hàng"
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#B88E4F] bg-[#231D15] px-2.5 py-1.5 text-xs font-bold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-xs disabled:cursor-not-allowed disabled:opacity-45"
+                    title={isClosedCoop ? closedCoopReason : 'Đề xuất Thỏa thuận Thù lao VIP với Nhãn hàng'}
                   >
                     <Handshake className="w-3.5 h-3.5 text-[#C59B58]" />
                     <span className="hidden sm:inline">Đề xuất Deal VIP</span>
@@ -3218,18 +3401,33 @@ export default function ChatBoxPage({
                 </div>
               )}
 
+              {isClosedCoop && (
+                <div
+                  role="status"
+                  className={`mx-2.5 mt-2 flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px] leading-snug ${
+                    isBlockedCoop
+                      ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
+                      : 'border-[#EEDFC6] bg-[#FAF8F5] text-[#7D715E]'
+                  }`}
+                >
+                  <AlertTriangle className={`h-3.5 w-3.5 shrink-0 ${isBlockedCoop ? 'text-[#DC2626]' : 'text-[#D97706]'}`} />
+                  <span>{closedCoopReason}</span>
+                </div>
+              )}
+
               <div ref={chatComposerRef} className={`chat-composer ${embedded ? 'p-2.5 sm:p-3' : 'px-4 py-3 sm:px-6 sm:py-4'}`}>
                 {replyTarget && <ChatReplyQuote message={replyTarget} currentUserId={currentUser?.id} onCancel={() => setReplyTarget(null)} />}
                 <div className="flex items-end gap-2 sm:gap-2.5">
-                <ChatAttachmentButton key={activeConvId} conversationId={activeConvId!} connected={isConnected} replyToId={replyTarget?.id} onSent={() => setReplyTarget(null)} />
+                <ChatAttachmentButton key={activeConvId} conversationId={activeConvId!} connected={isConnected && !isBlockedCoop} replyToId={replyTarget?.id} onSent={() => setReplyTarget(null)} />
                 {isShop ? (
                   isCollaboratorChat ? (
                     <>
                       <button
                         type="button"
                         id="btn-composer-exclusive-deal"
-                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 active:scale-[0.96]"
-                        title="Đề xuất Thỏa thuận Độc quyền 1-1 với đối tác"
+                        disabled={isClosedCoop}
+                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
+                        title={isClosedCoop ? closedCoopReason : 'Đề xuất Thỏa thuận Độc quyền 1-1 với đối tác'}
                         onClick={() => setShowExclusiveDealModal(true)}
 
                       >
@@ -3273,8 +3471,9 @@ export default function ChatBoxPage({
                   <button
                     type="button"
                     id="btn-composer-propose-coupon"
-                    className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                    title="Đề xuất mã ưu đãi định danh KOC với Shop"
+                    disabled={isClosedCoop}
+                    className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-not-allowed disabled:opacity-40"
+                    title={isClosedCoop ? closedCoopReason : 'Đề xuất mã ưu đãi định danh KOC với Shop'}
                     onClick={() => setShowProposeCouponModal(true)}
                   >
                     <Tag className="w-5 h-5" />
@@ -3282,8 +3481,9 @@ export default function ChatBoxPage({
                   <button
                     type="button"
                     id="btn-composer-koc-deal"
-                    className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                    title="Đề xuất Thỏa thuận Thù lao VIP với Nhãn hàng"
+                    disabled={isClosedCoop}
+                    className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-not-allowed disabled:opacity-40"
+                    title={isClosedCoop ? closedCoopReason : 'Đề xuất Thỏa thuận Thù lao VIP với Nhãn hàng'}
                     onClick={() => setShowKocDealModal(true)}
                   >
                     <Handshake className="w-5 h-5 stroke-[1.75]" />
@@ -3294,8 +3494,8 @@ export default function ChatBoxPage({
                   <button
                     type="button"
                     id="btn-composer-quick-replies"
-                    title="Tin nh?n m?u"
-                    aria-label="Tin nh?n m?u"
+                    title="Tin nhắn mẫu"
+                    aria-label="Tin nhắn mẫu"
                     aria-haspopup="dialog"
                     aria-expanded={customerPicker?.kind === 'quick-reply'}
                     aria-controls={customerPicker?.kind === 'quick-reply' ? 'customer-quick-replies-picker' : undefined}
@@ -3306,15 +3506,16 @@ export default function ChatBoxPage({
                     className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl px-1.5 text-xs font-semibold text-[#765629] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 aria-expanded:bg-[#FBF5EB] sm:px-2.5"
                   >
                     <MessageSquare size={16} aria-hidden="true" />
-                    <span className="hidden sm:inline">M?u</span>
+                    <span className="hidden sm:inline">Mẫu</span>
                   </button>
                 )}
                 <textarea
                   ref={messageInputRef}
                   id="chat-message-input"
-                  className="min-h-10 min-w-0 flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2.5 text-sm leading-5 text-[#1A1612] transition-[height,border-color,background-color,box-shadow] placeholder:text-[#7D715E]/70 focus:border-[#C59B58] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
+                  disabled={isBlockedCoop}
+                  className="min-h-10 min-w-0 flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2.5 text-sm leading-5 text-[#1A1612] transition-[height,border-color,background-color,box-shadow] placeholder:text-[#7D715E]/70 focus:border-[#C59B58] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ overflowY: 'hidden' }}
-                  placeholder="Nhập tin nhắn..."
+                  placeholder={isBlockedCoop ? 'Quan hệ hợp tác đang bị khóa…' : 'Nhập tin nhắn...'}
                   aria-label="Nhập tin nhắn"
                   value={inputText}
                   onChange={handleInputChange}
@@ -3325,12 +3526,12 @@ export default function ChatBoxPage({
                 <button
                   id="chat-send-btn"
                   type="button"
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${inputText.trim() && !isSending
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${inputText.trim() && !isSending && !isBlockedCoop
                       ? 'cursor-pointer bg-[#C59B58] text-[#231D15] shadow-xs hover:bg-[#B88E4F]'
                       : 'cursor-not-allowed bg-[#F3EFE6] text-[#B8AE9D]'
                     }`}
                   onClick={sendMessage}
-                  disabled={!inputText.trim() || isSending || !isConnected}
+                  disabled={!inputText.trim() || isSending || !isConnected || isBlockedCoop}
                   title="Gửi tin nhắn"
                 >
                   <Send className="w-4 h-4" />

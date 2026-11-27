@@ -24,7 +24,7 @@ export function AccountAvatar({ user, name, useShopLogo = false }: {
       className="block size-full rounded-[inherit] object-cover"
       onError={() => reject(src)}
       onLoad={({ currentTarget }) => {
-        if (currentTarget.naturalWidth <= 1 || currentTarget.naturalHeight <= 1) reject(src);
+        if (currentTarget.naturalWidth <= 2 || currentTarget.naturalHeight <= 2) reject(src);
       }}
     />
   ) : (

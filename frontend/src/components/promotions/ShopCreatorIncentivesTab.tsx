@@ -78,7 +78,11 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
   const [loading, setLoading] = useState<boolean>(() => !lastCreatorIncentivesSnapshot);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [loadError, setLoadError] = useState('');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(() => searchParams.get('search') || '');
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) setSearchQuery(q);
+  }, [searchParams]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Modal states

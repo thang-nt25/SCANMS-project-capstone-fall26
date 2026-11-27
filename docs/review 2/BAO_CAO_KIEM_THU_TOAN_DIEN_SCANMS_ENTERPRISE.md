@@ -16,8 +16,8 @@
 ## 1. GIẢI MÃ NÚT THẮT SLIDE 8: NGUỒN GỐC & VÒNG ĐỜI CỦA "EXCLUSIVE ASSETS"
 
 ### 1.1. Hiện tượng trên Slide 8 và thắc mắc của bạn
-Trên Slide 8 (*Flow 2: Deals & Livestream*), xuất hiện cụm mũi tên:
-$$\text{ACTIVATE} \longrightarrow \textbf{EXCLUSIVE ASSETS: } \begin{cases} \bullet\text{ VIP Voucher Code} \\ \bullet\text{ Exclusive Smart Link} \end{cases} \longrightarrow \textbf{BONUS While LIVE (+2\%)}$$
+Trên Slide 8 (*Flow 2: Quản trị Sản phẩm, Giá sàn & Đàm phán Deal Độc quyền*), xuất hiện cụm quy trình:
+$$\text{AGREED DEAL} \longrightarrow \textbf{EXCLUSIVE ASSETS: } \begin{cases} \bullet\text{ Exclusive Coupon Code (VD: THAONHI16)} \\ \bullet\text{ Exclusive Smart Link} \end{cases} \longrightarrow \textbf{TWO-PHASE SETTLEMENT (10% + Tier, Escrow Diff)}$$
 
 Bạn đã đặt ra câu hỏi rất chính xác:
 - *Tại sao lại có cái xuất ra link, voucher này?*
@@ -36,10 +36,11 @@ Hệ thống phân định rành mạch giữa **2 loại Tài nguyên Tiếp th
                  ┌──────────────────────────────────────┐  ┌──────────────────────────────────────┐
                  │ 1. SMART LINK TIÊU CHUẨN CÓ SẴN      │  │ 2. ĐÀM PHÁN DEAL ĐỘC QUYỀN 2 CHIỀU  │
                  │ • Có ngay khi duyệt eKYC             │  │ • KOC gửi Proposal xin mức 13%-16%   │
-                 │ • Áp dụng Base Rate chuẩn 10%        │  │ • Hoặc Shop mời KOC qua Chat Realtime│
+                 │ • Áp dụng Base Rate chuẩn 10% + Tier │  │ • Hoặc Shop mời KOC qua Chat Realtime│
                  │ • Dành cho sản phẩm mở Open Offer    │  └──────────────────┬───────────────────┘
                  └──────────────────────────────────────┘                     │
-                                                                 Shop bấm Chấp thuận Deal (APPROVED)
+                                                                 Shop bấm Chấp thuận Deal (<= 16%)
+                                                                 hoặc Admin duyệt Deal (> 16% - 25%)
                                                                               │
                                                                               ▼
                                                            ┌──────────────────────────────────────┐
@@ -47,30 +48,29 @@ Hệ thống phân định rành mạch giữa **2 loại Tài nguyên Tiếp th
                                                            │ (ACTIVATE EXCLUSIVE ASSETS)          │
                                                            ├──────────────────────────────────────┤
                                                            │ 1. Exclusive Smart Link (VIP Rate):  │
-                                                           │    Ghi đè Base Rate -> Hưởng 13%-16% │
-                                                           │ 2. VIP Voucher Code (Mã riêng KOC):  │
-                                                           │    VD: MEGASALE20 (Giảm 10% cho Fan) │
-                                                           │    hoặc KOL01SAVE / NGUYENMA...      │
+                                                           │    Gán tỷ lệ Deal độc quyền đã duyệt │
+                                                           │ 2. Exclusive Coupon (Mã riêng KOC):  │
+                                                           │    VD: THAONHI16, MEGASALE20...      │
                                                            └──────────────────┬───────────────────┘
-                                                                              │
-                                                               KOC ghim sản phẩm vào Livestream
                                                                               │
                                                                               ▼
                                                            ┌──────────────────────────────────────┐
-                                                           │ BONUS WHILE LIVE (+2%)               │
-                                                           │ Đơn phát sinh trong phiên Live được  │
-                                                           │ cộng thêm +2% (Tổng: 13% + 2% = 15%) │
+                                                           │ QUYẾT TOÁN 2 GIAI ĐOẠN MINH BẠCH     │
+                                                           │ GĐ1: Trả trước 10% + Bậc sau 14 ngày │
+                                                           │ GĐ2: Giữ Deal% - (10%+Bậc) chờ KPI   │
                                                            └──────────────────────────────────────┘
 ```
 
-1. **Smart Link tiêu chuẩn (Standard Link - 10%):** Bất kỳ KOC nào sau khi được duyệt eKYC đều có thể tự sinh Smart Link cho mọi sản phẩm của nhãn hàng. Lúc này thù lao hưởng theo mức chuẩn sàn $10\%$ (hoặc cộng thêm Tier nếu đã thăng hạng Bạc/Vàng/Kim Cương).
+1. **Smart Link tiêu chuẩn (Standard Link - 10% + Tier%):** Bất kỳ KOC nào sau khi được duyệt eKYC đều có thể tự sinh Smart Link cho mọi sản phẩm của nhãn hàng. Lúc này thù lao hưởng theo mức chuẩn sàn $10\%$ (hoặc cộng thêm Tier nếu đã thăng hạng Bạc/Vàng/Kim Cương).
 2. **Tài sản Độc quyền (Exclusive Assets):** **KHÔNG PHẢI TỰ NHIÊN CÓ**, và **KHÔNG SINH RA TỪ TIER BONUS**! Nó là thành quả của thỏa thuận 2 chiều giữa KOC và Trưởng nhãn hàng (`SHOP_MANAGER`):
-   - KOC gửi đề xuất: *"Em có tệp khách lớn, xin mức hoa hồng riêng 13% (thay vì 10%) và xin Shop cấp 1 mã voucher giảm 10% riêng gắn tên em để em kéo fan mua"*.
+   - KOC gửi đề xuất: *"Em có tệp khách lớn, xin mức hoa hồng riêng 16% (thay vì 10%) và xin Shop cấp 1 mã voucher giảm 5% riêng gắn tên em THAONHI16 để em kéo fan mua"*.
    - Hoặc Shop Manager lọc KOC uy tín từ bảng Leaderboard và gửi Thẻ mời chiến dịch VIP trực tiếp vào khung Chat Socket.IO.
-   - Khi Shop Manager bấm **"Chấp thuận" (`APPROVED`)**, hệ thống chuyển trạng thái Deal sang `ACTIVE` và tự động kích hoạt **Bộ đôi Tài sản Độc quyền**:
-     - **VIP Voucher Code (Mã giảm giá độc quyền):** Ví dụ `MEGASALE20`, `KOL01SAVE` giảm 5% - 10% độc quyền cho khách hàng của KOC đó.
-     - **Exclusive Smart Link (Liên kết tiếp thị độc quyền):** Kích hoạt động cơ ghi đè áp dụng thẳng mức VIP ($13\%$) cho KOC thay vì mức cơ bản $10\%$.
-3. **Thưởng Phiên Live (+2% Live Bonus):** Khi KOC đưa sản phẩm đó vào phiên Mega Live giờ vàng, đơn hàng được gắn cờ `LiveSession` và động cơ tự động cộng thêm $+2\%$ (Ví dụ: $13\% \text{ VIP} + 2\% \text{ Live} = 15\%$).
+   - Khi Deal được phê duyệt (`<= 16%` Shop duyệt, `> 16%` đến trần `25%` Admin duyệt), hệ thống chuyển trạng thái Deal sang `AGREED` và tự động kích hoạt **Bộ đôi Tài sản Độc quyền**:
+     - **Exclusive Coupon Code (Mã giảm giá độc quyền):** Ví dụ `THAONHI16`, `YENNHISKIN` vừa giảm giá cho khách vừa làm định danh Attribution chính xác.
+     - **Exclusive Smart Link (Liên kết tiếp thị độc quyền):** Kích hoạt động cơ ghi nhận đơn hàng gắn Deal độc quyền.
+3. **Quyết toán Thù lao 2 Giai đoạn (Không cộng dồn Deal với Bậc):**
+   - Khoản 1: $10\% + \text{Tier\%}$ đưa vào két 14 ngày đổi trả, sau 14 ngày giao sạch mở khóa về ví khả dụng.
+   - Khoản 2: Chênh lệch $\text{Deal\%} - (10\% + \text{Tier\%})$ đưa vào két Escrow chờ đạt 100% KPI cam kết mới kết chuyển. Không đạt KPI thì hủy phần chênh lệch này.
 
 ---
 
@@ -83,7 +83,7 @@ Hệ thống phân định rành mạch giữa **2 loại Tài nguyên Tiếp th
 | **Dòng tiền bán hàng** | Tiền giam tại ví trung gian sàn chợ | **100% tiền thanh toán** (VietQR/PayOS/COD) chảy thẳng vào **Tài khoản Doanh nghiệp Tập trung (Corporate Master Account)** | ✅ Đã chuẩn hóa kiến trúc |
 | **Quyền Rút tiền (Payout)** | Chủ shop bán xong làm đơn xin sàn rút tiền về tài khoản ngân hàng cá nhân | **Shop Manager TUYỆT ĐỐI KHÔNG RÚT TIỀN** (tiền là của công ty). **CHỈ CÓ KOC MỚI THỰC HIỆN LỆNH RÚT HOA HỒNG (Payout)** sau 7-14 ngày Escrow. | ✅ Đã kiểm chứng (Ảnh 05, Ảnh 09) |
 | **Thuế Thu nhập Cá nhân (TNCN)** | Không có, trả tròn số không hợp pháp | Hệ thống tự động tính và **khấu trừ 10% thuế TNCN** cho các khoản rút $\ge 2.000.000$đ theo Thông tư 111/2013/TT-BTC. | ✅ Đã kiểm chứng (Ảnh 05) |
-| **Cơ chế tính thù lao (Commission)** | Cộng dồn vô tội vạ ($10\% + 3\% + 5\% + 3\% = 21\% \rightarrow 25\%$) | **Quy tắc Ưu tiên Mức tốt nhất (Best-Benefit Precedence Rule):** $\max(\text{Deal VIP}, \text{Campaign}, \text{Tier}, \text{Base}) + \text{Live Bonus (+2\%)}$. | ✅ Đã kiểm chứng (Ảnh 10) |
+| **Cơ chế tính thù lao (Commission)** | Cộng dồn vô tội vạ ($10\% + 3\% + 5\% + 3\% = 21\% \rightarrow 25\%$) | **Quy tắc Quyết toán 2 Giai đoạn (Không cộng dồn Deal với Bậc):** Trả trước $10\% + \text{Tier\%}$ sau 14 ngày; Giữ chênh lệch $\text{Deal\%} - (10\% + \text{Tier\%})$ chờ đạt 100% KPI (Trần tối đa $\le 25\%$). | ✅ Đã kiểm chứng (Ảnh 10) |
 | **Cấp bậc khởi điểm KOC** | Gán tùy tiện hoặc mặc định Bạc | Duyệt eKYC xong tự động gán **Hạng ĐỒNG (Bronze - 0% Bonus)**, hưởng Base Rate $10\%$. Đạt doanh số sạch mới thăng hạng. | ✅ Đã kiểm chứng (Ảnh 11) |
 | **Quản lý Đơn hàng Merchant** | Chỉ có các tab đơn giản Shopee clone | Bổ sung tab **"Chờ thanh toán (Unpaid)"** (VietQR chưa nhận tiền) và tab **"Trả hàng / Hoàn tiền (Returns / Disputes)"**. | ✅ Đã kiểm chứng (Ảnh 07) |
 | **Dữ liệu KOC Hub của Shop** | Dùng bảng 4 đơn hàng ảo hardcoded (`#SCN-99824`) và nút bật toggle "Số liệu mẫu" | **Xóa bỏ 100% dữ liệu ảo.** Kết nối dữ liệu thật từ DB, chat Socket.IO đàm phán deal VIP và cấp voucher trực tiếp. | ✅ Đã kiểm chứng (Ảnh 08, Ảnh 10b) |
@@ -301,7 +301,7 @@ Toàn bộ ảnh chụp màn hình độ phân giải cao đã được lưu đ�
 
 2. **Về Nghiệp vụ Cốt lõi (Business Domain Logic):**  
    - Chuyển đổi thành công 100% từ mô hình sàn chợ tự do sang **Hệ thống Quản lý Đội ngũ Cộng tác viên Bán hàng & Tiếp thị Liên kết Doanh nghiệp**.
-   - Làm rõ và chứng minh rành mạch vòng đời của **Exclusive Assets** (Slide 8): Không sinh ra từ Tier Bonus mà là kết quả đàm phán 2 chiều được Shop Manager phê duyệt, ghi đè mức hoa hồng và kích hoạt Voucher riêng, sau đó được cộng dồn +2% khi đưa vào phiên Live.
+   - Làm rõ và chứng minh rành mạch vòng đời của **Exclusive Assets** (Slide 8): Không sinh ra từ Tier Bonus mà là kết quả đàm phán 2 chiều được Shop Manager phê duyệt (<= 16%) hoặc Admin phê duyệt (> 16%), gán mức thù lao Deal độc quyền và kích hoạt Coupon riêng, quyết toán 2 giai đoạn minh bạch (không cộng dồn Deal với Bậc).
    - Luồng tài chính chuẩn mực: Doanh thu bán hàng thuộc về công ty, chỉ có KOC mới được rút thù lao tiếp thị, tự động khấu trừ 10% thuế TNCN và bảo chứng qua tài khoản Escrow 14 ngày.
 
 3. **Về Kỹ thuật & Độ ổn định (Technical Robustness):**  

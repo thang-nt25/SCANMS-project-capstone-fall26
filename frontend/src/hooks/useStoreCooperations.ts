@@ -2,11 +2,19 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 
+export type StoreCooperationStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'TERMINATED'
+  | 'BLOCKED';
+
 export interface StoreCooperation {
   id: string;
   storeId: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: StoreCooperationStatus;
   requestedByKol: boolean;
+  hasHistory?: boolean;
   createdAt?: string;
   updatedAt?: string;
   note?: string | null;

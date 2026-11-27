@@ -184,4 +184,109 @@ describe('Store cooperation requests', () => {
     expect(prisma.store.findFirst).toHaveBeenCalledTimes(1);
     expect(prisma.storeCollaborator.updateMany).not.toHaveBeenCalled();
   });
+
+  it('allows re-inviting and re-requesting after TERMINATED while blocking BLOCKED', async () => {
+    const cache = { del: jest.fn(), get: jest.fn(), set: jest.fn() };
+    prisma.user.findFirst = jest
+      .fn()
+      .mockResolvedValue({ id: 'kol', fullName: 'KOL', email: 'kol@example.test' });
+    prisma.notification = { create: jest.fn() };
+    const cachedService = new StoreCollaboratorsService(prisma, cache as any);
+
+    prisma.storeCollaborator.findUnique
+      .mockResolvedValueOnce({ id: 'rel-1', status: 'TERMINATED' })
+      .mockResolvedValueOnce({ id: 'rel-1', status: 'PENDING', requestedByKol: false });
+    await cachedService.invite('owner', { email: 'kol@example.test', note: 'Mời lại' });
+    expect(prisma.storeCollaborator.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'rel-1',
+          status: { in: ['REJECTED', 'TERMINATED'] },
+        }),
+        data: expect.objectContaining({
+          status: 'PENDING',
+          requestedByKol: false,
+          terminatedAt: null,
+        }),
+      }),
+    );
+    expect(cache.del).toHaveBeenCalledWith('store:team:store');
+
+    prisma.storeCollaborator.findUnique.mockResolvedValue({
+      id: 'rel-2',
+      status: 'BLOCKED',
+    });
+    await expect(
+      cachedService.invite('owner', { email: 'kol@example.test' }),
+    ).rejects.toThrow('khóa');
+    await expect(
+      cachedService.requestCooperation('kol', 'store'),
+    ).rejects.toThrow('khóa');
+
+    prisma.storeCollaborator.findUnique
+      .mockResolvedValueOnce({ id: 'rel-3', status: 'TERMINATED' })
+      .mockResolvedValueOnce({
+        id: 'rel-3',
+        status: 'PENDING',
+        requestedByKol: true,
+      });
+    await cachedService.requestCooperation('kol', 'store', 'Xin hợp tác lại');
+    expect(prisma.storeCollaborator.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: { id: 'rel-3', status: { in: ['REJECTED', 'TERMINATED'] } },
+        data: expect.objectContaining({
+          requestedByKol: true,
+          status: 'PENDING',
+        }),
+      }),
+    );
+  });
+
+  it('blocks terminating when deals, pending KPIs, vouchers, or open samples exist, and permits clean termination with reason', async () => {
+    prisma.storeCollaborator.findUnique.mockResolvedValue({
+      id: 'rel-approved',
+      storeId: 'store',
+      collaboratorId: 'kol',
+      status: 'APPROVED',
+    });
+    prisma.storeCollaborator.update = jest.fn().mockResolvedValue({ id: 'rel-approved', status: 'TERMINATED' });
+    prisma.exclusiveDealProposal = { count: jest.fn().mockResolvedValue(1) };
+    prisma.commission = { count: jest.fn().mockResolvedValue(2) };
+    prisma.coupon = { findMany: jest.fn().mockResolvedValue([{ id: 'c1', displayCode: 'NHI10', status: 'ACTIVE' }]) };
+    prisma.sampleProductRequest = { count: jest.fn().mockResolvedValue(1) };
+    prisma.notification = { create: jest.fn() };
+
+    const eligBlocked = await service.getTerminationEligibility('owner', 'SHOP_MANAGER' as any, 'kol', 'store');
+    expect(eligBlocked.canTerminate).toBe(false);
+    expect(eligBlocked.blockers.map((b: any) => b.key)).toEqual(['DEAL', 'KPI', 'VOUCHER', 'SAMPLE']);
+    await expect(
+      service.terminateCooperation('owner', 'SHOP_MANAGER' as any, 'kol', 'store', 'Ngừng hợp tác thử nghiệm'),
+    ).rejects.toThrow('ràng buộc');
+    expect(prisma.storeCollaborator.update).not.toHaveBeenCalled();
+
+    prisma.exclusiveDealProposal.count.mockResolvedValue(0);
+    prisma.commission.count.mockResolvedValue(0);
+    prisma.coupon.findMany.mockResolvedValue([]);
+    prisma.sampleProductRequest.count.mockResolvedValue(0);
+
+    const eligClean = await service.getTerminationEligibility('owner', 'SHOP_MANAGER' as any, 'kol', 'store');
+    expect(eligClean.canTerminate).toBe(true);
+
+    const res = await service.terminateCooperation(
+      'owner',
+      'SHOP_MANAGER' as any,
+      'kol',
+      'store',
+      'Hai bên đồng thuận kết thúc chiến dịch',
+    );
+    expect(res.success).toBe(true);
+    expect(prisma.storeCollaborator.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'TERMINATED',
+          terminateReason: 'Hai bên đồng thuận kết thúc chiến dịch',
+        }),
+      }),
+    );
+  });
 });
