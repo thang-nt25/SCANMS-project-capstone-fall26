@@ -14,7 +14,7 @@ import api from '../../services/api';
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { authService } from '../../services/auth.service';
 import { customerService } from '../../services/customer.service';
-import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
+import { getSafeProductImageUrl, hasCatalogDiscount } from '@/utils/marketplace.utils';
 import { sortCatalogProducts } from '@/utils/product-sort.utils';
 import type { Product } from '@/types/marketplace.types';
 import { HOME_CATEGORY_GROUPS, matchesHomeCategory } from '@/utils/marketplace-category.utils';
@@ -308,7 +308,7 @@ export default function SearchPage() {
             const parsedRate = commissionValue == null ? 0 : Number(commissionValue);
             const rawRate = Number.isFinite(parsedRate) && parsedRate > 0 ? parsedRate : 0;
             const priceNum = Number(item.price) || 0;
-            const origNum = Number(item.originalPrice) || 0;
+            const origNum = Number(item.listPrice ?? item.originalPrice) || 0;
 
             let badge = '';
             if (rawRate > 0) badge = `Thù lao ${rawRate}%`;
@@ -369,7 +369,7 @@ export default function SearchPage() {
   const filteredProducts = useMemo(() => {
     return items.filter((p) => {
       if (!matchesHomeCategory(p.category, categoryGroup)) return false;
-      if (discountedOnly && p.origPrice <= p.price) return false;
+      if (discountedOnly && !hasCatalogDiscount(p, onlyInStock)) return false;
       // Keyword relevance, accents, aliases and typos use the same backend
       // matcher as autocomplete; don't discard those matches with includes().
 
@@ -986,17 +986,17 @@ export default function SearchPage() {
               <div className="text-center py-16 bg-white rounded-3xl border border-[#EAE4D7] p-8 shadow-2xs">
                 <ShoppingBag className="w-14 h-14 text-[#7D715E] mx-auto mb-3" />
                 <strong className="text-base font-black text-[#1A1612] block">
-                  Không tìm thấy sản phẩm phù hợp với bộ lọc
+                  {discountedOnly ? 'Chưa có sản phẩm giảm giá phù hợp' : 'Không tìm thấy sản phẩm phù hợp với bộ lọc'}
                 </strong>
                 <p className="text-xs text-[#7D715E] mt-1 mb-5">
-                  Thử nới lỏng mức giá, chọn ngành hàng khác hoặc xóa bộ lọc để tìm lại.
+                  {discountedOnly ? 'Bạn có thể tiếp tục xem danh mục sản phẩm.' : 'Thử nới lỏng mức giá, chọn ngành hàng khác hoặc xóa bộ lọc để tìm lại.'}
                 </p>
                 <button
                   type="button"
                   onClick={handleResetFilters}
                   className="px-6 py-2.5 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition cursor-pointer shadow-xs"
                 >
-                  Đặt lại tất cả bộ lọc
+                  {discountedOnly ? 'Xem tất cả sản phẩm' : 'Đặt lại tất cả bộ lọc'}
                 </button>
               </div>
             ) : (

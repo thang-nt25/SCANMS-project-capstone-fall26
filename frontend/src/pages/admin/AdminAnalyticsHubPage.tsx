@@ -31,7 +31,7 @@ export default function AdminAnalyticsHubPage() {
   ];
 
   const headerTabs = (
-    <div className={`grid w-full grid-cols-1 gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 text-sm ${tabs.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+    <div className={`admin-workspace-tabs grid w-full grid-cols-1 border border-[#EAE4D7] bg-white text-sm ${tabs.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
       {tabs.map((tab, index) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -39,7 +39,7 @@ export default function AdminAnalyticsHubPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as AdminAnalyticsTab)}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2 transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-2 border transition-colors cursor-pointer ${
               isActive
                 ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] font-semibold shadow-2xs'
                 : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'

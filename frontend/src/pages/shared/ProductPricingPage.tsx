@@ -77,10 +77,16 @@ const localDate = (date: Date) =>
     .toISOString()
     .slice(0, 16);
 
+const floorInputClass = "h-[42px] w-full min-w-0 appearance-none rounded-lg border border-[#EAE4D7] bg-white pl-2 pr-6 text-right text-xs font-semibold tabular-nums text-[#1A1612] placeholder:text-[10px] placeholder:font-normal placeholder:text-[#7D715E] focus:border-[#C59B58] focus:outline-none aria-invalid:border-[#DC2626] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none sm:text-sm";
+
 export default function ProductPricingPage({
   reviewer = false,
+  pricingSection = 'floor',
+  onPendingCountChange,
 }: {
   reviewer?: boolean;
+  pricingSection?: 'floor' | 'promotions';
+  onPendingCountChange?: (count: number) => void;
 }) {
   const [catalog, setCatalog] = useState<any[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
@@ -105,18 +111,28 @@ export default function ProductPricingPage({
   const [note, setNote] = useState("");
   const [approve, setApprove] = useState(true);
   const [promoFilter, setPromoFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'ACTIVE' | 'HISTORY'>('ALL');
-  const [pricingSection, setPricingSection] = useState<'floor' | 'promotions'>('floor');
   const [storeFilter, setStoreFilter] = useState<string>('ALL');
   const [showMapInfoModal, setShowMapInfoModal] = useState<boolean>(false);
 
   const [catalogSearch, setCatalogSearch] = useState("");
 
   const product = catalog.find((item) => item.id === productId);
+  const floorProduct = modal === "floor" ? product ?? selected : null;
+  const floorImage = floorProduct ? getSafeProductImageUrl(floorProduct.imageUrl, floorProduct.title, "") : "";
+  const floorNoteError = modal === "floor" && error.startsWith("Lý do điều chỉnh") ? error : "";
+  const floorCommonError = modal === "floor" && /^(Giá niêm yết|Giá bán hiện tại|Sản phẩm):/.test(error) ? error : "";
+  const floorVariantErrorId = floorProduct?.variants?.find((variant: { id: string; sku?: string }) =>
+    variant.sku && [`SKU ${variant.sku}:`, `Giá bán SKU ${variant.sku}:`, `Khuyến mãi SKU ${variant.sku}:`].some(prefix => error.startsWith(prefix)),
+  )?.id;
 
   const pendingCount = useMemo(() => promotions.filter((p) => p.status === "PENDING").length, [promotions]);
   const approvedCount = useMemo(() => promotions.filter((p) => p.status === 'APPROVED').length, [promotions]);
   const activeCount = useMemo(() => promotions.filter((p) => p.status === 'ACTIVE').length, [promotions]);
   const historyCount = useMemo(() => promotions.filter((p) => ["REJECTED", "CANCELLED", "EXPIRED"].includes(p.status)).length, [promotions]);
+
+  useEffect(() => {
+    onPendingCountChange?.(pendingCount);
+  }, [onPendingCountChange, pendingCount]);
 
   const filteredPromotions = useMemo(() => {
     if (promoFilter === "PENDING") return promotions.filter((p) => p.status === "PENDING");
@@ -167,12 +183,12 @@ export default function ProductPricingPage({
     setSelected(item || null);
     setProductId(item?.id || catalog[0]?.id || "");
     setVariantId("");
-    setPrice(kind === "floor" ? String(item?.floorPrice || "") : "");
+    setPrice(kind === "floor" ? String(item?.floorPrice ?? "") : "");
     setFloors(
       Object.fromEntries(
         (item?.variants || []).map((variant: any) => [
           variant.id,
-          String(variant.floorPrice ?? item?.floorPrice ?? ""),
+          String(variant.floorPrice ?? ""),
         ]),
       ),
     );
@@ -185,6 +201,10 @@ export default function ProductPricingPage({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
+    if (modal === "floor" && note.trim().length < 10) {
+      setError("Lý do điều chỉnh cần ít nhất 10 ký tự.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -228,10 +248,6 @@ export default function ProductPricingPage({
 
   return (
     <div className={reviewer ? "product-pricing-review flex flex-col gap-3 text-[#1A1612] pb-6" : "space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen"}>
-      {reviewer && <div className="pricing-section-tabs" role="tablist" aria-label="Nghiệp vụ giá sản phẩm">
-        <button id="pricing-floor-tab" role="tab" type="button" aria-selected={pricingSection === 'floor'} aria-controls="pricing-floor-panel" onClick={() => setPricingSection('floor')}><ShieldCheck size={16}/>Giá sàn MAP</button>
-        <button id="pricing-promotions-tab" role="tab" type="button" aria-selected={pricingSection === 'promotions'} aria-controls="pricing-promotions-panel" onClick={() => setPricingSection('promotions')}><Tag size={16}/>Đề xuất giảm giá{pendingCount > 0 && <span>{pendingCount} chờ duyệt</span>}</button>
-      </div>}
       {/* Header section */}
       {!reviewer && (
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#EAE4D7]">
@@ -295,7 +311,7 @@ export default function ProductPricingPage({
       ) : (
         <>
           {/* Section 1: Promotion requests */}
-          <section id={reviewer ? 'pricing-promotions-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'pricing-promotions-tab' : undefined} hidden={reviewer && pricingSection !== 'promotions'} className="pricing-promotions-panel space-y-3.5">
+          <section id={reviewer ? 'pricing-promotions-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'hub-tab-promotions' : undefined} hidden={reviewer && pricingSection !== 'promotions'} className="pricing-promotions-panel space-y-3.5">
             <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Status Tabs */}
               <div className="pricing-promotion-filters grid grid-cols-2 gap-2 sm:grid-cols-5 [&>button]:flex [&>button]:min-h-11 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button[aria-pressed=true]]:bg-[#FBF5EB]">
@@ -601,7 +617,7 @@ export default function ProductPricingPage({
           </section>
 
           {/* Section 2: Catalog and MAP configuration */}
-          <section id={reviewer ? 'pricing-floor-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'pricing-floor-tab' : undefined} hidden={reviewer && pricingSection !== 'floor'} className={reviewer ? "space-y-3" : "space-y-3.5 pt-4"}>
+          <section id={reviewer ? 'pricing-floor-panel' : undefined} role={reviewer ? 'tabpanel' : undefined} aria-labelledby={reviewer ? 'hub-tab-pricing' : undefined} hidden={reviewer && pricingSection !== 'floor'} className={reviewer ? "space-y-3" : "space-y-3.5 pt-4"}>
             <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Filter by In-house Store and Search */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -746,7 +762,7 @@ export default function ProductPricingPage({
           }}
           title={
             modal === "floor"
-              ? "Cấu hình giá sàn bảo vệ (MAP)"
+              ? "Cấu hình giá sàn MAP"
               : modal === "promotion"
                 ? "Đề xuất giá khuyến mãi"
                 : modal === "cancel"
@@ -756,8 +772,24 @@ export default function ProductPricingPage({
                     : "Từ chối chiến dịch khuyến mãi"
           }
           maxWidth="lg"
+          className={modal === "floor" ? "max-w-[600px] [&>.modal-header]:px-5 [&>.modal-header]:py-2.5 [&>.modal-header_h3]:text-base" : undefined}
+          stickyHeader={modal === "floor"}
+          bodyClassName={modal === "floor" ? "p-5 sm:p-5" : undefined}
         >
           <form className="space-y-4" onSubmit={submit} aria-busy={busy}>
+            {floorProduct && (
+              <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
+                <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F]">
+                  {floorImage
+                    ? <img src={floorImage} alt="" onError={handleProductImageError} className="size-full object-contain" />
+                    : <Tag size={16} aria-hidden="true" />}
+                </span>
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-[#1A1612]">{floorProduct.title}</p>
+                  {floorProduct.sku && <p className="mt-0.5 break-words text-xs text-[#7D715E]">SKU {floorProduct.sku}</p>}
+                </div>
+              </div>
+            )}
             {modal === "promotion" && (
               <>
                 <div>
@@ -852,12 +884,24 @@ export default function ProductPricingPage({
               </>
             )}
 
-            {["floor", "promotion"].includes(modal) && (
+            {modal === "floor" && (
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,45%)] items-center gap-x-3 gap-y-1.5">
+                <label htmlFor="map-common-floor" className="text-sm font-semibold">Giá sàn chung <span className="text-[#DC2626]">*</span></label>
+                <div className="relative">
+                  <input id="map-common-floor" type="number" inputMode="numeric" min="1" step="1" max="1000000000000"
+                    className={floorInputClass} value={price} required disabled={busy}
+                    aria-invalid={Boolean(floorCommonError)} aria-describedby={floorCommonError ? "map-common-error" : undefined}
+                    onChange={event => setPrice(event.target.value)} />
+                  <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-xs text-[#7D715E]">₫</span>
+                </div>
+                {floorCommonError && <p id="map-common-error" role="alert" className="col-span-2 text-xs text-[#DC2626]">{floorCommonError}</p>}
+              </div>
+            )}
+
+            {modal === "promotion" && (
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                  {modal === "floor"
-                    ? "Mức giá sàn bảo vệ chung (MAP ₫)"
-                    : "Mức giá sau giảm đề xuất (₫)"}{" "}
+                  Mức giá sau giảm đề xuất (₫){" "}
                   <span className="text-[#DC2626]">*</span>
                 </label>
                 <input
@@ -875,41 +919,42 @@ export default function ProductPricingPage({
               </div>
             )}
 
-            {modal === "floor" && product?.variants?.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-[#EAE4D7]">
-                <span className="text-xs font-bold text-[#1A1612] block">
-                  Cấu hình giá sàn riêng theo phân loại SKU:
-                </span>
-                {product.variants.map((variant: any) => (
-                  <div
-                    key={variant.id}
-                    className="flex items-center justify-between gap-3 p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]"
-                  >
-                    <div className="min-w-0">
-                      <span className="text-xs font-semibold text-[#1A1612] block truncate">
-                        {variant.name}
-                      </span>
-                      <span className="text-[11px] text-[#7D715E]">
-                        Niêm yết: {money(variant.listPrice ?? variant.price)}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={floors[variant.id] || ""}
-                      disabled={busy}
-                      placeholder="Dùng giá sàn chung"
-                      className="w-40 rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1.5 text-xs text-[#1A1612] font-mono focus:border-[#C59B58] focus:outline-none"
-                      onChange={(e) =>
-                        setFloors((current) => ({
-                          ...current,
-                          [variant.id]: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                ))}
+            {floorProduct?.variants?.length > 0 && (
+              <div className="overflow-hidden rounded-lg border border-[#EAE4D7]">
+                <table aria-label="Giá sàn theo phân loại" className="w-full table-fixed text-xs">
+                  <thead className="bg-[#FAF8F5] text-[#655A49]">
+                    <tr>
+                      <th scope="col" className="w-[30%] px-2 py-2.5 text-left font-semibold sm:px-3">Phân loại</th>
+                      <th scope="col" className="w-[25%] px-2 py-2.5 text-right font-semibold sm:px-3">Giá niêm yết</th>
+                      <th scope="col" className="px-2 py-2.5 text-right font-semibold sm:px-3">Giá sàn riêng</th>
+                    </tr>
+                  </thead>
+                  {floorProduct.variants.map((variant: any) => {
+                    const variantError = floorVariantErrorId === variant.id;
+                    return (
+                      <tbody key={variant.id} className="border-t border-[#EAE4D7]">
+                        <tr>
+                          <th scope="row" className="break-words px-2 py-2 text-left font-semibold sm:px-3">{variant.name}</th>
+                          <td className="break-words px-2 py-2 text-right tabular-nums text-[#655A49] sm:px-3">{money(variant.listPrice ?? variant.price)}</td>
+                          <td className="px-2 py-2 sm:px-3">
+                            <div className="relative">
+                              <input type="number" inputMode="numeric" min="1" step="1"
+                                aria-label={`Giá sàn riêng cho ${variant.name}`}
+                                aria-invalid={variantError}
+                                aria-describedby={variantError ? `map-error-${variant.id}` : undefined}
+                                value={floors[variant.id] ?? ""} disabled={busy}
+                                placeholder={variant.floorPrice == null ? "Dùng giá sàn chung" : "Giữ giá đã lưu"}
+                                className={floorInputClass}
+                                onChange={event => setFloors(current => ({ ...current, [variant.id]: event.target.value }))} />
+                              <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-xs text-[#7D715E]">₫</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {variantError && <tr><td colSpan={3} className="px-3 pb-2 text-xs text-[#DC2626]"><p id={`map-error-${variant.id}`} role="alert">{error}</p></td></tr>}
+                      </tbody>
+                    );
+                  })}
+                </table>
               </div>
             )}
 
@@ -921,35 +966,42 @@ export default function ProductPricingPage({
               </div>
             ) : (
               <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1">
+                <label htmlFor="pricing-change-note" className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold text-[#1A1612]">
+                  <span>
                   {modal === "review"
                     ? approve
                       ? "Ghi chú phê duyệt thẩm định"
                       : "Lý do từ chối yêu cầu"
-                    : "Căn cứ & Lý do điều chỉnh"}{" "}
+                    : modal === "floor" ? "Lý do điều chỉnh" : "Căn cứ & Lý do điều chỉnh"}{" "}
                   <span className="text-[#DC2626]">*</span>
+                  </span>
+                  {modal === "floor" && <span className="whitespace-nowrap text-[11px] font-normal tabular-nums text-[#7D715E]">{note.length}/1.000</span>}
                 </label>
                 <textarea
-                  className="w-full rounded-xl border border-[#EAE4D7] bg-white p-2.5 text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
+                  id="pricing-change-note"
+                  className={`w-full border border-[#EAE4D7] bg-white p-2.5 text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none aria-invalid:border-[#DC2626] ${modal === "floor" ? "min-h-20 rounded-lg" : "rounded-xl"}`}
                   rows={3}
-                  minLength={5}
+                  minLength={modal === "floor" ? undefined : 5}
                   maxLength={1000}
+                  aria-invalid={Boolean(floorNoteError)}
+                  aria-describedby={floorNoteError ? "map-note-error" : undefined}
                   value={note}
                   placeholder={
                     modal === "review"
                       ? approve
                         ? "Đã thẩm định biên lãi đạt ngưỡng an toàn..."
                         : "Biên lợi nhuận không đảm bảo chi phí hoa hồng..."
-                      : "Căn cứ chi phí sản xuất và biến động giá thị trường..."
+                      : modal === "floor" ? "Nhập lý do điều chỉnh giá sàn…" : "Căn cứ chi phí sản xuất và biến động giá thị trường..."
                   }
                   required
                   disabled={busy}
                   onChange={(e) => setNote(e.target.value)}
                 />
+                {floorNoteError && <p id="map-note-error" role="alert" className="mt-1 text-xs text-[#DC2626]">{floorNoteError}</p>}
               </div>
             )}
 
-            {error && (
+            {error && !floorNoteError && !floorCommonError && !floorVariantErrorId && (
               <div
                 role="alert"
                 className="p-3 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#991B1B]"
@@ -962,21 +1014,23 @@ export default function ProductPricingPage({
               <button
                 type="button"
                 disabled={busy}
-                className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-[#F3EFE6] transition cursor-pointer"
+                className={`border border-[#EAE4D7] px-4 py-2 text-xs font-semibold text-[#655A49] transition hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer ${modal === "floor" ? "h-[42px] rounded-lg" : "rounded-xl"}`}
                 onClick={() => setModal(null)}
               >
-                Đóng
+                {modal === "floor" ? "Hủy" : "Đóng"}
               </button>
               <button
                 type="submit"
                 disabled={busy}
-                className={`px-5 py-2 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-50 ${
-                  modal === "review" && !approve
-                    ? "bg-[#DC2626] text-white hover:bg-rose-700"
-                    : "bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612]"
+                className={`px-5 py-2 text-xs font-bold transition cursor-pointer disabled:opacity-50 ${
+                  modal === "floor"
+                    ? "h-[42px] rounded-lg border border-[#EEDFC6] bg-[#C59B58] text-[#231D15] hover:bg-[#B88E4F]"
+                    : modal === "review" && !approve
+                      ? "rounded-xl bg-[#DC2626] text-white shadow-2xs hover:bg-rose-700"
+                      : "rounded-xl bg-[#C59B58] text-[#1A1612] shadow-2xs hover:bg-[#B88E4F]"
                 }`}
               >
-                {busy ? "Đang xử lý…" : "Xác nhận"}
+                {modal === "floor" ? (busy ? "Đang lưu…" : "Lưu giá sàn") : (busy ? "Đang xử lý…" : "Xác nhận")}
               </button>
             </div>
           </form>

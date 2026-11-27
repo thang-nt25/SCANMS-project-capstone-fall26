@@ -11,3 +11,11 @@ export function hasSponsorshipCapacity(
   let concurrent = 0;
   return events.every(([, delta]) => (concurrent += delta) <= 6);
 }
+import type { Prisma } from '@prisma/client';
+
+export function occupiedSponsorshipSlots(now: Date): Prisma.SponsoredPlacementWhereInput[] {
+  return [
+    { status: 'APPROVED', fundingType: 'PAID', amount: { gt: 0 } },
+    { status: 'AWAITING_PAYMENT', paymentDeadline: { gt: now } },
+  ];
+}

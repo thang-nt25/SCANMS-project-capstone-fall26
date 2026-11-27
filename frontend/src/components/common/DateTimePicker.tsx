@@ -28,6 +28,7 @@ export interface DateTimePickerProps {
   popoverTitle?: string;
   inlinePopoverRef?: RefObject<HTMLDivElement | null>;
   popoverPortalRef?: RefObject<HTMLElement | null>;
+  getCurrentDate?: () => Date;
 }
 
 const DAYS_OF_WEEK = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -90,6 +91,7 @@ export function DateTimePicker({
   popoverTitle,
   inlinePopoverRef,
   popoverPortalRef,
+  getCurrentDate = () => new Date(),
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'calendar' | 'time'>('calendar');
@@ -131,7 +133,7 @@ export function DateTimePicker({
   const minDate = useMemo(() => parseSafeDate(minDateTime), [minDateTime]);
   const maxDate = useMemo(() => parseSafeDate(maxDateTime), [maxDateTime]);
 
-  const defaultRefDate = parsedValue || minDate || new Date();
+  const defaultRefDate = parsedValue || minDate || getCurrentDate();
 
   const [currentYear, setCurrentYear] = useState<number>(defaultRefDate.getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(defaultRefDate.getMonth());
@@ -294,7 +296,7 @@ export function DateTimePicker({
   const handleSelectHour = (h: number) => {
     if (isTimeDisabled(h, selectedMinute)) return;
     setSelectedHour(h);
-    const baseDate = selectedDate || new Date();
+    const baseDate = selectedDate || getCurrentDate();
     setSelectedDate(baseDate);
     emitChange(baseDate, h, selectedMinute);
   };
@@ -302,13 +304,13 @@ export function DateTimePicker({
   const handleSelectMinute = (m: number) => {
     if (isTimeDisabled(selectedHour, m)) return;
     setSelectedMinute(m);
-    const baseDate = selectedDate || new Date();
+    const baseDate = selectedDate || getCurrentDate();
     setSelectedDate(baseDate);
     emitChange(baseDate, selectedHour, m);
   };
 
   const handleSetNow = () => {
-    const now = new Date();
+    const now = getCurrentDate();
     if (minDate && now < minDate) {
       setSelectedDate(minDate);
       setSelectedHour(minDate.getHours());
@@ -355,7 +357,7 @@ export function DateTimePicker({
   const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sunday
   const adjustedFirstDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
 
-  const today = new Date();
+  const today = getCurrentDate();
   const isCurrentMonthToday = today.getFullYear() === currentYear && today.getMonth() === currentMonth;
 
   // Nhãn hiển thị trực quan trong ô Input trigger
@@ -468,11 +470,11 @@ export function DateTimePicker({
           aria-label={popoverTitle || 'Chọn ngày giờ'}
           onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setIsOpen(false); triggerRef.current?.focus(); } }}
           className={`${smallCalendar ? 'scanms-small-calendar' : ''} ${
-            inlinePopoverRef ? 'relative inset-auto w-full max-w-full mt-2.5 shadow-none' : popoverPortalRef ? 'fixed' : 'absolute top-[calc(100%+6px)]'
+            inlinePopoverRef ? 'relative inset-auto shadow-none' : popoverPortalRef ? 'fixed' : 'absolute top-[calc(100%+6px)]'
           } ${!inlinePopoverRef && !popoverPortalRef ? (popoverAlign === 'end' ? 'right-0' : 'left-0') : ''} ${popoverPortalRef ? 'z-[100]' : 'z-50'} ${
             compact ? 'p-3.5 rounded-[14px] border border-[#EEDFC6] shadow-none' : 'rounded-2xl border border-[#EEDFC6] p-4 shadow-2xl shadow-[#C59B58]/10'
           } bg-white ring-1 ring-[#C59B58]/15 ${popoverPortalRef ? '' : 'transition-all animate-in fade-in zoom-in-95 duration-150'} ${
-            mode === 'datetime'
+            smallCalendar && mode === 'datetime' ? 'w-[288px] max-w-full' : mode === 'datetime'
               ? 'w-[320px] sm:w-[480px] max-w-[calc(100vw-2rem)]'
               : 'w-[280px] sm:w-[310px]'
           }`}
@@ -510,7 +512,7 @@ export function DateTimePicker({
 
           {/* Mobile Tab Switcher (if datetime mode on small screens) */}
           {mode === 'datetime' && (
-            <div className="flex sm:hidden rounded-xl bg-[#FAF8F5] p-1 border border-[#EEDFC6] mb-3">
+            <div className={`flex ${smallCalendar ? '' : 'sm:hidden'} rounded-xl bg-[#FAF8F5] p-1 border border-[#EEDFC6] mb-3`}>
               <button
                 type="button"
                 onClick={() => setActiveTab('calendar')}
@@ -537,11 +539,11 @@ export function DateTimePicker({
           )}
 
           {/* Main Content Area */}
-          <div className="scanms-datetime-content flex flex-col sm:flex-row gap-4">
+          <div className={`scanms-datetime-content flex flex-col gap-4 ${smallCalendar ? '' : 'sm:flex-row'}`}>
             {/* Left: Calendar Panel (Giữ nguyên logic và cấu trúc ngày) */}
             <div
               className={`scanms-datetime-calendar flex-1 min-w-[210px] ${
-                mode === 'datetime' && activeTab === 'time' ? 'hidden sm:block' : 'block'
+                mode === 'datetime' && activeTab === 'time' ? (smallCalendar ? 'hidden' : 'hidden sm:block') : 'block'
               }`}
             >
               {/* Month / Year Navigation */}
@@ -625,8 +627,8 @@ export function DateTimePicker({
             {/* Right: Time Chooser (ĐÃ ĐƯỢC THIẾT KẾ LẠI: TONE SÁNG, SANG TRỌNG, RỘNG RÃI & MƯỢT MÀ) */}
             {mode === 'datetime' && (
               <div
-                className={`scanms-datetime-time sm:border-l sm:border-[#F3EFE6] sm:pl-4 shrink-0 sm:w-[205px] ${
-                  activeTab === 'calendar' ? 'hidden sm:block' : 'block'
+                className={`scanms-datetime-time shrink-0 ${smallCalendar ? '[&_.scanms-datetime-time-list]:h-36' : 'sm:w-[205px] sm:border-l sm:border-[#F3EFE6] sm:pl-4'} ${
+                  activeTab === 'calendar' ? (smallCalendar ? 'hidden' : 'hidden sm:block') : 'block'
                 }`}
               >
                 {/* Hai cột cuộn Giờ & Phút rộng rãi, sáng sủa, thanh cuộn ẩn hoàn toàn với no-scrollbar */}

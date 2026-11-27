@@ -259,9 +259,10 @@ export const customerService = {
     return res?.data?.data || res?.data || res;
   },
 
-  async confirmReceipt(orderId: string): Promise<any> {
+  async confirmReceipt(orderId: string): Promise<Pick<CustomerOrder, 'id' | 'status' | 'completedAt'>> {
     const res: any = await api.post(`/customer/orders/${orderId}/confirm-receipt`);
-    return res?.data?.data || res?.data || res;
+    const payload = res?.data?.data || res?.data || res;
+    return payload.order ?? payload;
   },
 
   async createReturnRequest(

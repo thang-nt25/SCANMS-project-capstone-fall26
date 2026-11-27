@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useId } from 'react';
 import { ChevronDown, Check, Search, X } from 'lucide-react';
 
 export interface CustomSelectOption {
@@ -32,6 +32,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const generatedId = useId();
   const selectId = id || generatedId;
@@ -41,6 +43,52 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
   // Find currently selected option
   const selectedOption = options.find((opt) => String(opt.value) === String(value));
+
+  // Keep the menu in the browser top layer, inside the dialog DOM for focus handling.
+  useLayoutEffect(() => {
+    if (!isOpen || disabled) return;
+    const menu = menuRef.current;
+    const trigger = triggerRef.current;
+    if (!menu || !trigger) return;
+    menu.showPopover?.();
+    const position = () => {
+      const rect = trigger.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportLeft = viewport?.offsetLeft ?? 0;
+      const viewportWidth = viewport?.width ?? window.innerWidth;
+      const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+      const below = Math.max(0, viewportBottom - rect.bottom - 14);
+      const above = Math.max(0, rect.top - viewportTop - 14);
+      const upwards = below < 240 && above > below;
+      const available = upwards ? above : below;
+      menu.style.width = `${Math.min(rect.width, viewportWidth - 16)}px`;
+      menu.style.maxHeight = `${Math.min(280, available)}px`;
+      menu.style.left = `${Math.max(viewportLeft + 8, Math.min(rect.left, viewportLeft + viewportWidth - menu.offsetWidth - 8))}px`;
+      menu.style.top = `${upwards ? rect.top - menu.offsetHeight - 6 : rect.bottom + 6}px`;
+      menu.dataset.side = upwards ? 'top' : 'bottom';
+      if (rect.bottom < viewportTop || rect.top > viewportBottom) setIsOpen(false);
+    };
+    position();
+    const onScroll = (event: Event) => { if (!menu.contains(event.target as Node)) position(); };
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', position);
+    window.visualViewport?.addEventListener('resize', position);
+    window.visualViewport?.addEventListener('scroll', position);
+    const observer = new ResizeObserver(position);
+    observer.observe(trigger);
+    observer.observe(menu);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', position);
+      window.visualViewport?.removeEventListener('resize', position);
+      window.visualViewport?.removeEventListener('scroll', position);
+      observer.disconnect();
+      if (menu.matches(':popover-open')) menu.hidePopover?.();
+    };
+  }, [isOpen, disabled, isSearchable]);
+
+  useEffect(() => { if (disabled) setIsOpen(false); }, [disabled]);
 
   // Close on outside click
   useEffect(() => {
@@ -80,6 +128,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         event.preventDefault();
         event.stopPropagation();
         setIsOpen(false);
+        triggerRef.current?.focus();
       }
     }}>
       {/* Hidden input for HTML form validation */}
@@ -96,6 +145,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
       {/* Trigger Button */}
       <button
+        ref={triggerRef}
         id={selectId}
         type="button"
         disabled={disabled}
@@ -109,6 +159,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={isOpen ? `${selectId}-options` : undefined}
       >
         <span className={`min-w-0 truncate ${!selectedOption ? 'text-[#7D715E] font-normal' : 'text-[#1A1612]'}`}>
           {selectedOption ? selectedOption.label : placeholder}
@@ -123,12 +174,17 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       {/* Floating Dropdown Menu */}
       {isOpen && (
         <div
+          ref={menuRef}
+          id={`${selectId}-options`}
+          popover="manual"
           role="listbox"
-          className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-[#EEDFC6] rounded-2xl shadow-xl p-1.5 flex flex-col gap-1 max-h-64 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+          aria-labelledby={selectId}
+          style={{ position: 'fixed', inset: 'auto', margin: 0 }}
+          className="z-[100] bg-white border border-[#EEDFC6] rounded-xl shadow-xl p-1.5 flex flex-col gap-1 overflow-hidden"
         >
           {/* Quick Search Header if options > 7 */}
           {isSearchable && (
-            <div className="relative px-2 py-1.5 border-b border-[#EAE4D7] pb-2">
+            <div className="relative shrink-0 px-2 py-1.5 border-b border-[#EAE4D7] pb-2">
               <div className="custom-select-search flex items-center gap-1.5 bg-[#FAF8F5] border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:bg-white rounded-lg px-2 py-1 transition">
                 <Search className="w-3 h-3 text-[#B88E4F] shrink-0" />
                 <input
@@ -154,13 +210,14 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           )}
 
           {/* Options Scrollable Container */}
-          <div className="overflow-y-auto max-h-48 space-y-0.5 pr-0.5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-0.5 pr-0.5">
             {/* Default Placeholder Option (e.g. unselect or default) */}
             <button
               type="button"
               onClick={() => {
                 onChange('');
                 setIsOpen(false);
+                triggerRef.current?.focus();
               }}
               className={`w-full min-h-11 px-3 py-2 rounded-xl text-sm text-left transition flex items-center justify-between cursor-pointer ${
                 value === ''
@@ -188,6 +245,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     onClick={() => {
                       onChange(opt.value);
                       setIsOpen(false);
+                      triggerRef.current?.focus();
                     }}
                     className={`w-full min-h-11 px-3 py-2 rounded-xl text-sm text-left transition flex items-center justify-between gap-2 cursor-pointer ${
                       isSelected

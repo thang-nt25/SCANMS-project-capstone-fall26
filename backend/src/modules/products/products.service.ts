@@ -639,7 +639,7 @@ export class ProductsService {
     }
 
     const options = { search, category, storeId, minPrice, maxPrice, sortBy, page: safePage, limit: safeLimit };
-    const cacheKey = `marketplace:products:catalog:v2:${JSON.stringify(options)}:${includeCommission ? '1' : '0'}`;
+    const cacheKey = `marketplace:products:catalog:v3:${JSON.stringify(options)}:${includeCommission ? '1' : '0'}`;
     const cached = this.cacheService?.get ? await this.cacheService.get<any>(cacheKey) : null;
     if (cached) return cached;
 
@@ -663,6 +663,7 @@ export class ProductsService {
           originalPrice: true,
           ...(includeCommission ? { customCommissionRate: true } : {}),
           stockQuantity: true,
+          listPrice: true,
           createdAt: true,
           variants: {
             where: { isActive: true },
@@ -671,6 +672,7 @@ export class ProductsService {
               sku: true,
               name: true,
               price: true,
+              listPrice: true,
               stockQuantity: true,
               isActive: true,
             },
@@ -913,6 +915,55 @@ export class ProductsService {
     });
     await this.invalidateLandingCache(review.productId);
     return { message: dto.decision === 'KEEP' ? 'Đã giữ đánh giá và kết thúc xử lý' : 'Đã ẩn nội dung vi phạm và lưu quyết định' };
+  }
+
+  async listReviewModerationHistory(page: number) {
+    if (!Number.isSafeInteger(page) || page < 1 || page > 100_000) {
+      throw new BadRequestException('Số trang không hợp lệ');
+    }
+    const pageSize = 20;
+    const logs = await this.prisma.auditLog.findMany({
+      where: { action: { in: [
+        'PRODUCT_REVIEW_APPROVED',
+        'PRODUCT_REVIEW_HIDDEN',
+        'PRODUCT_REVIEW_REJECTED',
+        'PRODUCT_REVIEW_REPORT_RESOLVED',
+      ] } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: (page - 1) * pageSize,
+      take: pageSize + 1,
+      select: { id: true, action: true, createdAt: true, details: true, user: { select: { fullName: true } } },
+    });
+    const events = logs.slice(0, pageSize).map(log => {
+      const details = (log.details ?? {}) as Record<string, unknown>;
+      const productId = typeof details.productId === 'string' &&
+        /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(details.productId)
+        ? details.productId : null;
+      return {
+        id: log.id,
+        action: log.action,
+        createdAt: log.createdAt,
+        actorName: log.user?.fullName ?? null,
+        productId,
+        reviewId: typeof details.reviewId === 'string' ? details.reviewId : null,
+        decision: typeof details.decision === 'string' ? details.decision : null,
+        previousStatus: typeof details.previousStatus === 'string' ? details.previousStatus : null,
+        reason: typeof details.reason === 'string' ? details.reason : null,
+      };
+    });
+    const productIds = [...new Set(events.flatMap(event => event.productId ? [event.productId] : []))];
+    const products = productIds.length ? await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, title: true },
+    }) : [];
+    const titles = new Map(products.map(product => [product.id, product.title]));
+    return {
+      items: events.map(event => ({
+        ...event,
+        productTitle: event.productId ? titles.get(event.productId) ?? null : null,
+      })),
+      hasMore: logs.length > pageSize,
+    };
   }
 
   /**

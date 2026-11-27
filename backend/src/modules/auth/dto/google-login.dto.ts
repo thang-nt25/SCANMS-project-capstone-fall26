@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+
+export const GOOGLE_AUTH_INTENTS = ['login', 'register'] as const;
 
 export class GoogleLoginDto {
   @ApiProperty({
@@ -9,6 +11,11 @@ export class GoogleLoginDto {
   @IsString()
   @IsNotEmpty()
   idToken: string;
+
+  @ApiPropertyOptional({ enum: GOOGLE_AUTH_INTENTS })
+  @IsOptional()
+  @IsIn(GOOGLE_AUTH_INTENTS)
+  intent?: (typeof GOOGLE_AUTH_INTENTS)[number];
 
   @ApiPropertyOptional({
     description:

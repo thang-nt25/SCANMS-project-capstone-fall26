@@ -428,6 +428,11 @@ export class CouponsService {
     };
   }
 
+  async getShareableStoreCoupons(storeId: string, userId: string, role: UserRole) {
+    await this.verifyStoreAccess(storeId, userId, role);
+    return this.getPublicStoreCoupons(storeId);
+  }
+
   async getPublicStoreCoupons(storeId: string, productId?: string) {
     const cacheKey = `coupons:kol-only:v1:${storeId}:${productId || 'all'}`;
     const cached = this.cacheService?.get

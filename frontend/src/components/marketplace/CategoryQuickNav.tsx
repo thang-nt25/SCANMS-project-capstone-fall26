@@ -1,47 +1,82 @@
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, ChevronRight, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import api from '@/services/api';
 import type { Product } from '@/types/marketplace.types';
-import { HOME_CATEGORY_GROUPS } from '@/utils/marketplace-category.utils';
+import { getHomeCategoryGroup, type CatalogCategory } from '@/utils/marketplace-category.utils';
 
-interface CategoryQuickNavProps {
-  products: Product[];
-  loading?: boolean;
+interface CategoryLink {
+  label: string;
+  href: string;
+  image?: string;
+  count?: number;
 }
 
-export function CategoryQuickNav({ products: _products, loading = false }: CategoryQuickNavProps) {
-  const categories = HOME_CATEGORY_GROUPS;
+function getCategoryLinks(categories: CatalogCategory[], showCounts: boolean) {
+  const links = new Map<string, CategoryLink>();
+
+  for (const category of categories) {
+    if (!category.name.trim() || category.count <= 0) continue;
+    const group = getHomeCategoryGroup(category.name);
+    const query = new URLSearchParams(group ? { categoryGroup: group.id } : { category: category.name });
+    const href = `/search?${query}`;
+    const currentCount = links.get(href)?.count ?? 0;
+    links.set(href, {
+      label: group?.label ?? category.name,
+      image: group?.image,
+      href,
+      count: showCounts ? currentCount + category.count : undefined,
+    });
+  }
+
+  return [...links.values()].sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
+}
+
+export function CategoryQuickNav({ products }: { products: Product[] }) {
+  const { data, isPending } = useQuery<CatalogCategory[]>({
+    queryKey: ['marketplace-category-counts'],
+    queryFn: async ({ signal }) => {
+      const response = await api.get('/public/products/categories', { signal });
+      const payload = response.data?.data ?? response.data;
+      if (!Array.isArray(payload)) throw new Error('Invalid marketplace categories');
+      return payload;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const categories = data ?? products.map((product) => ({ name: product.category, count: 1 }));
+  const links = getCategoryLinks(categories, data !== undefined);
 
   return (
-    <section aria-labelledby="category-quick-nav-title" className="p-0 bg-transparent">
-      <div className="mx-auto my-4 w-full max-w-[1248px] px-3 sm:px-4 lg:my-6 lg:px-6">
-        <div className="bg-[#fffdf9] border border-[#eadbc5] rounded-[18px] p-3 sm:p-4 shadow-[0_8px_24px_rgba(82,53,20,0.08)] overflow-hidden">
-          <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
-            <h2 id="category-quick-nav-title" className="text-base sm:text-lg font-extrabold text-[#302317] m-0 border-l-4 border-[#b8862f] pl-3 uppercase tracking-[0.04em]">
-              Danh mục ngành hàng
-            </h2>
-            <Link to="/search" className="inline-flex shrink-0 items-center gap-1.5 text-[#897761] text-xs sm:text-sm font-semibold no-underline transition-colors hover:text-[#b8862f]">
-              Tất cả sản phẩm
-              <ArrowRight size={15} aria-hidden="true" />
-            </Link>
-          </div>
-          <nav aria-label="Ngành hàng mua sắm" className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-busy={loading}>
-            {loading
-              ? HOME_CATEGORY_GROUPS.map((group) => (
-                <div key={group.id} className="group flex flex-col items-center justify-center gap-2 py-3 px-3 no-underline rounded-[14px] bg-[#fffaf3] border border-[#eadbc5] animate-pulse" aria-hidden="true">
-                  <span className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white border border-[#eadbc5] p-2" />
-                  <span className="h-4 w-20 bg-[#eadbc5]/50 rounded" />
-                </div>
-              ))
-              : categories.map((category) => (
-                <Link key={category.id} to={`/search?categoryGroup=${category.id}`} className="group flex flex-col items-center justify-center gap-2 py-3 px-3 no-underline rounded-[14px] bg-[#fffaf3] border border-[#eadbc5] transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-[#b8862f] hover:shadow-[0_6px_16px_rgba(82,53,20,0.08)]">
-                  <span className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white border border-[#eadbc5] p-2">
-                    <img src={`/assets/categories/${category.id}-v1.png`} alt="" loading="lazy" decoding="async" width={74} height={74} className="w-full h-full object-contain" onError={(e) => { e.currentTarget.src = '/assets/categories/skin-v1.png'; }} />
-                  </span>
-                  <span className="text-center text-[14px] font-bold text-[#302317] transition-colors group-hover:text-[#b8862f]">{category.label}</span>
-                </Link>
-              ))}
-          </nav>
+    <section aria-labelledby="category-quick-nav-title" className="category-quick-nav mx-auto my-4 w-full max-w-[1248px] px-3 sm:px-4 lg:my-6 lg:px-6">
+      <div className="category-quick-nav__panel rounded-2xl border border-line bg-white px-3 py-3 sm:px-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h2 id="category-quick-nav-title" className="m-0 text-base font-bold text-ink sm:text-lg">
+            Ngành hàng
+          </h2>
+          <Link to="/search" className="category-quick-nav__all inline-flex min-h-8 items-center gap-1.5 rounded-md px-1.5 text-xs font-semibold text-[#715126] no-underline hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-brand-strong sm:text-sm">
+            Tất cả sản phẩm
+            <ArrowRight size={15} aria-hidden="true" />
+          </Link>
         </div>
+        <nav aria-label="Ngành hàng mua sắm" aria-busy={isPending} className="category-quick-nav__categories grid auto-rows-fr grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+          {isPending && links.length === 0 && [0, 1, 2, 3].map((index) => (
+            <div key={index} className="h-[72px] animate-pulse rounded-xl bg-canvas motion-reduce:animate-none" aria-hidden="true" />
+          ))}
+          {links.map(({ href, label, image, count }) => (
+            <Link key={href} to={href} className="category-quick-nav__category group flex min-h-[72px] min-w-0 items-center gap-2 rounded-xl border border-line bg-white px-2 py-2 text-ink no-underline transition-colors hover:border-brand-strong hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-strong sm:gap-3 sm:px-3">
+              <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-white text-brand-strong sm:size-12">
+                {image ? <img src={image} alt="" width={48} height={48} loading="lazy" decoding="async" className="size-full object-contain p-0.5" /> : <Package size={20} aria-hidden="true" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs leading-4 font-semibold sm:text-sm sm:leading-5">{label}</span>
+                {count !== undefined && <span className="mt-0.5 block text-[11px] leading-4 text-muted tabular-nums">{count} sản phẩm</span>}
+              </span>
+              <ChevronRight size={15} className="hidden shrink-0 text-brand-strong sm:block" aria-hidden="true" />
+            </Link>
+          ))}
+        </nav>
       </div>
     </section>
   );

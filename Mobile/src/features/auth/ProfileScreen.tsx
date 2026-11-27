@@ -37,12 +37,12 @@ export function ProfileScreen() {
     navigation.navigate("Business", { feature });
   const entryOptions: { feature: BusinessFeature; title: string }[] = [
     { feature: "wallet", title: shop ? "Tài chính Shop" : collaborator ? "Ví thù lao" : "Ví & lịch sử giao dịch" },
-    { feature: "coupons", title: user.role === "COLLABORATOR" ? "Mã giảm giá độc quyền" : "Kho voucher" },
+    { feature: "coupons", title: user.role === "COLLABORATOR" ? "Mã giảm giá độc quyền" : "Mã ưu đãi KOL" },
     { feature: "wishlist", title: "Sản phẩm yêu thích" },
     { feature: "addresses", title: "Sổ địa chỉ" },
     { feature: "returns", title: "Trả hàng & khiếu nại" },
     { feature: "identity", title: "Thông tin định danh" },
-    { feature: "kyc", title: "Hồ sơ xác minh KYC" },
+    { feature: "kyc", title: customer ? "Đăng ký KOL/KOC" : "Hồ sơ xác minh KYC" },
     { feature: "social", title: "Kênh xã hội & cấp bậc" },
     { feature: "samples", title: "Hàng mẫu & video review" },
     { feature: "marketing", title: "Link tiếp thị & QR" },
@@ -127,7 +127,7 @@ export function ProfileScreen() {
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={styles.voucherTitle}>Ưu đãi dành cho bạn</Text>
                 <Text style={styles.voucherDetail}>
-                  Khám phá voucher từ các gian hàng SCANMS
+                  Nhập mã độc quyền do KOL chia sẻ khi thanh toán
                 </Text>
               </View>
               <Icon name="chevron-right" size={17} color={colors.strong} />

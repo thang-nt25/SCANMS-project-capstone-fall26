@@ -25,7 +25,8 @@ export function notificationTarget(notification: Notification, role: Role): stri
   }
   if (type.startsWith('KYC_')) return admin ? '/admin/users' : role === 'SHOP_MANAGER' ? '/merchant/dashboard' : role === 'CUSTOMER' ? '/customer/upgrade' : '/collaborator/profile?tab=kyc';
   if (type === 'KOL_APPROVED') return '/collaborator/dashboard';
-  if (type === 'KOL_REJECTED' || type === 'KOL_NEEDS_INFO') return '/customer/upgrade/kol';
+  if (type === 'KOL_REJECTED' || type === 'KOL_NEEDS_INFO')
+    return role === 'COLLABORATOR' ? '/collaborator/profile?tab=kyc' : '/customer/upgrade/kol';
   if (type === 'SHOP_APPROVED') return '/merchant/dashboard';
   if (type === 'SHOP_REJECTED' || type === 'SHOP_NEEDS_INFO') return '/customer/upgrade';
   if (type.startsWith('SAMPLE_')) {

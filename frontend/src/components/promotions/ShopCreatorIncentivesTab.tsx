@@ -1,3 +1,4 @@
+import { Modal } from '../ui/Modal';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -15,11 +16,13 @@ import {
   MessageSquare,
   Plus,
   ChevronDown,
-  ChevronRight,
+  History,
 } from 'lucide-react';
 import api from '../../services/api';
 import { storeService } from '../../services/store.service';
 import { couponService } from '../../services/coupon.service';
+import { toVietnamDateTime, parseVietnamDateTime, vietnamPickerNow } from '../../utils/date-time.utils';
+import { DateTimePicker } from '../common/DateTimePicker';
 import { toast } from '../../utils/toast';
 import { ShopMonthlyBonusPanel } from './ShopMonthlyBonusPanel';
 import { IssueDealCouponModal } from './IssueDealCouponModal';
@@ -33,6 +36,7 @@ interface CreatorCoupon {
   minimumOrderAmount?: number | string | null;
   maximumDiscountAmount?: number | string | null;
   usageCount: number;
+  usageLimitTotal?: number | null;
   budgetTotal?: number;
   budgetUsed?: number;
   status: string;
@@ -41,6 +45,7 @@ interface CreatorCoupon {
   rejectedReason?: string | null;
   blockedReason?: string | null;
   benefitType?: string;
+  scopeType?: string;
   collaboratorId?: string;
   collaborator?: {
     id: string;
@@ -58,14 +63,15 @@ interface CreatorCoupon {
 let lastCreatorIncentivesSnapshot: { coupons: CreatorCoupon[]; partnerKols: any[]; currentStoreId: string; } | null = null;
 registerPrivateCacheReset(() => { lastCreatorIncentivesSnapshot = null; });
 
-export function ShopCreatorIncentivesTab() {
+export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCouponCount }: { section?: 'coupons' | 'milestones'; hideNavigation?: boolean; onCouponCount?: (count: number) => void } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reviewCouponId = searchParams.get('reviewCouponId');
   const handledReviewCouponRef = useRef<string | null>(null);
-  const [activeSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'HISTORY'>('ALL');
-  const [expandedHistoryByKol, setExpandedHistoryByKol] = useState<Record<string, boolean>>({});
+  const [localSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
+  const activeSection = section ?? localSection;
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [historyKolId, setHistoryKolId] = useState<string | null>(null);
   const [avatarErrorByKol, setAvatarErrorByKol] = useState<Record<string, boolean>>({});
   const [coupons, setCoupons] = useState<CreatorCoupon[]>(() => (reviewCouponId ? [] : lastCreatorIncentivesSnapshot?.coupons || []));
   const [currentStoreId, setCurrentStoreId] = useState<string>(() => lastCreatorIncentivesSnapshot?.currentStoreId || '');
@@ -86,10 +92,9 @@ export function ShopCreatorIncentivesTab() {
   const [customCode, setCustomCode] = useState<string>('');
   const [couponDiscountPercent, setCouponDiscountPercent] = useState<number>(10);
   const [couponMaxDiscount, setCouponMaxDiscount] = useState<number>(50000);
-  const [couponExpiresAt, setCouponExpiresAt] = useState<string>(() => {
-    const d = new Date(Date.now() + 14 * 86_400_000);
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  });
+  const [couponExpiresAt, setCouponExpiresAt] = useState(() =>
+    toVietnamDateTime(new Date(Date.now() + 14 * 86_400_000)),
+  );
   const [issuingCoupon, setIssuingCoupon] = useState<boolean>(false);
 
   // Proposal Review Modal states
@@ -111,6 +116,11 @@ export function ShopCreatorIncentivesTab() {
   // Coupon Detail / Extend / Block Modal states
   const [detailCoupon, setDetailCoupon] = useState<CreatorCoupon | null>(null);
   const [extendExpiresAt, setExtendExpiresAt] = useState<string>('');
+  const extendCalendar = useRef<HTMLDivElement>(null);
+  const currentExpiry = detailCoupon?.expiresAt ? Date.parse(detailCoupon.expiresAt) : 0;
+  const earliestExpiry = Math.floor(Math.max(Date.now(), currentExpiry || 0) / 60_000) * 60_000 + 60_000;
+  const selectedExpiry = parseVietnamDateTime(extendExpiresAt);
+  const canSaveExpiry = Number.isFinite(selectedExpiry) && selectedExpiry >= earliestExpiry;
   const [isUpdatingPolicy, setIsUpdatingPolicy] = useState<boolean>(false);
   const [blockReasonInput, setBlockReasonInput] = useState<string>('');
   const [showBlockInput, setShowBlockInput] = useState<boolean>(false);
@@ -188,7 +198,7 @@ export function ShopCreatorIncentivesTab() {
     handledReviewCouponRef.current = reviewCouponId;
     const targetKolKey = target.collaboratorId || target.collaborator?.id || target.collaborator?.email || '';
     if (targetKolKey && ['EXPIRED', 'REJECTED', 'BLOCKED'].includes(target.status)) {
-      setExpandedHistoryByKol((prev) => ({ ...prev, [targetKolKey]: true }));
+      setHistoryKolId(targetKolKey);
     }
     if (target.status === 'PENDING_APPROVAL') {
       setReviewingProposal(target);
@@ -196,8 +206,7 @@ export function ShopCreatorIncentivesTab() {
     } else {
       setDetailCoupon(target);
       const baseDate = target.expiresAt ? new Date(target.expiresAt) : new Date(Date.now() + 14 * 86_400_000);
-      const localIso = new Date(baseDate.getTime() - baseDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-      setExtendExpiresAt(localIso);
+      setExtendExpiresAt(toVietnamDateTime(baseDate));
     }
   }, [reviewCouponId, coupons]);
 
@@ -258,6 +267,12 @@ export function ShopCreatorIncentivesTab() {
     const fallbackCode = `${kolNameClean}${couponDiscountPercent}`;
     const finalCode = (customCode || fallbackCode).trim().toUpperCase();
 
+    const expiry = parseVietnamDateTime(couponExpiresAt);
+    if (!Number.isFinite(expiry) || expiry <= Date.now()) {
+      toast.error('Thời hạn của mã phải sau thời điểm hiện tại.');
+      return;
+    }
+
     setIssuingCoupon(true);
     try {
       await couponService.createStoreCoupon(currentStoreId, {
@@ -266,7 +281,7 @@ export function ShopCreatorIncentivesTab() {
         discountType: 'PERCENTAGE',
         discountValue: couponDiscountPercent,
         maximumDiscountAmount: couponMaxDiscount,
-        expiresAt: couponExpiresAt ? new Date(couponExpiresAt).toISOString() : undefined,
+        expiresAt: new Date(expiry).toISOString(),
         scopeType: 'STORE_WIDE',
         benefitType: 'GOODS',
       } as any);
@@ -349,13 +364,14 @@ export function ShopCreatorIncentivesTab() {
   const validKolCoupons = useMemo(
     () =>
       coupons.filter((c: any) => {
-        if (c.benefitType === 'SHIPPING' || Number(c.discountValue) >= 100) return false;
+        if (c.benefitType === 'SHIPPING' || (c.discountType === 'PERCENTAGE' && Number(c.discountValue) >= 100)) return false;
         if (!c.collaborator && !c.collaboratorId) return false;
         return true;
       }),
     [coupons],
   );
 
+  useEffect(() => { onCouponCount?.(validKolCoupons.length); }, [onCouponCount, validKolCoupons.length]);
   const couponFilterCounts = useMemo(() => {
     let pending = 0;
     let active = 0;
@@ -382,6 +398,8 @@ export function ShopCreatorIncentivesTab() {
         !['EXPIRED', 'REJECTED', 'BLOCKED'].includes(c.status)
       )
         return false;
+
+      if (['EXPIRED', 'BLOCKED', 'REJECTED'].includes(statusFilter) && c.status !== statusFilter) return false;
 
       if (!q) return true;
       return (
@@ -462,16 +480,17 @@ export function ShopCreatorIncentivesTab() {
     });
   }, [filteredCoupons, partnerKols]);
 
+  const historyGroup = kolGroups.find(group => group.kolId === historyKolId);
+
   const openCouponDetail = (c: CreatorCoupon) => {
     setDetailCoupon(c);
     const baseDate = c.expiresAt ? new Date(c.expiresAt) : new Date(Date.now() + 14 * 86_400_000);
-    const localIso = new Date(baseDate.getTime() - baseDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    setExtendExpiresAt(localIso);
+    setExtendExpiresAt(toVietnamDateTime(baseDate));
     setShowBlockInput(false);
     setBlockReasonInput('');
   };
 
-  const renderStatusBadge = (status: string) => {
+  const renderStatusBadge = (status: string, blockedReason?: string | null) => {
     if (status === 'ACTIVE') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
@@ -516,7 +535,7 @@ export function ShopCreatorIncentivesTab() {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-[#DC2626] border border-rose-200">
           <XCircle className="w-3 h-3 text-[#DC2626]" />
-          Đã khóa
+          {blockedReason?.startsWith('Đã thay thế bởi mã định danh mới:') ? 'Đã thay thế' : 'Đã khóa'}
         </span>
       );
     }
@@ -534,7 +553,7 @@ export function ShopCreatorIncentivesTab() {
         {loadError}<button type="button" disabled={isRefreshing} onClick={() => void loadData(true)} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
       </div>}
       {/* Sub-navigation tabs: Chuẩn 2 Trụ Cột Đãi Ngộ KOC */}
-      <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+      {!hideNavigation && <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="w-full rounded-2xl border border-[#EAE4D7] bg-white p-2" role="group" aria-label="Chức năng đãi ngộ KOL">
         <div className="relative grid grid-cols-2 items-stretch gap-4 before:pointer-events-none before:absolute before:bottom-2 before:left-1/2 before:top-2 before:w-px before:-translate-x-1/2 before:bg-[#EAE4D7]">
           <button
@@ -561,7 +580,7 @@ export function ShopCreatorIncentivesTab() {
 
       </div>
 
-      </div>
+      </div>}
       {/* SECTION 1: ATTRIBUTION COUPONS (GROUPED BY KOC) */}
       {activeSection === 'coupons' && (
         <div className="space-y-4">
@@ -575,9 +594,26 @@ export function ShopCreatorIncentivesTab() {
                   placeholder="Tìm theo tên KOC, email hoặc mã coupon..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Tìm theo tên KOC, email hoặc mã coupon"
+                  aria-label="Tìm theo mã coupon hoặc tên KOC"
                   className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white pl-9 pr-3 text-sm text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]"
                 />
+              </div>
+              <div className="relative shrink-0 sm:min-w-[174px]">
+                <select
+                  aria-label="Lọc trạng thái mã ưu đãi"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  className="flex h-11 w-full appearance-none items-center [&::picker-icon]:hidden rounded-xl border border-[#EAE4D7] bg-white py-0 pl-3 pr-9 text-sm leading-normal [background-image:none]!"
+                >
+                  <option value="ALL">Tất cả trạng thái ({couponFilterCounts.all})</option>
+                  <option value="PENDING">Chờ duyệt ({couponFilterCounts.pending})</option>
+                  <option value="ACTIVE">Đang hiệu lực ({couponFilterCounts.active})</option>
+                  <option value="HISTORY">Lịch sử ({couponFilterCounts.history})</option>
+                  <option value="EXPIRED">Hết hạn</option>
+                  <option value="BLOCKED">Đã khóa / thay thế</option>
+                  <option value="REJECTED">Đã từ chối</option>
+                </select>
+                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#7D715E]" />
               </div>
               <button
                 type="button"
@@ -592,320 +628,205 @@ export function ShopCreatorIncentivesTab() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {[
-                { key: 'ALL' as const, label: 'Tất cả', count: couponFilterCounts.all },
-                { key: 'PENDING' as const, label: 'Chờ duyệt', count: couponFilterCounts.pending },
-                { key: 'ACTIVE' as const, label: 'Đang chạy', count: couponFilterCounts.active },
-                { key: 'HISTORY' as const, label: 'Lịch sử', count: couponFilterCounts.history },
-              ].map((pill) => {
-                const active = statusFilter === pill.key;
-                return (
-                  <button
-                    key={pill.key}
-                    type="button"
-                    onClick={() => setStatusFilter(pill.key)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                      active
-                        ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-2xs'
-                        : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]/60 hover:text-[#1A1612]'
-                    }`}
-                  >
-                    {pill.key === 'PENDING' && pill.count > 0 && (
-                      <span className="h-2 w-2 rounded-full bg-[#D97706]" aria-hidden="true" />
-                    )}
-                    <span>{pill.label}</span>
-                    <span className="rounded-full bg-[#F3EFE6] px-1.5 py-0.5 text-[10px] font-bold text-[#7D715E] tabular-nums">
-                      {pill.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* KOC GROUP CARDS */}
           {kolGroups.length > 0 ? (
-            <div className="space-y-4">
-              {kolGroups.map((group) => {
-                const totalCodes = group.pendingProposals.length + group.activeCoupons.length + group.historyCoupons.length;
-                const searchLower = searchQuery.trim().toLowerCase();
-                const searchMatchedHistory =
-                  searchLower.length > 0 &&
-                  group.historyCoupons.some(
-                    (c) =>
-                      c.displayCode?.toLowerCase().includes(searchLower) ||
-                      c.codeNormalized?.toLowerCase().includes(searchLower),
-                  );
-                const isHistoryExpanded =
-                  statusFilter === 'HISTORY' ||
-                  searchMatchedHistory ||
-                  Boolean(expandedHistoryByKol[group.kolId]);
-                const showRealAvatar = Boolean(group.avatarUrl) && !avatarErrorByKol[group.kolId];
+            <div aria-label="Danh sách mã ưu đãi theo KOC" className="@container rounded-2xl border border-[#EAE4D7] bg-white p-2 sm:p-3">
+              <div className="grid grid-cols-1 gap-3 @min-[1000px]:grid-cols-2">
+                {kolGroups.map((group) => {
+                  const showRealAvatar = Boolean(group.avatarUrl) && !avatarErrorByKol[group.kolId];
 
-                return (
-                  <section
-                    key={group.kolId}
-                    className="rounded-2xl border border-[#EAE4D7] bg-white shadow-2xs overflow-hidden"
-                  >
-                    {/* TẦNG 1: HEADER KOC (Avatar thật + Định danh + Nhắn tin KOC + Cấp mã) */}
-                    <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 bg-[#FAF8F5] border-b border-[#EAE4D7]">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {showRealAvatar ? (
-                          <img
-                            src={group.avatarUrl}
-                            alt={group.fullName}
-                            onError={() =>
-                              setAvatarErrorByKol((prev) => ({ ...prev, [group.kolId]: true }))
-                            }
-                            className="w-11 h-11 rounded-full object-cover ring-1 ring-black/10 shrink-0 bg-white"
-                          />
-                        ) : (
-                          <div className="w-11 h-11 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#8C6226] flex items-center justify-center font-bold text-base shrink-0">
-                            {group.fullName.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="m-0 text-sm font-bold text-[#1A1612] truncate">
-                              {group.fullName}
-                            </h3>
-                            {group.tier && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
-                                {group.tier}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#7D715E] mt-0.5 tabular-nums">
-                            {group.email && <span className="truncate">{group.email}</span>}
-                            {group.email && <span>·</span>}
-                            <span>
-                              {group.pendingProposals.length > 0 && `${group.pendingProposals.length} chờ duyệt · `}
-                              {group.activeCoupons.length} đang hiệu lực · {group.historyCoupons.length} lịch sử ({totalCodes} mã)
-                            </span>
+                  return (
+                    <section
+                      key={group.kolId}
+                      className="min-w-0 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white"
+                    >
+                      {/* TẦNG 1: HEADER KOC (Avatar thật + Định danh + Nhắn tin KOC + Cấp mã) */}
+                      <header className="flex flex-col justify-between gap-3 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {showRealAvatar ? (
+                            <img
+                              src={group.avatarUrl}
+                              alt={group.fullName}
+                              onError={() =>
+                                setAvatarErrorByKol((prev) => ({ ...prev, [group.kolId]: true }))
+                              }
+                              className="size-10 rounded-full object-cover ring-1 ring-black/10 shrink-0 bg-white"
+                            />
+                          ) : (
+                            <div className="size-10 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#8C6226] flex items-center justify-center font-bold text-base shrink-0">
+                              {group.fullName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="m-0 text-sm font-bold text-[#1A1612] truncate">
+                                {group.fullName}
+                              </h3>
+                              {group.tier && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
+                                  {group.tier}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#7D715E] mt-0.5 tabular-nums">
+                              {group.email && <span className="truncate">{group.email}</span>}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            navigate(`/merchant/kol-hub?kol=${encodeURIComponent(group.kolId)}&tab=messages`)
-                          }
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] text-xs font-semibold transition cursor-pointer"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
-                          <span>Nhắn tin KOC</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedKolId(group.kolId);
-                            setIsIssueCouponOpen(true);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#715126] text-xs font-bold transition cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Cấp mã cho KOC</span>
-                        </button>
-                      </div>
-                    </header>
-
-                    {/* TẦNG 2: YÊU CẦU CHỜ DUYỆT & MÃ ĐANG HIỆU LỰC */}
-                    <div className="divide-y divide-[#EAE4D7]">
-                      {group.pendingProposals.length > 0 && (
-                        <div className="p-3.5 bg-[#FBF5EB]/60 space-y-2.5">
-                          <div className="text-[11px] font-bold uppercase tracking-wide text-[#8C6226]">
-                            Yêu cầu đề xuất mã mới ({group.pendingProposals.length})
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                            {group.pendingProposals.map((p) => (
-                              <div
-                                key={p.id}
-                                className="p-3 rounded-xl bg-white border border-[#EEDFC6] flex flex-col justify-between gap-2.5 text-left"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <span className="font-mono font-extrabold text-[#B88E4F] text-sm tracking-wider">
-                                      {p.displayCode || p.codeNormalized}
-                                    </span>
-                                    <p className="m-0 text-[11px] text-[#7D715E] mt-0.5">
-                                      Phạm vi: <strong className="text-[#1A1612]">Toàn bộ cửa hàng</strong>
-                                    </p>
-                                  </div>
-                                  {renderStatusBadge(p.status)}
-                                </div>
-                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setRejectingProposal(p);
-                                      setRejectReason('');
-                                    }}
-                                    className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition cursor-pointer"
-                                  >
-                                    Từ chối
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setReviewingProposal(p);
-                                      setReviewDiscountPercent(p.discountValue <= 5 ? 5 : 10);
-                                    }}
-                                    className="px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>Duyệt &amp; Gán %</span>
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {group.activeCoupons.length > 0 && (
-                        <div className="overflow-x-auto">
-                          <table className="w-full min-w-[640px] table-fixed text-left text-xs">
-                            <thead className="bg-[#FAF8F5] text-[#7D715E] font-semibold">
-                              <tr>
-                                <th className="w-[28%] px-4 py-2.5 whitespace-nowrap">Mã đang hiệu lực</th>
-                                <th className="w-[14%] px-4 py-2.5 whitespace-nowrap">Mức giảm</th>
-                                <th className="w-[12%] px-4 py-2.5 whitespace-nowrap">Lượt dùng</th>
-                                <th className="w-[16%] px-4 py-2.5 whitespace-nowrap">Thời hạn</th>
-                                <th className="w-[16%] px-4 py-2.5 whitespace-nowrap">Trạng thái</th>
-                                <th className="w-[14%] px-4 py-2.5 whitespace-nowrap text-right">Thao tác</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#EAE4D7]">
-                              {group.activeCoupons.map((c) => (
-                                <tr key={c.id} className="hover:bg-[#FAF8F5] transition">
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono font-extrabold text-[#B88E4F] text-sm px-2.5 py-1 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6]">
-                                        {c.displayCode || c.codeNormalized}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy(c.displayCode || c.codeNormalized)}
-                                        className="p-1 rounded-md text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
-                                        title="Sao chép mã"
-                                      >
-                                        {copiedCode === (c.displayCode || c.codeNormalized) ? (
-                                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                        ) : (
-                                          <Copy className="w-3.5 h-3.5" />
-                                        )}
-                                      </button>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <span className="font-bold text-[#DC2626] font-mono tabular-nums">
-                                      -{c.discountValue}%
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 font-mono text-[#1A1612] tabular-nums">
-                                    <strong>{c.usageCount || 0}</strong> lượt
-                                  </td>
-                                  <td className="px-4 py-3 text-[#7D715E] tabular-nums">
-                                    {c.expiresAt ? (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium">
-                                        <Clock className="w-3 h-3 text-[#7D715E]" />
-                                        {new Date(c.expiresAt).toLocaleDateString('vi-VN')}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[11px]">Theo Hợp đồng VIP</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3">{renderStatusBadge(c.status)}</td>
-                                  <td className="px-4 py-3 text-right">
-                                    <button
-                                      type="button"
-                                      onClick={() => openCouponDetail(c)}
-                                      className="px-2.5 py-1 rounded-md border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] text-[11px] font-semibold hover:bg-[#F3EFE6] transition cursor-pointer"
-                                    >
-                                      Xem chi tiết
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {/* TẦNG 3: LỊCH SỬ MÃ CŨ (THU GỌN MẶC ĐỊNH - PROGRESSIVE DISCLOSURE) */}
-                      {group.historyCoupons.length > 0 && (
-                        <div className="bg-[#FAF8F5]/60">
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          {group.historyCoupons.length > 0 && (
+                            <button
+                              type="button"
+                              aria-haspopup="dialog"
+                              aria-label={`Lịch sử mã của ${group.fullName}`}
+                              onClick={() => setHistoryKolId(group.kolId)}
+                              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#715126] hover:bg-[#FBF5EB]"
+                            >
+                              <History aria-hidden="true" size={14} />
+                              Lịch sử ({group.historyCoupons.length})
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() =>
-                              setExpandedHistoryByKol((prev) => ({
-                                ...prev,
-                                [group.kolId]: !isHistoryExpanded,
-                              }))
+                              navigate(`/merchant/kol-hub?kol=${encodeURIComponent(group.kolId)}&tab=messages`)
                             }
-                            aria-expanded={isHistoryExpanded}
-                            className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6]/60 transition cursor-pointer"
+                            className="inline-flex items-center h-8 gap-1.5 px-3 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] text-xs font-semibold transition cursor-pointer"
                           >
-                            <span className="inline-flex items-center gap-1.5">
-                              {isHistoryExpanded ? (
-                                <ChevronDown className="w-4 h-4 text-[#B88E4F]" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4 text-[#7D715E]" />
-                              )}
-                              <span>Lịch sử mã trước đây ({group.historyCoupons.length})</span>
-                            </span>
-                            <span className="text-[11px] font-normal">
-                              {isHistoryExpanded ? 'Thu gọn' : 'Nhấn để xem'}
-                            </span>
+                            <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
+                            <span>Nhắn tin KOC</span>
                           </button>
-
-                          {isHistoryExpanded && (
-                            <div className="overflow-x-auto border-t border-[#EAE4D7] bg-white">
-                              <table className="w-full min-w-[640px] table-fixed text-left text-xs">
-                                <tbody className="divide-y divide-[#EAE4D7]">
-                                  {group.historyCoupons.map((c) => (
-                                    <tr key={c.id} className="hover:bg-[#FAF8F5] transition">
-                                      <td className="w-[28%] px-4 py-2.5">
-                                        <span className="font-mono font-bold text-[#7D715E] text-xs px-2 py-0.5 rounded-md bg-[#F3EFE6] border border-[#EAE4D7]">
-                                          {c.displayCode || c.codeNormalized}
-                                        </span>
-                                      </td>
-                                      <td className="w-[14%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
-                                        -{c.discountValue}%
-                                      </td>
-                                      <td className="w-[12%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
-                                        {c.usageCount || 0} lượt
-                                      </td>
-                                      <td className="w-[16%] px-4 py-2.5 text-[11px] text-[#7D715E] tabular-nums">
-                                        {c.expiresAt
-                                          ? new Date(c.expiresAt).toLocaleDateString('vi-VN')
-                                          : 'Theo Hợp đồng VIP'}
-                                      </td>
-                                      <td className="w-[16%] px-4 py-2.5">{renderStatusBadge(c.status)}</td>
-                                      <td className="w-[14%] px-4 py-2.5 text-right">
-                                        <button
-                                          type="button"
-                                          onClick={() => openCouponDetail(c)}
-                                          className="px-2.5 py-1 rounded-md border border-[#EAE4D7] bg-white text-[#7D715E] text-[11px] font-semibold hover:bg-[#FAF8F5] hover:text-[#1A1612] transition cursor-pointer"
-                                        >
-                                          Xem chi tiết
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedKolId(group.kolId);
+                              setIsIssueCouponOpen(true);
+                            }}
+                            className="inline-flex items-center h-8 gap-1.5 px-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#715126] text-xs font-bold transition cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Cấp mã cho KOC</span>
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  </section>
-                );
-              })}
+                      </header>
+
+                      {/* TẦNG 2: YÊU CẦU CHỜ DUYỆT & MÃ ĐANG HIỆU LỰC */}
+                      {(group.pendingProposals.length > 0 || group.activeCoupons.length > 0) && <div className="divide-y divide-[#EAE4D7]">
+                        {group.pendingProposals.length > 0 && (
+                          <div className="p-3.5 bg-[#FBF5EB]/60 space-y-2.5">
+                            <div className="text-[11px] font-bold uppercase tracking-wide text-[#8C6226]">
+                              Yêu cầu đề xuất mã mới ({group.pendingProposals.length})
+                            </div>
+                            <div className="grid gap-2.5">
+                              {group.pendingProposals.map((p) => (
+                                <div
+                                  key={p.id}
+                                  className="p-3 rounded-xl bg-white border border-[#EEDFC6] flex flex-col justify-between gap-2.5 text-left"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <span className="break-all font-mono font-extrabold text-[#B88E4F] text-sm tracking-wider">
+                                        {p.displayCode || p.codeNormalized}
+                                      </span>
+                                      <p className="m-0 text-[11px] text-[#7D715E] mt-0.5">
+                                        Phạm vi: <strong className="text-[#1A1612]">Toàn bộ cửa hàng</strong>
+                                      </p>
+                                    </div>
+                                    {renderStatusBadge(p.status)}
+                                  </div>
+                                  <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setRejectingProposal(p);
+                                        setRejectReason('');
+                                      }}
+                                      className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition cursor-pointer"
+                                    >
+                                      Từ chối
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setReviewingProposal(p);
+                                        setReviewDiscountPercent(p.discountValue <= 5 ? 5 : 10);
+                                      }}
+                                      className="px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Duyệt &amp; Gán %</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {group.activeCoupons.length > 0 && (
+                          <ul className="m-0 list-none divide-y divide-[#EAE4D7] p-0">
+                            {group.activeCoupons.map((coupon) => {
+                              const code = coupon.displayCode || coupon.codeNormalized;
+                              return (
+                                <li key={coupon.id} className="space-y-3 px-4 py-3.5">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex min-w-0 items-center gap-1.5">
+                                      <span title={code} className="min-w-0 break-all font-mono text-xs font-semibold text-[#715126]">{code}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopy(code)}
+                                        className="grid size-7 shrink-0 place-items-center rounded-md text-[#7D715E] transition-colors hover:bg-[#F3EFE6] hover:text-[#1A1612]"
+                                        aria-label="Sao chép mã"
+                                      >
+                                        {copiedCode === code ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                                      </button>
+                                    </div>
+                                    {renderStatusBadge(coupon.status)}
+                                  </div>
+                                  <dl className="m-0 grid grid-cols-[1fr_1fr_1.35fr] divide-x divide-[#EAE4D7] border-y border-[#EAE4D7] py-2.5 text-xs">
+                                    <div className="min-w-0 pr-2">
+                                      <dt className="text-[#7D715E]">Mức giảm</dt>
+                                      <dd className="m-0 mt-1 font-semibold tabular-nums text-[#DC2626]">
+                                        {coupon.discountType === 'FIXED_AMOUNT' ? `-${Number(coupon.discountValue).toLocaleString('vi-VN')} ₫` : `-${coupon.discountValue}%`}
+                                      </dd>
+                                    </div>
+                                    <div className="min-w-0 px-2.5">
+                                      <dt className="text-[#7D715E]">Lượt dùng</dt>
+                                      <dd className="m-0 mt-1 font-semibold tabular-nums text-[#1A1612]">
+                                        {coupon.usageCount || 0}{coupon.usageLimitTotal ? `/${coupon.usageLimitTotal}` : ''} lượt
+                                      </dd>
+                                    </div>
+                                    <div className="min-w-0 pl-2.5">
+                                      <dt className="text-[#7D715E]">Thời hạn</dt>
+                                      <dd className="m-0 mt-1 font-medium tabular-nums text-[#1A1612]">
+                                        {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Theo Hợp đồng VIP'}
+                                      </dd>
+                                    </div>
+                                  </dl>
+                                  <div className="flex items-center justify-end gap-2">
+                                    {coupon.scopeType === 'STORE_WIDE' && <span className="mr-auto text-xs text-[#7D715E]">Toàn Shop</span>}
+                                    <button
+                                      type="button"
+                                      aria-label={`Chi tiết mã ${code}`}
+                                      onClick={() => openCouponDetail(coupon)}
+                                      className="min-h-8 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8C6226] transition-colors hover:bg-[#F3EFE6]"
+                                    >
+                                      Xem chi tiết
+                                    </button>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>}
+                    </section>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-[#EAE4D7] bg-white p-8 text-center text-xs text-[#7D715E]">
@@ -1138,150 +1059,167 @@ export function ShopCreatorIncentivesTab() {
           </div>
         </div>
       )}
-      {/* Modal Xem Chi Tiết / Gia Hạn / Khóa Mã KOC */}
-      {detailCoupon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2.5">
-                <span className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                  <Ticket className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="text-base font-bold text-[#1A1612] m-0">
-                    Chi tiết mã {detailCoupon.displayCode || detailCoupon.codeNormalized}
-                  </h3>
-                  <p className="text-xs text-[#7D715E] m-0 mt-0.5">
-                    KOC: {detailCoupon.collaborator?.fullName || 'KOC Đối Tác'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetailCoupon(null)}
-                className="w-8 h-8 rounded-lg text-[#7D715E] hover:bg-[#FAF8F5] flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[#7D715E]">Phạm vi áp dụng:</span>
-                  <span className="font-bold text-[#8C6226]">Toàn bộ sản phẩm của gian hàng</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#7D715E]">Mức giảm cho khách:</span>
-                  <span className="font-bold text-[#DC2626] font-mono">
-                    {detailCoupon.discountType === 'PERCENTAGE'
-                      ? `-${Number(detailCoupon.discountValue)}%`
-                      : `-${Number(detailCoupon.discountValue).toLocaleString('vi-VN')} ₫`}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#7D715E]">Giảm tối đa / đơn:</span>
-                  <span className="font-semibold text-[#1A1612] font-mono">
-                    {detailCoupon.maximumDiscountAmount
-                      ? `${Number(detailCoupon.maximumDiscountAmount).toLocaleString('vi-VN')} ₫`
-                      : 'Không giới hạn'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#7D715E]">Đơn tối thiểu:</span>
-                  <span className="font-semibold text-[#1A1612] font-mono">
-                    {Number(detailCoupon.minimumOrderAmount || 0) > 0
-                      ? `${Number(detailCoupon.minimumOrderAmount).toLocaleString('vi-VN')} ₫`
-                      : 'Không yêu cầu'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#7D715E]">Lượt đã áp dụng:</span>
-                  <span className="font-semibold text-[#1A1612]">
-                    {detailCoupon.usageCount || 0} lượt (Không giới hạn lượt trong hạn dùng)
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#7D715E]">Hết hạn hiệu lực:</span>
-                  <span className="font-semibold text-[#1A1612]">
-                    {detailCoupon.expiresAt
-                      ? new Date(detailCoupon.expiresAt).toLocaleString('vi-VN')
-                      : 'Không giới hạn'}
-                  </span>
-                </div>
-              </div>
-
-              {(detailCoupon.rejectedReason || detailCoupon.blockedReason) && (
-                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px]">
-                  <strong>Lý do: </strong>{detailCoupon.blockedReason || detailCoupon.rejectedReason}
-                </div>
-              )}
-
-              {detailCoupon.status === 'PENDING_BLOCK_APPROVAL' && (
-                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/70 space-y-1">
-                  <p className="m-0 text-xs font-bold text-[#92400E]">
-                    Đang chờ Bộ phận Vận hành (System Manager) xét duyệt ngừng mã
-                  </p>
-                  <p className="m-0 text-[11px] text-[#7D715E] leading-relaxed">
-                    Để bảo vệ uy tín và cam kết chiến dịch của KOC, mã vẫn giữ hiệu lực cho khách áp dụng cho đến khi System Manager phê duyệt yêu cầu ngừng.
-                  </p>
-                </div>
-              )}
-
-              {detailCoupon.status === 'ACTIVE' && (
-                <div className="p-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]/50 space-y-2.5">
-                  <p className="m-0 text-[11px] font-semibold text-[#8C6226]">
-                    Bảo vệ cam kết KOC: Mã đang chạy không thể hạ % giảm hoặc cắt ngắn ngày, nhưng bạn có thể gia hạn thêm ngày hoặc khóa mã nếu vi phạm.
-                  </p>
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#1A1612] mb-1">
-                      Gia hạn ngày hết hạn mới
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="datetime-local"
-                        value={extendExpiresAt}
-                        onChange={(e) => setExtendExpiresAt(e.target.value)}
-                        className="flex-1 h-9 px-2.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] outline-none focus:border-[#C59B58]"
-                      />
+      {activeSection === 'coupons' && historyGroup && !detailCoupon && (
+        <Modal
+          isOpen
+          stickyHeader
+          maxWidth="3xl"
+          title="Lịch sử mã ưu đãi"
+          subtitle={`${historyGroup.fullName} · ${historyGroup.historyCoupons.length} mã`}
+          bodyClassName="!p-0"
+          onClose={() => setHistoryKolId(null)}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-xs">
+              <thead className="bg-[#FAF8F5] text-[#7D715E]">
+                <tr>
+                  {['Mã ưu đãi', 'Mức giảm', 'Lượt dùng', 'Thời hạn', 'Trạng thái', 'Thao tác'].map(label => (
+                    <th key={label} scope="col" className="px-4 py-2.5 font-semibold last:text-right">{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EAE4D7]">
+                {historyGroup.historyCoupons.map((c) => (
+                  <tr key={c.id} className="hover:bg-[#FAF8F5] transition">
+                    <td className="w-[28%] px-4 py-2.5">
+                      <span className="whitespace-nowrap font-mono font-semibold text-[#715126]">
+                        {c.displayCode || c.codeNormalized}
+                      </span>
+                    </td>
+                    <td className="w-[14%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
+                      {c.discountType === 'FIXED_AMOUNT' ? `-${Number(c.discountValue).toLocaleString('vi-VN')} ₫` : `-${c.discountValue}%`}
+                    </td>
+                    <td className="w-[12%] px-4 py-2.5 font-mono text-[#7D715E] tabular-nums">
+                      {c.usageCount || 0}{c.usageLimitTotal ? `/${c.usageLimitTotal}` : ''} lượt
+                    </td>
+                    <td className="w-[16%] px-4 py-2.5 text-[11px] text-[#7D715E] tabular-nums">
+                      {c.expiresAt
+                        ? new Date(c.expiresAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+                        : 'Theo Hợp đồng VIP'}
+                    </td>
+                    <td className="w-[16%] px-4 py-2.5">{renderStatusBadge(c.status, c.blockedReason)}</td>
+                    <td className="w-[14%] px-4 py-2.5 text-right">
                       <button
                         type="button"
-                        disabled={isUpdatingPolicy || !extendExpiresAt}
-                        onClick={async () => {
-                          if (!currentStoreId || !extendExpiresAt) return;
-                          setIsUpdatingPolicy(true);
-                          try {
-                            await couponService.updatePolicy(currentStoreId, detailCoupon.id, {
-                              expiresAt: new Date(extendExpiresAt).toISOString(),
-                            });
-                            toast.success('Đã gia hạn thời gian hiệu lực cho mã KOC!');
-                            setDetailCoupon(null);
-                            await loadData(true);
-                          } catch (err: any) {
-                            toast.error(err?.response?.data?.message || 'Không thể gia hạn mã lúc này.');
-                          } finally {
-                            setIsUpdatingPolicy(false);
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-bold text-xs transition cursor-pointer disabled:opacity-50"
+                        aria-label={`Chi tiết mã ${c.displayCode || c.codeNormalized}`}
+                        onClick={() => openCouponDetail(c)}
+                        className="px-2.5 py-1 rounded-md border border-[#EAE4D7] bg-white text-[#7D715E] text-[11px] font-semibold hover:bg-[#FAF8F5] hover:text-[#1A1612] transition cursor-pointer"
                       >
-                        {isUpdatingPolicy ? 'Đang lưu...' : 'Gia hạn'}
+                        Xem chi tiết
                       </button>
-                    </div>
-                  </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Modal>
+      )}
 
+      {/* Modal Xem Chi Tiết / Gia Hạn / Khóa Mã KOC */}
+      {detailCoupon && (
+        <Modal
+          isOpen
+          onClose={() => { if (!isUpdatingPolicy && !isBlockingCoupon) setDetailCoupon(null); }}
+          title={`Chi tiết mã ${detailCoupon.displayCode || detailCoupon.codeNormalized}`}
+          subtitle={detailCoupon.collaborator?.fullName || 'Đối tác KOC'}
+          maxWidth="lg"
+          stickyHeader
+          footer={
+            <div className="flex justify-end">
+              <button type="button" disabled={isUpdatingPolicy || isBlockingCoupon} onClick={() => setDetailCoupon(null)} className="h-10 rounded-lg border border-[#EAE4D7] px-4 text-sm font-medium hover:bg-[#FAF8F5] disabled:opacity-50">
+                {historyGroup ? 'Về lịch sử' : 'Đóng'}
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4 text-sm">
+            <dl className="overflow-hidden rounded-xl border border-[#EAE4D7]">
+              <div className="grid grid-cols-2 divide-x divide-[#EAE4D7] bg-[#FBF5EB]">
+                <div className="p-3.5">
+                  <dt className="text-xs text-[#7D715E]">Mức giảm</dt>
+                  <dd className="mt-1 text-xl font-bold tabular-nums text-[#805920]">
+                    {detailCoupon.discountType === 'PERCENTAGE'
+                      ? `${Number(detailCoupon.discountValue)}%`
+                      : `${Number(detailCoupon.discountValue).toLocaleString('vi-VN')} ₫`}
+                  </dd>
+                </div>
+                <div className="p-3.5">
+                  <dt className="text-xs text-[#7D715E]">Lượt dùng</dt>
+                  <dd className="mt-1 text-xl font-bold tabular-nums">
+                    {detailCoupon.usageCount ?? 0}{detailCoupon.usageLimitTotal ? ` / ${detailCoupon.usageLimitTotal}` : ''}
+                  </dd>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#EAE4D7] p-3.5 [&_dd]:mt-1 [&_dd]:font-semibold [&_dt]:text-xs [&_dt]:text-[#7D715E]">
+                <div><dt>Phạm vi</dt><dd>{({ STORE_WIDE: 'Toàn cửa hàng', PRODUCTS: 'Sản phẩm được áp dụng', CATEGORIES: 'Danh mục được áp dụng', CAMPAIGN: 'Theo chiến dịch' } as Record<string, string>)[detailCoupon.scopeType ?? ''] || 'Chưa ghi nhận'}</dd></div>
+                <div><dt>Trạng thái</dt><dd>{renderStatusBadge(detailCoupon.status, detailCoupon.blockedReason)}</dd></div>
+                <div><dt>Đơn tối thiểu</dt><dd>{Number(detailCoupon.minimumOrderAmount) > 0 ? `${Number(detailCoupon.minimumOrderAmount).toLocaleString('vi-VN')} ₫` : 'Không yêu cầu'}</dd></div>
+                <div><dt>Giảm tối đa / đơn</dt><dd>{Number(detailCoupon.maximumDiscountAmount) > 0 ? `${Number(detailCoupon.maximumDiscountAmount).toLocaleString('vi-VN')} ₫` : 'Không giới hạn'}</dd></div>
+                <div><dt>Hạn dùng</dt><dd>{detailCoupon.expiresAt ? new Date(detailCoupon.expiresAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }) : 'Không giới hạn'}</dd></div>
+                {detailCoupon.budgetTotal != null && <div><dt>Ngân sách</dt><dd>{Number(detailCoupon.budgetTotal).toLocaleString('vi-VN')} ₫</dd></div>}
+              </div>
+            </dl>
+
+            {(detailCoupon.rejectedReason || detailCoupon.blockedReason) && (
+              <p className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2.5 break-words"><strong>Lý do </strong>{detailCoupon.blockedReason || detailCoupon.rejectedReason}</p>
+            )}
+            {detailCoupon.status === 'PENDING_BLOCK_APPROVAL' && (
+              <p className="rounded-lg bg-[#FBF5EB] px-3 py-2.5 text-[#805920]">Mã còn hiệu lực trong lúc chờ Vận hành duyệt ngừng.</p>
+            )}
+
+            {detailCoupon.status === 'ACTIVE' && (
+              <div className="space-y-3 border-t border-[#EAE4D7] pt-3">
+                <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <DateTimePicker
+                    compact
+                    smallCalendar
+                    disabled={isUpdatingPolicy || isBlockingCoupon}
+                    label="Hạn dùng mới · Giờ Việt Nam"
+                    popoverTitle="Chọn hạn dùng mới"
+                    value={extendExpiresAt}
+                    onChange={setExtendExpiresAt}
+                    getCurrentDate={vietnamPickerNow}
+                    minDateTime={toVietnamDateTime(new Date(earliestExpiry))}
+                    inlinePopoverRef={extendCalendar}
+                  />
+                  <button
+                    type="button"
+                    disabled={isUpdatingPolicy || isBlockingCoupon || !canSaveExpiry}
+                    onClick={async () => {
+                      if (!currentStoreId || !canSaveExpiry || isUpdatingPolicy || isBlockingCoupon) return;
+                      setIsUpdatingPolicy(true);
+                      try {
+                        await couponService.updatePolicy(currentStoreId, detailCoupon.id, {
+                          expiresAt: new Date(selectedExpiry).toISOString(),
+                        });
+                        setDetailCoupon(null);
+                        toast.success(detailCoupon.expiresAt ? 'Đã gia hạn mã KOC.' : 'Đã đặt hạn dùng cho mã KOC.');
+                        await loadData(true);
+                      } catch (err: any) {
+                        toast.error(err?.response?.data?.message || 'Không thể lưu hạn dùng lúc này.');
+                      } finally {
+                        setIsUpdatingPolicy(false);
+                      }
+                    }}
+                    className="h-10 rounded-lg bg-[#C59B58] px-4 font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50"
+                  >
+                    {isUpdatingPolicy ? 'Đang lưu…' : detailCoupon.expiresAt ? 'Gia hạn' : 'Đặt hạn dùng'}
+                  </button>
+                </div>
+                <div ref={extendCalendar} className="min-w-0 empty:hidden" />
                   {!showBlockInput ? (
                     <button
                       type="button"
                       onClick={() => setShowBlockInput(true)}
                       className="text-[11px] font-semibold text-[#DC2626] hover:underline cursor-pointer"
                     >
-                      Gửi yêu cầu ngừng mã (Chờ System Manager duyệt)
+                      Yêu cầu ngừng mã
                     </button>
                   ) : (
                     <div className="space-y-2 pt-1 border-t border-[#EEDFC6]">
                       <p className="m-0 text-[11px] text-[#7D715E]">
-                        Yêu cầu ngừng sẽ được chuyển tới <strong>System Manager</strong> thẩm định để bảo vệ uy tín KOC. Mã vẫn chạy bình thường trong lúc chờ duyệt.
+                        Mã còn hiệu lực trong lúc chờ Vận hành duyệt.
                       </p>
                       <input
                         type="text"
@@ -1300,7 +1238,7 @@ export function ShopCreatorIncentivesTab() {
                         </button>
                         <button
                           type="button"
-                          disabled={isBlockingCoupon || blockReasonInput.trim().length < 5}
+                          disabled={isBlockingCoupon || isUpdatingPolicy || blockReasonInput.trim().length < 5}
                           onClick={async () => {
                             if (!currentStoreId) return;
                             setIsBlockingCoupon(true);
@@ -1325,18 +1263,8 @@ export function ShopCreatorIncentivesTab() {
                 </div>
               )}
 
-              <div className="flex justify-end pt-2 border-t border-[#EAE4D7]">
-                <button
-                  type="button"
-                  onClick={() => setDetailCoupon(null)}
-                  className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-[#F3EFE6] transition cursor-pointer"
-                >
-                  Đóng
-                </button>
-              </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

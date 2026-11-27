@@ -2,6 +2,27 @@
 import { FinanceReportService } from './finance-report.service';
 const d = (value: number) => new Prisma.Decimal(value);
 describe('escrow standard and conditional Deal amounts', () => {
+  it('applies the review filter before paginating and uses it for totals', async () => {
+    const commission = { findMany: jest.fn(), count: jest.fn(), aggregate: jest.fn() };
+    const prisma = { commission, $transaction: jest.fn().mockResolvedValue([[], 21, { _sum: {} }]) };
+    const result = await new FinanceReportService(prisma as never).escrow(2, true);
+    const { where } = commission.findMany.mock.calls[0][0];
+    expect(where).toEqual({ status: 'PENDING', order: { OR: [
+      { rawPayload: { path: ['selfReferralReviewRequired'], equals: true } },
+      { returnRequests: { some: { OR: [
+        { status: { notIn: ['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED', 'EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'] } },
+        { dispute: { is: { status: 'OPEN' } } },
+      ] } } },
+    ] } });
+    expect(commission.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      orderBy: [{ order: { createdAt: 'desc' } }, { id: 'desc' }],
+      skip: 20,
+      take: 20,
+    }));
+    expect(commission.count).toHaveBeenCalledWith({ where });
+    expect(commission.aggregate).toHaveBeenCalledWith(expect.objectContaining({ where }));
+    expect(result).toMatchObject({ page: 2, total: 21 });
+  });
   it('keeps legacy base fallback and separates held Deal amounts without changing money', async () => {
     const row = (id: string, total: number, base: number | null, deal: number, state: string, returns: any[] = []) => ({
       id, status: 'PENDING', commissionAmount: d(total), baseCommissionAmount: base === null ? null : d(base), dealBonusAmount: d(deal), dealBonusStatus: state,

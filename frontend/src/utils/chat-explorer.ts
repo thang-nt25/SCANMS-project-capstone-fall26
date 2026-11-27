@@ -1,5 +1,49 @@
 import type { ChatCard } from '@/types/campaigns.types';
 
+export interface CouponProposalCard {
+  type: 'COUPON_PROPOSAL' | 'COUPON_PROPOSAL_APPROVED';
+  code: string;
+  couponId?: string;
+  discountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  discountValue?: number;
+  discountPercent?: number;
+  desiredDiscount?: number;
+  minimumOrderAmount?: number;
+  maximumDiscountAmount?: number;
+  validityDays?: number;
+  expiresAt?: string;
+  scopeType?: string;
+  note?: string;
+  storeName?: string;
+  status?: string;
+}
+
+export function parseCouponProposalCard(text: string): CouponProposalCard | null {
+  const card = parseChatContent(text);
+  if (card?.type !== 'COUPON_PROPOSAL' && card?.type !== 'COUPON_PROPOSAL_APPROVED') return null;
+  const stringValue = (value: unknown) => typeof value === 'string' ? value.trim() : undefined;
+  const numberValue = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  return {
+    type: card.type,
+    code: stringValue(card.code) ?? '',
+    couponId: stringValue(card.couponId),
+    discountType: card.discountType === 'FIXED_AMOUNT' || card.discountType === 'PERCENTAGE'
+      ? card.discountType : undefined,
+    discountValue: numberValue(card.discountValue),
+    discountPercent: numberValue(card.discountPercent),
+    desiredDiscount: numberValue(card.desiredDiscount),
+    minimumOrderAmount: numberValue(card.minimumOrderAmount),
+    maximumDiscountAmount: numberValue(card.maximumDiscountAmount),
+    validityDays: numberValue(card.validityDays),
+    expiresAt: stringValue(card.expiresAt),
+    scopeType: stringValue(card.scopeType),
+    note: stringValue(card.note),
+    storeName: stringValue(card.storeName),
+    status: stringValue(card.status),
+  };
+}
+
 /** Resolve shared files and links without allowing executable URLs or credentials. */
 export function chatContentUrl(value?: string, baseUrl?: string): string | undefined {
   if (!value?.trim()) return undefined;
@@ -27,6 +71,13 @@ export function parseCampaignCard(text: string): ChatCard | null {
 }
 
 export function chatContentText(text: string): string {
+  const proposal = parseCouponProposalCard(text);
+  if (proposal) {
+    const approved = proposal.type === 'COUPON_PROPOSAL_APPROVED' || proposal.status === 'APPROVED';
+    return [proposal.code ? `Đề xuất mã riêng: ${proposal.code}` : 'Đề xuất mã riêng', proposal.storeName, proposal.note,
+      approved ? 'Đã duyệt' : proposal.status === 'REJECTED' ? 'Đã từ chối' : 'Chờ duyệt']
+      .filter(Boolean).join('\n');
+  }
   const card = parseChatContent(text);
   if (!card) return text;
   const fields = ['productTitle', 'campaignName', 'storeName', 'couponCode', 'personalMessage', 'message', 'salesCommitment', 'shopResponse'];

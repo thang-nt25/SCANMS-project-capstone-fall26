@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { walletService, type WalletSummary, type LedgerEntry, type LedgerHistory } from '../../services/wallet.service';
 import CustomerWithdrawals, { CustomerWithdrawalHistory } from '../../components/wallet/CustomerWithdrawals';
+import TopUpAmountInput from '../../components/wallet/TopUpAmountInput';
 import CustomerPayosTopUp from './CustomerPayosTopUp';
 import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
@@ -36,7 +37,11 @@ export const CustomerWalletTab: React.FC = () => {
   const [ledger, setLedger] = useState<LedgerHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [customAmount, setCustomAmount] = useState<string>('500000');
+  const [customAmount, setCustomAmount] = useState('');
+  const sandboxAmount = Number(customAmount);
+  const sandboxAmountInMillions = Number.isSafeInteger(sandboxAmount) && sandboxAmount >= 1_000_000
+    ? (sandboxAmount / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 6 })
+    : null;
   const [topUpLoading, setTopUpLoading] = useState(false);
   const [topUpTab, setTopUpTab] = useState<'SANDBOX' | 'PAYOS'>('PAYOS');
   const [demoAvailable, setDemoAvailable] = useState(false);
@@ -272,16 +277,23 @@ export const CustomerWalletTab: React.FC = () => {
                         <span className="text-[11px] text-[#7D715E]">VNĐ</span>
                       </div>
                       <div className="flex items-center gap-2 min-h-[44px] px-3.5 border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/15 rounded-xl bg-white transition-all">
-                        <input
+                        <TopUpAmountInput
                           id="cw-demo-amount"
-                          type="text"
-                          inputMode="numeric"
-                          value={customAmount ? Number(customAmount).toLocaleString('vi-VN') : ''}
-                          onChange={(e) => setCustomAmount(e.target.value.replace(/\D/g, ''))}
-                          placeholder="Tối thiểu 10.000"
+                          autoComplete="off"
+                          value={customAmount}
+                          onAmountChange={setCustomAmount}
+                          aria-describedby={sandboxAmountInMillions ? 'cw-demo-amount-summary' : undefined}
+                          placeholder="Nhập số tiền"
                           className="w-full min-w-0 py-3 border-0 outline-none bg-transparent text-[#1A1612] text-2xl font-bold tabular-nums"
                         />
                         <span className="text-base font-semibold text-[#7D715E] shrink-0">₫</span>
+                      </div>
+                      <div className="min-h-5 text-xs">
+                        {sandboxAmountInMillions && (
+                          <span id="cw-demo-amount-summary" className="font-semibold tabular-nums text-[#715126]">
+                            {sandboxAmountInMillions} triệu đồng
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -293,7 +305,7 @@ export const CustomerWalletTab: React.FC = () => {
                         type="button"
                         className="mt-auto inline-flex w-full items-center justify-center gap-2 min-h-[48px] px-5 py-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#1A1612] text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-wait transition-colors"
                         disabled={topUpLoading}
-                        onClick={() => handleTopUp(Number(customAmount))}
+                        onClick={() => handleTopUp(sandboxAmount)}
                       >
                         {topUpLoading ? <RefreshCw size={15} className="animate-spin" /> : <Plus size={15} />}
                         <span>{topUpLoading ? 'Đang xử lý...' : 'Nạp tiền Sandbox'}</span>
@@ -377,7 +389,7 @@ export const CustomerWalletTab: React.FC = () => {
                           {reference ? (
                             <div className="inline-grid justify-items-center gap-1">
                               <span className="font-sans text-xs text-[#7D715E]">{reference.label}</span>
-                              <button type="button" className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-[#1A1612] hover:bg-[#FBF5EB] cursor-pointer" title={`${reference.label}: ${reference.copyValue}\nID nội bộ: ${reference.internalId}`} aria-label={`Sao chép ${reference.label.toLowerCase()} ${reference.copyValue}`} onClick={() => { void navigator.clipboard.writeText(reference.copyValue).then(() => toast.success(`Đã sao chép ${reference.label.toLowerCase()}`)).catch(() => toast.error('Không thể sao chép mã')); }}>
+                              <button type="button" className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-[#1A1612] hover:bg-[#FBF5EB] cursor-pointer" title={`Sao chép mã ${reference.code}`} aria-label={`Sao chép mã ${reference.code}`} onClick={() => { void navigator.clipboard.writeText(reference.code).then(() => toast.success(`Đã sao chép ${reference.label.toLowerCase()}`)).catch(() => toast.error('Không thể sao chép mã')); }}>
                                 {reference.code} <Copy size={13} />
                               </button>
                             </div>

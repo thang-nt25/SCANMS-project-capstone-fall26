@@ -34,6 +34,7 @@ function SessionRoutes() {
     >
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
       </Stack.Protected>
       <Stack.Protected guard={Boolean(session)}>
         <Stack.Screen name="(private)" />

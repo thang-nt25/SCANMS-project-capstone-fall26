@@ -20,6 +20,7 @@ import {
 } from "../../types/contracts";
 import { TokenPersistence } from "../../services/auth/token-persistence";
 import { clearPrivateExports } from "../../services/exports";
+import { requestGoogleIdToken, type GoogleAuthIntent } from "./google-auth";
 
 const TOKEN_KEY = "scanms.access-token";
 const persistence = new TokenPersistence({
@@ -36,6 +37,7 @@ interface AuthState {
   restoring: boolean;
   restoreError: string;
   login(identifier: string, password: string): Promise<void>;
+  loginWithGoogle(intent: GoogleAuthIntent): Promise<void>;
   logout(): Promise<void>;
   restore(): Promise<void>;
 }
@@ -117,16 +119,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       api.cancelAll();
     };
   }, [logout, restore]);
-  const login = async (identifier: string, password: string) => {
-    const version = ++generation.current;
-    const response = z.object({ accessToken: z.string().min(1) }).parse(
-      await api.request("/auth/login", {
-        method: "POST",
-        body: { identifier: identifier.trim(), password },
-        anonymous: true,
-      }),
-    );
+  const completeLogin = async (version: number, rawResponse: unknown) => {
     if (version !== generation.current) return;
+    const response = z.object({ accessToken: z.string().min(1) }).parse(rawResponse);
     tokenSession.set(response.accessToken);
     try {
       const loaded = await loadSession();
@@ -147,9 +142,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
       throw error;
     }
   };
+  const login = async (identifier: string, password: string) => {
+    const version = ++generation.current;
+    const response = await api.request("/auth/login", {
+      method: "POST",
+      body: { identifier: identifier.trim(), password },
+      anonymous: true,
+    });
+    await completeLogin(version, response);
+  };
+  const loginWithGoogle = async (intent: GoogleAuthIntent) => {
+    const version = ++generation.current;
+    const idToken = await requestGoogleIdToken();
+    if (!idToken || version !== generation.current) return;
+    const response = await api.request("/auth/google", {
+      method: "POST",
+      body: { idToken, intent },
+      anonymous: true,
+    });
+    await completeLogin(version, response);
+  };
   return (
     <AuthContext.Provider
-      value={{ session, restoring, restoreError, login, logout, restore }}
+      value={{ session, restoring, restoreError, login, loginWithGoogle, logout, restore }}
     >
       {children}
     </AuthContext.Provider>

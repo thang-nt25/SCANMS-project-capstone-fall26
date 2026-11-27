@@ -2,13 +2,15 @@ import { useId, useRef, useState, type CSSProperties } from 'react';
 
 export type PasswordAuthState = 'idle' | 'checking' | 'success' | 'error';
 
-export function AnimatedPasswordField({ value, onChange, state, autoComplete = 'current-password', name = 'password', readOnlyUntilFocus = false }: {
+export function AnimatedPasswordField({ value, onChange, state, autoComplete = 'current-password', name = 'password', readOnlyUntilFocus = false, invalid = false, describedBy }: {
   value: string;
   onChange: (value: string) => void;
   state: PasswordAuthState;
   autoComplete?: string;
   name?: string;
   readOnlyUntilFocus?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const artworkId = useId().replace(/:/g, '');
@@ -32,7 +34,7 @@ export function AnimatedPasswordField({ value, onChange, state, autoComplete = '
           y: Math.max(-1.2, Math.min(1.2, (event.clientY - bounds.top - bounds.height / 2) / 15)) });
       }}
       onPointerLeave={() => setGaze({ x: 0, y: 0 })}>
-      <input ref={input} id="login-password" name={name} autoComplete={autoComplete} readOnly={!editable}
+      <input ref={input} id="login-password" aria-invalid={invalid} aria-describedby={describedBy} name={name} autoComplete={autoComplete} readOnly={!editable}
         type={revealed ? 'text' : 'password'} value={value} required placeholder="Mật khẩu"
         data-lpignore="true" data-1p-ignore="true" data-form-type="other"
         onChange={event => { setTouched(true); onChange(event.target.value); }}

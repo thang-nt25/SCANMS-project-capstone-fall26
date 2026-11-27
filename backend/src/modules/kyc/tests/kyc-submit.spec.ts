@@ -37,6 +37,32 @@ describe('KYC submission with legacy channel data', () => {
     await expect(service.submitKyc('user-1', { ...dto, platform: 'INVALID' })).rejects.toThrow(BadRequestException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+  it('clears active review feedback when a corrected dossier is submitted', async () => {
+    tx.collaboratorProfile.findUnique.mockResolvedValue({
+      socialLinksJson: {
+        reviewStatus: 'NEEDS_INFO',
+        needsInfo: true,
+        rejectionReason: 'Ảnh mặt trước bị mờ.',
+        requestedItems: ['Ảnh CCCD mặt trước'],
+        channelProofUrl: 'https://example.test/channel-proof.jpg',
+      },
+    });
+
+    await service.submitKyc('user-1', dto);
+
+    expect(tx.collaboratorProfile.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        kycStatus: 'UNVERIFIED',
+        socialLinksJson: expect.objectContaining({
+          reviewStatus: 'PENDING_APPROVAL',
+          needsInfo: false,
+          rejectionReason: null,
+          requestedItems: [],
+          channelProofUrl: 'https://example.test/channel-proof.jpg',
+        }),
+      }),
+    }));
+  });
   it.each([-1, 1.5, NaN, 2147483648])('rejects invalid follower count %s before writes', async followerCount => {
     await expect(service.submitKyc('user-1', { ...dto, followerCount })).rejects.toThrow(BadRequestException);
     expect(prisma.$transaction).not.toHaveBeenCalled();

@@ -1,4 +1,5 @@
-import { useState, type ChangeEvent, type RefObject } from 'react';
+import type { ChangeEvent, RefObject } from 'react';
+import { AccountAvatar } from './AccountAvatar';
 import { Link, useNavigate } from 'react-router-dom';
 import { Camera, ChevronRight, Heart, Handshake, Loader2, LogOut, MapPin, Megaphone, MessageSquare, Settings, ShieldCheck, ShoppingBag, Store, Wallet, Ticket, Package, ChartNoAxesCombined } from 'lucide-react';
 import type { UserProfile } from '../../services/auth.service';
@@ -28,9 +29,7 @@ interface AccountMenuProps {
 
 export function AccountMenu({ id, user, role, onClose, onLogout, inputRef, onAvatarUpload, uploading, mobileTracking = false }: AccountMenuProps) {
   const navigate = useNavigate();
-  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const name = user?.fullName || user?.email || roleNames[role];
-  const avatar = user?.avatarUrl;
   const links = accountMenuLinks(role, user?.role || role);
   const icons = { orders: ShoppingBag, address: MapPin, heart: Heart, voucher: Ticket, wallet: Wallet, kol: Megaphone, shop: Store, products: Package, chat: MessageSquare, shield: ShieldCheck, chart: ChartNoAxesCombined, settings: Settings, handshake: Handshake, marketplace: Store } satisfies Record<AccountMenuIcon, typeof Store>;
 
@@ -58,32 +57,10 @@ export function AccountMenu({ id, user, role, onClose, onLogout, inputRef, onAva
               className="account-menu__avatar-link grid size-full place-items-center rounded-[inherit] text-inherit no-underline [&_img]:block [&_img]:size-full [&_img]:object-cover [&_img]:rounded-[inherit]"
               aria-label="Xem tài khoản"
             >
-              {avatar && failedAvatar !== avatar ? (
-                <img
-                  src={avatar}
-                  alt=""
-                  onError={() => setFailedAvatar(avatar)}
-                  onLoad={(e) => {
-                    if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
-                      setFailedAvatar(avatar);
-                    }
-                  }}
-                />
-              ) : <span aria-hidden="true">{name.charAt(0).toUpperCase()}</span>}
+              <AccountAvatar user={user} name={name} />
             </Link>
-          ) : avatar && failedAvatar !== avatar ? (
-            <img
-              src={avatar}
-              alt=""
-              onError={() => setFailedAvatar(avatar)}
-              onLoad={(e) => {
-                if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
-                  setFailedAvatar(avatar);
-                }
-              }}
-            />
           ) : (
-            <span aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
+            <AccountAvatar user={user} name={name} useShopLogo={role === 'SHOP_MANAGER'} />
           )}
           {role !== 'CUSTOMER' && (
             <button

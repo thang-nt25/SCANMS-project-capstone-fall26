@@ -1,19 +1,18 @@
+import { authPage, authHeader, authMain, authExperience, authFormPanel, authHeading, authLabel, authInput, authGoogle, authSubmit } from '../../components/auth/auth-form-layout';
 import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AuthFooter } from '../../components/auth/AuthFooter';
 import {
   Eye,
   EyeOff,
   KeyRound,
   ArrowLeft,
   ArrowRight,
-  User,
-  Mail,
-  Phone,
-  Lock,
   Clock,
   RefreshCw,
   ShoppingBag,
   Sparkles,
+  Check,
   CheckCircle2,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
@@ -23,6 +22,11 @@ import { Modal } from '../../components/ui/Modal';
 import { toast } from '../../utils/toast';
 import { RegisterShowcase } from '../../components/auth/RegisterShowcase';
 import PartnerUpgradeTab from '../customer/PartnerUpgradeTab';
+
+const registerInput = authInput;
+const registerLabel = authLabel;
+const registerFieldError = 'mt-1.5 text-xs leading-4 text-danger';
+const passwordToggle = 'absolute inset-y-0 right-1 grid w-9 cursor-pointer place-items-center rounded-md text-muted hover:text-ink';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -47,7 +51,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // OTP Modal states
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -96,33 +101,34 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Mật khẩu và xác nhận mật khẩu không khớp.');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Mật khẩu cần tối thiểu 8 ký tự.');
-      return;
-    }
-
-    if (!agreeTerms) {
-      setError('Vui lòng đồng ý với điều khoản sử dụng của SCANMS.');
+    const errors: Record<string, string> = {};
+    const emailField = e.currentTarget.elements.namedItem('email') as HTMLInputElement;
+    if (!fullName.trim()) errors.name = 'Vui lòng nhập họ và tên.';
+    if (!email.trim()) errors.email = 'Vui lòng nhập email.';
+    else if (emailField.validity.typeMismatch) errors.email = 'Email không hợp lệ.';
+    if (password.length < 8) errors.password = 'Mật khẩu cần tối thiểu 8 ký tự.';
+    if (!confirmPassword) errors.confirmPassword = 'Vui lòng nhập lại mật khẩu.';
+    else if (password !== confirmPassword) errors.confirmPassword = 'Mật khẩu nhập lại chưa khớp.';
+    if (!agreeTerms) errors.agreeTerms = 'Vui lòng đồng ý để tiếp tục.';
+    setFieldErrors(errors);
+    const firstInvalid = Object.keys(errors)[0];
+    if (firstInvalid) {
+      (e.currentTarget.elements.namedItem(firstInvalid) as HTMLInputElement).focus();
       return;
     }
 
     setLoading(true);
     try {
-      const res: any = await authService.sendOtp(email);
-      setRegisteredEmail(email);
+      const res: any = await authService.sendOtp(email.trim());
+      setRegisteredEmail(email.trim());
       const otpCode = res?.data?.debugOtp || res?.data?.mockOtp;
-      if (otpCode) {
-        setMockOtpHint(otpCode);
-      }
+      setMockOtpHint(otpCode || null);
+      setOtp('');
       setOtpCountdown(60);
       setCanResendOtp(false);
       setShowOtpModal(true);
@@ -208,8 +214,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="scanms-register-page selection:bg-[#EEDFC6] selection:text-[#1A1612] flex min-h-svh flex-col gap-2.5 bg-canvas px-8 pt-2 pb-4 text-ink max-[1100px]:px-[22px] max-[800px]:gap-[18px] max-[800px]:p-4 max-[480px]:p-3 register-compact:gap-2 register-compact:pt-[5px] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-brand-strong [&_button:focus-visible]:outline-offset-3 [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-brand-strong [&_a:focus-visible]:outline-offset-3 motion-reduce:[&_*]:animate-none motion-reduce:[&_*]:transition-none">
-      <header className="register-page-header mx-auto flex min-h-14 w-full max-w-[1280px] items-center justify-between gap-4 register-compact:min-h-12 max-[800px]:[&>a:first-child]:max-w-[62%] max-[800px]:[&>a:last-child]:text-[11px] max-[800px]:[&>a:last-child]:whitespace-nowrap">
+    <div className={`scanms-register-page ${authPage}`}>
+      <header className={`register-page-header ${authHeader}`}>
         <Link to="/marketplace" className="hover:opacity-95 transition-opacity">
           <ScanMSLogo size="md" showSubtitle={true} />
         </Link>
@@ -219,11 +225,11 @@ export default function RegisterPage() {
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition shadow-2xs"
         >
           <ArrowLeft className="w-3.5 h-3.5 text-[#C59B58]" />
-          <span>Sàn mua sắm</span>
+          <span>Cổng mua sắm</span>
         </Link>
       </header>
 
-      <main className="register-page-main mx-auto mt-0 mb-auto w-full max-w-[1280px]">
+      <main className={`register-page-main ${authMain}`}>
         {onboardingStep === 'kol_kyc' ? (
           <div className="space-y-5 py-2">
             <div className="rounded-2xl border border-[#EAE4D7] bg-white p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -268,210 +274,178 @@ export default function RegisterPage() {
             </div>
           </div>
         ) : (
-        <div className="register-experience grid grid-cols-[1.06fr_1fr] overflow-hidden rounded-[30px] border border-line bg-white shadow-[0_20px_64px_rgb(125_113_94/9%)] max-[800px]:grid-cols-1 max-[800px]:rounded-3xl">
+        <div className={`register-experience ${authExperience} max-[900px]:[&>.register-showcase]:hidden`}>
           <RegisterShowcase name={fullName} />
-          <div className="register-form-panel flex min-w-0 flex-col gap-[18px] px-10 py-6 max-[1100px]:px-[26px] max-[800px]:gap-[19px] max-[800px]:p-[30px] max-[480px]:gap-[17px] max-[480px]:px-5 max-[480px]:py-[25px] register-compact:gap-3.5 register-compact:pt-5 register-compact:pb-[18px] [&_input]:accent-brand-strong [&_input::placeholder]:text-muted [&_input::placeholder]:font-normal">
-            <div className="register-form-heading [&>h2]:mt-[13px] [&>h2]:mb-2 [&>h2]:text-[32px] [&>h2]:leading-[1.2] [&>h2]:font-bold [&>h2]:tracking-[-.7px] [&>h2>span]:text-brand-strong [&>p]:m-0 [&>p]:text-[13px] [&>p]:leading-[1.6] [&>p]:text-muted max-[480px]:[&>h2]:text-[29px] register-compact:[&>h2]:mt-3 register-compact:[&>h2]:mb-[7px] register-compact:[&>h2]:text-[29px]">
-              <div className="register-steps flex flex-wrap items-center gap-2.5 text-[11px] text-muted [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1.5 [&_b]:grid [&_b]:size-5 [&_b]:place-items-center [&_b]:rounded-full [&_b]:border [&_b]:border-line [&_b]:text-[10px] [&_[aria-current]]:text-[#90682F] [&_[aria-current]_b]:border-brand-strong [&_[aria-current]_b]:bg-brand-strong [&_[aria-current]_b]:text-white [&>i]:h-px [&>i]:w-5 [&>i]:bg-line" aria-label="Các bước đăng ký">
-                <span aria-current={showOtpModal ? undefined : 'step'}><b>1</b> Tạo tài khoản</span><i aria-hidden="true" />
-                <span aria-current={showOtpModal ? 'step' : undefined}><b>2</b> Xác thực OTP</span>
+          <div className={`register-form-panel ${authFormPanel} rounded-[20px]! ring-1 ring-line ring-inset`}>
+            <div className="register-form-heading flex flex-col gap-2.5">
+              <h2 className={authHeading}>Đăng <span className="text-brand-strong">ký</span></h2>
+              <ol
+                aria-label="Các bước đăng ký"
+                className="register-steps m-0 flex list-none flex-wrap items-center gap-2 p-0 text-[11px] font-medium text-muted
+                  [&>li]:inline-flex [&>li]:items-center [&>li]:gap-1.5 [&>li]:whitespace-nowrap
+                  [&_b]:grid [&_b]:size-5 [&_b]:shrink-0 [&_b]:place-items-center [&_b]:rounded-full [&_b]:border [&_b]:border-line [&_b]:text-[10px]
+                  [&_[aria-current=step]]:font-semibold [&_[aria-current=step]]:text-[#715126]
+                  [&_[aria-current=step]_b]:border-brand [&_[aria-current=step]_b]:bg-brand [&_[aria-current=step]_b]:text-ink
+                  [&>li+li]:before:mr-0.5 [&>li+li]:before:h-px [&>li+li]:before:w-3 [&>li+li]:before:bg-line"
+              >
+                <li aria-current={showOtpModal ? undefined : 'step'}>
+                  <b aria-hidden="true">
+                    {showOtpModal ? <Check size={12} className="text-[#90682F]" /> : '1'}
+                  </b>
+                  Tài khoản
+                  {showOtpModal && <span className="sr-only">Đã xong</span>}
+                </li>
+                <li aria-current={showOtpModal ? 'step' : undefined}><b aria-hidden="true">2</b> Xác thực</li>
                 {registerIntent === 'COLLABORATOR' && (
-                  <>
-                    <i aria-hidden="true" />
-                    <span><b>3</b> Hồ sơ KOL &amp; eKYC</span>
-                  </>
+                  <li><b aria-hidden="true">3</b> Hồ sơ KOL</li>
                 )}
-              </div>
-              <h2 className="font-display">Đăng <span>ký</span></h2>
-              <p>Một tài khoản, nhiều kết nối mới.</p>
+              </ol>
             </div>
 
-            {/* Khay chọn mục đích đăng ký (Warm Sand Gold) */}
-            <div className="space-y-1.5">
-              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7]">
+            <div
+              role="group"
+              aria-label="Loại tài khoản"
+              className="relative grid grid-cols-2 gap-3 rounded-xl border border-line bg-white p-1
+                before:pointer-events-none before:absolute before:top-1/2 before:left-1/2 before:h-5 before:w-px before:-translate-x-1/2 before:-translate-y-1/2 before:bg-line"
+            >
+              {([
+                { id: 'CUSTOMER', label: 'Khách hàng', Icon: ShoppingBag },
+                { id: 'COLLABORATOR', label: 'Cộng tác viên / KOL', Icon: Sparkles },
+              ] as const).map(({ id, label, Icon }) => (
                 <button
+                  key={id}
                   type="button"
-                  onClick={() => setRegisterIntent('CUSTOMER')}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    registerIntent === 'CUSTOMER'
-                      ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EEDFC6]'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
+                  aria-pressed={registerIntent === id}
+                  onClick={() => setRegisterIntent(id)}
+                  className="flex h-[42px] min-h-[42px] min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-transparent px-2 py-1.5 text-center text-xs leading-tight font-semibold text-[#655A49] transition-colors hover:bg-canvas
+                    aria-pressed:border-brand-border aria-pressed:bg-brand-soft aria-pressed:text-[#715126] aria-pressed:[&_svg]:text-brand-strong"
                 >
-                  <ShoppingBag className={`w-3.5 h-3.5 ${registerIntent === 'CUSTOMER' ? 'text-[#B88E4F]' : ''}`} />
-                  <span>Khách hàng</span>
+                  <Icon size={16} className="shrink-0" aria-hidden="true" />
+                  <span>{label}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setRegisterIntent('COLLABORATOR')}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    registerIntent === 'COLLABORATOR'
-                      ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EEDFC6]'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <Sparkles className={`w-3.5 h-3.5 ${registerIntent === 'COLLABORATOR' ? 'text-[#B88E4F]' : ''}`} />
-                  <span>Cộng tác viên / KOL</span>
-                </button>
-              </div>
-              {registerIntent === 'COLLABORATOR' && (
-                <p className="text-[11px] text-[#7D715E] m-0 px-0.5 leading-snug">
-                  Bước 1 tạo tài khoản &amp; xác thực OTP, sau đó chuyển sang Bước 2 điền hồ sơ KOL &amp; CCCD gửi Quản lý duyệt.
-                </p>
-              )}
+              ))}
             </div>
 
-            {/* Google Button */}
-            <div className="w-full">
-              <GoogleOfficialButton
-                text="signup_with"
-                onSuccess={onGoogleRegisterSuccess}
-                onError={(err) => setError(err)}
-              />
-            </div>
+            <GoogleOfficialButton
+              text="signup_with"
+              onSuccess={onGoogleRegisterSuccess}
+              onError={setError}
+              disabled={loading}
+              className={authGoogle}
+            />
 
-            {/* Divider */}
-            <div className="register-email-divider relative flex items-center justify-center my-0.5 min-h-4">
-              <div className="border-t border-[#EAE4D7] w-full" />
-              <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
-                hoặc email
-              </span>
+            <div className="flex items-center gap-3 text-xs font-medium text-muted before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line">
+              Hoặc dùng email
             </div>
 
             {error && !showOtpModal && (
-              <div role="alert" className="p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium">
+              <div role="alert" className="rounded-[10px] border border-danger/20 bg-danger/5 px-3 py-2 text-xs text-danger">
                 {error}
               </div>
             )}
 
-            {/* Form inputs */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-[800px]:gap-[13px] register-compact:gap-3">
-              {/* Họ và tên */}
-              <div>
-              <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-name">Họ và tên</label>
-              <div className="relative flex items-center">
+            <form noValidate onSubmit={handleSubmit} aria-busy={loading} className="flex flex-col gap-4"
+              onChange={(event) => {
+                if (!(event.target instanceof HTMLInputElement)) return;
+                const { name } = event.target;
+                setFieldErrors((previous) => {
+                  if (!previous[name] && (name !== 'password' || !previous.confirmPassword)) return previous;
+                  const next = { ...previous };
+                  delete next[name];
+                  if (name === 'password') delete next.confirmPassword;
+                  return next;
+                });
+              }}
+            >
+              <div className="min-w-0">
+                <label htmlFor="register-name" className={registerLabel}>Họ và tên</label>
                 <input
-                  id="register-name" name="name" autoComplete="name"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  placeholder="Họ và tên của bạn"
-                  className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
+                  id="register-name" name="name" type="text" autoComplete="name"
+                  value={fullName} onChange={(event) => setFullName(event.target.value)}
+                  placeholder="Nhập họ và tên" className={registerInput} required
+                  aria-invalid={Boolean(fieldErrors.name)}
+                  aria-describedby={fieldErrors.name ? 'register-name-error' : undefined}
                 />
-                <User className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
-              </div>
+                {fieldErrors.name && <p id="register-name-error" className={registerFieldError}>{fieldErrors.name}</p>}
               </div>
 
-              {/* Email */}
-              <div>
-              <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-email">Địa chỉ email</label>
-              <div className="relative flex items-center">
-                <input
-                  id="register-email" name="email" autoComplete="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="Địa chỉ Email"
-                  className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
-                />
-                <Mail className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
-              </div>
-              </div>
-
-              {/* Số điện thoại */}
-              <div>
-              <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-phone">Số điện thoại <small>(tùy chọn)</small></label>
-              <div className="relative flex items-center">
-                <input
-                  id="register-phone" name="phone" autoComplete="tel"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Số điện thoại của bạn"
-                  className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
-                />
-                <Phone className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
-              </div>
-              </div>
-
-              {/* Password & Confirm Password */}
-              <div className="register-password-pair grid grid-cols-2 gap-3 max-[480px]:grid-cols-1 max-[480px]:gap-[13px]">
-                <div>
-                <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-password">Mật khẩu</label>
-                <div className="relative flex items-center">
+              <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3.5 max-[480px]:grid-cols-1">
+                <div className="min-w-0">
+                  <label htmlFor="register-email" className={registerLabel}>Email</label>
                   <input
-                    id="register-password" name="password" autoComplete="new-password" aria-describedby="register-password-note"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    placeholder="Mật khẩu"
-                    className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
+                    id="register-email" name="email" type="email" autoComplete="email"
+                    value={email} onChange={(event) => setEmail(event.target.value)}
+                    placeholder="ten@example.com" className={registerInput} required
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? 'register-email-error' : undefined}
                   />
-                  <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
-                  <button
-                    type="button"
-                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} aria-pressed={showPassword}
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 text-[#A69986] hover:text-[#1A1612] p-0.5 cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+                  {fieldErrors.email && <p id="register-email-error" className={registerFieldError}>{fieldErrors.email}</p>}
                 </div>
-                </div>
-
-                <div>
-                <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-confirm">Xác nhận mật khẩu</label>
-                <div className="relative flex items-center">
+                <div className="min-w-0">
+                  <label htmlFor="register-phone" className={registerLabel}>Số điện thoại <span className="text-[11px] font-normal text-muted">· Tùy chọn</span></label>
                   <input
-                    id="register-confirm" name="confirmPassword" autoComplete="new-password"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    placeholder="Nhập lại mật khẩu"
-                    className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
+                    id="register-phone" name="phone" type="tel" autoComplete="tel"
+                    value={phone} onChange={(event) => setPhone(event.target.value)}
+                    placeholder="0901 234 567" className={registerInput}
                   />
-                  <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
-                  <button
-                    type="button"
-                    aria-label={showConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'} aria-pressed={showConfirmPassword}
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-2.5 text-[#A69986] hover:text-[#1A1612] p-0.5 cursor-pointer"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
                 </div>
               </div>
-              <p className="register-password-note -mt-[3px] text-[11px] leading-[1.6] text-muted" id="register-password-note">Mật khẩu cần tối thiểu 8 ký tự.</p>
 
-              {/* Điều khoản sử dụng */}
-              <div className="text-[11px] text-[#7D715E] pt-0.5 flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  id="agreeTerms"
-                  checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
-                  className="mt-0.5 w-3.5 h-3.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
-                />
-                <label htmlFor="agreeTerms" className="cursor-pointer leading-snug">
-                  Tôi đồng ý với{' '}
-                  <Link to="/terms" target="_blank" rel="noopener noreferrer" aria-label="Điều khoản (mở tab mới)" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản</Link> và{' '}
-                  <Link to="/privacy" target="_blank" rel="noopener noreferrer" aria-label="Chính sách (mở tab mới)" className="text-[#B88E4F] hover:underline font-semibold">Chính sách</Link> của SCANMS.
-                </label>
+              <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3.5 max-[480px]:grid-cols-1">
+                {([
+                  { id: 'register-password', name: 'password', label: 'Mật khẩu', placeholder: 'Tối thiểu 8 ký tự', value: password, setValue: setPassword, visible: showPassword, setVisible: setShowPassword },
+                  { id: 'register-confirm', name: 'confirmPassword', label: 'Xác nhận mật khẩu', placeholder: 'Nhập lại mật khẩu', value: confirmPassword, setValue: setConfirmPassword, visible: showConfirmPassword, setVisible: setShowConfirmPassword },
+                ] as const).map(({ id, name, label, placeholder, value, setValue, visible, setVisible }) => (
+                  <div key={id} className="min-w-0">
+                    <label htmlFor={id} className={registerLabel}>{label}</label>
+                    <div className="relative">
+                      <input
+                        id={id} name={name} type={visible ? 'text' : 'password'} autoComplete="new-password"
+                        value={value} onChange={(event) => setValue(event.target.value)}
+                        placeholder={placeholder} className={`${registerInput} pr-11`} required
+                        minLength={name === 'password' ? 8 : undefined}
+                        aria-invalid={Boolean(fieldErrors[name])}
+                        aria-describedby={fieldErrors[name] ? `${id}-error` : name === 'password' ? 'register-password-note' : undefined}
+                      />
+                      <button
+                        type="button" aria-pressed={visible}
+                        aria-label={`${visible ? 'Ẩn' : 'Hiện'} mật khẩu${name === 'confirmPassword' ? ' xác nhận' : ''}`}
+                        onClick={() => setVisible(!visible)} className={passwordToggle}
+                      >
+                        {visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                      </button>
+                    </div>
+                    {fieldErrors[name] && <p id={`${id}-error`} className={registerFieldError}>{fieldErrors[name]}</p>}
+                  </div>
+                ))}
+              </div>
+              <span id="register-password-note" className="sr-only">Mật khẩu cần tối thiểu 8 ký tự.</span>
+
+              <div>
+                <div className="flex items-start gap-2.5 text-xs text-muted">
+                  <input
+                    type="checkbox" id="agreeTerms" name="agreeTerms" checked={agreeTerms} required
+                    onChange={(event) => setAgreeTerms(event.target.checked)}
+                    aria-invalid={Boolean(fieldErrors.agreeTerms)}
+                    aria-labelledby="register-terms-label"
+                    aria-describedby={fieldErrors.agreeTerms ? 'register-terms-error' : undefined}
+                    className="mt-0.5 size-4 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-strong"
+                  />
+                  <div id="register-terms-label" className="leading-5">
+                    <label htmlFor="agreeTerms" className="cursor-pointer">Tôi đồng ý với</label>{' '}
+                    <Link to="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#805B27] underline underline-offset-2">Điều khoản sử dụng</Link>{' và '}
+                    <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#805B27] underline underline-offset-2">Chính sách bảo mật</Link>.
+                  </div>
+                </div>
+                {fieldErrors.agreeTerms && <p id="register-terms-error" className={registerFieldError}>{fieldErrors.agreeTerms}</p>}
               </div>
 
-              {/* Continue to email verification. */}
               <button
-                type="submit"
-                disabled={loading}
-                className="register-submit leading-[1.5] flex min-h-[47px] cursor-pointer items-center justify-center gap-3 rounded-xl border border-brand-strong bg-(--color-brand) px-4 py-2.5 text-sm font-semibold text-brand-dark shadow-[0_4px_12px_rgb(197_155_88/15%)] transition-[transform,background] duration-180 enabled:hover:-translate-y-px enabled:hover:bg-[#D0AA6D] disabled:cursor-wait disabled:opacity-60 register-compact:min-h-[42px]"
+                type="submit" disabled={loading}
+                className={authSubmit}
               >
-                <span>{loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}</span>
-                <ArrowRight size={17} aria-hidden="true" />
+                {loading ? 'Đang xử lý…' : 'Tiếp tục xác thực'}
+                {!loading && <ArrowRight size={17} aria-hidden="true" />}
               </button>
             </form>
 
@@ -479,7 +453,7 @@ export default function RegisterPage() {
             <div className="register-login-link leading-[1.5] pt-1.5 text-center text-xs text-muted [&_a]:font-semibold [&_a]:text-[#90682F]">
               Đã có tài khoản?{' '}
               <Link to={loginUrl} className="font-bold text-[#B88E4F] hover:underline">
-                Đăng nhập ngay →
+                Đăng nhập
               </Link>
             </div>
           </div>
@@ -562,13 +536,7 @@ export default function RegisterPage() {
         </form>
       </Modal>
 
-      <footer className="max-w-[1240px] mx-auto mt-0 w-full pt-3 text-center text-[11px] text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
-        <span>© 2026 SCANMS — Hệ thống Quản lý Cộng tác viên & Tiếp thị Liên kết</span>
-        <span>•</span>
-        <span className="text-[#7D715E]">Bảo mật dữ liệu cá nhân eKYC</span>
-        <span>•</span>
-        <span className="text-[#7D715E]">Quy chế hoạt động nội bộ</span>
-      </footer>
+      <AuthFooter />
     </div>
   );
 }

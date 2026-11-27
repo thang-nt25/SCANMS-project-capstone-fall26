@@ -43,7 +43,6 @@ const shortTitles: Partial<Record<BusinessFeature, string>> = {
   staff: "Nhân sự & Shop",
   audit: "Nhật ký vận hành",
   "manual-orders": "Tạo & Nhập đơn",
-  campaigns: "Chiến dịch",
   fraud: "Giám sát rủi ro",
 };
 

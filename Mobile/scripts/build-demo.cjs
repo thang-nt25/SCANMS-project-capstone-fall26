@@ -56,12 +56,14 @@ if (!fs.existsSync(source))
   );
 const bytes = fs.readFileSync(source),
   output = path.join(root, "artifacts");
+const appConfig = JSON.parse(fs.readFileSync(path.join(root, "app.json"), "utf8")).expo;
 fs.mkdirSync(output, { recursive: true });
 fs.writeFileSync(path.join(output, "scanms-demo.apk"), bytes);
 const evidence = {
   variant: "demo",
-  applicationId: "vn.scanms.mobile.demo",
-  version: "1.0.0-demo",
+  applicationId: `${appConfig.android.package}.demo`,
+  version: `${appConfig.version}-demo`,
+  versionCode: appConfig.android.versionCode,
   bytes: bytes.length,
   sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
   builtAt: new Date().toISOString(),

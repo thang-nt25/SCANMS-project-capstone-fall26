@@ -8,8 +8,8 @@ import puppeteer from 'puppeteer-core';
 const base = process.env.GHN_UI_TEST_URL;
 const executablePath = process.env.GHN_UI_BROWSER_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
-test('customer lookup accepts either phone or code through the authenticated endpoint; public lookup still requires both', {
-  skip: !base || !existsSync(executablePath), timeout: 25000,
+test('signed-in lookup accepts either field on customer and storefront pages; guest lookup requires both', {
+  skip: !base || !existsSync(executablePath), timeout: 60000,
 }, async () => {
   const origin = new URL(base).origin;
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
@@ -21,7 +21,7 @@ test('customer lookup accepts either phone or code through the authenticated end
     page.setDefaultTimeout(6000);
     page.on('pageerror', error => { if (!error.message.includes('WebSocket closed without opened')) errors.push(error.message); });
     await page.setViewport({ width: 1440, height: 1000 });
-    await page.evaluateOnNewDocument(() => {
+    const signedIn = await page.evaluateOnNewDocument(() => {
       localStorage.setItem('token', 'qa-code-only-no-server-access');
       localStorage.setItem('user', JSON.stringify({ id: 'qa-customer', fullName: 'Khách kiểm thử', role: 'CUSTOMER' }));
       localStorage.setItem('scanms_analytics_consent', 'denied');
@@ -99,14 +99,46 @@ test('customer lookup accepts either phone or code through the authenticated end
     assert.ok(await page.$eval('#customer-order-lookup', el => el.scrollWidth <= el.clientWidth));
     await page.screenshot({ path: join(tmpdir(), 'scanms-customer-order-lookup.png') });
 
+    await page.goto(`${origin}/tracking?orderSn=${code}`, { waitUntil: 'domcontentloaded' });
+    const storefrontCode = 'form input[placeholder^="Mã đơn:"]';
+    const storefrontPhone = 'form input[placeholder^="Số điện thoại:"]';
+    await page.waitForSelector(storefrontCode);
+    assert.equal(await page.$eval(storefrontCode, el => el.value), code);
+    assert.equal(await page.$eval(storefrontPhone, el => el.value), '');
+    const beforePrefilledLookup = lookups.length;
+    await page.focus(storefrontCode);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(code => document.querySelector('main')?.textContent.includes(code), {}, code);
+    assert.equal(lookups.length, beforePrefilledLookup + 1);
+    assert.deepEqual(lookups.at(-1).params, { orderSn: code });
+    assert.equal(lookups.at(-1).path, '/api/orders/track/mine');
+
+    await clearInput(storefrontCode);
+    await page.type(storefrontPhone, order.customerPhone);
+    await Promise.all([
+      page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === '/api/orders/track/mine' && new URL(response.url()).searchParams.has('phone')),
+      page.keyboard.press('Enter'),
+    ]);
+    assert.deepEqual(lookups.at(-1).params, { phone: order.customerPhone });
+
+    await page.removeScriptToEvaluateOnNewDocument(signedIn.identifier);
+    await page.evaluate(() => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    });
     const before = lookups.length;
     await page.goto(`${origin}/tracking`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('input[placeholder^="Số điện thoại"]');
     await page.type('input[aria-label="Mã đơn hàng cần tra cứu"]', code);
     await page.focus('input[aria-label="Mã đơn hàng cần tra cứu"]');
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => document.body.innerText.includes('Vui lòng nhập đầy đủ số điện thoại'));
+    await page.waitForFunction(() => document.body.innerText.includes('Nhập thêm số điện thoại đặt hàng'));
     assert.equal(lookups.length, before);
+    await page.type(storefrontPhone, order.customerPhone);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(code => document.querySelector('main')?.textContent.includes(code), {}, code);
+    assert.equal(lookups.length, before + 1);
+    assert.deepEqual(lookups.at(-1), { path: '/api/orders/track', params: { phone: order.customerPhone, orderSn: code }, auth: undefined });
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

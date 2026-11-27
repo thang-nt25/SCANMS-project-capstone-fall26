@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, House, Radio, Store, UserRound } from 'lucide-react';
+import { Bell, House, Store, UserRound } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { authService } from '@/services/auth.service';
@@ -18,7 +18,7 @@ export function ShoppingMobileNavigation() {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const path = location.pathname;
   const home = ['/', '/marketplace', '/store', '/storefront'].includes(path);
-  const shopping = home || path === '/discover/live' || /^\/(search|marketplace\/search|shops?|stores|products|tracking|order-tracking)(\/|$)/.test(path) ||
+  const shopping = home || /^\/(search|marketplace\/search|shops?|stores|products|tracking|order-tracking)(\/|$)/.test(path) ||
     (/^\/customer(\/|$)/.test(path) && !/\/(upgrade|returns|topup)(\/|$)/.test(path));
   const checkout = ['1', 'true'].includes(new URLSearchParams(location.search).get('checkout') || '');
   const visible = shopping && !checkout && !isCartOpen && !isCheckoutOpen && !(chatOpen && !chatMinimized) && !keyboardOpen;
@@ -61,14 +61,13 @@ export function ShoppingMobileNavigation() {
   const items = [
     { label: 'Trang chủ', icon: House, to: '/marketplace', active: home && !location.hash },
     { label: 'Gian hàng', icon: Store, to: '/stores', active: location.hash === '#featured-stores' || /^\/(shops?|stores)(\/|$)/.test(path) },
-    { label: 'Live', icon: Radio, to: '/discover/live', active: path === '/discover/live' || (home && location.hash === '#live') },
     { label: 'Thông báo', icon: Bell, to: privateLink('/customer/notifications'), active: path === '/customer/notifications', badge: unread || 0 },
     { label: 'Tôi', icon: UserRound, to: privateLink('/customer/account'), active: path.startsWith('/customer') && path !== '/customer/notifications' },
   ];
   if (!visible) return null;
   return <>
     <div aria-hidden="true" className="h-[calc(64px+env(safe-area-inset-bottom,0px))] shrink-0 sm:hidden" />
-    <nav aria-label="Điều hướng mua sắm" className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-[#EAE4D7] bg-white pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-3px_16px_rgb(35_29_21/4%)] sm:hidden">
+    <nav aria-label="Điều hướng mua sắm" className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-[#EAE4D7] bg-white pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-3px_16px_rgb(35_29_21/4%)] sm:hidden">
       {items.map(({ label, icon: Icon, to, active, badge }) => <Link key={label} to={to} aria-current={active ? 'page' : undefined}
         onClick={() => { if (location.pathname === to && !location.hash) window.scrollTo({ top: 0, behavior: 'instant' }); }}
         className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-0.5 text-[10px] leading-4 no-underline outline-offset-[-3px] focus-visible:outline-2 focus-visible:outline-[#B88E4F] ${active ? 'font-semibold text-[#8C6226]' : 'font-medium text-[#7D715E]'}`}>

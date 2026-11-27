@@ -606,10 +606,10 @@ export class AiFraudService {
         score += 65; // Đẩy thẳng vào mức FRAUD_CRITICAL
         anomalies.push('SELF_REFERRAL');
         evidences.push({
-          metric: 'Tự Mua Hàng Trục Lợi (Self-Referral Exact Match)',
-          value: `${selfOrders.length}/${orders.length} đơn hàng vi phạm`,
+          metric: 'Trùng thông tin người mua và KOL',
+          value: `${selfOrders.length}/${orders.length} đơn có dấu hiệu`,
           severity: 'HIGH',
-          description: `Phát hiện đối tác KOL (${collaborator.fullName}) tự đặt hàng qua link tiếp thị của chính mình bằng tài khoản/Email (${collaborator.email}) hoặc SĐT (${collaborator.phoneNumber || 'trùng khớp'}).`,
+          description: `Có đơn qua link của KOL ${collaborator.fullName} trùng tài khoản, email hoặc số điện thoại với KOL. Cần đối chiếu đơn và xác minh trước khi kết luận.`,
         });
       }
     } else if (data.pendingAmount > 5000000 && totalOrders <= 2) {
@@ -635,7 +635,7 @@ export class AiFraudService {
     if (finalScore >= 85) {
       riskLevel = 'FRAUD_CRITICAL';
       suggestedAction = 'FREEZE_COMMISSION';
-      aiReasoning = `CẢNH BÁO NGUY CƠ CAO (Điểm rủi ro: ${finalScore}/100): Phát hiện dấu hiệu gian lận nghiêm trọng với ${evidences.map((e) => e.metric).join(', ')}. Khuyến nghị đóng băng hoa hồng ví chờ và tạm ngưng link tiếp thị để đối soát.`;
+      aiReasoning = `CẢNH BÁO NGUY CƠ CAO (Điểm rủi ro: ${finalScore}/100): Ghi nhận dấu hiệu cần ưu tiên xác minh: ${evidences.map((e) => e.metric).join(', ')}. Cần đối chiếu chứng từ trước khi quyết định giữ thù lao hoặc tạm ngưng link.`;
     } else if (finalScore >= 70) {
       riskLevel = 'SUSPICIOUS';
       suggestedAction = 'PAUSE_LINK';

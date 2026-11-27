@@ -299,7 +299,7 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
         </select>
       </section>
       {!shop && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div role="group" aria-label="Lọc trạng thái mã ưu đãi" className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:grid-cols-5 sm:p-3">
           {[
             { value: "", label: "Tất cả" },
             { value: "PENDING_BLOCK_APPROVAL", label: "Chờ duyệt ngừng", count: pendingBlockCount },
@@ -312,13 +312,14 @@ export function KolCouponManagement({ shop }: { shop: boolean }) {
               <button
                 key={pill.value || "ALL"}
                 type="button"
+                aria-pressed={active}
                 onClick={() => {
                   setStatus(pill.value);
                   setPage(1);
                 }}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                className={`inline-flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[13px] font-medium transition-colors cursor-pointer ${
                   active
-                    ? "border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-xs"
+                    ? "border-[#C59B58] bg-[#FBF5EB] text-[#231D15] font-semibold"
                     : "border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]/60 hover:text-[#1A1612]"
                 }`}
               >

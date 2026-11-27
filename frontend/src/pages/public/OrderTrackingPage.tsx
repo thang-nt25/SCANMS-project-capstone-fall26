@@ -14,6 +14,12 @@ import {
   User,
   ArrowLeft,
   AlertCircle,
+  Check,
+  ChevronDown,
+  CircleX,
+  ClipboardList,
+  PackageCheck,
+  RotateCcw,
   Sparkles,
   Store,
   Tag,
@@ -62,10 +68,11 @@ interface OrderData {
   shippingAddress: string;
   subtotalAmount: number;
   discountAmount: number;
+  shippingFee?: number | null;
+  hasCollaboratorDiscount?: boolean;
   finalAmount: number;
   status: string;
   statusLabel: string;
-  statusColor: string;
   timelineStep: number;
   createdAt: string;
   updatedAt: string;
@@ -83,8 +90,12 @@ interface OrderData {
   reviews?: OrderReview[];
 }
 
+const trackingFieldClass = "h-11 w-full rounded-[10px] border border-line bg-white pl-10 pr-3 text-sm text-ink outline-none transition-colors focus:border-brand-strong focus:ring-1 focus:ring-brand-strong";
+const formatMoney = (amount: number) => `${amount.toLocaleString("vi-VN")} ₫`;
+
 export default function OrderTrackingPage({ embedded = false }: { embedded?: boolean }) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const accountLookup = embedded || Boolean(localStorage.getItem("token"));
   const validParam = (value: string | null) => {
     const normalized = value?.trim() || "";
     return normalized.toLowerCase() === "undefined" || normalized.toLowerCase() === "null"
@@ -105,7 +116,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
   const initialSn = embedded ? '' :
     validParam(searchParams.get("sn")) ||
     validParam(searchParams.get("orderSn")) ||
-    getRecentOrderCode();
+    (!accountLookup && !initialPhone ? getRecentOrderCode() : "");
 
   const [phoneInput, setPhoneInput] = useState(initialPhone);
   const [orderSnInput, setOrderSnInput] = useState(initialSn);
@@ -119,6 +130,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
     null,
   );
   const searchSequence = useRef(0);
+  const lastLinkedSearch = useRef<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -131,6 +143,11 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
 
 
   useEffect(() => {
+    const linkedSearch = JSON.stringify([initialPhone, initialSn]);
+    if (linkedSearch === lastLinkedSearch.current) return;
+    lastLinkedSearch.current = linkedSearch;
+    setPhoneInput(initialPhone);
+    setOrderSnInput(initialSn);
     if (initialPhone && initialSn) {
       handleSearchRef.current(initialPhone, initialSn);
     }
@@ -139,10 +156,12 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
   const handleSearch = async (phoneValue?: string, orderSnValue?: string) => {
     const phone = (phoneValue !== undefined ? phoneValue : phoneInput).trim();
     const orderSn = (orderSnValue !== undefined ? orderSnValue : orderSnInput).trim().replace(/^#+\s*/, '');
-    if (embedded ? !orderSn && !phone : !orderSn || !phone) {
-      setErrorMessage(
-        embedded ? "Vui lòng nhập mã đơn hàng hoặc số điện thoại nhận hàng để tra cứu." : "Vui lòng nhập đầy đủ số điện thoại đặt hàng và mã đơn hàng để tra cứu.",
-      );
+    if (!orderSn && !phone) {
+      setErrorMessage("Vui lòng nhập mã đơn hàng hoặc số điện thoại nhận hàng để tra cứu.");
+      return;
+    }
+    if (!accountLookup && (!orderSn || !phone)) {
+      setErrorMessage(phone ? "Nhập thêm mã đơn hàng hoặc đăng nhập để tra cứu." : "Nhập thêm số điện thoại đặt hàng hoặc đăng nhập để tra cứu.");
       return;
     }
 
@@ -155,9 +174,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
       const params: Record<string, string> = {};
       if (phone) params.phone = phone;
       if (orderSn) params.orderSn = orderSn;
-      if (!embedded) setSearchParams(params);
-
-      const res: any = await api.get(embedded ? "/orders/track/mine" : "/orders/track", { params, headers: { 'x-skip-cache': 'true' } });
+      const res: any = await api.get(accountLookup ? "/orders/track/mine" : "/orders/track", { params, headers: { 'x-skip-cache': 'true' } });
       if (sequence !== searchSequence.current) return;
       if (res?.orders) {
         setOrders(res.orders);
@@ -192,18 +209,18 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
     });
   };
 
-  const getTimelineSteps = (currentStep: number, status: string) => {
+  const getTimelineSteps = (timelineStep: number, status: string) => {
     if (status === "CANCELLED") {
       return [
         {
           title: "Đã đặt hàng",
-          desc: "Đơn hàng được ghi nhận",
+          icon: ClipboardList,
           done: true,
           current: false,
         },
         {
           title: "Đơn hàng đã hủy",
-          desc: "Giao dịch không tiếp tục",
+          icon: CircleX,
           done: true,
           current: true,
           isError: true,
@@ -214,19 +231,19 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
       return [
         {
           title: "Đã đặt hàng",
-          desc: "Đơn hàng được ghi nhận",
+          icon: ClipboardList,
           done: true,
           current: false,
         },
         {
           title: "Giao thành công",
-          desc: "Khách đã nhận hàng",
+          icon: PackageCheck,
           done: true,
           current: false,
         },
         {
-          title: "Đã hoàn trả (Return)",
-          desc: "Thu hồi & hoàn tiền",
+          title: "Đã trả hàng",
+          icon: RotateCcw,
           done: true,
           current: true,
           isError: true,
@@ -234,36 +251,21 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
       ];
     }
 
+    const currentStep = status === "SHIPPING" ? 3
+      : status === "DELIVERED" || status === "COMPLETED" ? 4
+      : timelineStep || 1;
     return [
-      {
-        step: 1,
-        title: "Tiếp nhận đơn",
-        desc: "Shop đã xác nhận",
-        done: currentStep >= 1,
-        current: currentStep === 1,
-      },
-      {
-        step: 2,
-        title: "Đang đóng gói",
-        desc: "Chuẩn bị kiện hàng",
-        done: currentStep >= 2,
-        current: currentStep === 2,
-      },
-      {
-        step: 3,
-        title: "Đang giao hàng",
-        desc: "Bàn giao GHN / GHTK",
-        done: currentStep >= 3,
-        current: currentStep === 3,
-      },
-      {
-        step: 4,
-        title: "Giao thành công",
-        desc: "Khách đã nhận hàng",
-        done: currentStep >= 4,
-        current: currentStep === 4,
-      },
-    ];
+      { title: "Tiếp nhận", icon: ClipboardList },
+      { title: "Chuẩn bị", icon: Package },
+      { title: "Đang giao", icon: Truck },
+      { title: "Đã giao", icon: PackageCheck },
+    ].map(({ title, icon }, index) => ({
+      title,
+      icon,
+      done: index + 1 < currentStep || status === "COMPLETED",
+      current: index + 1 === currentStep && status !== "COMPLETED",
+      isError: false,
+    }));
   };
 
   return (
@@ -279,45 +281,24 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
       {/* 1. TOP HEADER - SCANMS OFFICIAL TRACKING HEADER */}
       {!embedded && <PublicHeader />}
 
-      {/* 2. HERO & SEARCH SECTION */}
-      <section className={`border-b border-[#EAE4D7] px-4 ${embedded ? 'bg-white py-3' : 'bg-gradient-to-b from-white to-[#F3EFE6]/60 sm:px-8 py-8 sm:py-10'}`}>
-        <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-3 sm:gap-4">
-          {/* Breadcrumb Navigation */}
-          {!embedded && <nav aria-label="Breadcrumb" className="flex items-center justify-center gap-2 text-xs text-[#7D715E] mb-1">
-            <Link to="/marketplace" className="hover:text-[#B88E4F] font-bold flex items-center gap-1 transition">
-              <ArrowLeft className="w-3 h-3 text-[#B88E4F]" />
-              <span>Trang chủ Hệ Thống SCANMS</span>
+      <section className={`w-full ${embedded ? "p-4" : "mx-auto max-w-6xl px-4 pb-4 pt-5 sm:px-6 sm:pt-7"}`}>
+        {!embedded && <nav aria-label="Điều hướng" className="mb-3">
+            <Link to="/marketplace" className="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-[#EAE4D7] bg-white px-3.5 text-sm font-semibold text-ink transition-colors hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
+              <ArrowLeft aria-hidden="true" className="size-4 text-[#795A2D]" />
+              Cổng mua sắm
             </Link>
-            <span className="text-[#D8D0C3]">/</span>
-            <span className="text-[#1A1612] font-extrabold">Theo dõi hành trình đơn hàng</span>
           </nav>}
-          {!embedded && <>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7]">
-            <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
-            HỆ THỐNG TRA CỨU ĐƠN HÀNG & ĐÁNH GIÁ 5 SAO
-          </span>
-
-          <h1 className={`${embedded ? 'text-base' : 'text-2xl sm:text-3xl'} font-bold text-[#1A1612] tracking-tight leading-tight m-0`}>
-            Theo Dõi Hành Trình Đơn Hàng Của Bạn
-          </h1>
-          <p className="text-xs sm:text-sm text-[#7D715E] max-w-xl m-0 leading-relaxed">
-            Nhập{" "}
-            <strong className="text-[#1A1612]">Số điện thoại đặt hàng</strong>{" "}
-            và <strong className="text-[#1A1612]">Mã đơn hàng</strong> để kiểm
-            tra tiến trình đóng gói, giao hàng và gửi đánh giá nhận quà ưu đãi.
-          </p>
-
-
-          </>}
+        <div className={embedded ? "" : "rounded-2xl border border-line bg-white p-4 sm:p-5"}>
+          {!embedded && <h1 className="mb-3 text-xl font-bold tracking-tight text-ink sm:text-2xl">Tra cứu đơn hàng</h1>}
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSearch();
             }}
-            className={`w-full ${embedded ? '' : 'max-w-2xl mt-2'} grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2`}
+            className="grid w-full items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:gap-3"
           >
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-[#7D715E] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Phone className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 inputMode="tel"
@@ -325,10 +306,11 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                 value={phoneInput}
                 onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 placeholder="Số điện thoại: 0933888999"
-                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
+                className={trackingFieldClass}
               />
             </div>
-            <div className="relative flex-1">
+            <span className="text-center text-xs text-muted">{accountLookup ? "hoặc" : "và"}</span>
+            <div className="relative min-w-0">
               <Package className="w-4 h-4 text-[#7D715E] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -336,14 +318,14 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                 onChange={(e) => setOrderSnInput(e.target.value.toUpperCase())}
                 placeholder="Mã đơn: DH-2026-XXXXXXXX"
                 aria-label="Mã đơn hàng cần tra cứu"
-                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
+                className={trackingFieldClass}
               />
             </div>
             <Button
               type="submit"
               variant="gold"
               disabled={loading}
-              className="py-3 px-6 rounded-2xl font-black text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2"
+              className="h-11 rounded-[10px] px-5"
             >
               {loading ? (
                 <>
@@ -353,42 +335,30 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
               ) : (
                 <>
                   <Search className="w-4 h-4" />
-                  <span>Tra Cứu Đơn</span>
+                  <span>Tra cứu</span>
                 </>
               )}
             </Button>
           </form>
 
 
-          {initialSn && (
-            <p className="text-[11px] font-semibold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] px-3 py-1.5 rounded-xl m-0">
-              Mã đơn gần nhất đã được điền sẵn. Nhập số điện thoại đặt hàng để xác minh và tra cứu.
-            </p>
+          {!accountLookup && (
+            <Link
+              to={`/login?redirect=${encodeURIComponent(orderSnInput.trim() ? `/tracking?orderSn=${encodeURIComponent(orderSnInput.trim())}` : "/tracking")}`}
+              className="mt-3 inline-block text-xs font-semibold text-[#795A2D] underline underline-offset-4"
+            >
+              Đăng nhập để tra cứu bằng một thông tin
+            </Link>
           )}
         </div>
       </section>
 
 
-      {(!embedded || hasSearched || errorMessage) && <main className="flex-1 max-w-5xl xl:max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
+      {(hasSearched || errorMessage) && <main aria-busy={loading} className={`mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-6 ${embedded ? "" : "sm:px-6"}`}>
         {errorMessage && (
           <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
             <span>{errorMessage}</span>
-          </div>
-        )}
-
-
-        {!hasSearched && !loading && (
-          <div className="py-16 text-center flex flex-col items-center justify-center gap-3">
-            <div className="w-16 h-16 rounded-3xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F]">
-              <Package className="w-8 h-8" />
-            </div>
-            <strong className="text-base text-[#1A1612]">
-              Sẵn sàng tra cứu đơn hàng
-            </strong>
-            <p className="text-xs text-[#7D715E] max-w-md m-0">
-              {embedded ? 'Nhập mã đơn hàng hoặc số điện thoại nhận hàng để xem tiến trình đơn mua của bạn.' : 'Vui lòng nhập số điện thoại và mã đơn hàng ở thanh tìm kiếm phía trên để hiển thị trạng thái vận chuyển chi tiết.'}
-            </p>
           </div>
         )}
 
@@ -402,7 +372,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
               Không tìm thấy đơn hàng
             </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              {embedded ? 'Không tìm thấy đơn hàng khớp với thông tin đã nhập trong tài khoản của bạn. Vui lòng kiểm tra lại mã đơn hoặc số điện thoại.' : 'Không tìm thấy đơn hàng khớp với số điện thoại và mã đơn đã nhập. Vui lòng kiểm tra lại cả hai thông tin.'}
+              {accountLookup ? 'Không tìm thấy đơn hàng khớp với thông tin đã nhập trong tài khoản của bạn. Vui lòng kiểm tra lại mã đơn hoặc số điện thoại.' : 'Không tìm thấy đơn hàng khớp với số điện thoại và mã đơn đã nhập. Vui lòng kiểm tra lại cả hai thông tin.'}
             </p>
           </div>
         )}
@@ -410,95 +380,93 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
 
         {orders.map((order) => {
           const steps = getTimelineSteps(order.timelineStep, order.status);
+          const ghnCode = getGhnTrackingCode(order);
+          const trackingCode = order.trackingNumber?.trim();
+          const canTrackGhn = ghnCode && !isGeneratedGhnTestTrackingCode(ghnCode);
+          const shipmentReference = trackingCode && (
+            <span className="inline-flex min-w-0 items-center gap-2 text-muted">
+              <Truck className="size-4 shrink-0 text-brand-strong" />
+              <span className="min-w-0 break-all">
+                {order.carrierName || "Vận đơn"} · <strong className="font-semibold text-ink">{trackingCode}</strong>
+              </span>
+            </span>
+          );
           const canReview =
             order.status === "DELIVERED" || order.status === "COMPLETED";
 
           return (
             <Card
               key={order.id}
-              className="bg-white border border-[#EAE4D7] rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition duration-200 flex flex-col"
+              className="min-w-0 overflow-hidden"
             >
 
-              <div className="p-4 sm:p-5 border-b border-[#EAE4D7] bg-[#FAF8F5]/80 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-canvas px-4 py-3 sm:px-5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
                     <Store className="w-5 h-5" />
                   </div>
                   <div>
-                    {order.store?.id ? <Link to={`/shops/${order.store.id}`} className="text-[11px] font-bold text-[#7D715E] block hover:text-[#B88E4F]">{order.store.name}</Link> : <span className="text-[11px] font-bold text-[#7D715E] block">Gian hàng đối tác</span>}
-                    <strong className="text-sm sm:text-base font-black text-[#1A1612]">
+                    <h2 className="break-all text-base font-bold text-ink">
                       #{order.externalOrderSn}
-                    </strong>
+                    </h2>
+                    <div className="flex flex-wrap gap-x-2 text-xs text-muted">
+                      {order.store?.id && <Link to={`/shops/${order.store.id}`} className="hover:underline">{order.store.name}</Link>}
+                      <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</time>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span
-                    className="px-3 py-1 rounded-full text-xs font-black"
-                    style={{
-                      backgroundColor: `${order.statusColor}15`,
-                      color: order.statusColor,
-                      border: `1px solid ${order.statusColor}40`,
-                    }}
-                  >
+                  <span className="rounded-full border border-brand-border bg-brand-soft px-3 py-1 text-xs font-semibold text-[#795A2D]">
                     {order.statusLabel}
                   </span>
-                  <span className="text-[11px] text-[#7D715E] font-medium hidden sm:inline">
-                    {new Date(order.createdAt).toLocaleDateString("vi-VN")}
-                  </span>
                 </div>
               </div>
 
 
-              <div className="px-4 sm:px-6 py-6 border-b border-[#EAE4D7] bg-white">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative">
+              <div className="border-b border-line px-4 py-4 sm:px-5">
+                <ol aria-label="Tiến trình đơn hàng" className="flex">
                   {steps.map((st, idx) => (
-                    <div
-                      key={idx}
-                      className="flex flex-col items-center text-center gap-1.5 relative z-10"
+                    <li key={st.title} aria-current={st.current ? "step" : undefined}
+                      className="relative flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center"
                     >
+                      {idx < steps.length - 1 && <span aria-hidden="true" className={`absolute left-1/2 top-[19px] h-0.5 w-full ${st.done ? "bg-[#C59B58]" : "bg-[#EAE4D7]"}`} />}
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition ${st.done
-                            ? "bg-[#EBD08C] text-white shadow-xs"
-                            : "bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]"
-                          }`}
+                        className={`relative z-10 flex size-10 items-center justify-center rounded-full border ${st.isError ? "border-rose-200 bg-rose-50 text-rose-700" : st.current ? "border-[#C59B58] bg-[#FBF5EB] text-[#795A2D] ring-2 ring-inset ring-[#EEDFC6]" : st.done ? "border-[#EEDFC6] bg-[#FBF5EB] text-[#795A2D]" : "border-[#EAE4D7] bg-[#FAF8F5] text-muted"}`}
                       >
-                        {st.done ? (
-                          <CheckCircle2 className="w-5 h-5" />
-                        ) : (
-                          idx + 1
-                        )}
+                        <st.icon aria-hidden="true" className="size-[18px]" />
+                        {st.done && !st.current && !st.isError && <span aria-hidden="true" className="absolute -bottom-0.5 -right-0.5 flex size-[15px] items-center justify-center rounded-full border border-white bg-[#C59B58] text-[#231D15]">
+                          <Check className="size-2.5" strokeWidth={2.5} />
+                        </span>}
                       </div>
-                      <strong className="text-xs font-bold text-[#1A1612] leading-tight">
+                      <strong className={`px-1 text-xs leading-tight ${st.done || st.current ? "font-semibold text-ink" : "font-medium text-muted"}`}>
                         {st.title}
                       </strong>
-                      <small className="text-[10.5px] text-[#7D715E] leading-none">
-                        {st.desc}
-                      </small>
-                    </div>
+                    </li>
                   ))}
-                </div>
-                {getGhnTrackingCode(order) && <div className="mt-6">{isGeneratedGhnTestTrackingCode(getGhnTrackingCode(order))
-                  ? <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-xs text-[#7D715E]">Shop chưa có mã vận đơn GHN thật. Mã thử nội bộ không tra cứu được trên GHN.</p>
-                  : <GhnTrackingTimeline orderCode={getGhnTrackingCode(order)!} environment={order.ghnEnvironment || undefined} />}</div>}
+                </ol>
+                {trackingCode && <div className="mt-4 border-t border-line pt-2 text-sm">
+                  {canTrackGhn ? <details className="group">
+                    <summary className="flex min-h-9 cursor-pointer list-none flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg [&::-webkit-details-marker]:hidden">
+                      {shipmentReference}
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#795A2D]">
+                        Xem hành trình <ChevronDown className="size-4 group-open:rotate-180" />
+                      </span>
+                    </summary>
+                    <div className="mt-2">
+                      <GhnTrackingTimeline orderCode={ghnCode} environment={order.ghnEnvironment || undefined} />
+                    </div>
+                  </details> : <div className="flex min-h-9 items-center">{shipmentReference}</div>}
+                </div>}
               </div>
 
 
-              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-5">
 
-                <div className="md:col-span-2 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-[#7D715E]">
-                      Sản phẩm trong đơn ({order.items.length})
-                    </span>
-                    {canReview && (
-                      <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
-                        ✓ Đủ điều kiện đánh giá 5 sao
-                      </span>
-                    )}
-                  </div>
+                <div className="flex min-w-0 flex-col gap-3">
+                  <h3 className="text-sm font-semibold text-ink">Sản phẩm ({order.items.length})</h3>
 
-                  <div className="flex flex-col gap-3">
+                  <div className="divide-y divide-line">
                     {order.items.map((item) => {
                       const itemReview = order.reviews?.find(
                         (r) => r.productId === item.productId,
@@ -507,12 +475,12 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                       return (
                         <div
                           key={item.id}
-                          className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col gap-2.5"
+                          className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0"
                         >
                           <div className="flex items-center gap-3">
                             <Link
                               to={`/products/${item.sku || item.productId}`}
-                              className="w-14 h-14 rounded-xl overflow-hidden bg-white border border-[#EAE4D7] shrink-0 hover:border-[#C59B58] transition"
+                              className="size-12 shrink-0 overflow-hidden rounded-lg border border-line bg-white transition-colors hover:border-brand"
                               title="Xem chi tiết sản phẩm"
                             >
                               <img
@@ -531,27 +499,25 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                             <div className="min-w-0 flex-1">
                               <Link
                                 to={`/products/${item.sku || item.productId}`}
-                                className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] hover:underline block truncate transition"
-                                title="Xem chi tiết sản phẩm"
+                                className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink hover:underline"
+                                title={item.productTitle}
                               >
                                 {item.productTitle}
                               </Link>
-                              <span className="text-[11px] text-[#7D715E] font-mono">
-                                SKU: {item.sku} • Số lượng: x{item.quantity}
+                              <span className="break-words text-xs text-muted">
+                                {item.sku && `${item.sku} · `}SL ${item.quantity}
                               </span>
                             </div>
                             <div className="text-right shrink-0">
-                              <strong className="text-xs sm:text-sm font-black text-[#B88E4F]">
-                                {item.totalPrice.toLocaleString("vi-VN")} ₫
+                              <strong className="text-sm font-semibold tabular-nums text-ink">
+                                {formatMoney(item.totalPrice)}
                               </strong>
-                              <span className="text-[10px] text-[#7D715E] block">
-                                {item.unitPrice.toLocaleString("vi-VN")} ₫/món
-                              </span>
+                              {item.quantity > 1 && <span className="block text-[11px] tabular-nums text-muted">{formatMoney(item.unitPrice)}/món</span>}
                             </div>
                           </div>
 
 
-                          <div className="border-t border-[#EAE4D7]/70 pt-2 flex items-center justify-between gap-2">
+                          {(itemReview || canReview) && <div className="flex justify-end">
                             {itemReview ? (
                               <div className="w-full bg-brand-soft border border-brand-border rounded-xl p-2.5 text-xs flex flex-col gap-1">
                                 <div className="flex items-center justify-between">
@@ -610,13 +576,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                                 )}
                               </div>
                             ) : canReview ? (
-                              <div className="w-full flex items-center justify-between gap-2 bg-white p-2 rounded-xl border border-[#EAE4D7]">
-                                <div className="flex items-center gap-1.5 text-xs text-[#B88E4F]">
-                                  <Star className="w-4 h-4 text-amber-500" />
-                                  <span className="text-[11.5px]">
-                                    Bạn đã nhận sản phẩm này?
-                                  </span>
-                                </div>
+                              <>
                                 <Button
                                   type="button"
                                   size="sm"
@@ -629,25 +589,20 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                                   <Star className="w-3 h-3 fill-current" />
                                   <span>Viết đánh giá</span>
                                 </Button>
-                              </div>
-                            ) : (
-                              <span className="text-[10.5px] text-[#7D715E] italic">
-                                Đánh giá sẽ mở sau khi đơn hàng được giao thành
-                                công.
-                              </span>
-                            )}
-                          </div>
+                              </>
+                            ) : null}
+                          </div>}
                         </div>
                       );
                     })}
                   </div>
 
 
-                  {order.attributedCollaborator && (
+                  {order.hasCollaboratorDiscount && order.attributedCollaborator && (
                     <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center gap-2.5 text-xs text-[#B88E4F]">
                       <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0" />
                       <span>
-                        Đơn hàng nhận được ưu đãi độc quyền từ Đối tác Tiếp thị:{" "}
+                        Ưu đãi từ đối tác{" "}
                         <strong className="text-[#1A1612]">
                           {order.attributedCollaborator.fullName}
                         </strong>
@@ -657,12 +612,10 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                 </div>
 
 
-                <div className="flex flex-col gap-4 border-t md:border-t-0 md:border-l border-[#EAE4D7] md:pl-6 pt-4 md:pt-0">
+                <div className="flex min-w-0 flex-col gap-3 border-t border-line pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
 
                   <div>
-                    <span className="text-xs font-black uppercase tracking-wider text-[#7D715E] block mb-2">
-                      Thông tin giao nhận
-                    </span>
+                    <h3 className="mb-2 text-sm font-semibold text-ink">Giao đến</h3>
                     <div className="flex flex-col gap-2 text-xs">
                       <div className="flex items-center gap-2 text-[#1A1612] font-bold">
                         <User className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
@@ -682,35 +635,39 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                   </div>
 
 
-                  <div className="pt-2 border-t border-[#EAE4D7] flex flex-col gap-1.5 text-xs">
-                    <span className="text-xs font-black uppercase tracking-wider text-[#7D715E] block mb-1">
-                      Chi tiết thanh toán
-                    </span>
+                  <div className="flex flex-col gap-1.5 border-t border-line pt-3 text-xs tabular-nums">
+                    <h3 className="mb-1 text-sm font-semibold text-ink">Thanh toán</h3>
                     <div className="flex justify-between text-[#7D715E]">
                       <span>Tiền hàng:</span>
                       <span className="font-semibold text-[#1A1612]">
-                        {order.subtotalAmount.toLocaleString("vi-VN")} ₫
+                        {formatMoney(order.subtotalAmount)}
                       </span>
                     </div>
+                    {order.shippingFee != null && (
+                      <div className="flex justify-between gap-2 text-muted">
+                        <span>Phí giao hàng</span>
+                        <span className="font-semibold text-ink">{formatMoney(order.shippingFee)}</span>
+                      </div>
+                    )}
 
                     {order.discountAmount > 0 && (
                       <div className="flex justify-between text-brand-strong">
                         <span className="flex items-center gap-1">
                           <Tag className="w-3 h-3" />
-                          <span>Ưu đãi giảm giá:</span>
+                          <span>Giảm giá</span>
                         </span>
                         <span className="font-bold">
-                          -{order.discountAmount.toLocaleString("vi-VN")} ₫
+                          −{formatMoney(order.discountAmount)}
                         </span>
                       </div>
                     )}
 
                     <div className="flex justify-between items-baseline pt-2 border-t border-[#EAE4D7] text-sm">
                       <span className="font-bold text-[#1A1612]">
-                        Tổng thanh toán:
+                        Tổng đơn
                       </span>
                       <strong className="text-base font-black text-[#B88E4F]">
-                        {order.finalAmount.toLocaleString("vi-VN")} ₫
+                        {formatMoney(order.finalAmount)}
                       </strong>
                     </div>
                   </div>

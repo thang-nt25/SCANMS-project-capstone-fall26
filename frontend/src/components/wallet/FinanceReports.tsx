@@ -1,9 +1,10 @@
 import { escrowAmounts, escrowMoney, escrowNumber, escrowTotal } from '../../utils/escrow-amounts';
 import { handleProductImageError } from '@/utils/image-fallback.utils';
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../services/api";
 import { Modal } from "../ui/Modal";
-import { History, Copy, Info, Check } from "lucide-react";
+import { VietnamMonthPicker } from "../ui/VietnamMonthPicker";
+import { ArrowRight, History, Copy, Info, Check, MoreHorizontal } from "lucide-react";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { DealKpiProgress } from '../affiliate/DealKpiProgress';
 import { EscrowMovements } from './EscrowMovements';
@@ -115,6 +116,10 @@ interface Executive {
   holdDays: number;
 }
 const executiveSummaryCache = new Map<string, Executive>();
+const financeGroupRow = "grid @min-[800px]/executive-finance:grid-cols-[140px_minmax(0,1fr)]";
+const financeGroupHeading = "m-0 flex items-center border-b border-line bg-canvas px-4 py-2.5 text-sm font-semibold text-ink @min-[800px]/executive-finance:border-r @min-[800px]/executive-finance:border-b-0";
+const financeMetricGrid = "m-0 grid min-w-0 divide-y divide-line @min-[560px]/executive-finance:grid-cols-3 @min-[560px]/executive-finance:divide-x @min-[560px]/executive-finance:divide-y-0";
+const financeFooterButton = "min-h-9 rounded-lg border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#715126] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F]";
 
 interface MetricDefinition {
   title: string;
@@ -124,7 +129,7 @@ interface MetricDefinition {
   impact: string;
 }
 
-const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
+const METRIC_DEFINITIONS = {
   gmv: {
     title: "GMV đơn đã hoàn tất",
     badge: "Doanh số gộp",
@@ -149,8 +154,8 @@ const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
   unrecognizedCommissions: {
     title: "Hoa hồng chưa ghi nhận",
     badge: "Đơn đang xử lý",
-    meaning: "Khoản hoa hồng ước tính phát sinh từ các đơn hàng mới đặt hoặc đang giao vận GHN, chưa giao thành công nên chưa ghi nhận chính thức vào sổ nợ.",
-    formula: "Hoa hồng tạm tính trên đơn hàng trạng thái PENDING / PROCESSING / SHIPPING",
+    meaning: "Thù lao đã tạo trong kỳ của các đơn chưa ở trạng thái hoàn tất.",
+    formula: "Tổng thù lao chưa bị thu hồi của các đơn chưa hoàn tất",
     impact: "Chỉ số dự phóng nghĩa vụ thù lao tiềm năng sẽ phát sinh trong tương lai gần.",
   },
   escrowPending: {
@@ -170,7 +175,7 @@ const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
   netPaid: {
     title: "Tổng chi trả trong tháng",
     badge: "Thực chi chuyển khoản",
-    meaning: "Tổng số tiền thực tế (sau khi khấu trừ thuế theo từng lệnh) đã được Kế toán duyệt chi và chuyển khoản thành công qua ngân hàng Napas 24/7 cho các đối tác trong tháng.",
+    meaning: "Tổng tiền sau thuế trên các lệnh chi trả đã hoàn tất trong kỳ, lấy từ dữ liệu từng lệnh.",
     formula: "Thực chuyển = Tổng tiền gốc − Tổng thuế đã khấu trừ",
     impact: "Dòng tiền mặt thực tế đã xuất khỏi tài khoản ngân quỹ của công ty.",
   },
@@ -198,332 +203,181 @@ const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     badge: "Tỷ lệ kiểm soát",
     meaning: "Tỷ số chi phí tiếp thị trên doanh thu thuần của doanh nghiệp trong kỳ. Đây là chỉ số then chốt đo lường hiệu quả chiến dịch.",
     formula: "Tỷ lệ = (Chi phí thù lao tiếp thị ÷ Doanh thu sau hoàn trả) × 100%",
-    impact: "Hệ thống quy định trần tối đa toàn hệ thống là <= 25% (ngưỡng thông thường Shop duyệt <= 16%).",
+    impact: "Cho biết chi phí tiếp thị chiếm bao nhiêu phần trăm doanh thu ròng trong kỳ.",
   },
-};
+} satisfies Record<string, MetricDefinition>;
 
 export function ExecutiveFinanceReport() {
-  const [month, setMonth] = useState(() => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 7));
-  const [data, setData] = useState<Executive | null>(() => executiveSummaryCache.get(month) || null);
+  const currentMonth = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).slice(0, 7);
+  const [month, setMonth] = useState(currentMonth);
+  const [data, setData] = useState<Executive | null>(() => executiveSummaryCache.get(currentMonth) ?? null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!data);
   const [selectedMetric, setSelectedMetric] = useState<MetricDefinition | null>(null);
-  const [showSandbox, setShowSandbox] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!data && !executiveSummaryCache.has(month)) setLoading(true);
-    setError("");
-    try {
-      const res = unwrap<Executive>(
-        await api.get("/analytics/executive-summary", {
-          params: { yearMonth: month },
-        }),
-      );
-      executiveSummaryCache.set(month, res);
-      setData(res);
-    } catch {
-      setData(null);
-      setError(
-        "Không tải được báo cáo tài chính. Chỉ Quản trị tối cao được truy cập.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [month]);
+  const [openSection, setOpenSection] = useState<"sandbox" | "method" | null>(null);
+  const currentYear = Number(currentMonth.slice(0, 4));
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  const renderMetricCard = (
-    key: string,
-    label: string,
-    value: string | number | null | undefined,
-    options?: {
-      isPercent?: boolean;
-      highlight?: "gold" | "amber" | "neutral" | "dark";
-      subtext?: string;
+    let active = true;
+    async function load() {
+      try {
+        const response = unwrap<Executive>(
+          await api.get("/analytics/executive-summary", { params: { yearMonth: month } }),
+        );
+        if (!active) return;
+        executiveSummaryCache.set(month, response);
+        setData(response);
+      } catch {
+        if (!active) return;
+        setData(null);
+        setError("Không tải được báo cáo tài chính.");
+      } finally {
+        if (active) setLoading(false);
+      }
     }
-  ) => {
-    const def = METRIC_DEFINITIONS[key];
-    const isGold = options?.highlight === "gold";
-    const isAmber = options?.highlight === "amber";
 
+    void load();
+    return () => { active = false; };
+  }, [month]);
+
+  function changeMonth(nextMonth: string) {
+    if (nextMonth === month) return;
+    setError("");
+    const cached = executiveSummaryCache.get(nextMonth);
+    setData(cached ?? null);
+    setLoading(!cached);
+    setMonth(nextMonth);
+  }
+
+  function renderMetric(
+    key: keyof typeof METRIC_DEFINITIONS,
+    label: string,
+    value: string | null | undefined,
+  ) {
     return (
-      <div
-        key={key}
-        className={`min-w-0 rounded-xl border p-3.5 transition shadow-2xs ${
-          isGold
-            ? "border-[#EEDFC6] bg-[#FDFBF7]"
-            : isAmber
-            ? "border-[#FDE68A] bg-[#FFFDF5]"
-            : "border-[#EAE4D7] bg-white"
-        }`}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider truncate">
-            {label}
-          </span>
-          {def && (
-            <button
-              type="button"
-              onClick={() => setSelectedMetric(def)}
-              className="size-5 rounded-full border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#B88E4F] hover:border-[#C59B58] text-[11px] font-bold transition flex items-center justify-center cursor-pointer shrink-0"
-              title="Xem giải thích chi tiết ý nghĩa dòng tiền"
-            >
-              !
-            </button>
-          )}
-        </div>
-
-        <div className="mt-2 flex items-baseline justify-between gap-2">
-          <span
-            className={`text-xl font-bold tabular-nums leading-tight ${
-              isGold
-                ? "text-[#B88E4F]"
-                : isAmber
-                ? "text-[#D97706]"
-                : "text-[#1A1612]"
-            }`}
+      <div key={key} className="flex min-h-[88px] min-w-0 flex-col justify-center gap-2 px-4 py-3 @min-[1000px]/executive-finance:px-5">
+        <dt className="flex items-center gap-1.5 text-[13px] font-medium leading-5 text-muted">
+          <span>{label}</span>
+          <button
+            type="button"
+            onClick={() => setSelectedMetric(METRIC_DEFINITIONS[key])}
+            aria-label={`Xem định nghĩa ${label}`}
+            className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#8C6226] focus-visible:outline-2 focus-visible:outline-[#B88E4F]"
           >
-            {value == null
-              ? "Chưa có dữ liệu"
-              : options?.isPercent
-              ? `${value}%`
-              : money(value)}
-          </span>
-
-          {options?.subtext && (
-            <span className="text-[10px] text-[#7D715E] font-medium shrink-0">
-              {options.subtext}
-            </span>
-          )}
-        </div>
+            <Info size={15} aria-hidden="true" />
+          </button>
+        </dt>
+        <dd className={`m-0 text-[22px] leading-tight font-bold tabular-nums [overflow-wrap:anywhere] @min-[1000px]/executive-finance:text-2xl ${key === "netRevenue" ? "text-[#8C6226]" : "text-ink"}`}>
+          {value ?? <span className="text-sm font-medium text-[#7D715E]">Chưa có dữ liệu</span>}
+        </dd>
       </div>
     );
-  };
+  }
+
+  const formatAmount = (value: string | undefined) => value == null ? null : money(value);
+  const period = data?.yearMonth
+    ? `Kỳ ${data.yearMonth.slice(5)}/${data.yearMonth.slice(0, 4)}`
+    : "Toàn thời gian";
+  const updatedAt = data ? new Date(data.asOf) : null;
 
   return (
-    <section className={panel} aria-busy={loading}>
-      {/* Month/Year selector & header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3.5">
-        <div>
-          <h2 className="text-base font-bold text-[#1A1612]">
-            Báo cáo Tài chính & Dòng tiền Doanh nghiệp
-          </h2>
-          <p className="text-xs text-[#7D715E] mt-0.5">
-            Bấm vào nút <strong className="text-[#B88E4F] font-bold">(!)</strong> ở mỗi thẻ để xem định nghĩa chi tiết dòng tiền
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Tháng báo cáo tài chính"
-            value={month.slice(5)}
-            disabled={loading}
-            onChange={(e) => setMonth(`${month.slice(0, 4)}-${e.target.value}`)}
-            className="rounded-lg border border-[#EAE4D7] bg-white px-3 py-1.5 text-xs font-semibold text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
-          >
-            {Array.from({ length: 12 }, (_, index) => (
-              <option key={index} value={String(index + 1).padStart(2, "0")}>
-                Tháng {index + 1}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Năm báo cáo tài chính"
-            value={month.slice(0, 4)}
-            disabled={loading}
-            onChange={(e) => setMonth(`${e.target.value}-${month.slice(5)}`)}
-            className="rounded-lg border border-[#EAE4D7] bg-white px-3 py-1.5 text-xs font-semibold text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
-          >
-            {Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index).map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
+    <section className="w-full min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-[#1A1612]" aria-label="Báo cáo tài chính" aria-busy={loading}>
+      <div className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-2.5">
+        <span className="text-[13px] font-medium text-[#7D715E]">Kỳ báo cáo</span>
+        <VietnamMonthPicker
+          value={month}
+          min={`${currentYear - 5}-01`}
+          max={`${currentYear + 5}-12`}
+          label="Kỳ báo cáo"
+          compact
+          onChange={changeMonth}
+        />
       </div>
 
-      {error && (
-        <p role="alert" className="mt-4 text-xs font-medium text-[#DC2626]">
-          {error}
-        </p>
-      )}
-
-      {loading && !data && (
-        <p role="status" className="mt-4 text-xs text-[#7D715E]">
-          Đang tải dữ liệu báo cáo...
-        </p>
-      )}
+      {error && <p role="alert" className="m-0 px-4 pb-3 text-xs font-medium text-[#DC2626]">{error}</p>}
+      {loading && !data && <p role="status" className="m-0 px-4 pb-3 text-xs text-[#7D715E]">Đang tải báo cáo…</p>}
 
       {data && (
-        <div className="mt-4 space-y-4">
-          {/* Section 1: Doanh thu & Quy mô */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
-                1. Quy mô bán hàng & Doanh thu ròng
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {renderMetricCard("netRevenue", "Doanh thu sau hoàn trả", data.netRevenue, {
-                highlight: "gold",
-                subtext: "Thực thu ròng",
-              })}
-              {renderMetricCard("gmv", "GMV đơn đã hoàn tất", data.gmv, {
-                subtext: "Quy mô gộp",
-              })}
-              {renderMetricCard(
-                "affiliateExpenseRatio",
-                "Chi phí tiếp thị / doanh thu",
-                data.affiliateExpenseRatio,
-                {
-                  isPercent: true,
-                  highlight: "gold",
-                  subtext:
-                    Number(data.affiliateExpenseRatio || 0) <= 16
-                      ? "Mức an toàn (<= 16%)"
-                      : "Leo thang Admin (trần 25%)",
-                }
-              )}
-            </div>
-          </div>
-
-          {/* Section 2: Nghĩa vụ thù lao & Escrow 14 ngày */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
-                2. Nghĩa vụ thù lao & Quỹ bảo chứng đối soát
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {renderMetricCard(
-                "affiliateExpense",
-                "Chi phí thu nhập tiếp thị",
-                data.affiliateExpense,
-                { subtext: "Đã phát sinh" }
-              )}
-              {renderMetricCard(
-                "escrowPending",
-                "Bảo chứng hiện tại (Escrow 14 ngày)",
-                data.escrowPending,
-                {
-                  highlight: "amber",
-                  subtext: `Giữ ${data.holdDays} ngày`,
-                }
-              )}
-              {renderMetricCard(
-                "unrecognizedCommissions",
-                "Hoa hồng chưa ghi nhận",
-                data.unrecognizedCommissions,
-                { subtext: "Đơn đang giao" }
-              )}
-            </div>
-          </div>
-
-          {/* Section 3: Thanh khoản & Giải ngân ngân hàng */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
-                3. Thanh khoản ví đối tác & Thực chi ngân quỹ
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {renderMetricCard(
-                "availableEarnings",
-                "Khả dụng hiện tại",
-                data.availableEarnings,
-                { subtext: "Ví KOL được rút" }
-              )}
-              {renderMetricCard(
-                "netPaid",
-                "Tổng chi trả trong tháng",
-                data.netPaid,
-                { subtext: "Thực nhận sau thuế" }
-              )}
-              {renderMetricCard(
-                "taxWithheld",
-                "Thuế TNCN đã khấu trừ trong tháng",
-                data.taxWithheld,
-                { subtext: "Thuế đã khấu trừ" }
-              )}
-            </div>
-          </div>
-
-          {/* Section 4: Số liệu đối soát thử nghiệm */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setShowSandbox((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
-            >
-              <span>{showSandbox ? "▼ Ẩn số liệu đối soát thử nghiệm" : "▶ Xem thêm số liệu đối soát thử nghiệm (2 chỉ số)"}</span>
-            </button>
-
-            {showSandbox && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2.5 p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
-                {renderMetricCard(
-                  "sandboxNetPaid",
-                  "Chi trả thử nghiệm trong tháng",
-                  data.sandboxNetPaid,
-                  { subtext: "Đối soát thử nghiệm" }
-                )}
-                {renderMetricCard(
-                  "sandboxTaxWithheld",
-                  "Thuế đối soát thử nghiệm",
-                  data.sandboxTaxWithheld,
-                  { subtext: "Đối soát thử nghiệm" }
+        <>
+          <div className="@container/executive-finance divide-y divide-line border-t border-line bg-white">
+            <section aria-labelledby="finance-metric-revenue" className={financeGroupRow}>
+              <h3 id="finance-metric-revenue" className={financeGroupHeading}>Doanh thu</h3>
+              <dl className={financeMetricGrid}>
+                {renderMetric("netRevenue", "Doanh thu sau hoàn trả", money(data.netRevenue))}
+                {renderMetric("gmv", "GMV đơn hoàn tất", money(data.gmv))}
+                {renderMetric("affiliateExpenseRatio", "Tỷ lệ chi phí tiếp thị", data.affiliateExpenseRatio == null ? null : `${Number(data.affiliateExpenseRatio).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}%`)}
+              </dl>
+            </section>
+            <section aria-labelledby="finance-metric-commission" className={financeGroupRow}>
+              <h3 id="finance-metric-commission" className={financeGroupHeading}>Thù lao</h3>
+              <dl className={financeMetricGrid}>
+                {renderMetric("affiliateExpense", "Chi phí tiếp thị", money(data.affiliateExpense))}
+                {renderMetric("escrowPending", `Thù lao đang giữ · ${data.holdDays} ngày`, money(data.escrowPending))}
+                {renderMetric("unrecognizedCommissions", "Thù lao chưa ghi nhận", formatAmount(data.unrecognizedCommissions))}
+              </dl>
+            </section>
+            <section aria-labelledby="finance-metric-payouts" className={financeGroupRow}>
+              <h3 id="finance-metric-payouts" className={financeGroupHeading}>Ví &amp; chi trả</h3>
+              <dl className={financeMetricGrid}>
+                {renderMetric("availableEarnings", "Số dư khả dụng hiện tại", money(data.availableEarnings))}
+                {renderMetric("netPaid", "Chi trả sau thuế trong kỳ", money(data.netPaid))}
+                {renderMetric("taxWithheld", "Thuế TNCN khấu trừ trong kỳ", money(data.taxWithheld))}
+              </dl>
+            </section>
+            <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5 bg-canvas px-4 py-2.5 @min-[1000px]/executive-finance:px-5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <p className="m-0 text-xs font-medium text-muted">
+                  <strong className="tabular-nums text-ink">{data.ordersCount.toLocaleString("vi-VN")} đơn</strong>
+                </p>
+                {updatedAt && Number.isFinite(updatedAt.getTime()) && (
+                  <span className="text-[11px] text-muted @min-[800px]/executive-finance:border-l @min-[800px]/executive-finance:border-line @min-[800px]/executive-finance:pl-3">
+                    Cập nhật <time dateTime={updatedAt.toISOString()}>{updatedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</time> · Giờ Việt Nam
+                  </span>
                 )}
               </div>
-            )}
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" aria-haspopup="dialog" className={financeFooterButton} onClick={() => setOpenSection("method")}>
+                  Cách tính
+                </button>
+                <details className="relative">
+                  <summary aria-label="Thao tác báo cáo khác" className={`${financeFooterButton} flex size-9 cursor-pointer list-none items-center justify-center p-0 [&::-webkit-details-marker]:hidden`}><MoreHorizontal size={18} /></summary>
+                  <div className="absolute bottom-full right-0 z-10 mb-2 w-52 rounded-lg border border-[#EAE4D7] bg-white p-1.5 shadow-lg">
+                    <button type="button" aria-haspopup="dialog" className="min-h-10 w-full rounded-md px-3 text-left text-[13px] text-[#655A49] hover:bg-[#FBF5EB]" onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); setOpenSection('sandbox'); }}>Đối soát thử nghiệm</button>
+                  </div>
+                </details>
+              </div>
+            </div>
           </div>
+          {openSection === "sandbox" && !selectedMetric && (
+            <Modal isOpen title="Đối soát thử nghiệm" subtitle={period} maxWidth="lg" onClose={() => setOpenSection(null)}>
+              <dl className="m-0 grid grid-cols-1 divide-y divide-[#EAE4D7] rounded-xl border border-[#EAE4D7] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                {renderMetric("sandboxNetPaid", "Chi trả thử nghiệm", formatAmount(data.sandboxNetPaid))}
+                {renderMetric("sandboxTaxWithheld", "Thuế thử nghiệm", formatAmount(data.sandboxTaxWithheld))}
+              </dl>
+            </Modal>
+          )}
 
-          {/* Accordion Cách tính báo cáo */}
-          <div className="border-t border-[#EAE4D7] pt-3">
-            <details className="group rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs">
-              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-4 py-2.5 select-none [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center gap-2 font-semibold text-[#1A1612]">
-                  <span className="text-[#B88E4F] transition-transform group-open:rotate-90" aria-hidden="true">›</span>
-                  Quy chuẩn tính toán báo cáo tài chính
-                </span>
-                <span className="text-[11px] text-[#7D715E]">
-                  {data.ordersCount} đơn · Kỳ {data.yearMonth ? `${data.yearMonth.slice(5)}/${data.yearMonth.slice(0, 4)}` : "toàn thời gian"}
-                </span>
-              </summary>
-              <dl className="m-0 grid gap-3 border-t border-[#EAE4D7] bg-white p-3.5 sm:grid-cols-2">
+          {openSection === "method" && (
+            <Modal isOpen title="Cách tính báo cáo" stickyHeader maxWidth="3xl" className="max-w-[720px]" bodyClassName="p-0 sm:p-0" onClose={() => setOpenSection(null)}
+              footer={<div className="flex items-center justify-between gap-3"><span className="text-xs text-[#7D715E]">Giờ Việt Nam · UTC+7</span><button type="button" className="h-[42px] rounded-lg bg-[#C59B58] px-5 text-sm font-semibold text-[#231D15] hover:bg-[#B88E4F]" onClick={() => setOpenSection(null)}>Đã hiểu</button></div>}>
+              <dl className="m-0 grid grid-cols-1 sm:grid-cols-2">
                 {[
-                  {
-                    title: "Doanh thu trong kỳ",
-                    text: "Ghi nhận theo ngày hoàn tất đơn (giờ Việt Nam). Đã khấu trừ Voucher độc quyền của KOL và các đơn đổi trả hoàn tiền 14 ngày. Không bao gồm phí ship GHN.",
-                  },
-                  {
-                    title: "Tỷ lệ chi phí tiếp thị",
-                    text: "(Thù lao đơn hoàn tất + Thưởng đạt KPI Deal + Thưởng mốc) ÷ Doanh thu sau hoàn trả × 100%. Luôn khống chế dưới trần tối đa 25%.",
-                  },
-                  {
-                    title: "Giải ngân & Thuế TNCN",
-                    text: "Thuế lũy tiến 5–35% theo tổng tiền yêu cầu rút trong tháng, theo chính sách SCANMS.",
-                  },
-                  {
-                    title: "Bảo chứng Escrow 14 ngày",
-                    text: `Cơ chế Escrow bảo vệ doanh nghiệp trong đúng ${data.holdDays} ngày kể từ lúc giao hàng thành công. Sau 14 ngày không đổi trả mới kết chuyển sang số dư khả dụng.`,
-                  },
-                ].map((item) => (
-                  <div key={item.title} className="min-w-0">
-                    <dt className="font-bold text-[#1A1612] text-[11px]">{item.title}</dt>
-                    <dd className="m-0 mt-0.5 text-[11px] leading-relaxed text-[#7D715E]">{item.text}</dd>
+                  ['Doanh thu', 'Đơn hoàn tất trong kỳ. Trừ giảm giá và tiền hàng đã hoàn; không gồm phí giao hàng.'],
+                  ['Chi phí tiếp thị', 'Thù lao và thưởng đã ghi nhận, sau điều chỉnh thu hồi. Tỷ lệ = Chi phí ÷ Doanh thu sau hoàn trả × 100%.'],
+                  ['Số dư ví', `Số dư khả dụng và tiền đang giữ tại lần cập nhật, không giới hạn theo kỳ. Hết ${data.holdDays} ngày trả hàng mới xét đối soát; phần chênh lệch Deal còn phụ thuộc KPI và điều kiện giải ngân.`],
+                  ['Chi trả & thuế', 'Tiền thực nhận sau thuế và thuế khấu trừ trên các lệnh chi trả hoàn tất trong kỳ. Khoản thử nghiệm được theo dõi riêng.'],
+                ].map(([label, description], index) => (
+                  <div key={label} className={`min-w-0 p-5 ${index > 0 ? 'border-t border-[#EAE4D7]' : ''} ${index === 1 ? 'sm:border-t-0 sm:border-l' : index === 3 ? 'sm:border-l' : ''}`}>
+                    <dt className="text-sm font-semibold text-[#1A1612]">{label}</dt>
+                    <dd className="m-0 mt-2 text-[13px] leading-[1.6] text-[#7D715E]">{description}</dd>
                   </div>
                 ))}
               </dl>
-            </details>
-            <p className="mb-0 mt-2 text-right text-[10px] text-[#7D715E]">
-              Cập nhật {new Date(data.asOf).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })} · Giờ Việt Nam
-            </p>
-          </div>
-        </div>
+            </Modal>
+          )}
+        </>
       )}
+
 
       {/* Metric Detail Info Modal */}
       {selectedMetric && (
@@ -629,7 +483,11 @@ interface Escrow {
     };
   }>;
 }
-export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = {}) {
+export function EscrowFinanceReport({ onChanged, reviewCount = 0, exchangeCount = 0 }: {
+  onChanged?: () => void;
+  reviewCount?: number;
+  exchangeCount?: number;
+} = {}) {
   const [historyItem, setHistoryItem] = useState<Escrow["items"][number] | null>(null);
   const [historyTab, setHistoryTab] = useState<'money' | 'order'>('money');
   const [historyCodeCopied, setHistoryCodeCopied] = useState(false);
@@ -643,6 +501,10 @@ export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = 
     ? new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hourCycle: 'h23' }) : 'Chưa ghi nhận';
   const [data, setData] = useState<Escrow | null>(null);
   const [page, setPage] = useState(1);
+  const [reviewOnly, setReviewOnly] = useState(false);
+  const reportRef = useRef<HTMLElement>(null);
+  const reviewRowRef = useRef<HTMLTableRowElement>(null);
+  const jumpToReview = useRef(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -670,7 +532,7 @@ export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = 
     setError("");
     api
       .get("/admin/payouts/escrow", {
-        params: { page },
+        params: { page, reviewOnly: reviewOnly || undefined },
         headers: { "x-skip-cache": "true" },
       })
       .then((response) => {
@@ -688,13 +550,49 @@ export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = 
     return () => {
       active = false;
     };
-  }, [page, refresh]);
+  }, [page, refresh, reviewOnly]);
+  useEffect(() => {
+    if (!reviewOnly || !jumpToReview.current || loading || (!data && !error)) return;
+    jumpToReview.current = false;
+    const target = reviewRowRef.current ?? reportRef.current;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }, [data, error, loading, reviewOnly]);
+  const changeReviewFilter = (enabled: boolean) => {
+    jumpToReview.current = enabled;
+    setData(null);
+    setError('');
+    setPage(1);
+    setReviewOnly(enabled);
+  };
   return (
-    <section className={`${panel} finance-escrow`} aria-label="Các khoản hoa hồng đang bảo chứng" aria-busy={loading}>
+    <>
+    {(reviewCount > 0 || exchangeCount > 0) && (
+      <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1.5 text-sm text-[#725426]">
+        <div role="status" className="flex min-w-0 items-center gap-2">
+          <Info size={16} className="shrink-0 text-[#8F682E]" aria-hidden="true" />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {reviewCount > 0 && <strong className="font-semibold tabular-nums">{reviewCount} khoản cần xem xét</strong>}
+            {exchangeCount > 0 && <span className="tabular-nums text-[#7D715E]">{exchangeCount} khoản chờ hoàn tất đổi hàng</span>}
+          </div>
+        </div>
+        {reviewCount > 0 && !reviewOnly && (
+          <button type="button" className="ml-auto inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-semibold hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#B88E4F]" onClick={() => changeReviewFilter(true)}>
+            {reviewCount === 1 ? 'Xem khoản' : 'Xem danh sách'} <ArrowRight size={14} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    )}
+    <section ref={reportRef} tabIndex={-1} className={`${panel} finance-escrow scroll-mt-24`} aria-label="Các khoản hoa hồng đang bảo chứng" aria-busy={loading}>
+      {reviewOnly && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#EAE4D7] pb-3 text-sm">
+        <strong className="font-semibold">Khoản cần xem xét{data ? ` · ${data.total}` : ''}</strong>
+        <button type="button" className={button} onClick={() => changeReviewFilter(false)}>Bỏ lọc</button>
+      </div>}
       {error && (
-        <p role="alert" className="text-[#DC2626]">
-          {error}
-        </p>
+        <div className="flex items-center gap-3 text-[#DC2626]">
+          <p role="alert">{error}</p>
+          <button type="button" className={button} onClick={() => setRefresh(value => value + 1)}>Thử lại</button>
+        </div>
       )}
       {loading && <p role="status">Đang tải…</p>}
       {data && (
@@ -730,7 +628,8 @@ export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = 
               </thead>
               <tbody className="block xl:table-row-group">
                 {data.items.map((item) => (
-                  <tr key={item.id} className="grid grid-cols-2 border-b border-[#EAE4D7] xl:table-row [&>td]:block xl:[&>td]:table-cell">
+                  <tr key={item.id} ref={reviewOnly && data.total === 1 ? reviewRowRef : undefined} tabIndex={reviewOnly && data.total === 1 ? -1 : undefined}
+                    className={`grid scroll-mt-24 grid-cols-2 border-b border-[#EAE4D7] xl:table-row [&>td]:block xl:[&>td]:table-cell ${reviewOnly && data.total === 1 ? 'bg-[#FBF5EB]' : ''}`}>
                     <td className="p-3">
                       <strong className="block font-semibold leading-6">{item.order.externalOrderSn || item.order.id.slice(0, 8)}</strong>
                       {item.order.testFixture && <small className="text-[#8F682E]">Đơn kiểm thử Escrow</small>}
@@ -782,8 +681,9 @@ export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = 
           </div>
           {!data.items.length && (
             <div className="finance-escrow-empty" role="status">
-              <strong>Không có khoản thu nhập đang tạm giữ.</strong>
-              <p>{data.total === 0 ? 'Không có khoản chờ đối soát hoặc chênh lệch Deal đang giữ.' : 'Trang này không còn bản ghi. Chọn Trước để xem trang trước.'}</p>
+              <strong>{data.total > 0 ? 'Trang này không còn bản ghi.' : reviewOnly ? 'Hiện không có khoản cần xem xét.' : 'Không có khoản thu nhập đang tạm giữ.'}</strong>
+              {data.total > 0 && <p>Chọn Trước để xem trang trước.</p>}
+              {data.total === 0 && !reviewOnly && <p>Không có khoản chờ đối soát hoặc chênh lệch Deal đang giữ.</p>}
             </div>
           )}
           <div className="finance-pagination flex items-center justify-end gap-3 mt-4" hidden={!data.total}>
@@ -838,6 +738,7 @@ export function EscrowFinanceReport({ onChanged }: { onChanged?: () => void } = 
         </div>}
       </Modal>
     </section>
+    </>
   );
 }
 

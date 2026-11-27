@@ -9,6 +9,12 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/utils/notific
 }).outputText, { module, exports: module.exports });
 const { notificationTarget } = module.exports;
 const target = (type, data) => notificationTarget({ type, data }, 'CUSTOMER');
+test('KOL review feedback opens the applicant form for the current role', () => {
+  for (const type of ['KOL_NEEDS_INFO', 'KOL_REJECTED']) {
+    assert.equal(target(type), '/customer/upgrade/kol');
+    assert.equal(notificationTarget({ type }, 'COLLABORATOR'), '/collaborator/profile?tab=kyc');
+  }
+});
 test('withdrawal system notification opens its exact wallet request despite legacy url field', () => {
   assert.equal(target('SYSTEM', { withdrawalId: 'request-1', url: '/customer/wallet' }), '/customer/wallet?history=withdrawals&withdrawalId=request-1');
 });

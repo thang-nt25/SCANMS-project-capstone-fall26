@@ -32,4 +32,19 @@ describe('Return oversight server filters', () => {
     await expect(service.listOversightQueue(UserRole.SYSTEM_MANAGER,'active',1,'x'.repeat(81))).rejects.toThrow();
     expect(prisma.returnRequest.findMany).not.toHaveBeenCalled();
   });
+
+  it('sorts arbitration cases by newest submission before pagination', async () => {
+    const { service, prisma } = setup();
+    await service.listOversightQueue(UserRole.SYSTEM_MANAGER, 'disputes', 2);
+
+    expect(prisma.dispute.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      orderBy: [
+        { returnRequest: { submittedAt: 'desc' } },
+        { openedAt: 'desc' },
+        { id: 'desc' },
+      ],
+      skip: 20,
+      take: 20,
+    }));
+  });
 });

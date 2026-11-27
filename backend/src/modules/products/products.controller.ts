@@ -8,6 +8,8 @@ import {
   Body,
   Param,
   Query,
+  DefaultValuePipe,
+  ParseIntPipe,
   Req,
   UseGuards,
   UseInterceptors,
@@ -118,6 +120,17 @@ export class ProductsController {
     @CurrentUser('role') role: UserRole,
   ) {
     return this.productsService.listReviewsForModeration(userId, role);
+  }
+
+  @Get('reviews/moderation/history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lịch sử quyết định kiểm duyệt đánh giá' })
+  listReviewModerationHistory(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.productsService.listReviewModerationHistory(page);
   }
 
   @Patch('reviews/:reviewId/moderation')

@@ -1,32 +1,35 @@
 import { publicWebsiteUrl } from '@/utils/public-url';
 import { handleAvatarImageError, handleProductImageError } from '@/utils/image-fallback.utils';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  UserCheck,
-  FileCheck,
-  Percent,
-  Coins,
-  CheckCircle2,
-  Clock,
-  Archive,
   MessageSquare,
   Copy,
   Check,
   Search,
-  Filter,
-  Layers,
-  Table as TableIcon,
   ShoppingBag,
-  Ban,
+  MoreHorizontal,
+  Medal,
+  Gem,
   X,
   Loader2,
-  Inbox,
   ShieldAlert,
   ExternalLink,
 } from 'lucide-react';
 import { analyticsService, type ActiveDealPartnerItem } from '../../services/analytics.service';
 import { referralLinksService, type ExclusiveDealProposal } from '../../services/referral-links.service';
 import { toast } from '../../utils/toast';
+import { Modal } from '../ui/Modal';
+
+function historyDealState(item: ExclusiveDealProposal) {
+  if (item.status === 'REJECTED') return 'Đã từ chối';
+  if (item.closedAt || item.shopResponse?.startsWith('[ĐÃ ĐÓNG DEAL / CHẾ TÀI]') || item.referralLink?.status === 'BLOCKED') return 'Đã đóng';
+  if (item.isCurrentDeal === false) return 'Đã thay thế';
+  if (item.commitmentEndsAt && Date.parse(item.commitmentEndsAt) <= Date.now()) return 'Đã hết hạn';
+  return 'Đã lưu lịch sử';
+}
+function dealDate(value?: string | null) {
+  return value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '—';
+}
 
 interface Props {
   onSelectKolForChat?: (kolId: string) => void;
@@ -83,6 +86,7 @@ const defaultVipTerms = {
 
 export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   // Main Tab: 'ACTIVE' | 'PENDING' | 'HISTORY'
+  const [voucherTermsById, setVoucherTermsById] = useState<Record<string, typeof defaultVipTerms>>({});
   const [activeSubTab, setActiveSubTab] = useState<'ACTIVE' | 'PENDING' | 'HISTORY'>('ACTIVE');
 
   // Active Deals Data
@@ -107,7 +111,6 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   // Filters for active view
   const [searchQuery, setSearchQuery] = useState('');
   const [rateFilter, setRateFilter] = useState<string>('ALL');
-  const [displayMode, setDisplayMode] = useState<'CREATOR' | 'TABLE'>('CREATOR');
 
   // Processing & Terminate states
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -152,17 +155,47 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   const historyProposals = useMemo(() => {
     return allProposals.filter((p) => {
       const isTerminated = p.shopResponse?.startsWith('[ĐÃ ĐÓNG DEAL / CHẾ TÀI]') || p.referralLink?.status === 'BLOCKED';
-      return p.status === 'REJECTED' || isTerminated || !p.isCurrentDeal || !!p.closedAt;
+      return p.status === 'REJECTED' || isTerminated || p.isCurrentDeal === false || !!p.closedAt
+        || (p.status === 'APPROVED' && !!p.commitmentEndsAt && Date.parse(p.commitmentEndsAt) <= Date.now());
     });
   }, [allProposals]);
 
+  const proposalQuery = searchQuery.trim().toLocaleLowerCase('vi');
+  const matchesProposal = (item: ExclusiveDealProposal) =>
+    [item.collaborator?.fullName, item.product?.title].some(value => value?.toLocaleLowerCase('vi').includes(proposalQuery));
+  const visiblePending = proposalQuery ? pendingProposals.filter(matchesProposal) : pendingProposals;
+  const visibleHistory = proposalQuery ? historyProposals.filter(matchesProposal) : historyProposals;
+  const [historyPage, setHistoryPage] = useState(1);
+  const [selectedHistory, setSelectedHistory] = useState<ExclusiveDealProposal | null>(null);
+  const [historyDetails, setHistoryDetails] = useState<ExclusiveDealProposal | null>(null);
+  const [historyDetailError, setHistoryDetailError] = useState(false);
+  const [historyRetry, setHistoryRetry] = useState(0);
+  const historyPages = Math.max(1, Math.ceil(visibleHistory.length / 10));
+  const safeHistoryPage = Math.min(historyPage, historyPages);
+  const pageHistory = visibleHistory.slice((safeHistoryPage - 1) * 10, safeHistoryPage * 10);
+  useEffect(() => { setHistoryPage(1); }, [searchQuery]);
+  useEffect(() => {
+    if (!selectedHistory) return;
+    let active = true;
+    setHistoryDetails(null);
+    setHistoryDetailError(false);
+    void referralLinksService.getExclusiveDealDetails(selectedHistory.id).then(data => {
+      if (active) setHistoryDetails({ ...selectedHistory, ...data });
+    }).catch(() => { if (active) setHistoryDetailError(true); });
+    return () => { active = false; };
+  }, [selectedHistory, historyRetry]);
+
+  const proposalLock = useRef(false);
   // Handle Approve / Reject Pending
   const handleDecideProposal = async (proposalId: string, approve: boolean) => {
+    if (proposalLock.current) return;
+    proposalLock.current = true;
     setBusyId(proposalId);
     try {
       if (approve) {
-        await referralLinksService.approveExclusiveDeal(proposalId, defaultVipTerms);
-        toast.success('Đã chấp thuận Thỏa thuận Độc quyền và kích hoạt link tiếp thị.');
+        const terms = voucherTermsById[proposalId] || defaultVipTerms;
+        const result = await referralLinksService.approveExclusiveDeal(proposalId, terms);
+        toast.success(result?.status === 'PENDING_ADMIN_APPROVAL' ? 'Đã chấp thuận và chuyển Admin phê duyệt.' : 'Đã chấp thuận thỏa thuận độc quyền.');
       } else {
         await referralLinksService.rejectExclusiveDeal(proposalId);
         toast.info('Đã từ chối đề xuất Deal.');
@@ -171,6 +204,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Không thể xử lý đề xuất lúc này.');
     } finally {
+      proposalLock.current = false;
       setBusyId(null);
     }
   };
@@ -210,21 +244,17 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
     }
   };
 
-  const handleCopyLink = (deal: ActiveDealPartnerItem) => {
+  const handleCopyLink = async (deal: ActiveDealPartnerItem) => {
     if (!deal.referralLink?.shortCode) {
       toast.error('Chưa có mã liên kết tiếp thị');
       return;
     }
     const url = publicWebsiteUrl(`/r/${deal.referralLink.shortCode}`);
-    navigator.clipboard.writeText(url);
+    try { await navigator.clipboard.writeText(url); } catch { toast.error('Không thể sao chép link. Vui lòng thử lại.'); return; }
     setCopiedId(deal.id);
     toast.success('Đã sao chép link thỏa thuận độc quyền!');
     setTimeout(() => setCopiedId(null), 2000);
   };
-
-  const totalRevenue = useMemo(() => {
-    return (activeData.deals || []).reduce((sum, d) => sum + (d.progress?.validRevenue || 0), 0);
-  }, [activeData.deals]);
 
   // Filtered active deals
   const filteredActiveDeals = useMemo(() => {
@@ -260,6 +290,33 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   }, [filteredActiveDeals]);
 
 
+  const tierBadge = (tier: string) => <span className={`inline-flex h-6 items-center gap-[5px] rounded-full border px-2 text-[11px] font-semibold ${getTierColor(tier)}`}>{/DIAMOND|KIM CƯƠNG/i.test(tier) ? <Gem size={14}/> : <Medal size={14}/>}<span>{tier}</span></span>;
+  const dealRow = (deal: ActiveDealPartnerItem) => {
+    const progress = deal.progress;
+    const revenueKpi = Number(deal.targetRevenue ?? progress.targetRevenue ?? 0) > 0;
+    const target = revenueKpi ? Number(deal.targetRevenue ?? progress.targetRevenue) : Number(deal.targetOrders ?? progress.targetOrders ?? 0);
+    const completed = Number(revenueKpi ? progress.validRevenue ?? 0 : progress.completedOrders ?? 0);
+    const percent = target > 0 ? Math.max(0, Math.min(100, Math.round(completed / target * 100))) : 0;
+    const end = deal.commitmentEndsAt ? new Date(deal.commitmentEndsAt) : null;
+    return <div className="deal-product-row" key={deal.id}>
+      <div className="deal-row-product flex min-w-0 items-center gap-2.5">
+        <img src={deal.productImage || '/assets/product-placeholder.svg'} onError={handleProductImageError} alt="" className="size-8 shrink-0 rounded-md border border-[#EAE4D7] bg-white object-contain"/>
+        <div className="min-w-0"><strong className="line-clamp-2 text-[13px] font-semibold" title={deal.productTitle}>{deal.productTitle || 'Sản phẩm áp dụng'}</strong><span className="mt-0.5 block text-[11px] text-[#7D715E]">{deal.productPrice.toLocaleString('vi-VN')} ₫</span></div>
+      </div>
+      <div className="deal-row-rate text-right font-semibold tabular-nums text-[#90682F]"><span className="deal-mobile-label">Thù lao </span>{deal.dealCommissionRate}%</div>
+      <div className="deal-row-kpi min-w-0 text-right tabular-nums">
+        <span className="deal-mobile-label">KPI </span><strong className="text-xs font-semibold">{target > 0 ? `${completed.toLocaleString('vi-VN')}/${target.toLocaleString('vi-VN')} ${revenueKpi ? '₫' : 'đơn'}` : 'Không giới hạn KPI'}</strong>
+        {target > 0 && <div className="mt-1.5 flex items-center gap-2"><progress aria-label={`Tiến độ KPI ${deal.productTitle}`} max={100} value={percent} className="deal-kpi-progress"/><span className="text-[10px] text-[#7D715E]">{percent}%</span></div>}
+        <small className="mt-1 block text-[11px] text-[#7D715E]">Doanh số: {(progress.validRevenue ?? 0).toLocaleString('vi-VN')} ₫</small>
+      </div>
+      <div className="deal-row-deadline text-right text-xs"><span className="deal-mobile-label">Thời hạn </span>{end && !Number.isNaN(end.getTime()) ? <time dateTime={deal.commitmentEndsAt}>{end.toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</time> : <span className="text-[#7D715E]">Chưa xác định</span>}{deal.isExpired && <small className="mt-1 block text-[#D97706]">Đã hết hạn</small>}</div>
+      <div className="deal-row-actions flex items-center justify-end gap-2">
+        <button type="button" title="Sao chép link" aria-label={`Sao chép link ${deal.productTitle}`} onClick={()=>void handleCopyLink(deal)} className="grid size-8! place-items-center rounded-lg! border border-[#EAE4D7] bg-white text-[#90682F] hover:bg-[#FBF5EB]">{copiedId===deal.id?<Check size={15}/>:<Copy size={15}/>}</button>
+        <details className="relative"><summary aria-label={`Thao tác ${deal.productTitle}`} title="Thao tác" className="grid size-8! cursor-pointer list-none place-items-center rounded-lg! border border-[#EAE4D7] bg-white text-[#7D715E]"><MoreHorizontal size={16}/></summary><div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border border-[#EAE4D7] bg-white p-1 shadow-lg"><button type="button" disabled={busyId===deal.id} onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');void handleReviewTermination(deal);}} className="w-full rounded-md px-3 py-2 text-left text-xs text-[#DC2626] hover:bg-[#FAF8F5] disabled:opacity-40">{busyId===deal.id?'Đang kiểm tra…':'Đóng Deal do vi phạm cam kết'}</button></div></details>
+      </div>
+    </div>;
+  };
+  const rowHead = <div className="deal-product-head"><span>Sản phẩm</span><span>Thù lao</span><span>KPI & doanh số</span><span>Ngày kết thúc</span><span>Thao tác</span></div>;
 
   return (
     <div className="shop-active-deals space-y-4 animate-in fade-in-50 duration-200">
@@ -267,187 +324,44 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         {loadError} Dữ liệu đang hiển thị có thể chưa được cập nhật.
         <button type="button" disabled={loading} onClick={() => void fetchAll()} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
       </div>}
-      {/* 1. Top Priority Alert: PENDING PROPOSALS (If any) */}
-      {pendingProposals.length > 0 && activeSubTab !== 'PENDING' && (
-        <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 shadow-2xs flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Inbox className="w-4 h-4 text-[#B88E4F]" />
-            <span className="text-xs font-bold text-[#1A1612]">
-              Có {pendingProposals.length} đề xuất Thỏa thuận Độc quyền từ đối tác đang chờ duyệt
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('PENDING')}
-            className="px-3 py-1 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-2xs cursor-pointer shrink-0"
-          >
-            Xem ngay
-          </button>
+      <div className="deal-state-toolbar">
+        <div className="deal-status-tabs" role="group" aria-label="Trạng thái Deal">
+          {([
+            ['ACTIVE', 'Hiệu lực', activeData.totalActiveDeals],
+            ['PENDING', 'Chờ duyệt', pendingProposals.length],
+            ['HISTORY', 'Lịch sử', historyProposals.length],
+          ] as const).map(([status, label, count]) => (
+            <button key={status} type="button" aria-pressed={activeSubTab === status} onClick={() => setActiveSubTab(status)}>
+              {label} <span className={`tabular-nums ${status === 'PENDING' && count > 0 ? 'font-bold text-[#B88E4F]' : ''}`}>{count}</span>
+            </button>
+          ))}
         </div>
-      )}
-
-      {/* 3. Top Metrics Row (Clean, Crisp, Professional Icons, No Verbose Subtexts) */}
-      <div className="deal-overview-metrics grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-[#EEDFC6] bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-              KOL Đối Tác
-            </span>
-            <UserCheck className="h-4 w-4 text-[#B88E4F]" />
-          </div>
-          <div className="text-2xl font-black text-[#1A1612]">
-            {activeData.totalPartners}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-[#EEDFC6] bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-              Deal hiệu lực
-            </span>
-            <FileCheck className="h-4 w-4 text-[#B88E4F]" />
-          </div>
-          <div className="text-2xl font-black text-[#1A1612]">
-            {activeData.totalActiveDeals}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-[#EEDFC6] bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-              Thù lao Deal TB
-            </span>
-            <Percent className="h-4 w-4 text-[#B88E4F]" />
-          </div>
-          <div className="text-2xl font-black text-[#B88E4F]">
-            {activeData.averageCommissionRate == null ? '—' : `${activeData.averageCommissionRate}%`}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-[#EEDFC6] bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-              Doanh Số Từ Deal
-            </span>
-            <Coins className="h-4 w-4 text-[#B88E4F]" />
-          </div>
-          <div className="text-2xl font-black text-[#1A1612]">
-            {totalRevenue.toLocaleString('vi-VN')} ₫
-          </div>
+        <div className="deal-active-toolbar">
+          <label className="relative block min-w-0">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#7D715E]" />
+            <input
+              type="search"
+              aria-label="Tìm KOL, sản phẩm"
+              placeholder="Tìm KOL, sản phẩm…"
+              value={searchQuery}
+              onChange={event => setSearchQuery(event.target.value)}
+              className="w-full min-w-0 rounded-lg border border-[#EAE4D7] bg-white pl-9 pr-2 text-xs focus:border-[#C59B58] focus:outline-none"
+            />
+          </label>
+          {activeSubTab === 'ACTIVE' && (
+            <div className="deal-rate-filter">
+              <select aria-label="Lọc mức thù lao" value={rateFilter} onChange={event => setRateFilter(event.target.value)}
+                className="w-full rounded-lg border border-[#EAE4D7] bg-white text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none">
+                <option value="ALL">Thù lao</option>
+                {Array.from({ length: 16 }, (_, index) => index + 10).map(rate => <option key={rate} value={String(rate)}>{rate}%</option>)}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 3. Unified Sub-Tabs Navigation (Sharp Icons, Compact) */}
-      <div className="deal-state-toolbar flex flex-wrap items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('ACTIVE')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSubTab === 'ACTIVE'
-                ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
-            }`}
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Đang hiệu lực ({activeData.totalActiveDeals})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('PENDING')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSubTab === 'PENDING'
-                ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Đề xuất chờ duyệt</span>
-            {pendingProposals.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
-                {pendingProposals.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('HISTORY')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSubTab === 'HISTORY'
-                ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-                : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
-            }`}
-          >
-            <Archive className="w-3.5 h-3.5" />
-            <span>Lịch sử & Đã đóng ({historyProposals.length})</span>
-          </button>
-        </div>
-
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TAB 1: ACTIVE DEALS                                                       */}
-      {/* ========================================================================= */}
       {activeSubTab === 'ACTIVE' && (
-        <div className="space-y-3.5">
-          {/* Controls Bar: Search, Filters & View Toggle */}
-          <div className="deal-active-toolbar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
-            <div className="flex flex-wrap items-center gap-2 flex-1">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#7D715E]" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm theo KOL, sản phẩm..."
-                  className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#7D715E]/70 focus:outline-hidden focus:border-[#C59B58] transition"
-                />
-              </div>
-
-              <div className="flex items-center gap-1">
-                <Filter className="w-3.5 h-3.5 text-[#7D715E]" />
-                <select
-                  value={rateFilter}
-                  onChange={(e) => setRateFilter(e.target.value)}
-                  className="rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1.5 text-xs font-medium text-[#1A1612] focus:outline-hidden focus:border-[#C59B58] transition cursor-pointer"
-                >
-                  <option value="ALL">Tất cả mức Deal</option>
-                  {Array.from({length:16},(_,index)=>index+10).map(rate=><option key={rate} value={String(rate)}>Deal {rate}%</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 self-end sm:self-auto bg-white p-0.5 rounded-lg border border-[#EAE4D7]">
-              <button
-                type="button"
-                onClick={() => setDisplayMode('CREATOR')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
-                  displayMode === 'CREATOR'
-                    ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-                    : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Theo KOL ({groupedByCreator.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDisplayMode('TABLE')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
-                  displayMode === 'TABLE'
-                    ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-                    : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                <span>Bảng ({filteredActiveDeals.length})</span>
-              </button>
-            </div>
-          </div>
-
+        <div>
           {loading ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E] flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 text-[#C59B58] animate-spin" />
@@ -457,319 +371,20 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
               {loadError ? 'Chưa xác định được danh sách thỏa thuận.' : 'Chưa có thỏa thuận phù hợp.'}
             </div>
-          ) : displayMode === 'CREATOR' ? (
-            /* Sub-view 1A: Grouped By Creator */
-            <div className="space-y-3">
-              {groupedByCreator.map(({ creator, deals }) => (
-                <div
-                  key={creator.collaboratorId}
-                  className="rounded-xl border border-[#EEDFC6] bg-white shadow-2xs overflow-hidden"
-                >
-                  {/* Creator Card Header */}
-                  <div className="border-b border-[#EAE4D7] bg-[#FAF8F5]/80 p-3 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#F3EFE6] border border-[#EEDFC6] overflow-hidden shrink-0 flex items-center justify-center text-[#B88E4F] font-bold text-xs">
-                        {creator.collaboratorAvatar ? (
-                          <img
-                            src={creator.collaboratorAvatar} onError={handleAvatarImageError}
-                            alt={creator.collaboratorName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          creator.collaboratorName.charAt(0)
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <strong className="text-xs font-bold text-[#1A1612]">
-                            {creator.collaboratorName}
-                          </strong>
-                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${getTierColor(creator.collaboratorTier)}`}>
-                            {creator.collaboratorTier}
-                          </span>
-                          <span className="text-[11px] text-[#7D715E]">
-                            • {deals.length} sản phẩm
-                          </span>
-                        </div>
-
-                        {creator.primaryChannel && (
-                          <div className="flex items-center gap-1 text-[11px] text-[#7D715E] mt-0.5">
-                            <SocialIcon platform={creator.primaryChannel.platformName} className="w-3 h-3" />
-                            <span>
-                              {creator.primaryChannel.platformName}: {creator.primaryChannel.channelName || 'Kênh KOL'} ({creator.primaryChannel.followerCount?.toLocaleString()})
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Creator Header Actions */}
-                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                      {onSelectKolForChat && (
-                        <button
-                          type="button"
-                          onClick={() => onSelectKolForChat(creator.collaboratorId)}
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#EEDFC6] text-xs font-bold text-[#8A642C] transition cursor-pointer"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Nhắn tin</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Products under this Creator */}
-                  <div className="p-3.5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                      {deals.map((deal) => {
-                        const p = deal.progress;
-                        const revenueKpi = Boolean(deal.targetRevenue || p.targetRevenue);
-                        const target = Number(deal.targetRevenue || p.targetRevenue || deal.targetOrders || p.targetOrders || 0);
-                        const completed = revenueKpi ? p.validRevenue || 0 : p.completedOrders || 0;
-                        const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
-
-                        return (
-                          <div
-                            key={deal.id}
-                            className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5]/50 p-3 flex flex-col justify-between gap-2.5"
-                          >
-                            {/* Product & Rate */}
-                            <div className="flex items-start justify-between gap-2.5">
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                {deal.productImage ? (
-                                  <img
-                                    src={deal.productImage} onError={handleProductImageError}
-                                    alt={deal.productTitle || ''}
-                                    className="w-10 h-10 rounded-lg object-cover shrink-0 border border-[#EAE4D7] bg-white"
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-lg border border-[#EAE4D7] bg-white flex items-center justify-center text-[#B88E4F]">
-                                    <ShoppingBag className="w-4 h-4" />
-                                  </div>
-                                )}
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="text-xs font-bold text-[#1A1612] truncate m-0" title={deal.productTitle}>
-                                    {deal.productTitle || 'Sản phẩm áp dụng'}
-                                  </h4>
-                                  <span className="text-[11px] font-semibold text-[#7D715E] block mt-0.5">
-                                    {deal.productPrice.toLocaleString('vi-VN')} ₫
-                                  </span>
-                                </div>
-                              </div>
-
-                              <span className="px-2.5 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-black text-[#B88E4F] shrink-0">
-                                {deal.dealCommissionRate}%
-                              </span>
-                            </div>
-
-                            {/* KPI Commitment */}
-                            <div className="flex items-center justify-between text-xs py-1 border-t border-[#EAE4D7]/70">
-                              <span className="text-[#7D715E]">Tiến độ cam kết:</span>
-                              {target > 0 ? (
-                                <span className="font-bold text-[#1A1612]">
-                                  {completed.toLocaleString('vi-VN')}/{target.toLocaleString('vi-VN')} {revenueKpi ? '\u0111' : '\u0111\u01a1n'} ({percent}%)
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                                  Không giới hạn
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Revenue & Actions */}
-                            <div className="flex items-center justify-between pt-1 border-t border-[#EAE4D7]/70 text-xs gap-2">
-                              <div>
-                                <span className="text-[10px] text-[#7D715E] block">Doanh số:</span>
-                                <strong className="text-xs font-black text-[#1A1612]">
-                                  {(p.validRevenue || 0).toLocaleString('vi-VN')} ₫
-                                </strong>
-                              </div>
-
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyLink(deal)}
-                                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] text-xs font-bold text-[#1A1612] transition cursor-pointer"
-                                  title="Sao chép link tiếp thị"
-                                >
-                                  {copiedId === deal.id ? (
-                                    <>
-                                      <Check className="w-3.5 h-3.5 text-[#059669]" />
-                                      <span className="text-[#059669]">Đã chép</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="w-3.5 h-3.5 text-[#B88E4F]" />
-                                      <span>Copy link</span>
-                                    </>
-                                  )}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={busyId === deal.id}
-                                  onClick={() => handleReviewTermination(deal)}
-                                  className="p-1 rounded-lg border border-neutral-200 bg-white hover:bg-rose-50 text-neutral-500 hover:text-rose-600 transition cursor-pointer"
-                                  title="Đóng deal do vi phạm cam kết"
-                                >
-                                  <Ban className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           ) : (
-            /* Sub-view 1B: Table View */
-            <div className="rounded-xl border border-[#EAE4D7] bg-white shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] font-bold text-[11px] uppercase tracking-wider">
-                      <th className="p-3 pl-4">KOL / Nhà Sáng Tạo</th>
-                      <th className="p-3">Sản phẩm</th>
-                      <th className="p-3 text-center">Hoa hồng</th>
-                      <th className="p-3">Tiến độ KPI</th>
-                      <th className="p-3 text-right">Doanh số</th>
-                      <th className="p-3 text-right pr-4">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#EAE4D7]">
-                    {filteredActiveDeals.map((deal) => {
-                      const p = deal.progress;
-                      const revenueKpi = Boolean(deal.targetRevenue || p.targetRevenue);
-                        const target = Number(deal.targetRevenue || p.targetRevenue || deal.targetOrders || p.targetOrders || 0);
-                      const completed = revenueKpi ? p.validRevenue || 0 : p.completedOrders || 0;
-                      const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
-
-                      return (
-                        <tr key={deal.id} className="hover:bg-[#FAF8F5]/80 transition">
-                          <td className="p-3 pl-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-[#F3EFE6] border border-[#EEDFC6] overflow-hidden shrink-0 flex items-center justify-center text-[#B88E4F] font-bold text-xs">
-                                {deal.collaboratorAvatar ? (
-                                  <img
-                                    src={deal.collaboratorAvatar} onError={handleAvatarImageError}
-                                    alt={deal.collaboratorName}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  deal.collaboratorName.charAt(0)
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <strong className="text-xs font-bold text-[#1A1612]">
-                                    {deal.collaboratorName}
-                                  </strong>
-                                  <span className={`px-1 py-0.2 rounded text-[9px] font-bold border ${getTierColor(deal.collaboratorTier)}`}>
-                                    {deal.collaboratorTier}
-                                  </span>
-                                </div>
-                                {deal.primaryChannel && (
-                                  <div className="flex items-center gap-1 text-[10px] text-[#7D715E] mt-0.5">
-                                    <SocialIcon platform={deal.primaryChannel.platformName} className="w-3 h-3" />
-                                    <span>
-                                      {deal.primaryChannel.channelName || 'Kênh KOL'} ({deal.primaryChannel.followerCount?.toLocaleString()})
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="p-3">
-                            <div className="flex items-center gap-2 min-w-0 max-w-[200px]">
-                              {deal.productImage && (
-                                <img
-                                  src={deal.productImage} onError={handleProductImageError}
-                                  alt=""
-                                  className="w-8 h-8 rounded-lg object-cover shrink-0 border border-[#EAE4D7]"
-                                />
-                              )}
-                              <div className="min-w-0">
-                                <span className="truncate block font-bold text-[#1A1612]" title={deal.productTitle}>
-                                  {deal.productTitle || 'Sản phẩm'}
-                                </span>
-                                <span className="text-[10px] text-[#7D715E]">
-                                  {deal.productPrice.toLocaleString('vi-VN')} ₫
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="p-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-black text-[#B88E4F]">
-                              {deal.dealCommissionRate}%
-                            </span>
-                          </td>
-
-                          <td className="p-3">
-                            {target > 0 ? (
-                              <span className="font-bold text-[#1A1612]">
-                                {completed.toLocaleString('vi-VN')}/{target.toLocaleString('vi-VN')} {revenueKpi ? '\u0111' : '\u0111\u01a1n'} ({percent}%)
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                                Không giới hạn
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="p-3 text-right">
-                            <div className="font-bold text-[#1A1612]">
-                              {(p.validRevenue || 0).toLocaleString('vi-VN')} ₫
-                            </div>
-                          </td>
-
-                          <td className="p-3 pr-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              {onSelectKolForChat && (
-                                <button
-                                  type="button"
-                                  onClick={() => onSelectKolForChat(deal.collaboratorId)}
-                                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition"
-                                  title="Nhắn tin"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" />
-                                  <span>Nhắn tin</span>
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => handleCopyLink(deal)}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#1A1612] transition"
-                                title="Copy link"
-                              >
-                                {copiedId === deal.id ? (
-                                  <Check className="w-3.5 h-3.5 text-[#059669]" />
-                                ) : (
-                                  <Copy className="w-3.5 h-3.5" />
-                                )}
-                                <span>{copiedId === deal.id ? 'Đã chép' : 'Copy link'}</span>
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busyId === deal.id}
-                                onClick={() => handleReviewTermination(deal)}
-                                className="p-1 rounded-lg border border-neutral-200 bg-white hover:bg-rose-50 text-neutral-500 hover:text-rose-600 transition"
-                                title="Đóng deal"
-                              >
-                                <Ban className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+            <div className="deal-creator-list">
+              {groupedByCreator.map(({creator,deals})=><section key={creator.collaboratorId} className="deal-creator-group">
+                <header className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full border border-[#EAE4D7] bg-[#F3EFE6] text-xs text-[#90682F]">{creator.collaboratorAvatar?<img src={creator.collaboratorAvatar} onError={handleAvatarImageError} alt="" className="size-full object-cover"/>:creator.collaboratorName.charAt(0)}</div>
+                    <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="text-[13px] font-semibold">{creator.collaboratorName}</strong>{tierBadge(creator.collaboratorTier)}<span className="text-[11px] text-[#7D715E]">{new Set(deals.map(deal=>deal.productId)).size} sản phẩm · {deals.length} Deal</span></div>
+                      {creator.primaryChannel && <div className="mt-1 flex items-center gap-1 text-[11px] text-[#7D715E]"><SocialIcon platform={creator.primaryChannel.platformName} className="size-3"/><span>{creator.primaryChannel.platformName} · {creator.primaryChannel.channelName || 'Kênh KOL'}{creator.primaryChannel.followerCount != null && <> · {creator.primaryChannel.followerCount.toLocaleString('vi-VN')} người theo dõi</>}</span></div>}
+                    </div>
+                  </div>
+                  {onSelectKolForChat && <button type="button" onClick={()=>onSelectKolForChat(creator.collaboratorId)} className="inline-flex h-[34px]! shrink-0 items-center gap-1.5 rounded-lg! border border-[#EEDFC6] bg-white px-3 text-xs text-[#79592C]"><MessageSquare size={14}/>Nhắn tin</button>}
+                </header>
+                {rowHead}{deals.map(deal=>dealRow(deal))}
+              </section>)}
             </div>
           )}
         </div>
@@ -780,21 +395,18 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       {/* ========================================================================= */}
       {activeSubTab === 'PENDING' && (
         <div className="space-y-3">
-          {pendingProposals.length === 0 ? (
+          {visiblePending.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              {loadError ? 'Chưa tải được đề xuất đang chờ duyệt.' : loading ? 'Đang tải đề xuất…' : 'Hiện không có đề xuất nào đang chờ duyệt.'}
+              {loadError ? 'Chưa tải được đề xuất đang chờ duyệt.' : loading ? 'Đang tải đề xuất…' : proposalQuery ? 'Không có đề xuất phù hợp.' : 'Hiện không có đề xuất nào đang chờ duyệt.'}
             </div>
           ) : (
             <div className="space-y-3">
-              {pendingProposals.map((item: any) => {
-                const proposedRate = Number(item.proposedCommissionRate || 0);
-                const needsAdmin = proposedRate > 16;
-                const floorPrice = Number(item.product?.floorPrice || 0);
-                const sellingPrice = Number(item.product?.price || 0);
+              {visiblePending.map((item) => {
+                const terms = voucherTermsById[item.id] || defaultVipTerms;
                 return (
                   <div
                     key={item.id}
-                    className="rounded-xl border border-[#EEDFC6] bg-white p-4 space-y-3 shadow-2xs"
+                    className="deal-proposal-card rounded-xl border border-[#EAE4D7] bg-white p-4 space-y-3"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
                       <div className="flex items-center gap-3 min-w-0">
@@ -805,108 +417,175 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
                           )}
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-xs sm:text-sm font-bold text-[#1A1612] m-0 truncate">
+                        <div>
+                          <h4 className="text-sm font-semibold text-[#1A1612] m-0">
                             {item.product?.title || 'Sản phẩm'}
                           </h4>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#7D715E] mt-0.5 tabular-nums">
-                            <span>KOL: <strong className="text-[#1A1612]">{item.collaborator?.fullName}</strong></span>
-                            <span>·</span>
-                            <span>Giá bán: <strong className="text-[#1A1612]">{sellingPrice.toLocaleString('vi-VN')} ₫</strong></span>
-                            {floorPrice > 0 && (
-                              <>
-                                <span>·</span>
-                                <span>Giá sàn: <strong className="text-[#8C6226]">{floorPrice.toLocaleString('vi-VN')} ₫</strong></span>
-                              </>
-                            )}
-                          </div>
+                          <span className="text-[11px] text-[#7D715E]">
+                            <strong className="text-[#1A1612]">{item.collaborator?.fullName || item.collaboratorName || '—'}</strong> · {item.product?.price != null ? `${Number(item.product.price).toLocaleString('vi-VN')} ₫` : '—'}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <span className="px-2.5 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-black text-[#B88E4F] tabular-nums">
-                          Đề xuất {proposedRate}%
-                        </span>
-                        {needsAdmin && (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-[#92400E]">
-                            &gt;16%: Cần Admin duyệt tiếp
-                          </span>
-                        )}
-                        <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-700">
-                          Chờ duyệt
-                        </span>
+                      <div className="shrink-0 text-right">
+                        <span className="block text-[11px] text-[#7D715E]">Thù lao đề xuất</span>
+                        <strong className="text-xl font-bold text-[#90682F] tabular-nums">{item.proposedCommissionRate}%</strong>
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 divide-x divide-[#EAE4D7] text-xs">
+                      <div className="pr-3"><span className="block text-[11px] text-[#7D715E]">KPI cam kết</span>
+                        <strong className="mt-1 block font-semibold tabular-nums">{item.targetRevenue != null ? `${Number(item.targetRevenue).toLocaleString('vi-VN')} ₫` : item.targetOrders != null ? `${item.targetOrders.toLocaleString('vi-VN')} đơn` : 'Chưa xác định'}</strong>
+                      </div>
+                      <div className="pl-3"><span className="block text-[11px] text-[#7D715E]">Thời hạn Deal</span><strong className="mt-1 block font-semibold">{item.commitmentDays != null ? `${item.commitmentDays} ngày` : 'Chưa xác định'}</strong></div>
+                    </div>
+                    {item.salesCommitment && <div className="text-xs leading-relaxed"><span className="mb-1 block text-[11px] text-[#7D715E]">Điều khoản</span><p className="whitespace-pre-wrap break-words text-[#1A1612]">{item.salesCommitment}</p></div>}
 
-                    {/* KPI & Commitment Summary */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                      <div className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#7D715E] block">KPI cam kết</span>
-                        <strong className="text-[#1A1612] tabular-nums">
-                          {item.targetRevenue
-                            ? `Doanh số ${Number(item.targetRevenue).toLocaleString('vi-VN')} ₫`
-                            : item.targetOrders
-                            ? `${Number(item.targetOrders)} đơn hoàn tất`
-                            : 'Theo thỏa thuận chat'}
-                        </strong>
-                      </div>
-                      <div className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#7D715E] block">Hiệu lực chiến dịch</span>
-                        <strong className="text-[#1A1612] tabular-nums">
-                          {item.expiresAt ? `Đến ${new Date(item.expiresAt).toLocaleDateString('vi-VN')}` : '30 ngày từ khi kích hoạt'}
-                        </strong>
-                      </div>
-                      <div className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#7D715E] block">Ghi chú KOL</span>
-                        <span className="text-[#1A1612] line-clamp-1" title={item.salesCommitment || ''}>
-                          {item.salesCommitment || 'Không có ghi chú thêm'}
-                        </span>
+                    {/* Voucher Terms Config */}
+                    <div className="border-t border-[#EAE4D7] pt-3 space-y-2">
+                      <span className="text-xs font-bold text-[#1A1612] block">
+                        Voucher độc quyền
+                      </span>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
+                          Giảm (%)
+                          <input
+                            type="number" disabled={busyId !== null}
+                            min={1}
+                            max={20}
+                            value={terms.discountPercent === 0 ? '' : (terms.discountPercent ?? '')}
+                            onChange={(e) =>
+                              setVoucherTermsById((curr) => ({
+                                ...curr,
+                                [item.id]: { ...terms, discountPercent: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
+                              }))
+                            }
+                            className="h-[38px]! w-full min-w-0 rounded-lg! border border-[#EAE4D7] bg-white px-3 py-0 text-xs tabular-nums"
+                          />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
+                          Đơn tối thiểu (₫)
+                          <input
+                            type="text" inputMode="numeric" disabled={busyId !== null}
+                            min={0}
+                            step={10000}
+                            value={String(terms.minimumOrderAmount) === '' || terms.minimumOrderAmount == null ? '' : Number(terms.minimumOrderAmount).toLocaleString('vi-VN')}
+                            onChange={(e) =>
+                              setVoucherTermsById((curr) => ({
+                                ...curr,
+                                [item.id]: { ...terms, minimumOrderAmount: e.target.value.replace(/\D/g, '') === '' ? ('' as unknown as number) : Number(e.target.value.replace(/\D/g, '')) },
+                              }))
+                            }
+                            className="h-[38px]! w-full min-w-0 rounded-lg! border border-[#EAE4D7] bg-white px-3 py-0 text-xs tabular-nums"
+                          />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
+                          Giảm tối đa (₫)
+                          <input
+                            type="text" inputMode="numeric" disabled={busyId !== null}
+                            min={1000}
+                            step={5000}
+                            value={String(terms.maximumDiscountAmount) === '' || terms.maximumDiscountAmount == null ? '' : Number(terms.maximumDiscountAmount).toLocaleString('vi-VN')}
+                            onChange={(e) =>
+                              setVoucherTermsById((curr) => ({
+                                ...curr,
+                                [item.id]: { ...terms, maximumDiscountAmount: e.target.value.replace(/\D/g, '') === '' ? ('' as unknown as number) : Number(e.target.value.replace(/\D/g, '')) },
+                              }))
+                            }
+                            className="h-[38px]! w-full min-w-0 rounded-lg! border border-[#EAE4D7] bg-white px-3 py-0 text-xs tabular-nums"
+                          />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
+                          Lượt dùng
+                          <input
+                            type="number" disabled={busyId !== null}
+                            min={1}
+                            value={terms.usageLimitTotal === 0 ? '' : (terms.usageLimitTotal ?? '')}
+                            onChange={(e) =>
+                              setVoucherTermsById((curr) => ({
+                                ...curr,
+                                [item.id]: { ...terms, usageLimitTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
+                              }))
+                            }
+                            className="h-[38px]! w-full min-w-0 rounded-lg! border border-[#EAE4D7] bg-white px-3 py-0 text-xs tabular-nums"
+                          />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
+                          Ngân sách (₫)
+                          <input
+                            type="text" inputMode="numeric" disabled={busyId !== null}
+                            min={10000}
+                            step={100000}
+                            value={String(terms.budgetTotal) === '' || terms.budgetTotal == null ? '' : Number(terms.budgetTotal).toLocaleString('vi-VN')}
+                            onChange={(e) =>
+                              setVoucherTermsById((curr) => ({
+                                ...curr,
+                                [item.id]: { ...terms, budgetTotal: e.target.value.replace(/\D/g, '') === '' ? ('' as unknown as number) : Number(e.target.value.replace(/\D/g, '')) },
+                              }))
+                            }
+                            className="h-[38px]! w-full min-w-0 rounded-lg! border border-[#EAE4D7] bg-white px-3 py-0 text-xs tabular-nums"
+                          />
+                        </label>
+
+                        <label className="flex flex-col gap-1 text-[11px] text-[#7D715E]">
+                          Hiệu lực voucher (ngày)
+                          <input
+                            type="number" disabled={busyId !== null}
+                            min={1}
+                            max={365}
+                            value={terms.validDays === 0 ? '' : (terms.validDays ?? '')}
+                            onChange={(e) =>
+                              setVoucherTermsById((curr) => ({
+                                ...curr,
+                                [item.id]: { ...terms, validDays: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
+                              }))
+                            }
+                            className="h-[38px]! w-full min-w-0 rounded-lg! border border-[#EAE4D7] bg-white px-3 py-0 text-xs tabular-nums"
+                          />
+                        </label>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#EAE4D7]">
-                      <span className="text-[11px] text-[#7D715E]">
-                        {needsAdmin
-                          ? 'Sau khi Shop duyệt, đề xuất >16% sẽ chuyển System Admin phê duyệt trước khi hiệu lực.'
-                          : 'Thù lao tính trên giá thực thu; phần chênh lệch Deal giải ngân khi KOL đạt KPI.'}
-                      </span>
-                      <div className="flex items-center gap-2 ml-auto">
-                        {onSelectKolForChat && (
-                          <button
-                            type="button"
-                            onClick={() => item.collaboratorId && onSelectKolForChat(item.collaboratorId)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-bold text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            <span>Chat</span>
-                          </button>
+                    <div className="deal-proposal-actions flex flex-wrap items-center justify-end gap-2 border-t border-[#EAE4D7] pt-3">
+                      {onSelectKolForChat && (
+                        <button
+                          type="button"
+                          onClick={() => item.collaboratorId && onSelectKolForChat(item.collaboratorId)}
+                          className="mr-auto flex items-center gap-1 px-3 rounded-lg border border-[#EAE4D7] bg-white text-xs font-semibold text-[#655A49] hover:bg-[#FAF8F5]"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Nhắn tin</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={busyId !== null}
+                        onClick={() => handleDecideProposal(item.id, false)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#DC2626] text-xs font-bold hover:bg-neutral-50 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Từ chối</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={busyId !== null}
+                        onClick={() => handleDecideProposal(item.id, true)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-2xs cursor-pointer"
+                      >
+                        {busyId === item.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
                         )}
-
-                        <button
-                          type="button"
-                          disabled={busyId === item.id}
-                          onClick={() => handleDecideProposal(item.id, false)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-600 text-xs font-bold hover:bg-neutral-50 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>Từ chối</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={busyId === item.id}
-                          onClick={() => handleDecideProposal(item.id, true)}
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-2xs cursor-pointer"
-                        >
-                          {busyId === item.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Check className="w-3.5 h-3.5" />
-                          )}
-                          <span>Phê duyệt</span>
-                        </button>
-                      </div>
+                        <span>{busyId === item.id ? 'Đang xử lý…' : item.proposedCommissionRate > 16 ? 'Chấp thuận & trình Admin' : 'Phê duyệt'}</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -921,69 +600,63 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       {/* ========================================================================= */}
       {activeSubTab === 'HISTORY' && (
         <div className="space-y-3">
-          {historyProposals.length === 0 ? (
+          {visibleHistory.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
               {loadError ? 'Chưa tải được lịch sử hợp đồng.' : 'Không có lịch sử hợp đồng nào.'}
             </div>
           ) : (
-            <div className="rounded-xl border border-[#EAE4D7] bg-white shadow-2xs overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] font-bold text-[11px] uppercase tracking-wider">
-                      <th className="p-3 pl-4">KOL / Nhà Sáng Tạo</th>
-                      <th className="p-3">Sản phẩm</th>
-                      <th className="p-3 text-center">Hoa hồng</th>
-                      <th className="p-3">Trạng thái</th>
-                      <th className="p-3 text-right pr-4">Thời gian</th>
-                    </tr>
-                  </thead>
+                <table className="deal-history-table w-full table-fixed border-collapse text-left text-xs">
+                  <colgroup><col className="w-[20%]"/><col className="w-[43%]"/><col className="w-[9%]"/><col className="w-[15%]"/><col className="w-[13%]"/></colgroup>
+                  <thead><tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] text-[#7D715E]">
+                    <th className="px-4 py-3 font-medium">KOL</th><th className="px-3 py-3 font-medium">Sản phẩm</th><th className="px-3 py-3 text-right font-medium">Thù lao</th><th className="px-3 py-3 font-medium">Kết quả</th><th className="px-4 py-3 text-right font-medium">Cập nhật</th>
+                  </tr></thead>
                   <tbody className="divide-y divide-[#EAE4D7]">
-                    {historyProposals.map((item) => {
-                      const isTerminated = item.shopResponse?.startsWith('[ĐÃ ĐÓNG DEAL / CHẾ TÀI]') || item.referralLink?.status === 'BLOCKED';
-                      return (
-                        <tr key={item.id} className="hover:bg-[#FAF8F5]/80 transition">
-                          <td className="p-3 pl-4">
-                            <strong className="text-xs font-bold text-[#1A1612]">
-                              {item.collaborator?.fullName || 'KOL'}
-                            </strong>
-                          </td>
-                          <td className="p-3">
-                            <span className="font-semibold text-[#1A1612]">
-                              {item.product?.title || 'Sản phẩm'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center font-bold text-[#7D715E]">
-                            {item.proposedCommissionRate}%
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              isTerminated
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : item.status === 'REJECTED'
-                                  ? 'bg-neutral-100 text-neutral-600 border border-neutral-200'
-                                  : 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]'
-                            }`}>
-                              {isTerminated
-                                ? 'Đã đóng deal'
-                                : item.status === 'REJECTED'
-                                  ? 'Từ chối'
-                                  : 'Deal cũ'}
-                            </span>
-                          </td>
-                          <td className="p-3 pr-4 text-right text-[11px] text-[#7D715E]">
-                            {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('vi-VN') : '—'}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {pageHistory.map(item => <tr key={item.id} className="cursor-pointer transition-colors hover:bg-[#FBF5EB]/50" onClick={() => setSelectedHistory(item)}>
+                      <td className="px-4 py-3"><button type="button" onClick={() => setSelectedHistory(item)} className="flex min-h-10 w-full min-w-0 items-center gap-2 text-left" aria-label={`Xem Deal của ${item.collaborator?.fullName || item.collaboratorName || 'KOL'}`}>
+                        <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-full border border-[#EAE4D7] bg-[#F3EFE6] text-[11px] text-[#90682F]">{item.collaborator?.collaboratorProfile?.avatarUrl ? <img src={item.collaborator.collaboratorProfile.avatarUrl} onError={handleAvatarImageError} alt="" className="size-full object-cover"/> : (item.collaborator?.fullName || item.collaboratorName || 'K').charAt(0)}</span>
+                        <strong className="min-w-0 break-words text-[13px] font-semibold">{item.collaborator?.fullName || item.collaboratorName || 'KOL'}</strong>
+                      </button></td>
+                      <td className="px-3 py-3"><div className="flex min-w-0 items-center gap-2"><img src={item.product?.imageUrl || '/assets/product-placeholder.svg'} onError={handleProductImageError} alt="" className="size-8 shrink-0 rounded-md border border-[#EAE4D7] bg-white object-contain"/><span className="line-clamp-2 text-[13px]">{item.scopeType === 'STORE_WIDE' ? 'Toàn cửa hàng' : item.product?.title || item.productTitle || 'Sản phẩm trong Deal'}</span></div></td>
+                      <td className="px-3 py-3 text-right font-semibold tabular-nums text-[#90682F]">{item.approvedCommissionRate ?? item.proposedCommissionRate}%</td>
+                      <td className="px-3 py-3"><span className="inline-flex rounded-md border border-[#EAE4D7] bg-[#F3EFE6] px-2 py-1 text-[11px] text-[#655A49]">{historyDealState(item)}</span></td>
+                      <td className="px-4 py-3 text-right text-[11px] tabular-nums text-[#7D715E]">{dealDate(item.updatedAt)}</td>
+                    </tr>)}
                   </tbody>
                 </table>
               </div>
+              {historyPages > 1 && <nav aria-label="Phân trang lịch sử Deal" className="flex items-center justify-between gap-2 border-t border-[#EAE4D7] px-4 py-3 text-xs text-[#7D715E]">
+                <span>{(safeHistoryPage - 1) * 10 + 1}–{Math.min(safeHistoryPage * 10, visibleHistory.length)} / {visibleHistory.length} Deal</span>
+                <div className="flex items-center gap-3"><button type="button" disabled={safeHistoryPage === 1} onClick={() => setHistoryPage(safeHistoryPage - 1)} className="h-8 rounded-lg border border-[#EAE4D7] px-3 disabled:opacity-40">Trước</button><span>{safeHistoryPage}/{historyPages}</span><button type="button" disabled={safeHistoryPage === historyPages} onClick={() => setHistoryPage(safeHistoryPage + 1)} className="h-8 rounded-lg border border-[#EAE4D7] px-3 disabled:opacity-40">Sau</button></div>
+              </nav>}
             </div>
           )}
         </div>
       )}
+
+      <Modal isOpen={!!selectedHistory} onClose={() => setSelectedHistory(null)} title="Chi tiết Deal" maxWidth="2xl" stickyHeader>
+        {selectedHistory && <div className="space-y-4 text-sm">
+          <div className="flex items-start gap-3"><img src={selectedHistory.product?.imageUrl || '/assets/product-placeholder.svg'} onError={handleProductImageError} alt="" className="size-10 shrink-0 rounded-lg border border-[#EAE4D7] object-contain"/><div><strong>{selectedHistory.product?.title || selectedHistory.productTitle || 'Sản phẩm trong Deal'}</strong><p className="mt-1 text-xs text-[#7D715E]">{selectedHistory.collaborator?.fullName || selectedHistory.collaboratorName || 'KOL'} · {historyDealState(selectedHistory)}</p></div></div>
+          <dl className="grid grid-cols-2 gap-4 border-y border-[#EAE4D7] py-4">
+            {[
+              ['Thù lao', `${selectedHistory.approvedCommissionRate ?? selectedHistory.proposedCommissionRate}%`],
+              ['KPI cam kết', selectedHistory.targetRevenue != null ? `${Number(selectedHistory.targetRevenue).toLocaleString('vi-VN')} ₫` : selectedHistory.targetOrders != null ? `${selectedHistory.targetOrders} đơn` : 'Chưa xác định'],
+              ['Thời hạn Deal', selectedHistory.commitmentDays != null ? `${selectedHistory.commitmentDays} ngày` : 'Chưa xác định'],
+              ['Ngày đề xuất', dealDate(selectedHistory.createdAt)], ['Ngày kết thúc cam kết', dealDate(selectedHistory.commitmentEndsAt)], ['Ngày đóng', dealDate(selectedHistory.closedAt)], ['Cập nhật', dealDate(selectedHistory.updatedAt)],
+            ].map(([label, value]) => <div key={label}><dt className="text-xs text-[#7D715E]">{label}</dt><dd className="mt-1 font-medium tabular-nums">{value}</dd></div>)}
+          </dl>
+          {(historyDetails || selectedHistory).salesCommitment && <div><span className="text-xs text-[#7D715E]">Điều khoản</span><p className="mt-1 whitespace-pre-wrap break-words">{(historyDetails || selectedHistory).salesCommitment}</p></div>}
+          {(historyDetails || selectedHistory).shopResponse && <div><span className="text-xs text-[#7D715E]">Phản hồi / Lý do xử lý</span><p className="mt-1 whitespace-pre-wrap break-words">{(historyDetails || selectedHistory).shopResponse}</p></div>}
+          {!historyDetails && !historyDetailError && <p role="status" className="text-xs text-[#7D715E]">Đang tải thông tin voucher…</p>}
+          {historyDetailError && <p role="alert" className="text-xs text-[#DC2626]">Chưa tải được chi tiết bổ sung. <button type="button" onClick={() => setHistoryRetry(value => value + 1)} className="underline">Thử lại</button></p>}
+          {historyDetails && <div className="border-t border-[#EAE4D7] pt-3"><h4 className="font-semibold">Voucher độc quyền</h4><p className="mt-1 break-all text-xs">{historyDetails.vipVoucherCode || historyDetails.referralLink?.customCouponCode || 'Chưa ghi nhận mã voucher'}</p>
+            {historyDetails.couponTerms && <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">{[
+              ['Giảm', 'discountPercent', '%'], ['Đơn tối thiểu', 'minimumOrderAmount', ' ₫'], ['Giảm tối đa', 'maximumDiscountAmount', ' ₫'], ['Lượt dùng', 'usageLimitTotal', ''], ['Ngân sách', 'budgetTotal', ' ₫'], ['Hiệu lực voucher', 'validDays', ' ngày'],
+            ].map(([label, key, unit]) => <div key={key}><dt className="text-[#7D715E]">{label}</dt><dd className="mt-1 tabular-nums">{historyDetails.couponTerms?.[key] != null ? `${Number(historyDetails.couponTerms[key]).toLocaleString('vi-VN')}${unit}` : '—'}</dd></div>)}</dl>}
+          </div>}
+        </div>}
+      </Modal>
 
       {/* ========================================================================= */}
       {/* MODAL: TERMINATION CONFIRMATION                                           */}

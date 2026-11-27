@@ -1,6 +1,6 @@
 # KẾ HOẠCH HOÀN THIỆN LỖ HỔNG, CHỐNG LẠC ĐỀ & ĐỐI CHIẾU TRƯỚC/SAU (2026-11-22)
 
-> **Mục tiêu tài liệu:** Ghi nhận đầy đủ **100% các lỗ hổng validation, lỗi hiển thị UI, sai lệch dữ liệu và từ khóa lạc đề** được phát hiện trong đợt **Live Test Ngoại Lệ & Nhập Liệu Trái Chiều trên 5 Workflows (`http://localhost:5173`)**.  
+> **Mục tiêu tài liệu:** Ghi nhận đầy đủ **100% các lỗ hổng validation, lỗi hiển thị UI, sai lệch dữ liệu và từ khóa lạc đề** được phát hiện trong đợt **Live Test Ngoại Lệ & Nhập Liệu Trái Chiều trên 5 Workflows (`http://localhost:5173`)**.
 > Tài liệu đóng vai trò **bảng đối chiếu Trước (Before) $\rightarrow$ Sau (After)** để kiểm chứng rõ ràng sự khác biệt sau khi tiến hành sửa code. *(Chưa chỉnh sửa mã nguồn ở bước này).*
 
 ---

@@ -15,9 +15,10 @@ const dateLabel = (value?: string | null) => value && Number.isFinite(Date.parse
 const statusLabels: Record<string, string> = { PENDING: 'Chờ Shop xác nhận', SHIPPING: 'Đang vận chuyển', DELIVERED: 'Đã giao hàng', COMPLETED: 'Đơn hàng đã hoàn thành', CANCELLED: 'Đơn hàng đã hủy', RETURN_REQUESTED: 'Đang xử lý đổi trả', DISPUTED: 'Đang khiếu nại', RETURNED: 'Đã trả hàng' };
 const paymentLabels: Record<string, string> = { WALLET: 'Ví SCANMS', E_WALLET: 'Ví SCANMS', PAYOS: 'Chuyển khoản qua PayOS', COD: 'Thanh toán khi nhận hàng', BANK_TRANSFER: 'Chuyển khoản ngân hàng' };
 
-export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onChat, onReorder, onReview, onViewReviews, onReturn, onCancel, onConfirmReceipt, confirmingOrderId }: {
+export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, receipt, onChat, onReorder, onReview, onViewReviews, onReturn, onCancel, onConfirmReceipt, confirmingOrderId }: {
   orderId: string;
   refreshVersion?: number;
+  receipt?: Pick<CustomerOrder, 'status' | 'completedAt'>;
   onChat: (order: CustomerOrder, item?: CustomerOrderItem) => void;
   onReorder: (order: CustomerOrder) => void;
   onReview: (order: CustomerOrder) => void;
@@ -27,7 +28,8 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
   onConfirmReceipt?: (order: CustomerOrder) => void;
   confirmingOrderId?: string | null;
 }) {
-  const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [loadedOrder, setOrder] = useState<CustomerOrder | null>(null);
+  const order = loadedOrder?.status === 'DELIVERED' && receipt ? { ...loadedOrder, ...receipt } : loadedOrder;
   const returnWindowNow = useReturnWindowClock([order]);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);

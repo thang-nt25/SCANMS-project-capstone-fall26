@@ -25,7 +25,6 @@ export const moduleIcons: Record<BusinessFeature, IconName> = {
   audit: "file-text",
   coupons: "gift",
   "manual-orders": "file-plus",
-  campaigns: "flag",
   fraud: "alert-triangle",
   identity: "user-check",
   bonuses: "award",

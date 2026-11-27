@@ -1,8 +1,8 @@
 export const SOCIAL_CHANNEL_FIELDS: Record<string, { nameLabel: string; namePlaceholder: string; urlPlaceholder: string; audienceLabel: string; proofLabel: string; hosts: string[] }> = {
   TIKTOK: { nameLabel: 'Tên tài khoản TikTok', namePlaceholder: '@thaonhi.skincare', urlPlaceholder: 'https://www.tiktok.com/@thaonhi.skincare', audienceLabel: 'Số người theo dõi', proofLabel: 'Ảnh quản trị kênh TikTok', hosts: ['tiktok.com'] },
-  YOUTUBE: { nameLabel: 'Tên kênh YouTube', namePlaceholder: '@thaonhivlog', urlPlaceholder: 'https://www.youtube.com/@thaonhivlog', audienceLabel: 'Số người đăng ký', proofLabel: 'Ảnh YouTube Studio', hosts: ['youtube.com'] },
+  YOUTUBE: { nameLabel: 'Tên kênh YouTube', namePlaceholder: '@thaonhivlog', urlPlaceholder: 'https://www.youtube.com/@thaonhivlog', audienceLabel: 'Số người đăng ký', proofLabel: 'Ảnh YouTube Studio', hosts: ['youtube.com', 'youtu.be'] },
   INSTAGRAM: { nameLabel: 'Tên tài khoản Instagram', namePlaceholder: '@thaonhi.skincare', urlPlaceholder: 'https://www.instagram.com/thaonhi.skincare', audienceLabel: 'Số người theo dõi', proofLabel: 'Ảnh quản trị Instagram', hosts: ['instagram.com'] },
-  FACEBOOK: { nameLabel: 'Tên trang hoặc tài khoản Facebook', namePlaceholder: 'Thảo Nhi Skincare', urlPlaceholder: 'https://www.facebook.com/thaonhi.skincare', audienceLabel: 'Số người theo dõi', proofLabel: 'Ảnh quản trị Facebook', hosts: ['facebook.com'] },
+  FACEBOOK: { nameLabel: 'Tên trang hoặc tài khoản Facebook', namePlaceholder: 'Thảo Nhi Skincare', urlPlaceholder: 'https://www.facebook.com/thaonhi.skincare', audienceLabel: 'Số người theo dõi', proofLabel: 'Ảnh quản trị Facebook', hosts: ['facebook.com', 'fb.com'] },
   OTHER: { nameLabel: 'Tên kênh hoặc tài khoản', namePlaceholder: 'Nhập tên kênh của bạn', urlPlaceholder: 'https://example.com/kenh-cua-ban', audienceLabel: 'Số người theo dõi', proofLabel: 'Ảnh quản trị kênh', hosts: [] },
 };
 

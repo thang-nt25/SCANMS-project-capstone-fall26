@@ -3,6 +3,7 @@ import { Check, Copy, FileText, Info, Link as LinkIcon, Plus, X } from 'lucide-r
 import { returnService, type ReturnDetail } from '../../services/return.service';
 import { useReturnAction } from '../../hooks/useReturnDetail';
 import { uploadService } from '../../services/upload.service';
+import { toast } from '../../utils/toast';
 
 type Action = 'SUBMIT' | 'REQUEST_MORE' | 'ACCEPT' | 'REJECT' | 'APPEAL' | 'PAID';
 const actions: Record<Action,string> = { SUBMIT:'Ghi nhận đã gửi GHN',REQUEST_MORE:'GHN yêu cầu bổ sung',ACCEPT:'GHN chấp thuận',REJECT:'GHN từ chối',APPEAL:'Kháng nghị với GHN',PAID:'Ghi nhận đã thanh toán' };
@@ -26,7 +27,8 @@ export function GhnClaimEditor({ request }: {request:ReturnDetail}) {
   const [file,setFile] = useState<File | null>(null);
   const [url,setUrl] = useState('');
   const [mode,setMode] = useState<'file'|'url'>('file');
-  const [busy,setBusy] = useState(false);
+  const [savePhase,setSavePhase] = useState<'uploading'|'saving'|null>(null);
+  const busy = savePhase !== null;
   const [error,setError] = useState('');
   const [copied,setCopied] = useState(false);
   const [saved,setSaved] = useState(false);
@@ -42,14 +44,19 @@ export function GhnClaimEditor({ request }: {request:ReturnDetail}) {
   const valid = notes.trim().length>=10 && notes.trim().length<=2000 && (!proofRequired || proofValid) && (mode!=='url' || !url.trim() || proofValid) && (selected!=='SUBMIT' || (reference.trim().length>=3 && positive(claimed))) && (selected!=='APPEAL' || reference.trim().length>=3) && (!['ACCEPT','PAID'].includes(selected) || positive(approved,claim.claimedAmount || 1000000000));
   async function submit(event:FormEvent) {
     event.preventDefault(); if(lock.current || busy || !valid || !selected)return;
-    lock.current=true;setBusy(true);setError('');setSaved(false);
+    const evidenceFile = mode === 'file' ? file : null;
+    lock.current=true;setSavePhase(evidenceFile ? 'uploading' : 'saving');setError('');setSaved(false);
     try {
-      const proof = mode==='file' && file ? (await uploadService.uploadMedia(file,`scanms/returns/${request.id}/ghn-claim`)).url : mode==='url' ? url.trim() || undefined : undefined;
+      const proof = evidenceFile ? (await uploadService.uploadMedia(evidenceFile,`scanms/returns/${request.id}/ghn-claim`)).url : mode==='url' ? url.trim() || undefined : undefined;
+      setSavePhase('saving');
       const result=await update.mutateAsync({action:selected,ghnReference:reference.trim()||undefined,claimedAmount:claimed?Number(claimed):undefined,approvedAmount:approved?Number(approved):undefined,notes:notes.trim(),proofUrl:proof}) as ReturnDetail;
       if(result?.id===request.id && result.ghnClaim)setSnapshot(result);
       setNotes('');setFile(null);setUrl('');setSaved(true);
+      toast.success('Đã lưu đối soát GHN', {
+        description: result?.ghnClaim ? states[result.ghnClaim.status] : undefined,
+      });
     }catch(cause){setError(cause instanceof Error?cause.message:'Chưa lưu được cập nhật. Vui lòng thử lại.');}
-    finally{lock.current=false;setBusy(false);}
+    finally{lock.current=false;setSavePhase(null);}
   }
   return <section className="ghn-editor" aria-label="Đối soát bồi hoàn GHN"><header><h3><FileText size={18}/>Đối soát bồi hoàn GHN</h3><span>{states[claim.status]}</span></header><div className="ghn-editor-grid">
     <section className="ghn-editor-summary"><h4>Thông tin hồ sơ</h4><dl><div><dt>Vận đơn gốc</dt><dd className="ghn-editor-code"><strong>{claim.originalTrackingNumber}</strong><button type="button" aria-label="Sao chép vận đơn" onClick={()=>void navigator.clipboard.writeText(claim.originalTrackingNumber).then(()=>setCopied(true)).catch(()=>setError('Chưa sao chép được mã vận đơn.'))}>{copied?<Check size={14}/>:<Copy size={14}/>}</button></dd></div><div><dt>Mã yêu cầu GHN</dt><dd>{claim.ghnReference||'Chưa có'}</dd></div><div><dt>Đề nghị bồi hoàn</dt><dd>{money(claim.claimedAmount)}</dd></div><div><dt>GHN chấp thuận</dt><dd>{claim.approvedAmount==null?'Chưa có kết quả':money(claim.approvedAmount)}</dd></div></dl>
@@ -67,5 +74,5 @@ export function GhnClaimEditor({ request }: {request:ReturnDetail}) {
         {mode==='file'&&file&&<div className="ghn-editor-selected-file"><FileText size={16}/><span>{file.name}<small>{(file.size/1024/1024).toFixed(2)} MB</small></span><button type="button" aria-label="Xóa chứng từ" onClick={()=>setFile(null)}><X size={14}/></button></div>}
         {mode==='url'&&<input type="url" pattern="https://.*" value={url} onChange={event=>setUrl(event.target.value)} placeholder="Liên kết HTTPS của chứng từ" aria-label="Liên kết chứng từ"/>}
       </div></fieldset></form>:<section className="ghn-editor-finished"><Check size={20}/><strong>Đã ghi nhận GHN thanh toán</strong><p>Hồ sơ bồi hoàn đã hoàn tất.</p></section>}
-    </div><footer><p><Info size={15}/>Ghi nhận theo phản hồi và chứng từ GHN.</p>{options.length>0&&<button type="submit" form={`ghn-editor-${request.id}`} disabled={busy||update.isPending||!valid}>{busy||update.isPending?'Đang lưu…':'Lưu cập nhật'}</button>}</footer>{error&&<p className="ghn-editor-error" role="alert">{error}</p>}{saved&&<p role="status" className="ghn-editor-success">Đã lưu cập nhật.</p>}</section>;
+    </div><footer><p><Info size={15}/>Ghi nhận theo phản hồi và chứng từ GHN.</p>{options.length>0&&<button type="submit" form={`ghn-editor-${request.id}`} disabled={busy||update.isPending||!valid}>{savePhase==='uploading'?'Đang tải chứng từ…':busy||update.isPending?'Đang lưu…':'Lưu cập nhật'}</button>}</footer>{error&&<p className="ghn-editor-error" role="alert">{error}</p>}{saved&&<p className="ghn-editor-success">Đã lưu cập nhật.</p>}</section>;
 }

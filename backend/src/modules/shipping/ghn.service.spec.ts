@@ -76,7 +76,9 @@ describe('GHN customer order notifications', () => {
       ghnDistrictId: 1, ghnWardCode: '001',
       product: { title: 'Sample', price: 100000, packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5, store: { id: 'store-1', ownerId: 'shop-1', name: 'Shop', onboardingData: { warehouseAddress: 'Actual warehouse', contactPhone: '0987654321' }, returnWarehouse: {} } },
     };
+    const store = { findFirst: jest.fn().mockResolvedValue(null) };
     const tx = {
+      store,
       sampleProductRequest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUnique: jest.fn().mockResolvedValue(sample) },
       sampleRequestEvent: { create: jest.fn() }, notification: { create: jest.fn() },
       sampleShippingCharge: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
@@ -84,6 +86,7 @@ describe('GHN customer order notifications', () => {
     };
     const prisma = {
       sampleProductRequest: { findUnique: jest.fn().mockResolvedValue(sample) },
+      store,
       $transaction: jest.fn((callback: any) => callback(tx)),
     };
     const service = new GhnService(prisma as any, {} as ConfigService);
@@ -222,6 +225,21 @@ describe('GHN customer order notifications', () => {
     const fetch = jest.spyOn(service as any, 'ghnFetch');
     await expect(service.createSampleShippingOrder('sample-1', 'another-owner')).rejects.toThrow('không quản lý');
     expect(fetch).not.toHaveBeenCalled(); expect(tx.sampleShippingCharge.create).not.toHaveBeenCalled();
+  });
+
+  it('lets the assigned manager create a sample shipment for an Admin-owned store', async () => {
+    const { service, prisma } = sampleShippingFixture();
+    prisma.store.findFirst.mockResolvedValue({ id: 'store-1' });
+    jest.spyOn(service as any, 'ghnFetch').mockResolvedValue({
+      code: 200,
+      data: { order_code: 'TEST-ASSIGNED', total_fee: 25000 },
+    });
+    await expect(
+      service.createSampleShippingOrder('sample-1', 'assigned-manager', GhnEnvironment.TEST),
+    ).resolves.toMatchObject({ environment: 'TEST', testOnly: true });
+    expect(prisma.store.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 'store-1' }) }),
+    );
   });
 
   it.each([undefined, null, -1, NaN, Infinity, '25000', false])('rejects an invalid GHN checkout quote %p', async (total) => {

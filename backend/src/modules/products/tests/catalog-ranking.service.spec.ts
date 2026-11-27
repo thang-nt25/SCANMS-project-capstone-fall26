@@ -30,6 +30,8 @@ describe('public catalogue real metrics', () => {
     expect(() => JSON.stringify(result)).not.toThrow();
     const query = prisma.product.findMany.mock.calls[0][0];
     expect(query.select.createdAt).toBe(true);
+    expect(query.select.listPrice).toBe(true);
+    expect(query.select.variants.select.listPrice).toBe(true);
     expect(query.select).not.toHaveProperty('customCommissionRate');
     expect(query.select.store.select).not.toHaveProperty('defaultCommissionRate');
     expect(result.pagination).toMatchObject({ total: 2, totalPages: 1 });

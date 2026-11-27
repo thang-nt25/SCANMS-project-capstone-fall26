@@ -50,6 +50,15 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
       expect(prisma.coupon.update).not.toHaveBeenCalled();
     });
 
+  it('only loads shareable codes for the manager of the requested store', async () => {
+    const { service } = fixture();
+    const loadCoupons = jest.spyOn(service, 'getPublicStoreCoupons').mockResolvedValue([]);
+    await expect(service.getShareableStoreCoupons('shop', 'other-owner', UserRole.SHOP_MANAGER)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(loadCoupons).not.toHaveBeenCalled();
+    await expect(service.getShareableStoreCoupons('shop', 'owner', UserRole.SHOP_MANAGER)).resolves.toEqual([]);
+    expect(loadCoupons).toHaveBeenCalledWith('shop');
+  });
+
   it.each(['PLATFORM_FUNDED', 'CO_FUNDED'])('denies Shop policy writes against stored %s funding', async fundingSource => {
     const { service, prisma } = fixture({ fundingSource, platformFundingRate: 100 });
     for (const payload of [{ budgetTotal: 999999999 }, { discountValue: 99 }, { minimumOrderAmount: 0 }, { fundingSource: 'SHOP_FUNDED' }]) {
@@ -156,6 +165,7 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
   it('enforces the voucher role matrix using actual controller metadata and RolesGuard', () => {
     const guard = new RolesGuard(new Reflector());
     const matrix: Array<[any, string, UserRole[]]> = [
+      [StoreCouponsController, 'getShareableStoreCoupons', [UserRole.SHOP_MANAGER]],
       [StoreCouponsController, 'createStoreCoupon', [UserRole.SHOP_MANAGER]],
       [StoreCouponsController, 'approveCoupon', [UserRole.SHOP_MANAGER]],
       [CollaboratorCouponsController, 'proposeCoupon', [UserRole.COLLABORATOR]],
