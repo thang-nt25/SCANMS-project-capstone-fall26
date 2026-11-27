@@ -363,6 +363,11 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
                 alt={`Ảnh đại diện ${currentUser?.fullName || 'tài khoản'}`}
                 className="w-full h-full object-cover"
                 onError={() => setFailedAvatar(`${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}`)}
+                onLoad={(e) => {
+                  if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
+                    setFailedAvatar(`${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}`);
+                  }
+                }}
               />
             ) : (
               <span>

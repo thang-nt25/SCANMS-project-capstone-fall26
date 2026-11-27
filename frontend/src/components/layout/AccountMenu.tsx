@@ -58,10 +58,30 @@ export function AccountMenu({ id, user, role, onClose, onLogout, inputRef, onAva
               className="account-menu__avatar-link grid size-full place-items-center rounded-[inherit] text-inherit no-underline [&_img]:block [&_img]:size-full [&_img]:object-cover [&_img]:rounded-[inherit]"
               aria-label="Xem tài khoản"
             >
-              {avatar && failedAvatar !== avatar ? <img src={avatar} alt="" onError={() => setFailedAvatar(avatar)} /> : <span aria-hidden="true">{name.charAt(0).toUpperCase()}</span>}
+              {avatar && failedAvatar !== avatar ? (
+                <img
+                  src={avatar}
+                  alt=""
+                  onError={() => setFailedAvatar(avatar)}
+                  onLoad={(e) => {
+                    if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
+                      setFailedAvatar(avatar);
+                    }
+                  }}
+                />
+              ) : <span aria-hidden="true">{name.charAt(0).toUpperCase()}</span>}
             </Link>
           ) : avatar && failedAvatar !== avatar ? (
-            <img src={avatar} alt="" onError={() => setFailedAvatar(avatar)} />
+            <img
+              src={avatar}
+              alt=""
+              onError={() => setFailedAvatar(avatar)}
+              onLoad={(e) => {
+                if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
+                  setFailedAvatar(avatar);
+                }
+              }}
+            />
           ) : (
             <span aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
           )}

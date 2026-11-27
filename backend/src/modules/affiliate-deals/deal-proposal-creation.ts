@@ -12,6 +12,7 @@ import { dealScope, sameDealScope, scopedProducts } from './deal-scope.policy';
 import { validateDealKpi, validateRevenueKpi } from './deal-kpi.policy';
 import { lockDealPair } from './exclusive-deal-activation';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { assertCooperationOpen } from '../../common/policies/cooperation.policy';
 
 /** One store/creator lock serializes overlapping scope negotiations in either direction. */
 export async function createDealProposal(
@@ -60,6 +61,12 @@ export async function createDealProposal(
       });
       if (!product || product.store.isDeleted || !product.store.isActive)
         throw new NotFoundException('Không tìm thấy gian hàng hoạt động.');
+      await assertCooperationOpen(
+        tx,
+        product.storeId,
+        collaboratorId,
+        'tạo đề xuất Deal',
+      );
       await lockDealPair(tx, collaboratorId, `store:${product.storeId}`);
       if (
         initiatedById &&

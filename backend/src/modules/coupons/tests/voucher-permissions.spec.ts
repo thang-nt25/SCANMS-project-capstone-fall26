@@ -58,10 +58,15 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
     expect(prisma.coupon.update).not.toHaveBeenCalled();
   });
 
-  it('permits legitimate Shop policy changes and enforces 100% Shop funding', async () => {
+  it('permits legitimate Shop policy changes, persists expiresAt extension, and enforces 100% Shop funding', async () => {
     const { service, coupon } = fixture();
-    await service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', { budgetTotal: 1000000 });
+    const extendedDate = new Date('2099-06-01T00:00:00.000Z').toISOString();
+    await service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', {
+      budgetTotal: 1000000,
+      expiresAt: extendedDate,
+    });
     expect(Number(coupon.budgetTotal)).toBe(1000000);
+    expect(coupon.expiresAt?.toISOString()).toBe(extendedDate);
     expect(Number(coupon.shopFundingRate)).toBe(100);
     expect(Number(coupon.platformFundingRate)).toBe(0);
     await expect(service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', { shopFundingRate: 1 })).rejects.toBeInstanceOf(ForbiddenException);
@@ -182,4 +187,37 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
   });
 
   it("Customer cannot retrieve or mutate retired saved voucher inventories", async () => {const {service,prisma}=fixture();prisma.customerSavedCoupon={findMany:jest.fn(),deleteMany:jest.fn()};await expect(service.getSavedCouponIds('customer-a')).resolves.toEqual([]);await expect(service.removeSavedCoupon('customer-a','voucher-a')).rejects.toBeInstanceOf(GoneException);expect(prisma.customerSavedCoupon.findMany).not.toHaveBeenCalled();expect(prisma.customerSavedCoupon.deleteMany).not.toHaveBeenCalled();});
+
+  it('allows Shop Manager to issue and supersede a KOL exclusive coupon when approved store-wide deal exists', async () => {
+    const { service, prisma } = fixture();
+    prisma.user = { findUnique: jest.fn().mockResolvedValue({ id: 'kol', fullName: 'Thảo Nhi', role: 'COLLABORATOR', isActive: true, isDeleted: false }) };
+    prisma.storeCollaborator = { findUnique: jest.fn().mockResolvedValue({ status: 'APPROVED' }) };
+    prisma.exclusiveDealProposal = { findFirst: jest.fn().mockResolvedValue({ id: 'deal-wide' }) };
+    prisma.coupon.count = jest.fn().mockResolvedValue(0);
+
+    const issued = await service.createStoreCoupon('shop', 'owner', 'SHOP_MANAGER', {
+      collaboratorId: 'kol',
+      code: 'THAONHINEW',
+      discountType: 'PERCENTAGE',
+      discountValue: 10,
+      maximumDiscountAmount: 50000,
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+    });
+    expect(issued.coupon.status).toBe(CouponStatus.ACTIVE);
+    expect(prisma.coupon.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ collaboratorId: 'kol', storeId: 'shop' }),
+        data: expect.objectContaining({ status: CouponStatus.EXPIRED }),
+      }),
+    );
+
+    const escalated = await service.createStoreCoupon('shop', 'owner', 'SHOP_MANAGER', {
+      collaboratorId: 'kol',
+      code: 'THAONHI15',
+      discountType: 'PERCENTAGE',
+      discountValue: 15,
+      maximumDiscountAmount: 80000,
+    });
+    expect(escalated.coupon.status).toBe(CouponStatus.PENDING_ADMIN_APPROVAL);
+  });
 });

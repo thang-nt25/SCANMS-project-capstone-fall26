@@ -44,6 +44,9 @@ export interface KolMatchResult {
   keyStrengths: string[];
   socialChannels: KolSocialChannelSummary[];
   lifetimeStats: KolLifetimeStatsSummary;
+  cooperationId?: string;
+  cooperationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'TERMINATED' | 'BLOCKED';
+  requestedByKol?: boolean;
 }
 
 export interface TargetProductSummary {

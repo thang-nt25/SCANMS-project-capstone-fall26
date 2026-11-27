@@ -109,17 +109,7 @@ describe('ChatService (FR-25)', () => {
 
       expect(res.id).toBe(mockConversationId);
       expect(prisma.conversation.create).not.toHaveBeenCalled();
-      expect(prisma.storeCollaborator.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          update: {},
-          create: {
-            storeId: mockStoreId,
-            collaboratorId: mockCollaboratorId,
-            status: 'PENDING',
-            requestedByKol: true,
-          },
-        }),
-      );
+      expect(prisma.storeCollaborator.upsert).not.toHaveBeenCalled();
     });
 
     it('should resolve storeId when shop manager initiates chat with collaboratorId', async () => {

@@ -111,6 +111,7 @@ export const apiCache = {
     if (url.includes('/returns')) return '/returns';
     if (url.includes('/campaigns')) return '/campaigns';
     if (url.includes('/affiliate-deals')) return '/affiliate-deals';
+    if (url.includes('/store-collaborators')) return '/store-collaborators';
     if (url.includes('/customer')) return '/customer';
     return null;
   },
@@ -219,6 +220,11 @@ export const apiCache = {
       this.invalidate('/coupons');
       this.invalidate('/analytics');
       this.invalidate('/dashboard');
+    }
+    if (domain === '/store-collaborators') {
+      this.invalidate('/ai');
+      this.invalidate('/coupons');
+      this.invalidate('/sample-requests');
     }
   },
 };

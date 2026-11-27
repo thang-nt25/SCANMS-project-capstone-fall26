@@ -6,6 +6,9 @@ import { normalizePartnerTier } from '../../utils/partner-tier';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
+import { TerminateCooperationModal } from '../../components/affiliate/TerminateCooperationModal';
+import { QuickKolCouponModal } from '../../components/promotions/QuickKolCouponModal';
+import { couponService, type CouponItem } from '../../services/coupon.service';
 import { SampleGhnEnvironmentPicker, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
 import { PartnerSampleDetails } from '../../components/shipping/PartnerSampleDetails';
 import { useSearchParams } from 'react-router-dom';
@@ -41,6 +44,8 @@ import {
   FileText,
   Handshake,
   UserMinus,
+  Send,
+  Ticket,
 } from 'lucide-react';
 import api from '../../services/api';
 import { analyticsService, type ReferralOrderItem } from '../../services/analytics.service';
@@ -137,6 +142,12 @@ export interface PartnerKol {
   lastMessageTime?: string;
   lastMessageTimestamp?: number;
   unreadCount?: number;
+  cooperationId?: string;
+  cooperationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'TERMINATED' | 'BLOCKED';
+  requestedByKol?: boolean;
+  cooperationNote?: string | null;
+  cooperationUpdatedAt?: string;
+  hasCooperationHistory?: boolean;
 }
 
 export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platform: string; className?: string }) {
@@ -298,6 +309,7 @@ let lastShopKolHubSnapshot: {
   rawConversations: any[];
   samplesMap: Record<string, SampleRequestItem[]>;
   sampleProgramStats: any;
+  couponsByKolId: Record<string, CouponItem[]>;
 } | null = null;
 registerPrivateCacheReset(() => { lastShopKolHubSnapshot = null; });
 
@@ -321,7 +333,7 @@ export default function ShopKolHubPage() {
   );
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterTag, setFilterTag] = useState<'ALL' | 'PENDING_SAMPLE'>('ALL');
+  const [filterTag, setFilterTag] = useState<'ALL' | 'PENDING' | 'PENDING_SAMPLE' | 'CLOSED'>('ALL');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [leaderSearch, setLeaderSearch] = useState('');
   const [leaderTier, setLeaderTier] = useState('ALL');
@@ -329,6 +341,7 @@ export default function ShopKolHubPage() {
 
   const isMountedRef = useRef(true);
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -378,23 +391,56 @@ export default function ShopKolHubPage() {
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [connectingKolId, setConnectingKolId] = useState<string | null>(null);
   const [showExclusiveDealModal, setShowExclusiveDealModal] = useState(false);
-  const [terminatingKolId, setTerminatingKolId] = useState<string | null>(null);
+  const [showQuickCouponModal, setShowQuickCouponModal] = useState(false);
+  const [terminateModalKol, setTerminateModalKol] = useState<PartnerKol | null>(null);
+  const [couponsByKolId, setCouponsByKolId] = useState<Record<string, CouponItem[]>>(() => lastShopKolHubSnapshot?.couponsByKolId || {});
+  const [terminatingKolId] = useState<string | null>(null);
+  const [actingCoopKolId, setActingCoopKolId] = useState<string | null>(null);
 
-  const handleTerminateCollaboration = async (kolId: string) => {
-    const kolObj = kols.find((k) => k.id === kolId) || allPlatformKols.find((k) => k.id === kolId);
-    const kolName = kolObj?.fullName || 'đối tác này';
-    if (!window.confirm(`Bạn có chắc chắn muốn kết thúc quan hệ hợp tác với đối tác ${kolName}? Sau khi kết thúc, đối tác sẽ được rút khỏi danh sách đội ngũ của gian hàng.`)) {
-      return;
+  const handleTerminateCollaboration = (kolId: string) => {
+    const kolObj = kols.find((k) => k.id === kolId) || allPlatformKols.find((k) => k.id === kolId) || null;
+    if (kolObj) {
+      setTerminateModalKol(kolObj);
     }
-    setTerminatingKolId(kolId);
+  };
+
+  const handleDecisionCooperation = async (kol: PartnerKol, accept: boolean) => {
+    if (!kol.cooperationId || actingCoopKolId) return;
+    setActingCoopKolId(kol.id);
     try {
-      await api.delete(`/store-collaborators/${kolId}${ownedStore?.id ? `?storeId=${ownedStore.id}` : ''}`);
-      toast.success(`Đã kết thúc hợp tác với ${kolName}.`);
+      await api.patch(`/store-collaborators/${kol.cooperationId}/${accept ? 'shop-approve' : 'shop-reject'}`, {});
+      window.dispatchEvent(new Event('scanms_cooperation_changed'));
+      toast.success(
+        accept
+          ? `Đã duyệt hợp tác với ${kol.fullName}. Hai bên có thể đề xuất Deal ngay.`
+          : `Đã từ chối yêu cầu hợp tác của ${kol.fullName}.`,
+      );
       await loadBackendData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Không thể kết thúc hợp tác lúc này.');
+      toast.error(err?.response?.data?.message || err?.message || 'Không thể xử lý yêu cầu hợp tác.');
     } finally {
-      setTerminatingKolId(null);
+      setActingCoopKolId(null);
+    }
+  };
+
+  const handleQuickInviteKol = async (kol: PartnerKol) => {
+    if (!kol.email || actingCoopKolId) {
+      toast.error('Không tìm thấy email của đối tác để gửi lời mời.');
+      return;
+    }
+    setActingCoopKolId(kol.id);
+    try {
+      await api.post('/store-collaborators/invite', {
+        email: kol.email,
+        ...(ownedStore?.id ? { storeId: ownedStore.id } : {}),
+      });
+      window.dispatchEvent(new Event('scanms_cooperation_changed'));
+      toast.success(`Đã gửi lời mời hợp tác tới ${kol.fullName}.`);
+      await loadBackendData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Không thể gửi lời mời hợp tác.');
+    } finally {
+      setActingCoopKolId(null);
     }
   };
 
@@ -451,7 +497,7 @@ export default function ShopKolHubPage() {
         api.get('/sample-requests/shop').catch(() => []),
         api.get('/sample-requests/shop/stats').catch(() => null),
         api.get('/chat/conversations').catch(() => []),
-        api.get('/store-collaborators/shop').catch(() => ({})),
+        api.get('/store-collaborators/shop', { headers: { 'x-skip-cache': '1' } }).catch(() => ({})),
       ]);
 
       const parsedConvs = Array.isArray(convsRes) ? convsRes : convsRes?.data || [];
@@ -565,40 +611,85 @@ export default function ShopKolHubPage() {
           });
       }
 
-      // 2. Load members from store collaborators
+      // 2. Load StoreCollaborator buckets (APPROVED + PENDING + REJECTED/TERMINATED/BLOCKED)
       const membersBody = membersRes?.data || membersRes;
-      if (membersBody?.store?.id) setOwnedStore(membersBody.store);
-      const backendKols: PartnerKol[] = [];
-      if (Array.isArray(membersBody?.members) && membersBody.members.length > 0) {
-        membersBody.members.forEach((m: any, idx: number) => {
-          const c = m.collaborator || {};
-          const profile = c.collaboratorProfile || {};
-          const channel = c.socialChannels?.[0];
-          backendKols.push({
-            id: c.id || `collab-${idx}`,
-            fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
-            email: c.email || '',
-            avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
-            tier: normalizePartnerTier(profile.tier),
-            handle: channel?.channelName ? `@${channel.channelName.trim().replace(/^@+/, '')}` : undefined,
-            primaryChannel: channel ? {
-              platform: channel.platformName?.toUpperCase() as any,
-              url: channel.channelUrl || '',
-              followers: Number(channel.followerCount ?? profile.totalFollowers ?? 0),
-            } : undefined,
-            kycStatus: profile.kycStatus || undefined,
-            commissionRate: undefined,
-            statsAvailable: Boolean(m.stats),
-            stats: {
-              totalRevenue: Number(m.stats?.totalRevenue ?? 0),
-              totalOrders: Number(m.stats?.totalOrders ?? 0),
-              sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
-              pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
-              completedVideosCount: Number(m.stats?.completedVideosCount ?? sampleStatsByKol[c.id]?.completed ?? 0),
-            },
-          });
-        });
+      if (membersBody?.store?.id) {
+        setOwnedStore(membersBody.store);
+        void couponService
+          .getStoreCoupons(membersBody.store.id, { limit: 100 })
+          .then((res: any) => {
+            if (!isMountedRef.current) return;
+            const rows: CouponItem[] = res?.data?.data || res?.data?.items || res?.items || res?.data || res || [];
+            if (!Array.isArray(rows)) return;
+            const groupedCoupons: Record<string, CouponItem[]> = {};
+            for (const c of rows) {
+              const cid = c.collaboratorId || c.collaborator?.id;
+              if (!cid) continue;
+              if (!groupedCoupons[cid]) groupedCoupons[cid] = [];
+              groupedCoupons[cid].push(c);
+            }
+            setCouponsByKolId(groupedCoupons);
+            if (lastShopKolHubSnapshot) {
+              lastShopKolHubSnapshot.couponsByKolId = groupedCoupons;
+            }
+          })
+          .catch(() => undefined);
       }
+
+      const mapStoreRelationToPartner = (
+        m: any,
+        idx: number,
+        forcedStatus?: PartnerKol['cooperationStatus'],
+      ): PartnerKol => {
+        const c = m.collaborator || {};
+        const profile = c.collaboratorProfile || {};
+        const channel = c.socialChannels?.[0];
+        const cid = c.id || m.collaboratorId || `collab-${idx}`;
+        return {
+          id: cid,
+          fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
+          email: c.email || '',
+          phone: c.phoneNumber || undefined,
+          avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
+          tier: normalizePartnerTier(profile.tier),
+          handle: channel?.channelName ? `@${channel.channelName.trim().replace(/^@+/, '')}` : undefined,
+          primaryChannel: channel ? {
+            platform: channel.platformName?.toUpperCase() as any,
+            url: channel.channelUrl || '',
+            followers: Number(channel.followerCount ?? profile.totalFollowers ?? 0),
+          } : undefined,
+          kycStatus: profile.kycStatus || undefined,
+          commissionRate: undefined,
+          statsAvailable: Boolean(m.stats),
+          stats: {
+            totalRevenue: Number(m.stats?.totalRevenue ?? 0),
+            totalOrders: Number(m.stats?.totalOrders ?? 0),
+            sampleRequestsCount: sampleStatsByKol[cid]?.total || 0,
+            pendingSamplesCount: sampleStatsByKol[cid]?.pending || 0,
+            completedVideosCount: Number(m.stats?.completedVideosCount ?? sampleStatsByKol[cid]?.completed ?? 0),
+          },
+          cooperationId: m.id,
+          cooperationStatus: forcedStatus || m.status,
+          requestedByKol: Boolean(m.requestedByKol),
+          cooperationNote: m.note ?? null,
+          cooperationUpdatedAt: m.updatedAt || m.createdAt,
+          hasCooperationHistory: Boolean(m.hasHistory),
+        };
+      };
+
+      const backendKols: PartnerKol[] = Array.isArray(membersBody?.members)
+        ? membersBody.members.map((m: any, idx: number) => mapStoreRelationToPartner(m, idx, 'APPROVED'))
+        : [];
+      const pendingCoopKols: PartnerKol[] = Array.isArray(membersBody?.pendingRequests)
+        ? membersBody.pendingRequests.map((m: any, idx: number) => mapStoreRelationToPartner(m, idx, 'PENDING'))
+        : [];
+      const closedCoopKols: PartnerKol[] = Array.isArray(membersBody?.closedRelations)
+        ? membersBody.closedRelations.map((m: any, idx: number) => mapStoreRelationToPartner(m, idx))
+        : [];
+
+      const coopByKolId = new Map<string, PartnerKol>(
+        [...backendKols, ...pendingCoopKols, ...closedCoopKols].map((k) => [k.id, k]),
+      );
 
       // 3. Load active verified creators from backend database
       let dbKols: PartnerKol[] = [];
@@ -698,46 +789,100 @@ export default function ShopKolHubPage() {
         });
       });
 
-      // 4. Merge all active collaborators (Chat Conversations + Sample Requests + Store Members)
+      // 4. Merge all active collaborators (Chat Conversations + Sample Requests + Store Relations)
       const mergedMap = new Map<string, PartnerKol>();
       const measuredMembers = new Map(backendKols.map(member => [member.id, member]));
-      // Active Inbox: Only creators with real messages or active pending requests
+      const upsertPartner = (candidate: PartnerKol) => {
+        const existing = mergedMap.get(candidate.id);
+        if (!existing) {
+          mergedMap.set(candidate.id, candidate);
+          return;
+        }
+        mergedMap.set(candidate.id, {
+          ...candidate,
+          ...existing,
+          email: existing.email || candidate.email,
+          phone: existing.phone || candidate.phone,
+          avatarUrl: existing.avatarUrl || candidate.avatarUrl,
+          tier: existing.tier || candidate.tier,
+          handle: existing.handle || candidate.handle,
+          primaryChannel: existing.primaryChannel || candidate.primaryChannel,
+          socialChannels: existing.socialChannels?.length ? existing.socialChannels : candidate.socialChannels,
+          kycStatus: existing.kycStatus || candidate.kycStatus,
+          statsAvailable: existing.statsAvailable || candidate.statsAvailable,
+          stats: {
+            totalRevenue: Math.max(existing.stats.totalRevenue, candidate.stats.totalRevenue),
+            totalOrders: Math.max(existing.stats.totalOrders, candidate.stats.totalOrders),
+            sampleRequestsCount: Math.max(existing.stats.sampleRequestsCount, candidate.stats.sampleRequestsCount),
+            pendingSamplesCount: Math.max(existing.stats.pendingSamplesCount, candidate.stats.pendingSamplesCount),
+            completedVideosCount: Math.max(existing.stats.completedVideosCount, candidate.stats.completedVideosCount),
+          },
+          cooperationId: candidate.cooperationId || existing.cooperationId,
+          cooperationStatus: candidate.cooperationStatus || existing.cooperationStatus,
+          requestedByKol: candidate.requestedByKol ?? existing.requestedByKol,
+          cooperationNote: candidate.cooperationNote ?? existing.cooperationNote,
+          cooperationUpdatedAt: candidate.cooperationUpdatedAt || existing.cooperationUpdatedAt,
+          hasCooperationHistory: Boolean(existing.hasCooperationHistory || candidate.hasCooperationHistory),
+        });
+      };
+
+      // Active chats
       convKols.forEach((k) => {
         if ((k.lastMessageTimestamp ?? 0) > 0 || (k.lastMessage && k.lastMessage.trim().length > 0)) {
-          mergedMap.set(k.id, k);
+          upsertPartner({ ...k, hasCooperationHistory: true });
         }
       });
 
+      // Sample requests
       requestKols.forEach((k) => {
         if (k.stats.pendingSamplesCount > 0 || k.stats.sampleRequestsCount > 0) {
-          if (!mergedMap.has(k.id)) {
-            mergedMap.set(k.id, k);
-          } else {
-            const existing = mergedMap.get(k.id)!;
-            mergedMap.set(k.id, {
-              ...existing,
-              stats: { ...existing.stats, ...k.stats },
-              phone: existing.phone || k.phone,
-            });
-          }
+          upsertPartner({ ...k, hasCooperationHistory: true });
         }
       });
 
-      // Only include creators with real engagement (conversations, samples, or memberships).
-      // Check current URL params dynamically without stale closure
+      // Approved, Pending & Closed StoreCollaborator relations (never lose AI Radar invites or accepted KOLs!)
+      [...backendKols, ...pendingCoopKols, ...closedCoopKols].forEach(upsertPartner);
+
       const currentSearchParams = new URLSearchParams(window.location.search);
       const currentKolParam = currentSearchParams.get('kol');
       const currentTab = currentSearchParams.get('tab') || 'messages';
 
       if (currentKolParam && !mergedMap.has(currentKolParam)) {
-        const found = dbKols.find(k => k.id === currentKolParam);
+        const found = [...dbKols, ...backendKols, ...pendingCoopKols, ...closedCoopKols].find(
+          (k) => k.id === currentKolParam,
+        );
         if (found) mergedMap.set(found.id, found);
       }
 
-      // Sort with latest message / interaction first
-      const allKols = Array.from(mergedMap.values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })).sort((a, b) => {
-        return (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0);
-      });
+      // Enrich final list with latest StoreCollaborator state & sort by latest interaction
+      const allKols = Array.from(mergedMap.values())
+        .map((kol) => {
+          const coop = coopByKolId.get(kol.id);
+          const measured = measuredMembers.get(kol.id);
+          const hasHistory = Boolean(
+            kol.hasCooperationHistory ||
+              coop?.hasCooperationHistory ||
+              (kol.lastMessageTimestamp ?? 0) > 0 ||
+              kol.stats.sampleRequestsCount > 0,
+          );
+          return {
+            ...kol,
+            stats: measured?.stats || kol.stats,
+            statsAvailable: measured?.statsAvailable || kol.statsAvailable || false,
+            tier: measured?.tier || kol.tier,
+            cooperationId: coop?.cooperationId || kol.cooperationId,
+            cooperationStatus: coop?.cooperationStatus || kol.cooperationStatus,
+            requestedByKol: coop?.requestedByKol ?? kol.requestedByKol,
+            cooperationNote: coop?.cooperationNote ?? kol.cooperationNote,
+            cooperationUpdatedAt: coop?.cooperationUpdatedAt || kol.cooperationUpdatedAt,
+            hasCooperationHistory: hasHistory,
+          };
+        })
+        .sort((a, b) => {
+          const timeA = Math.max(a.lastMessageTimestamp || 0, Date.parse(a.cooperationUpdatedAt || '') || 0);
+          const timeB = Math.max(b.lastMessageTimestamp || 0, Date.parse(b.cooperationUpdatedAt || '') || 0);
+          return timeB - timeA;
+        });
 
       setKols(allKols);
       lastShopKolHubSnapshot = {
@@ -745,17 +890,50 @@ export default function ShopKolHubPage() {
         rawConversations: parsedConvs,
         samplesMap: grouped,
         sampleProgramStats: statsRes?.data || statsRes || null,
+        couponsByKolId: lastShopKolHubSnapshot?.couponsByKolId || {},
       };
-      setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
+      setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => {
+        const coop = coopByKolId.get(kol.id);
+        return {
+          ...kol,
+          stats: measuredMembers.get(kol.id)?.stats || kol.stats,
+          statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false,
+          tier: measuredMembers.get(kol.id)?.tier || kol.tier,
+          cooperationId: coop?.cooperationId || kol.cooperationId,
+          cooperationStatus: coop?.cooperationStatus || kol.cooperationStatus,
+          requestedByKol: coop?.requestedByKol ?? kol.requestedByKol,
+        };
+      }));
 
       if (!isMountedRef.current || sequence !== sampleLoadSequence.current) return;
 
       if (allKols.length > 0) {
-        const targetKolId = currentKolParam && allKols.some((k) => k.id === currentKolParam) ? currentKolParam : allKols[0].id;
+        const visibleDefault = allKols.find(
+          (k) =>
+            k.cooperationStatus !== 'REJECTED' &&
+            k.cooperationStatus !== 'TERMINATED' &&
+            k.cooperationStatus !== 'BLOCKED' ||
+            k.hasCooperationHistory,
+        );
+        const targetKolId =
+          currentKolParam && allKols.some((k) => k.id === currentKolParam)
+            ? currentKolParam
+            : (visibleDefault?.id || allKols[0].id);
         setSelectedKolId(targetKolId);
 
+        const targetObj = allKols.find((k) => k.id === targetKolId);
+        if (
+          currentKolParam &&
+          targetObj &&
+          (targetObj.cooperationStatus === 'REJECTED' ||
+            targetObj.cooperationStatus === 'TERMINATED' ||
+            targetObj.cooperationStatus === 'BLOCKED') &&
+          !targetObj.hasCooperationHistory
+        ) {
+          setFilterTag('CLOSED');
+        }
+
         // Anti Bounce-Back: CHỈ đồng bộ kol vào URL nếu đang ở tab CRM (messages, samples, performance, profile).
-        // Tuyệt đối KHÔNG ghi đè URL khi người dùng đang ở tab 'deals', 'leaderboard', 'radar' hay 'ai-matching'!
         const isCrmTab = ['messages', 'samples', 'performance', 'profile'].includes(currentTab);
         if (isCrmTab && !currentKolParam) {
           setSearchParams((prev) => {
@@ -783,6 +961,9 @@ export default function ShopKolHubPage() {
 
   useEffect(() => {
     loadBackendData();
+    const onCoopChanged = () => void loadBackendData();
+    window.addEventListener('scanms_cooperation_changed', onCoopChanged);
+    return () => window.removeEventListener('scanms_cooperation_changed', onCoopChanged);
   }, [loadBackendData]);
 
   useEffect(() => {
@@ -794,18 +975,40 @@ export default function ShopKolHubPage() {
     return kols.find((k) => k.id === selectedKolId) || kols[0] || null;
   }, [kols, selectedKolId]);
 
-  const kolOrdersCacheRef = useRef<Record<string, { items: any[]; timestamp: number }>>({});
+  useEffect(() => {
+    const openDealParam = searchParams.get('openDeal');
+    if (openDealParam !== '1' || !selectedKol) return;
+    const isClosed =
+      selectedKol.cooperationStatus === 'REJECTED' ||
+      selectedKol.cooperationStatus === 'TERMINATED' ||
+      selectedKol.cooperationStatus === 'BLOCKED';
+    if (!isClosed) {
+      setIsAiMatchingMode(false);
+      setViewMode('CRM');
+      setShowExclusiveDealModal(true);
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('openDeal');
+      return next;
+    }, { replace: true });
+  }, [searchParams, selectedKol, setSearchParams]);
+
+  const kolOrdersCacheRef = useRef<
+    Record<string, { items: any[]; summary: { totalOrders: number; totalRevenue: number; accruedCommission: number } | null; totalPages: number; timestamp: number }>
+  >({});
 
   useEffect(() => {
     let active = true;
-    setKolOrders([]);
-    setKolPerformance(null);
     setPerformanceError('');
     if (activeTab === 'performance' && selectedKol?.id) {
-      const cached = kolOrdersCacheRef.current[selectedKol.id];
+      const cacheKey = `${selectedKol.id}:${performanceRange}:${performancePage}`;
+      const cached = kolOrdersCacheRef.current[cacheKey];
       const now = Date.now();
       if (cached && now - cached.timestamp < 180000) {
         setKolOrders(cached.items);
+        setKolPerformance(cached.summary);
+        setPerformancePages(cached.totalPages);
         setLoadingKolOrders(false);
         return;
       }
@@ -813,16 +1016,19 @@ export default function ShopKolHubPage() {
       analyticsService
         .getShopKolOrders(selectedKol.id, { limit: 20, page: performancePage, period: performanceRange }, true)
         .then((res) => {
+          if (!active) return;
           const items = res?.items || [];
-          kolOrdersCacheRef.current[selectedKol.id] = { items, timestamp: Date.now() };
+          const summary = res?.summary || { totalOrders: 0, totalRevenue: 0, accruedCommission: 0 };
+          const totalPages = res?.totalPages || 1;
+          kolOrdersCacheRef.current[cacheKey] = { items, summary, totalPages, timestamp: Date.now() };
           setKolOrders(items);
-          if (res?.summary) setKolPerformance(res.summary);
-          if (res?.totalPages) setPerformancePages(res.totalPages);
+          setKolPerformance(summary);
+          setPerformancePages(totalPages);
         })
         .catch((err) => {
           if (!active) return;
           setPerformanceError(err?.message || 'Không tải được hiệu suất KOC.');
-          setKolOrders([]);
+          if (!cached) setKolOrders([]);
         })
         .finally(() => {
           if (active) setLoadingKolOrders(false);
@@ -869,13 +1075,43 @@ export default function ShopKolHubPage() {
 
       if (!matchSearch) return false;
 
+      const isClosed =
+        kol.cooperationStatus === 'REJECTED' ||
+        kol.cooperationStatus === 'TERMINATED' ||
+        kol.cooperationStatus === 'BLOCKED';
+
+      if (filterTag === 'PENDING') {
+        return kol.cooperationStatus === 'PENDING';
+      }
       if (filterTag === 'PENDING_SAMPLE') {
         const kolSamples = samplesMap[kol.id] || [];
         return kolSamples.some((s) => s.status === 'PENDING') || kol.stats.pendingSamplesCount > 0;
       }
-return true;
+      if (filterTag === 'CLOSED') {
+        return isClosed;
+      }
+      // ALL: hide unhistoried REJECTED / TERMINATED / BLOCKED from active inbox per A3
+      if (isClosed && !kol.hasCooperationHistory) {
+        return false;
+      }
+      return true;
     });
   }, [kols, searchQuery, filterTag, samplesMap]);
+
+  const pendingCoopCount = useMemo(
+    () => kols.filter((k) => k.cooperationStatus === 'PENDING').length,
+    [kols],
+  );
+  const closedCoopCount = useMemo(
+    () =>
+      kols.filter(
+        (k) =>
+          k.cooperationStatus === 'REJECTED' ||
+          k.cooperationStatus === 'TERMINATED' ||
+          k.cooperationStatus === 'BLOCKED',
+      ).length,
+    [kols],
+  );
 
   const sortedLeaderboardKols = useMemo(() => {
     const source = allPlatformKols.length > 0 ? allPlatformKols : kols;
@@ -1300,6 +1536,7 @@ return true;
                     );
                     const isConnecting = connectingKolId === creator.id;
                     const tier = normalizePartnerTier(profile.tier);
+                    const creatorCoop = kols.find((k) => k.id === creator.id)?.cooperationStatus;
                     const renderChannel = (ch: any, idx: number) => {
                       const content = (
                         <>
@@ -1343,6 +1580,17 @@ return true;
                                 <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                                   {tier === 'DIAMOND' ? 'Kim cương' : tier === 'GOLD' ? 'Vàng' : tier === 'SILVER' ? 'Bạc' : tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}
                                 </span>
+                                {creatorCoop && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                    creatorCoop === 'APPROVED'
+                                      ? 'border-[#C59B58]/60 bg-[#FBF5EB] text-[#8C6226]'
+                                      : creatorCoop === 'PENDING'
+                                        ? 'border-[#FCD34D] bg-[#FFFBEB] text-[#B45309]'
+                                        : 'border-[#EAE4D7] bg-[#F3EFE6] text-[#7D715E]'
+                                  }`}>
+                                    {creatorCoop === 'APPROVED' ? 'Đang hợp tác' : creatorCoop === 'PENDING' ? 'Đang chờ phản hồi' : creatorCoop === 'REJECTED' ? 'Đã từ chối' : creatorCoop === 'BLOCKED' ? 'Đã khóa' : 'Đã chấm dứt'}
+                                  </span>
+                                )}
                               </div>
 
                             </div>
@@ -1434,11 +1682,13 @@ return true;
 
   if (kols.length === 0 && !isAiMatchingMode) {
     return (
-      <div className="w-full min-h-[420px] bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] p-8 flex flex-col items-center justify-center text-center">
+      <div className="w-full min-h-[420px] bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] overflow-hidden flex flex-col">
+        <StoreCooperationPanel mode="shop" onChanged={() => void loadBackendData()} />
+        <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
         <Users className="w-9 h-9 text-[#B88E4F] mb-3" />
         <h2 className="text-base font-bold text-[#1A1612]">Chưa có dữ liệu KOL hoặc yêu cầu mẫu</h2>
         <p className="max-w-lg mt-2 text-sm text-[#7D715E]">
-          Khi KOL kết nối với Shop hoặc gửi yêu cầu nhận mẫu, hồ sơ và lịch sử thật sẽ xuất hiện tại đây.
+          Khi KOL kết nối với Shop, được mời qua AI Radar hoặc gửi yêu cầu nhận mẫu, hồ sơ và lịch sử thật sẽ xuất hiện tại đây.
         </p>
         <button type="button" onClick={() => setShowDiscoveryModal(true)} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-semibold text-[#231D15] hover:bg-[#B88E4F]">
           <Plus className="h-4 w-4" /> Tìm nhà sáng tạo
@@ -1446,6 +1696,7 @@ return true;
         <button type="button" onClick={() => setAiMatchingMode(true)} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-white px-4 py-2.5 text-sm font-semibold text-[#B88E4F] hover:bg-[#FBF5EB]">
           <Search className="h-4 w-4" /> Đề xuất KOL bằng AI
         </button>
+        </div>
         {discoveryModal}
       </div>
     );
@@ -1636,11 +1887,12 @@ return true;
                           </button>
                           <button
                             type="button"
+                            disabled={kol.cooperationStatus !== 'APPROVED'}
                             onClick={() => {
                               setSelectedKolId(kol.id);
                               setShowExclusiveDealModal(true);
                             }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs active:scale-[0.98]"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45"
                             title="Thiết lập thỏa thuận thù lao độc quyền"
                           >
                             <Handshake size={13} strokeWidth={2} />
@@ -1847,12 +2099,12 @@ return true;
 
                   {/* Filter Tabs Under Search */}
                   <div className="kol-list-filters">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                       <button
                         type="button"
                         onClick={() => { setViewMode('CRM'); setFilterTag('ALL'); }}
                         aria-pressed={filterTag === 'ALL'}
-                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
+                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
                           filterTag === 'ALL'
                             ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
                             : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
@@ -1862,9 +2114,22 @@ return true;
                       </button>
                       <button
                         type="button"
+                        onClick={() => { setViewMode('CRM'); setFilterTag('PENDING'); }}
+                        aria-pressed={filterTag === 'PENDING'}
+                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
+                          filterTag === 'PENDING'
+                            ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
+                            : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                        }`}
+                      >
+                        <span>Chờ phản hồi</span>
+                        {pendingCoopCount > 0 && <span className="kol-pending-count">{pendingCoopCount}</span>}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => { setViewMode('CRM'); setFilterTag('PENDING_SAMPLE'); }}
                         aria-pressed={filterTag === 'PENDING_SAMPLE'}
-                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
+                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
                           filterTag === 'PENDING_SAMPLE'
                             ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
                             : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
@@ -1873,6 +2138,25 @@ return true;
                         <span>Có mẫu mới</span>
                         {pendingSampleCount > 0 && <span className="kol-pending-count">{pendingSampleCount}</span>}
                       </button>
+                      {(closedCoopCount > 0 || filterTag === 'CLOSED') && (
+                        <button
+                          type="button"
+                          onClick={() => { setViewMode('CRM'); setFilterTag('CLOSED'); }}
+                          aria-pressed={filterTag === 'CLOSED'}
+                          className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
+                            filterTag === 'CLOSED'
+                              ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
+                              : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                          }`}
+                        >
+                          <span>Đã kết thúc</span>
+                          {closedCoopCount > 0 && (
+                            <span className="rounded-full bg-[#F3EFE6] px-1.5 py-0.2 text-[10px] font-bold text-[#7D715E]">
+                              {closedCoopCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1905,6 +2189,18 @@ return true;
 
                       if (kol.lastMessage) {
                         subText = kol.lastMessage;
+                      } else if (kol.cooperationStatus === 'PENDING') {
+                        subText = kol.requestedByKol
+                          ? (kol.cooperationNote ? `Xin hợp tác: ${kol.cooperationNote}` : 'KOL gửi yêu cầu hợp tác')
+                          : 'Đã gửi lời mời · Chờ KOL';
+                      } else if (kol.cooperationStatus === 'APPROVED') {
+                        subText = 'Đã liên kết hợp tác';
+                      } else if (kol.cooperationStatus === 'REJECTED') {
+                        subText = 'KOL đã từ chối hợp tác';
+                      } else if (kol.cooperationStatus === 'TERMINATED') {
+                        subText = 'Đã chấm dứt hợp tác';
+                      } else if (kol.cooperationStatus === 'BLOCKED') {
+                        subText = 'Đã khóa hợp tác';
                       } else if (pendingSamples > 0) {
                         subText = `${pendingSamples} yêu cầu mượn mẫu mới`;
                       } else if (kol.handle) {
@@ -2007,6 +2303,65 @@ return true;
                               </span>
                             </div>
 
+                            {kol.cooperationStatus && (
+                              <div className="mb-1 flex flex-wrap items-center gap-1">
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.2 text-[9.5px] font-bold ${
+                                    kol.cooperationStatus === 'APPROVED'
+                                      ? 'border-[#C59B58]/50 bg-[#FBF5EB] text-[#8C6226]'
+                                      : kol.cooperationStatus === 'PENDING'
+                                        ? 'border-[#FCD34D] bg-[#FFFBEB] text-[#B45309]'
+                                        : kol.cooperationStatus === 'REJECTED' || kol.cooperationStatus === 'BLOCKED'
+                                          ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
+                                          : 'border-[#EAE4D7] bg-[#F3EFE6] text-[#7D715E]'
+                                  }`}
+                                >
+                                  {kol.cooperationStatus === 'APPROVED'
+                                    ? 'Đang hợp tác'
+                                    : kol.cooperationStatus === 'PENDING'
+                                      ? (kol.requestedByKol ? 'KOL xin hợp tác' : 'Chờ KOL duyệt')
+                                      : kol.cooperationStatus === 'REJECTED'
+                                        ? 'Đã từ chối'
+                                        : kol.cooperationStatus === 'BLOCKED'
+                                          ? 'Đã khóa'
+                                          : 'Đã chấm dứt'}
+                                </span>
+                                {kol.cooperationStatus === 'PENDING' && kol.requestedByKol && kol.cooperationId && (
+                                  <span className="inline-flex items-center gap-1 ml-auto" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      disabled={actingCoopKolId === kol.id}
+                                      onClick={() => void handleDecisionCooperation(kol, true)}
+                                      className="rounded border border-[#B88E4F] bg-[#C59B58] px-1.5 py-0.5 text-[9.5px] font-bold text-[#1A1612] hover:bg-[#B88E4F] cursor-pointer disabled:opacity-50"
+                                    >
+                                      Duyệt
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={actingCoopKolId === kol.id}
+                                      onClick={() => void handleDecisionCooperation(kol, false)}
+                                      className="rounded border border-[#EAE4D7] bg-white px-1.5 py-0.5 text-[9.5px] font-semibold text-[#7D715E] hover:text-[#DC2626] cursor-pointer disabled:opacity-50"
+                                    >
+                                      Từ chối
+                                    </button>
+                                  </span>
+                                )}
+                                {(kol.cooperationStatus === 'REJECTED' || kol.cooperationStatus === 'TERMINATED') && filterTag === 'CLOSED' && kol.email && (
+                                  <button
+                                    type="button"
+                                    disabled={actingCoopKolId === kol.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void handleQuickInviteKol(kol);
+                                    }}
+                                    className="ml-auto rounded border border-[#C59B58] bg-white px-1.5 py-0.5 text-[9.5px] font-bold text-[#8C6226] hover:bg-[#FBF5EB] cursor-pointer disabled:opacity-50"
+                                  >
+                                    Mời lại
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
                             {/* Row 2: Subtitle (Handle or Gmail) + Revenue / Samples / Commission */}
                             <div className="flex items-center justify-between gap-1">
                               <div className="flex items-center gap-1 min-w-0 flex-1">
@@ -2075,7 +2430,7 @@ return true;
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
           <div className="shop-kol-detail flex-1 flex flex-col min-w-0 min-h-0 bg-white">
-            <StoreCooperationPanel mode="shop" />
+            <StoreCooperationPanel mode="shop" onChanged={() => void loadBackendData()} />
             {!selectedKol ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
                 <div className="w-14 h-14 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mb-3 shadow-2xs">
@@ -2116,6 +2471,29 @@ return true;
                       <span className="kol-chat-rate" title="Mức thù lao áp dụng cho đối tác">
                         {selectedKol.commissionRate ? `Deal · ${selectedKol.commissionRate}%` : selectedKol.tier === 'DIAMOND' ? 'Kim cương · 13%' : selectedKol.tier === 'GOLD' ? 'Vàng · 12%' : selectedKol.tier === 'SILVER' ? 'Bạc · 11%' : 'Đồng · 10%'}
                       </span>
+                      <span
+                        className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                          selectedKol.cooperationStatus === 'APPROVED'
+                            ? 'border-[#C59B58]/60 bg-[#FBF5EB] text-[#8C6226]'
+                            : selectedKol.cooperationStatus === 'PENDING'
+                              ? 'border-[#FCD34D] bg-[#FFFBEB] text-[#B45309]'
+                              : selectedKol.cooperationStatus === 'REJECTED' || selectedKol.cooperationStatus === 'BLOCKED'
+                                ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
+                                : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
+                        }`}
+                      >
+                        {selectedKol.cooperationStatus === 'APPROVED'
+                          ? 'Đang hợp tác'
+                          : selectedKol.cooperationStatus === 'PENDING'
+                            ? (selectedKol.requestedByKol ? 'KOL xin hợp tác' : 'Đã gửi lời mời · Chờ KOL')
+                            : selectedKol.cooperationStatus === 'REJECTED'
+                              ? 'KOL đã từ chối'
+                              : selectedKol.cooperationStatus === 'TERMINATED'
+                                ? 'Đã chấm dứt hợp tác'
+                                : selectedKol.cooperationStatus === 'BLOCKED'
+                                  ? 'Đã khóa hợp tác'
+                                  : 'Chưa mời hợp tác'}
+                      </span>
                     </div>
                     <div className="kol-chat-channels">
                       {allChannels.length ? allChannels.map((channel, index) => (
@@ -2129,11 +2507,76 @@ return true;
                       )) : <span>Chưa liên kết kênh</span>}
                     </div>
                   </div>
-                  <button type="button" id="btn-header-exclusive-deal" onClick={() => setShowExclusiveDealModal(true)}
-                    className="kol-chat-deal" title="Đề xuất thỏa thuận thù lao độc quyền cho đối tác">
-                    <Handshake className="h-4 w-4" />
-                    <span className="hidden sm:inline">Đề xuất Deal</span><span className="sm:hidden">Đề xuất</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                    {(!selectedKol.cooperationStatus || selectedKol.cooperationStatus === 'REJECTED' || selectedKol.cooperationStatus === 'TERMINATED') && selectedKol.email && (
+                      <button
+                        type="button"
+                        disabled={actingCoopKolId === selectedKol.id}
+                        onClick={() => void handleQuickInviteKol(selectedKol)}
+                        className="inline-flex h-8 items-center gap-1 rounded-xl border border-[#C59B58] bg-[#FBF5EB] px-2.5 text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                        title={selectedKol.cooperationStatus ? 'Gửi lời mời kết nối hợp tác trở lại' : 'Gửi lời mời hợp tác chính thức tới KOL'}
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        <span>{actingCoopKolId === selectedKol.id ? 'Đang gửi…' : selectedKol.cooperationStatus ? 'Mời lại hợp tác' : 'Mời hợp tác'}</span>
+                      </button>
+                    )}
+                    {(() => {
+                      const kolCoupons = couponsByKolId[selectedKol.id] || [];
+                      const activeKolCoupon = kolCoupons.find((c) => ['ACTIVE', 'PAUSED', 'PENDING_BLOCK_APPROVAL', 'PENDING_ADMIN_APPROVAL'].includes(c.status));
+                      const pendingKolCoupon = kolCoupons.find((c) => c.status === 'PENDING_APPROVAL');
+                      return (
+                        <button
+                          type="button"
+                          id="btn-header-kol-coupon"
+                          onClick={() => setShowQuickCouponModal(true)}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8C6226] hover:bg-[#F3EFE6] cursor-pointer whitespace-nowrap"
+                          title="Quản lý nhanh / Gia hạn / Phát hành mã ưu đãi cho KOC"
+                        >
+                          <Ticket className="h-3.5 w-3.5 text-[#B88E4F]" />
+                          <span className="hidden md:inline">
+                            {pendingKolCoupon
+                              ? `Duyệt mã (${pendingKolCoupon.displayCode})`
+                              : activeKolCoupon
+                                ? `Mã: ${activeKolCoupon.displayCode}`
+                                : 'Mã ưu đãi KOC'}
+                          </span>
+                          <span className="md:hidden">Mã KOC</span>
+                          {pendingKolCoupon && <span className="h-2 w-2 rounded-full bg-[#D97706]" />}
+                        </button>
+                      );
+                    })()}
+                    <button
+                      type="button"
+                      id="btn-header-exclusive-deal"
+                      disabled={selectedKol.cooperationStatus !== 'APPROVED'}
+                      onClick={() => setShowExclusiveDealModal(true)}
+                      className="kol-chat-deal disabled:cursor-not-allowed disabled:opacity-45"
+                      title={
+                        selectedKol.cooperationStatus === 'APPROVED'
+                          ? 'Đề xuất thỏa thuận thù lao độc quyền cho đối tác'
+                          : selectedKol.cooperationStatus === 'PENDING'
+                            ? 'Cần xác nhận hợp tác từ hai bên trước khi tạo Deal độc quyền.'
+                            : !selectedKol.cooperationStatus
+                              ? 'Cần mời hợp tác và được KOL chấp nhận trước khi tạo Deal mới.'
+                              : 'Hợp tác đang ở trạng thái Đã từ chối / Đã chấm dứt. Cần mời lại hợp tác trước khi tạo Deal mới.'
+                      }
+                    >
+                      <Handshake className="h-4 w-4" />
+                      <span className="hidden sm:inline">Đề xuất Deal</span><span className="sm:hidden">Đề xuất</span>
+                    </button>
+                    {selectedKol.cooperationStatus === 'APPROVED' && (
+                      <button
+                        type="button"
+                        id="btn-header-terminate-collab"
+                        onClick={() => handleTerminateCollaboration(selectedKol.id)}
+                        className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-semibold text-[#7D715E] hover:border-[#FECACA] hover:bg-[#FEF2F2] hover:text-[#DC2626] transition cursor-pointer whitespace-nowrap"
+                        title="Kiểm tra ràng buộc & chấm dứt hợp tác với KOL"
+                      >
+                        <UserMinus className="h-3.5 w-3.5" />
+                        <span className="hidden xl:inline">Chấm dứt</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
             {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
@@ -2231,6 +2674,7 @@ return true;
                         targetCollaboratorId={selectedKol.id}
                         targetCollaboratorName={selectedKol.fullName}
                         targetCollaboratorAvatar={selectedKol.avatarUrl}
+                        cooperationStatus={selectedKol.cooperationStatus ?? null}
                         hideSidebar
                         hideHeaderInChat
                         className="h-full w-full border-0 rounded-none shadow-none bg-white"
@@ -2244,7 +2688,7 @@ return true;
 
                   {/* TAB 2: SAMPLE REQUESTS MANAGEMENT */}
                   {activeTab === 'samples' && (
-                    <div className="animate-in fade-in-50 duration-200 space-y-3">
+                    <div className="space-y-3">
                   {/* Selected partner sample summary */}
                   <div className="kol-sample-metrics" aria-label="Số liệu mẫu của KOL đang chọn">
                     <div className="grid grid-cols-2 sm:grid-cols-5">
@@ -2483,7 +2927,7 @@ return true;
                 }));
 
                 return (
-                  <div className="kol-performance animate-in fade-in-50 duration-200 space-y-4">
+                  <div className="kol-performance space-y-4">
                     {/* 2. Range Filter & Realtime Indicator */}
                     <div className="kol-performance-toolbar flex flex-wrap items-center justify-between gap-2.5">
                       <div className="flex items-center gap-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
@@ -2516,7 +2960,7 @@ return true;
                     {loadingKolOrders && <p role="status" className="text-sm text-[#7D715E]">Đang tải số liệu kỳ báo cáo…</p>}
                     <div className="kol-performance-pagination flex items-center justify-end gap-2 text-xs text-[#7D715E]"><button type="button" disabled={loadingKolOrders || performancePage <= 1} onClick={() => setPerformancePage(page => page - 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang trước</button><span>Trang {performancePage}/{Math.max(1, performancePages)}</span><button type="button" disabled={loadingKolOrders || performancePage >= performancePages} onClick={() => setPerformancePage(page => page + 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang sau</button></div>
                     {/* Aggregates come from the API across every page in the period. */}
-                    <div style={{ display: !kolPerformance || loadingKolOrders ? 'none' : undefined }} className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div style={{ display: !kolPerformance ? 'none' : undefined }} className={`kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 transition-opacity duration-150 ${loadingKolOrders ? 'opacity-60' : ''}`}>
                       {/* Card 1: Doanh thu thuần */}
                       <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
                         <div className="flex items-center justify-between mb-2">
@@ -2727,7 +3171,7 @@ return true;
 
               {/* TAB 4: PROFILE & SOCIAL CHANNELS */}
               {activeTab === 'profile' && (
-                <div className="kol-channel-profile animate-in fade-in-50 duration-200 space-y-5">
+                <div className="kol-channel-profile space-y-5">
                   <div className="kol-channel-panel bg-white border border-[#EAE4D7] rounded-2xl p-6 shadow-xs space-y-5">
                     <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
                       <h3 className="text-sm font-bold text-[#1A1612]">
@@ -2803,19 +3247,36 @@ return true;
                               <span>Xem hồ sơ & liên hệ</span>
                             </button>
 
-                            <div className="my-1 border-t border-[#EAE4D7]" />
-
-                            <button
-                              type="button"
-                              id="btn-terminate-collab"
-                              disabled={terminatingKolId === selectedKol.id}
-                              onClick={() => handleTerminateCollaboration(selectedKol.id)}
-                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2] transition text-left cursor-pointer border-0 disabled:opacity-50"
-                              title="Chấm dứt thỏa thuận hợp tác và rút đối tác khỏi đội ngũ nhãn hàng"
-                            >
-                              <UserMinus className="w-3.5 h-3.5 text-[#DC2626]" />
-                              <span>{terminatingKolId === selectedKol.id ? 'Đang xử lý...' : 'Chấm dứt hợp tác'}</span>
-                            </button>
+                            {selectedKol.cooperationStatus === 'APPROVED' && (
+                              <>
+                                <div className="my-1 border-t border-[#EAE4D7]" />
+                                <button
+                                  type="button"
+                                  id="btn-terminate-collab"
+                                  disabled={terminatingKolId === selectedKol.id}
+                                  onClick={() => handleTerminateCollaboration(selectedKol.id)}
+                                  className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2] transition text-left cursor-pointer border-0 disabled:opacity-50"
+                                  title="Chấm dứt thỏa thuận hợp tác và rút đối tác khỏi đội ngũ nhãn hàng"
+                                >
+                                  <UserMinus className="w-3.5 h-3.5 text-[#DC2626]" />
+                                  <span>{terminatingKolId === selectedKol.id ? 'Đang xử lý...' : 'Chấm dứt hợp tác'}</span>
+                                </button>
+                              </>
+                            )}
+                            {(!selectedKol.cooperationStatus || selectedKol.cooperationStatus === 'REJECTED' || selectedKol.cooperationStatus === 'TERMINATED') && selectedKol.email && (
+                              <>
+                                <div className="my-1 border-t border-[#EAE4D7]" />
+                                <button
+                                  type="button"
+                                  disabled={actingCoopKolId === selectedKol.id}
+                                  onClick={() => void handleQuickInviteKol(selectedKol)}
+                                  className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#8C6226] hover:bg-[#FBF5EB] transition text-left cursor-pointer border-0 disabled:opacity-50"
+                                >
+                                  <Send className="w-3.5 h-3.5 text-[#B88E4F]" />
+                                  <span>{selectedKol.cooperationStatus ? 'Mời lại hợp tác' : 'Mời hợp tác chính thức'}</span>
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -3011,6 +3472,60 @@ return true;
             setShowExclusiveDealModal(false);
             toast.success('Đã gửi đề xuất Thỏa thuận Độc quyền thành công!');
             setActiveTab('messages');
+          }}
+        />
+      )}
+
+      {showQuickCouponModal && selectedKol && ownedStore?.id && (
+        <QuickKolCouponModal
+          isOpen={showQuickCouponModal}
+          storeId={ownedStore.id}
+          kol={selectedKol}
+          onClose={() => setShowQuickCouponModal(false)}
+          onUpdated={() => void loadBackendData()}
+          onRequestOpenDealModal={() => {
+            if (selectedKol.cooperationStatus === 'APPROVED') {
+              setShowExclusiveDealModal(true);
+            }
+          }}
+        />
+      )}
+
+      {terminateModalKol && (
+        <TerminateCooperationModal
+          isOpen={Boolean(terminateModalKol)}
+          targetId={terminateModalKol.cooperationId || terminateModalKol.id}
+          storeId={ownedStore?.id}
+          partnerName={terminateModalKol.fullName}
+          mode="shop"
+          onClose={() => setTerminateModalKol(null)}
+          onTerminated={() => {
+            const terminatedId = terminateModalKol.id;
+            setKols((prev) =>
+              prev.map((k) =>
+                k.id === terminatedId ? { ...k, cooperationStatus: 'TERMINATED', hasCooperationHistory: true } : k,
+              ),
+            );
+            setAllPlatformKols((prev) =>
+              prev.map((k) =>
+                k.id === terminatedId ? { ...k, cooperationStatus: 'TERMINATED', hasCooperationHistory: true } : k,
+              ),
+            );
+            if (lastShopKolHubSnapshot) {
+              lastShopKolHubSnapshot.kols = lastShopKolHubSnapshot.kols.map((k) =>
+                k.id === terminatedId ? { ...k, cooperationStatus: 'TERMINATED', hasCooperationHistory: true } : k,
+              );
+            }
+          }}
+          onNavigateBlocker={(key) => {
+            if (key === 'SAMPLE') {
+              setActiveTab('samples');
+            } else if (key === 'VOUCHER') {
+              setShowQuickCouponModal(true);
+            } else {
+              setViewMode('ALL_DEALS');
+              setSearchParams({ tab: 'deals' }, { replace: true });
+            }
           }}
         />
       )}

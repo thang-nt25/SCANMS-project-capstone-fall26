@@ -32,17 +32,19 @@ export function StoreCooperationAction({ storeId, storeName, className = '', tab
   const current = data.find(row => row.storeId === storeId);
   const approved = current?.status === 'APPROVED';
   const waiting = current?.status === 'PENDING';
+  const blocked = current?.status === 'BLOCKED';
   const style = `inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] disabled:opacity-60 ${className}`;
   return <>
     {waiting && !current.requestedByKol ? <Link className={style} tabIndex={tabIndex} to="/collaborator/collaboration?tab=messages">Xem lời mời từ Shop</Link> : <button
       type="button" tabIndex={tabIndex} className={style} data-store-cooperation={storeId}
-      disabled={isPending || approved || waiting}
+      disabled={isPending || approved || waiting || blocked}
       onClick={() => { if (isError) void refetch(); else setOpen(true); }}
-      aria-label={`${isError ? 'Thử tải trạng thái' : approved ? 'Đã hợp tác với' : waiting ? 'Chờ duyệt hợp tác với' : 'Đề xuất hợp tác với'} ${storeName}`}
-    ><Handshake size={15} aria-hidden="true" />{isError ? 'Thử lại' : isPending ? 'Đang tải hợp tác…' : approved ? 'Đã hợp tác' : waiting ? 'Đang chờ Shop duyệt' : 'Đề xuất hợp tác'}</button>}
+      aria-label={`${isError ? 'Thử tải trạng thái' : approved ? 'Đã hợp tác với' : waiting ? 'Chờ duyệt hợp tác với' : blocked ? 'Đã bị khóa hợp tác bởi' : 'Đề xuất hợp tác với'} ${storeName}`}
+    ><Handshake size={15} aria-hidden="true" />{isError ? 'Thử lại' : isPending ? 'Đang tải hợp tác…' : approved ? 'Đã hợp tác' : waiting ? 'Đang chờ Shop duyệt' : blocked ? 'Đã bị khóa' : (current?.status === 'REJECTED' || current?.status === 'TERMINATED') ? 'Đề xuất hợp tác lại' : 'Đề xuất hợp tác'}</button>}
     {open && <CooperationRequestModal key={storeId} storeId={storeId} storeName={storeName} onClose={() => setOpen(false)} onSuccess={() => {
       setOpen(false); toast.success(`Đã gửi đề xuất tới ${storeName}.`);
       void queryClient.invalidateQueries({ queryKey });
+      window.dispatchEvent(new Event('scanms_cooperation_changed'));
     }} />}
   </>;
 }

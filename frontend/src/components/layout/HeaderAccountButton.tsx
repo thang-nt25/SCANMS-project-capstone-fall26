@@ -44,7 +44,17 @@ export function HeaderAccountButton({ user, role, expanded, menuId, detail, dark
     >
       <span className={`grid place-items-center shrink-0 w-[30px] h-[30px] overflow-hidden border rounded-full text-[12px] font-[600] ${darkMode ? "border-[#443828] bg-[#382F22] text-[#DEBE85]" : "border-[#EAE4D7] bg-[#FBF5EB] text-[#B88E4F]"}`} aria-hidden="true">
         {avatarUrl && failedAvatar !== avatarUrl ? (
-          <img src={avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setFailedAvatar(avatarUrl)} />
+          <img
+            src={avatarUrl}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={() => setFailedAvatar(avatarUrl)}
+            onLoad={(e) => {
+              if (e.currentTarget.naturalWidth <= 2 || e.currentTarget.naturalHeight <= 2) {
+                setFailedAvatar(avatarUrl);
+              }
+            }}
+          />
         ) : (
           <span>{fullName.charAt(0).toUpperCase()}</span>
         )}

@@ -17,6 +17,11 @@ import {
   UserPlus,
   Users,
   Globe,
+  CheckCircle2,
+  Clock,
+  Ban,
+  Handshake,
+  RefreshCw,
 } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -110,13 +115,53 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   const [compareKolIds, setCompareKolIds] = useState<string[]>([]);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
-  // VIP Invitation Modal State
+  // Cooperation Invitation Modal & Live Status Map
   const [invitingKol, setInvitingKol] = useState<KolMatchResult | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [inviteMessage, setInviteMessage] = useState<string>('');
   const [isSendingInvite, setIsSendingInvite] = useState<boolean>(false);
-  const [inviteCommissionRate, setInviteCommissionRate] = useState<number>(14);
-  const [inviteIncludeSample, setInviteIncludeSample] = useState<boolean>(true);
+  const [approvingCoopId, setApprovingCoopId] = useState<string | null>(null);
+  const [coopByKolId, setCoopByKolId] = useState<
+    Record<string, { id?: string; status: string; requestedByKol?: boolean }>
+  >({});
+
+  const loadShopCooperations = useCallback(async () => {
+    try {
+      const res: any = await api.get('/store-collaborators/shop', {
+        headers: { 'x-skip-cache': '1' },
+      });
+      const body = res?.data || res;
+      const map: Record<string, { id?: string; status: string; requestedByKol?: boolean }> = {};
+      for (const item of body?.members || []) {
+        const cid = item.collaboratorId || item.collaborator?.id;
+        if (cid) map[cid] = { id: item.id, status: 'APPROVED', requestedByKol: Boolean(item.requestedByKol) };
+      }
+      for (const item of body?.pendingRequests || []) {
+        const cid = item.collaboratorId || item.collaborator?.id;
+        if (cid) map[cid] = { id: item.id, status: 'PENDING', requestedByKol: Boolean(item.requestedByKol) };
+      }
+      for (const item of body?.closedRelations || []) {
+        const cid = item.collaboratorId || item.collaborator?.id;
+        if (cid && !map[cid]) {
+          map[cid] = { id: item.id, status: item.status, requestedByKol: Boolean(item.requestedByKol) };
+        }
+      }
+      setCoopByKolId(map);
+    } catch {
+      /* keep fallback statuses from AI response */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadShopCooperations();
+    const onChanged = () => void loadShopCooperations();
+    window.addEventListener('focus', onChanged);
+    window.addEventListener('scanms_cooperation_changed', onChanged);
+    return () => {
+      window.removeEventListener('focus', onChanged);
+      window.removeEventListener('scanms_cooperation_changed', onChanged);
+    };
+  }, [loadShopCooperations]);
 
   useEffect(() => {
     if (!productsReady) return;
@@ -288,30 +333,72 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
       .filter((k): k is KolMatchResult => !!k);
   }, [kols, compareKolIds]);
 
-  const handleNegotiateDeal = (kol: KolMatchResult) => {
-    navigate(`/merchant/kol-hub?kol=${kol.collaboratorId}&tab=messages`);
+  const handleNegotiateDeal = (kol: KolMatchResult, openDeal = false) => {
+    navigate(
+      `/merchant/kol-hub?kol=${kol.collaboratorId}&tab=messages${openDeal ? '&openDeal=1' : ''}`,
+    );
   };
 
-  // Handle VIP Invitation Submission
+  const buildSafeInviteNote = (productTitle: string | undefined, rawMessage: string) => {
+    const cleanMsg = rawMessage.trim();
+    if (!productTitle) return cleanMsg.slice(0, 255);
+    const shortTitle = productTitle.trim().slice(0, 60);
+    const prefix = `Quan tâm SP: ${shortTitle}`;
+    if (!cleanMsg) return prefix.slice(0, 255);
+    return `${prefix}. ${cleanMsg}`.slice(0, 255);
+  };
+
+  // Handle Cooperation Invitation Submission
   const handleSendVipInvite = async () => {
     if (!invitingKol || invitationLock.current) return;
     invitationLock.current = true;
     setIsSendingInvite(true);
     try {
+      const safeNote = buildSafeInviteNote(selectedProduct?.title, inviteMessage);
       const result: any = await api.post('/store-collaborators/invite', {
         email: invitingKol.email,
-        note: `🎯 Đề xuất Deal VIP ${inviteCommissionRate}% cho [${selectedProduct?.title || 'Sản phẩm'}]${inviteIncludeSample ? ' | Kèm mẫu thử 0đ (SLA 14 ngày)' : ''}. ${inviteMessage.trim()}`.trim(),
+        ...(safeNote ? { note: safeNote } : {}),
       });
       const body = result?.data || result;
       if (!body?.invitation?.id) throw new Error('Máy chủ chưa xác nhận lời mời.');
-      toast.success(`Đã gửi gói đề xuất hợp tác ${inviteCommissionRate}% cho ${invitingKol.fullName}!`);
+      setCoopByKolId((prev) => ({
+        ...prev,
+        [invitingKol.collaboratorId]: {
+          id: body.invitation.id,
+          status: 'PENDING',
+          requestedByKol: false,
+        },
+      }));
+      window.dispatchEvent(new Event('scanms_cooperation_changed'));
+      toast.success(`Đã gửi lời mời hợp tác cho ${invitingKol.fullName}.`);
       setInviteMessage('');
       setInvitingKol(null);
     } catch (err: any) {
-      toast.error('Gửi lời mời thất bại: ' + (err.message || 'Lỗi'));
+      toast.error(
+        'Gửi lời mời thất bại: ' +
+          (err?.response?.data?.message || err.message || 'Lỗi'),
+      );
     } finally {
       invitationLock.current = false;
       setIsSendingInvite(false);
+    }
+  };
+
+  const handleApproveKolRequest = async (kol: KolMatchResult, coopId?: string) => {
+    if (!coopId || approvingCoopId) return;
+    setApprovingCoopId(coopId);
+    try {
+      await api.patch(`/store-collaborators/${coopId}/shop-approve`, {});
+      setCoopByKolId((prev) => ({
+        ...prev,
+        [kol.collaboratorId]: { id: coopId, status: 'APPROVED', requestedByKol: true },
+      }));
+      window.dispatchEvent(new Event('scanms_cooperation_changed'));
+      toast.success(`Đã duyệt hợp tác với ${kol.fullName}. Hai bên có thể đề xuất Deal ngay.`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || 'Không thể duyệt yêu cầu.');
+    } finally {
+      setApprovingCoopId(null);
     }
   };
 
@@ -691,6 +778,11 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                 ((kol.scoringWeights?.tierAndSocialScore ?? (isColdStart ? 0.3 : 0.2)) * 100),
               );
 
+              const liveCoop = coopByKolId[kol.collaboratorId];
+              const coopStatus = liveCoop?.status || kol.cooperationStatus;
+              const coopId = liveCoop?.id || kol.cooperationId;
+              const requestedByKol = liveCoop?.requestedByKol ?? kol.requestedByKol ?? false;
+
               return (
                 <div
                   key={kol.collaboratorId || idx}
@@ -699,10 +791,39 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                     : 'border-[#EAE4D7] hover:border-[#C59B58]/70'
                     }`}
                 >
-                  {/* Top Bar: Rank Medal + Compare Checkbox */}
+                  {/* Top Bar: Rank Medal + Cooperation Badge + Compare Checkbox */}
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                       {getRankBadge(idx)}
+                      {coopStatus === 'APPROVED' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#C59B58] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-bold text-[#8C6226]">
+                          <CheckCircle2 size={11} className="text-[#059669] shrink-0" />
+                          <span>Đang hợp tác</span>
+                        </span>
+                      )}
+                      {coopStatus === 'PENDING' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#FCD34D] bg-[#FFFBEB] px-2 py-0.5 text-[10px] font-bold text-[#B45309]">
+                          <Clock size={11} className="shrink-0" />
+                          <span>{requestedByKol ? 'KOL xin hợp tác' : 'Đã gửi lời mời'}</span>
+                        </span>
+                      )}
+                      {coopStatus === 'REJECTED' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-2 py-0.5 text-[10px] font-bold text-[#DC2626]">
+                          <Ban size={11} className="shrink-0" />
+                          <span>Đã từ chối</span>
+                        </span>
+                      )}
+                      {coopStatus === 'TERMINATED' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#EAE4D7] bg-[#F3EFE6] px-2 py-0.5 text-[10px] font-bold text-[#7D715E]">
+                          <span>Đã chấm dứt</span>
+                        </span>
+                      )}
+                      {coopStatus === 'BLOCKED' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-2 py-0.5 text-[10px] font-bold text-[#DC2626]">
+                          <Ban size={11} className="shrink-0" />
+                          <span>Đã khóa</span>
+                        </span>
+                      )}
                     </div>
 
                     <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] select-none shrink-0">
@@ -847,27 +968,84 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
 
                   {/* Primary & Secondary Action CTAs */}
                   <div className="radar-card-actions space-y-2 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleNegotiateDeal(kol)}
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-bold text-xs shadow-xs active:scale-[0.96] transition-[transform,background-color] duration-150 cursor-pointer"
-                      title="Mở khung chat thỏa thuận deal độc quyền"
-                    >
-                      <MessageSquare size={14} strokeWidth={2} />
-                      <span>Nhắn tin</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
+                    {coopStatus === 'APPROVED' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleNegotiateDeal(kol, true)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#231D15] hover:bg-[#1A1612] text-[#FAF8F5] font-bold text-xs shadow-xs active:scale-[0.96] transition-[transform,background-color] duration-150 cursor-pointer"
+                        title="Mở đề xuất Thỏa thuận Độc quyền với KOL"
+                      >
+                        <Handshake size={14} strokeWidth={2} className="text-[#C59B58]" />
+                        <span>Đề xuất Deal</span>
+                      </button>
+                    ) : coopStatus === 'PENDING' && requestedByKol ? (
+                      <button
+                        type="button"
+                        disabled={approvingCoopId === coopId}
+                        onClick={() => void handleApproveKolRequest(kol, coopId)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-bold text-xs shadow-xs active:scale-[0.96] transition-[transform,background-color] duration-150 cursor-pointer disabled:opacity-60"
+                        title="KOL đã chủ động xin hợp tác, bấm để duyệt ngay"
+                      >
+                        <CheckCircle2 size={14} strokeWidth={2} />
+                        <span>{approvingCoopId === coopId ? 'Đang duyệt…' : 'Duyệt hợp tác'}</span>
+                      </button>
+                    ) : coopStatus === 'PENDING' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] font-bold text-xs cursor-not-allowed opacity-90"
+                        title="Shop đã gửi lời mời hợp tác, đang chờ KOL chấp nhận"
+                      >
+                        <Clock size={14} strokeWidth={2} />
+                        <span>Đã gửi lời mời · Chờ KOL</span>
+                      </button>
+                    ) : coopStatus === 'BLOCKED' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626] font-bold text-xs cursor-not-allowed"
+                      >
+                        <Ban size={14} strokeWidth={2} />
+                        <span>Đang khóa hợp tác</span>
+                      </button>
+                    ) : (
                       <button
                         type="button"
                         onClick={() => {
                           setInviteMessage('');
                           setInvitingKol(kol);
                         }}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58]/50 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] active:scale-[0.96] transition-[transform,background-color,border-color,color] duration-150 cursor-pointer shadow-2xs"
+                        className={`w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-xs shadow-xs active:scale-[0.96] transition-[transform,background-color,border-color] duration-150 cursor-pointer ${
+                          coopStatus === 'REJECTED' || coopStatus === 'TERMINATED'
+                            ? 'border border-[#C59B58] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226]'
+                            : 'bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612]'
+                        }`}
+                        title={coopStatus === 'REJECTED' || coopStatus === 'TERMINATED' ? 'Gửi lời mời kết nối hợp tác trở lại' : 'Gửi lời mời hợp tác chính thức tới KOL'}
                       >
-                        <Send size={13} strokeWidth={1.75} className="text-[#B88E4F]" />
-                        <span>Mời hợp tác</span>
+                        {coopStatus === 'REJECTED' || coopStatus === 'TERMINATED' ? (
+                          <>
+                            <RefreshCw size={14} strokeWidth={2} />
+                            <span>Mời lại hợp tác</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send size={14} strokeWidth={2} />
+                            <span>Mời hợp tác</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={coopStatus === 'BLOCKED'}
+                        onClick={() => handleNegotiateDeal(kol)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58]/50 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] active:scale-[0.96] transition-[transform,background-color,border-color,color] duration-150 cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Mở hộp thoại nhắn tin trao đổi với KOL"
+                      >
+                        <MessageSquare size={13} strokeWidth={1.75} className="text-[#B88E4F]" />
+                        <span>Nhắn tin</span>
                       </button>
 
                       <button
@@ -1256,59 +1434,27 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                 </div>
               )}
 
-              {/* Commission Rate Tier Selector */}
-              <div>
-                <label className="mb-1.5 block font-semibold text-[#1A1612]">
-                  Mức thù lao đề xuất cho sản phẩm này:
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[10, 12, 14, 16].map((rate) => {
-                    const isSelected = inviteCommissionRate === rate;
-                    return (
-                      <button
-                        key={rate}
-                        type="button"
-                        onClick={() => setInviteCommissionRate(rate)}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer border flex flex-col items-center justify-center ${isSelected
-                          ? 'bg-[#C59B58] text-[#1A1612] border-[#B88E4F] shadow-xs'
-                          : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58]'
-                          }`}
-                      >
-                        <span className="text-sm">{rate}%</span>
-                        <span className="text-[9px] font-normal opacity-85">
-                          {rate === 10 ? 'Cơ bản' : rate === 16 ? 'Trần tối đa' : `+${rate - 10}%`}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-[10.5px] text-[#7D715E] mt-1">
-                  * Nằm trong khung tự trị của Shop Manager (10% - 16%). Hợp đồng kích hoạt ngay khi KOC đồng ý.
-                </p>
+              <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-[11px] leading-relaxed text-[#7D715E]">
+                <strong className="text-[#8C6226] block mb-0.5">Quy trình hợp tác chính thức:</strong>
+                Sau khi KOC bấm <strong>Chấp nhận lời mời</strong>, Shop có thể tạo <strong>Đề xuất Deal độc quyền (10% - 25%)</strong> hoặc duyệt cấp hàng mẫu miễn phí.
               </div>
 
-              {/* Free Sample Seeding Toggle */}
-              <label className="flex items-center gap-2.5 p-2.5 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] cursor-pointer hover:border-[#C59B58] transition">
-                <input
-                  type="checkbox"
-                  checked={inviteIncludeSample}
-                  onChange={(e) => setInviteIncludeSample(e.target.checked)}
-                  className="rounded text-[#C59B58] focus:ring-[#C59B58] w-4 h-4 cursor-pointer"
-                />
-                <div className="text-xs">
-                  <span className="font-bold text-[#1A1612] block">Tài trợ Sản phẩm mẫu 0đ (Giao GHN)</span>
-                  <span className="text-[10.5px] text-[#7D715E]">KOC cam kết trải nghiệm và đăng video review trong thời hạn 14 ngày SLA.</span>
-                </div>
-              </label>
-
               <div>
-                <label className="mb-1 block font-semibold text-[#1A1612]">Thông điệp cá nhân hóa gửi KOC:</label>
+                <div className="mb-1 flex items-center justify-between">
+                  <label htmlFor="kol-radar-invite-note" className="font-semibold text-[#1A1612]">
+                    Lời nhắn mời hợp tác gửi KOC:
+                  </label>
+                  <span className="text-[11px] tabular-nums text-[#7D715E]">
+                    {buildSafeInviteNote(selectedProduct?.title, inviteMessage).length}/255 ký tự
+                  </span>
+                </div>
                 <textarea
+                  id="kol-radar-invite-note"
                   rows={3}
-                  maxLength={255}
+                  maxLength={Math.max(60, 255 - (selectedProduct?.title ? `Quan tâm SP: ${selectedProduct.title.trim().slice(0, 60)}. `.length : 0))}
                   value={inviteMessage}
                   onChange={(e) => setInviteMessage(e.target.value)}
-                  placeholder={`Chào ${invitingKol.fullName}, shop rất ấn tượng với phong cách nội dung của bạn và muốn gửi lời mời hợp tác tiếp thị cho sản phẩm…`}
+                  placeholder={`Chào ${invitingKol.fullName}, shop rất ấn tượng với phong cách nội dung của bạn và muốn mời bạn đồng hành tiếp thị sản phẩm…`}
                   className="w-full rounded-2xl border border-[#EAE4D7] p-3 text-xs text-[#1A1612] placeholder:text-[#A89D8B] focus:border-[#C59B58] focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
                 />
               </div>

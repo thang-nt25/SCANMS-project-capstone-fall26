@@ -11,6 +11,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { Optional } from '@nestjs/common';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { assertCooperationOpen } from '../../common/policies/cooperation.policy';
 import { MediaService } from '../media/media.service';
 import { GhnService } from '../shipping/ghn.service';
 import { normalizeSamplePhone, SAMPLE_PHONE_PATTERN, SAMPLE_PHONE_ERROR } from './sample-phone';
@@ -234,6 +235,12 @@ export class SamplesService {
       throw new NotFoundException(
         'Sản phẩm không tồn tại hoặc Shop đang tạm ngừng.',
       );
+    await assertCooperationOpen(
+      this.prisma,
+      product.storeId,
+      collaboratorId,
+      'xin hàng mẫu',
+    );
 
     let variant: {
       id: string;
@@ -492,6 +499,7 @@ export class SamplesService {
           where: { id: req.productId },
           select: {
             id: true,
+            storeId: true,
             isActive: true,
             moderationStatus: true,
             sampleEnabled: true,
@@ -499,6 +507,14 @@ export class SamplesService {
             sampleGrantedCount: true,
           },
         });
+        if (product) {
+          await assertCooperationOpen(
+            tx,
+            product.storeId,
+            req.collaboratorId,
+            'duyệt cấp hàng mẫu',
+          );
+        }
         if (!product?.isActive)
           throw new ConflictException(
             'Sản phẩm đã tạm ngừng nên không thể cấp mẫu.',
