@@ -25,6 +25,8 @@ import {
 import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
 import { Cron } from '@nestjs/schedule';
 import { timingSafeEqual } from 'crypto';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { ReviewSandboxSampleVideoDto } from './dto/review-sandbox-sample-video.dto';
 import { GHN_STATUS_LABELS, ghnText, ghnTime, normalizeGhnEvents, GhnEvent } from './ghn-tracking';
 
 export interface GhnProvince {
@@ -679,17 +681,19 @@ export class GhnService {
     return this.createSampleShippingOrderInternal(requestId, shopOwnerId, environment, this.prisma);
   }
 
-  async sandboxSampleState(code: string, userId: string, action?: 'start' | 'receive' | 'video' | 'expire' | 'pay-shipping', videoUrl?: string, videoDetails?: { title?: string; caption?: string }) {
+  async sandboxSampleState(code: string, userId: string, action?: 'start' | 'receive' | 'video' | 'expire' | 'pay-shipping' | 'review-video', videoUrl?: string, videoDetails?: { title?: string; caption?: string; review?: ReviewSandboxSampleVideoDto }) {
     this.requireSimulationEnabled();
     const charge = await this.prisma.sampleShippingCharge.findFirst({
       where: { trackingNumber: code, environment: 'TEST', carrier: 'GHN' },
-      include: { sampleRequest: { include: { product: { select: { store: { select: { ownerId: true } } } } } } },
+      include: { sampleRequest: { include: { product: { select: { store: { select: { id: true, ownerId: true } } } } } } },
     });
     if (!charge) throw new NotFoundException('Không tìm thấy vận đơn sandbox.');
     const sample = charge.sampleRequest;
-    const owner = sample.product.store.ownerId === userId;
     const kol = sample.collaboratorId === userId;
-    if ((!owner && !kol) || (['start', 'receive', 'expire', 'pay-shipping'].includes(action || '') && !owner) || (action === 'video' && !kol)) {
+    const owner = sample.product.store.ownerId === userId || (!kol && Boolean(await this.prisma.store.findFirst({
+      where: { ...managedStoreWhere(userId), id: sample.product.store.id }, select: { id: true },
+    })));
+    if ((!owner && !kol) || (['start', 'receive', 'expire', 'pay-shipping', 'review-video'].includes(action || '') && !owner) || (action === 'video' && !kol)) {
       throw new BadRequestException('Bạn không có quyền thao tác mẫu thử này.');
     }
     if (action === 'video') {
@@ -729,16 +733,24 @@ export class GhnService {
       let videoUrlSaved = previous.videoUrl || null;
       let titleSaved = previous.title || null;
       let captionSaved = previous.caption || null;
+      // Old sandbox videos have no revision metadata; treat those as revision 1.
+      let videoRevision = Number.isInteger(previous.videoRevision) ? previous.videoRevision : previous.videoUrl ? 1 : 0;
+      let videoReview = previous.videoReview || null;
+      let videoSubmittedAt = previous.videoSubmittedAt || null;
+      let videoChanged = false;
+      let reviewChanged = false;
       let statusChanged = nextDeliveryStatus !== (previous.deliveryStatus || (previous.receivedAt ? 'DELIVERED' : 'NOT_STARTED')) ||
         (receivedAt !== (previous.receivedAt || null));
       // Starting an existing run must be idempotent. The timestamp is stored
       // in the sandbox event, so revisiting the page or retrying the request
       // must never restart the two-minute clock.
       if (action === 'start' && !simulationStartedAt) {
+        if (videoUrlSaved) throw new BadRequestException('Hành trình đã có video kiểm thử, không thể bắt đầu lại.');
         simulationStartedAt = new Date().toISOString();
         receivedAt = null; deadlineAt = null; simulatedNow = null;
         nextDeliveryStatus = 'WAITING_PICKUP';
         videoUrlSaved = null; titleSaved = null; captionSaved = null;
+        videoRevision = 0; videoReview = null; videoSubmittedAt = null;
         statusChanged = true;
       }
       if (action === 'video' && !receivedAt) throw new BadRequestException('Shop chưa xác nhận nhận hàng thử.');
@@ -749,17 +761,41 @@ export class GhnService {
       }
       if (action === 'expire') simulatedNow = previous.simulatedNow || new Date(Math.max(Date.now(), Date.parse(deadlineAt!) + 1000)).toISOString();
       if (action === 'video') {
+        if (videoReview?.status === 'APPROVED') throw new BadRequestException('Video kiểm thử đã nghiệm thu, không thể nộp đè.');
+        if (videoUrlSaved && videoReview?.status !== 'REJECTED' && videoUrlSaved !== videoUrl!.trim()) {
+          throw new ConflictException('Video đang chờ Shop duyệt. Chỉ nộp lại sau khi Shop yêu cầu sửa.');
+        }
+        videoChanged = !videoUrlSaved || videoReview?.status === 'REJECTED';
+        if (videoChanged) {
+          videoRevision++;
+          videoReview = null;
+          videoSubmittedAt = new Date().toISOString();
+          titleSaved = typeof videoDetails?.title === 'string' ? videoDetails.title.trim().slice(0, 255) : titleSaved;
+          captionSaved = typeof videoDetails?.caption === 'string' ? videoDetails.caption.trim().slice(0, 5000) : captionSaved;
+        }
         videoUrlSaved = videoUrl!.trim();
-        titleSaved = typeof videoDetails?.title === 'string' ? videoDetails.title.trim().slice(0, 255) : titleSaved;
-        captionSaved = typeof videoDetails?.caption === 'string' ? videoDetails.caption.trim().slice(0, 5000) : captionSaved;
+      }
+      if (action === 'review-video') {
+        const review = videoDetails?.review;
+        if (!review || !['APPROVED', 'REJECTED'].includes(review.status)) throw new BadRequestException('Kết quả kiểm duyệt không hợp lệ.');
+        if (!receivedAt || !videoUrlSaved) throw new BadRequestException('Chưa có video kiểm thử để nghiệm thu.');
+        if (review.videoUrl !== videoUrlSaved || review.revision !== videoRevision) throw new ConflictException('Video đã thay đổi. Hãy làm mới và xem lại trước khi duyệt.');
+        const reason = review.rejectionReason?.trim();
+        if (review.status === 'REJECTED' && (!reason || reason.length < 5 || reason.length > 2000)) throw new BadRequestException('Lý do cần sửa video phải có từ 5 đến 2000 ký tự.');
+        if (videoReview && videoReview.status !== review.status) throw new ConflictException('Video đã được xử lý. Chờ KOL nộp bản sửa trước khi quyết định lại.');
+        if (!videoReview) {
+          videoReview = { status: review.status, rejectionReason: review.status === 'REJECTED' ? reason : null, reviewedAt: new Date().toISOString(), reviewedBy: userId };
+          reviewChanged = true;
+        }
       }
       const state = { orderCode: code, simulated: true, simulationStartedAt, deliveryStatus: nextDeliveryStatus,
-        receivedAt, deadlineAt, simulatedNow, videoUrl: videoUrlSaved, title: titleSaved, caption: captionSaved, shippingPayment };
-      if ((action && action !== 'pay-shipping' && (action !== 'receive' || !previous.receivedAt)) || newShippingPayment || statusChanged) {
+        receivedAt, deadlineAt, simulatedNow, videoUrl: videoUrlSaved, title: titleSaved, caption: captionSaved,
+        videoRevision, videoReview, videoSubmittedAt, shippingPayment };
+      if ((action && !['pay-shipping', 'review-video', 'video'].includes(action) && (action !== 'receive' || !previous.receivedAt)) || videoChanged || reviewChanged || newShippingPayment || statusChanged) {
         await tx.sampleRequestEvent.create({ data: { sampleRequestId: charge.sampleRequestId, actorId: userId, action: 'SANDBOX_SAMPLE_STATE', details: state } });
       }
       const overdue = Boolean(state.receivedAt && !state.videoUrl && Date.parse(state.simulatedNow || new Date().toISOString()) >= Date.parse(state.deadlineAt!));
-      return { ...state, status: state.videoUrl ? 'VIDEO_SUBMITTED' : overdue ? 'OVERDUE' : receivedAt ? 'RECEIVED' : 'SHIPPED' };
+      return { ...state, status: videoReview?.status === 'APPROVED' ? 'COMPLETED' : videoReview?.status === 'REJECTED' ? 'REVISION_REQUIRED' : state.videoUrl ? 'VIDEO_SUBMITTED' : overdue ? 'OVERDUE' : receivedAt ? 'RECEIVED' : 'SHIPPED' };
     });
   }
 
@@ -769,7 +805,13 @@ export class GhnService {
       include: { product: { include: { store: { include: { owner: true } } } } },
     });
     if (!sample) throw new NotFoundException('Không tìm thấy yêu cầu hàng mẫu.');
-    if (sample.product.store.ownerId !== shopOwnerId) {
+    // Internal Shop Managers may be assigned to a store owned by Admin.
+    // Resolve the current assignment rather than trusting a cached store ID.
+    const managesStore = sample.product.store.ownerId === shopOwnerId || Boolean(await db.store.findFirst({
+      where: { ...managedStoreWhere(shopOwnerId), id: sample.product.store.id },
+      select: { id: true },
+    }));
+    if (!managesStore) {
       throw new BadRequestException('Bạn không quản lý Shop của yêu cầu này.');
     }
     const sandbox = environment === GhnEnvironment.TEST;

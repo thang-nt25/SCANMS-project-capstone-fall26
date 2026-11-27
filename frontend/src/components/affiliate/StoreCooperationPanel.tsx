@@ -38,7 +38,7 @@ export function StoreCooperationPanel({ mode, storeId, collaboratorId, onChanged
     setBusy(id);
     try {
       await api.patch(`/store-collaborators/${id}/${mode === 'shop' ? accept ? 'shop-approve' : 'shop-reject' : accept ? 'accept' : 'reject'}`, {});
-      toast.success(accept ? 'Đã xác nhận hợp tác. KOL có thể được chọn khi tạo phiên Live.' : 'Đã từ chối hợp tác.');
+      toast.success(accept ? 'Đã xác nhận hợp tác.' : 'Đã từ chối hợp tác.');
       await refresh();
       onChanged?.();
       window.dispatchEvent(new Event('scanms_cooperation_changed'));

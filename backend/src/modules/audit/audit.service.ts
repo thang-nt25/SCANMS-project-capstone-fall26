@@ -189,6 +189,21 @@ export const AUDIT_ACTIONS: AuditActionDefinition[] = [
     description: 'KOL từ chối tham gia chiến dịch',
   },
 
+  // Automated flags require review; they are not adjudicated violations.
+  {
+    code: 'AI_FRAUD_FLAG',
+    nameVi: 'Ghi nhận dấu hiệu bất thường',
+    category: 'AI_SECURITY',
+    severity: 'WARN',
+    description: 'Quy tắc tự động ghi nhận dấu hiệu cần xác minh; chưa phải kết luận vi phạm.',
+  },
+  {
+    code: 'HTTP_POST_AuthController_login',
+    nameVi: 'Yêu cầu đăng nhập',
+    category: 'AUTH',
+    severity: 'INFO',
+    description: 'Ghi nhận yêu cầu đăng nhập; không xác nhận kết quả đăng nhập.',
+  },
   // AI & SECURITY
   {
     code: 'AI_FRAUD_FLAGGED',
@@ -292,7 +307,7 @@ export class AuditService {
           userId: userId || null,
           action,
           details: details ? sanitizeAuditDetails(details) as Prisma.InputJsonValue : undefined,
-          ipAddress: ipAddress || '127.0.0.1',
+          ipAddress: ipAddress || null,
           eventId: eventId || undefined,
         },
       });
@@ -433,7 +448,7 @@ export class AuditService {
         category: meta.category,
         severity: meta.severity,
         description: meta.description,
-        ipAddress: log.ipAddress || '127.0.0.1',
+        ipAddress: log.ipAddress || null,
         details: sanitizeAuditDetails(log.details),
         createdAt: log.createdAt.toISOString(),
         actor: log.user
@@ -447,7 +462,7 @@ export class AuditService {
           : {
               id: 'SYSTEM',
               name: 'Hệ thống tự động',
-              email: 'system@scanms.vn',
+              email: '',
               role: 'SYSTEM',
               avatarUrl: null,
             },
@@ -509,7 +524,7 @@ export class AuditService {
         category: meta.category,
         severity: meta.severity,
         description: meta.description,
-        ipAddress: log.ipAddress || '127.0.0.1',
+        ipAddress: log.ipAddress || null,
         details: sanitizeAuditDetails(log.details),
         createdAt: log.createdAt.toISOString(),
         actor: log.user
@@ -523,7 +538,7 @@ export class AuditService {
           : {
               id: 'SYSTEM',
               name: 'Hệ thống tự động',
-              email: 'system@scanms.vn',
+              email: '',
               role: 'SYSTEM',
               avatarUrl: null,
             },

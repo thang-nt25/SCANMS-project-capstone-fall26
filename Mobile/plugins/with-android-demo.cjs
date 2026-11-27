@@ -3,12 +3,34 @@ const path = require("node:path");
 const {
   withAndroidManifest,
   withAppBuildGradle,
+  withProjectBuildGradle,
   withGradleProperties,
   withDangerousMod,
 } = require("expo/config-plugins");
 
 const START = "// SCANMS_DEMO_START";
 const END = "// SCANMS_DEMO_END";
+const LIBRARY_START = "// SCANMS_NATIVE_PATHS_START";
+const LIBRARY_END = "// SCANMS_NATIVE_PATHS_END";
+function nativePathGradle(source) {
+  const clean = source.replace(
+    new RegExp(`${LIBRARY_START}[\\s\\S]*?${LIBRARY_END}\\n?`, "g"),
+    "",
+  );
+  return `${clean}\n${LIBRARY_START}
+// Apply the Windows object-path limit to native libraries too (e.g. Reanimated).
+// Finalize the DSL before AGP creates variants; do not patch node_modules.
+subprojects { libraryProject ->
+    libraryProject.pluginManager.withPlugin("com.android.library") {
+        libraryProject.extensions.getByName("androidComponents").finalizeDsl { library ->
+            def cmakeArguments = library.defaultConfig.externalNativeBuild.cmake.arguments
+            cmakeArguments.removeAll { it.startsWith("-DCMAKE_OBJECT_PATH_MAX=") }
+            cmakeArguments.add("-DCMAKE_OBJECT_PATH_MAX=240")
+        }
+    }
+}
+${LIBRARY_END}\n`;
+}
 function demoGradle(source) {
   const clean = source
     .replace(new RegExp(`${START}[\\s\\S]*?${END}\\n?`, "g"), "")
@@ -22,8 +44,9 @@ android {
     defaultConfig {
         externalNativeBuild {
             cmake {
-                // Hash generated object paths before Ninja reaches Windows MAX_PATH.
-                arguments "-DCMAKE_OBJECT_PATH_MAX=240"
+                // Release codegen needs 246 chars even after hashing; 240 makes
+                // CMake fall back to the unshortened path. Stay below MAX_PATH.
+                arguments "-DCMAKE_OBJECT_PATH_MAX=256"
             }
         }
     }
@@ -61,6 +84,12 @@ ${hosts.length ? `  <domain-config cleartextTrafficPermitted="true">\n${hosts.ma
 </network-security-config>\n`;
 }
 function withAndroidDemo(config) {
+  config = withProjectBuildGradle(config, (mod) => {
+    if (mod.modResults.language !== "groovy")
+      throw new Error("SCANMS plugin expects the Expo Groovy root template.");
+    mod.modResults.contents = nativePathGradle(mod.modResults.contents);
+    return mod;
+  });
   config = withGradleProperties(config, (mod) => {
     // Keep the initial native build usable alongside the IDE on 16 GB machines.
     const properties = {
@@ -111,5 +140,6 @@ function withAndroidDemo(config) {
 }
 module.exports = withAndroidDemo;
 module.exports.demoGradle = demoGradle;
+module.exports.nativePathGradle = nativePathGradle;
 module.exports.localDomains = localDomains;
 module.exports.networkXml = networkXml;

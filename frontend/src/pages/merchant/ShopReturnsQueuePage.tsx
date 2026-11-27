@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { returnService, type ReturnStatus } from '../../services/return.service';
 import { returnReasonLabel, returnStatusLabel } from '../../utils/return-status.utils';
@@ -16,9 +15,20 @@ const filters: Array<{ label: string; status?: ReturnStatus }> = [
 ];
 
 export default function ShopReturnsQueuePage() {
-  const [params] = useSearchParams();
-  const [status, setStatus] = useState<ReturnStatus | undefined>();
-  const [page, setPage] = useState(1);
+  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const status = filters.find(item => item.status === params.get('status'))?.status;
+  const requestedPage = Number(params.get('page'));
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const detailState = { shopReturnFrom: { pathname: location.pathname, search: location.search } };
+  const updateQueue = (nextStatus: ReturnStatus | undefined, nextPage: number) => {
+    const next = new URLSearchParams(params);
+    if (nextStatus) next.set('status', nextStatus);
+    else next.delete('status');
+    if (nextPage > 1) next.set('page', String(nextPage));
+    else next.delete('page');
+    setParams(next, { replace: true });
+  };
   const queue = useQuery({
     queryKey: ['shop-returns', 'queue', page, status],
     queryFn: () => returnService.getShopQueue(page, status),
@@ -31,13 +41,13 @@ export default function ShopReturnsQueuePage() {
   return <main className="shop-returns-queue" aria-label="Hồ sơ đổi trả của Shop">
     <h1 className="sr-only">Hồ sơ đổi trả của Shop</h1>
     <div className="shop-returns-content">
-      {targetId && <Link to={`/merchant/returns/${encodeURIComponent(targetId)}`}
+      {targetId && <Link to={`/merchant/returns/${encodeURIComponent(targetId)}`} state={detailState}
         className="block rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm font-semibold text-[#795A2D]">
         Mở hồ sơ từ thông báo →
       </Link>}
       <div className="shop-returns-toolbar"><nav aria-label="Lọc hồ sơ đổi trả" className="shop-returns-filters">
         {filters.map((item) => <button type="button" key={item.label}
-          aria-pressed={status === item.status} onClick={() => { setStatus(item.status); setPage(1); }}
+          aria-pressed={status === item.status} onClick={() => updateQueue(item.status, 1)}
           >
           {item.label}
         </button>)}
@@ -58,21 +68,21 @@ export default function ShopReturnsQueuePage() {
           const awaiting = item.status === 'REQUESTED';
           return <article key={item.id} className="shop-returns-row" aria-label={`Hồ sơ ${item.order.externalOrderSn}`}>
             <div className="shop-returns-order"><span className="shop-returns-image">{first?.imageUrl ? <img src={first.imageUrl} alt={first.title} onError={handleProductImageError} /> : <ImageIcon size={20} aria-label="Chưa có ảnh sản phẩm" />}</span><div>
-              <Link to={`/merchant/returns/${item.id}`} className="shop-returns-order-code">{item.order.externalOrderSn}</Link>
+              <Link to={`/merchant/returns/${item.id}`} state={detailState} className="shop-returns-order-code">{item.order.externalOrderSn}</Link>
               <p className="shop-returns-product" title={products.map(product => `${product.title} × ${product.quantity}`).join('; ')}>{first?.title || 'Sản phẩm trong hồ sơ'}{products.length > 1 ? ` +${products.length - 1}` : ''}<span>{quantity > 0 ? ` · SL: ${quantity}` : ''}</span></p>
               {first?.variantName && <p className="shop-returns-variant">{first.variantName}</p>}
               <time dateTime={item.submittedAt}>{new Date(item.submittedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</time>
             </div></div>
             <div className="shop-returns-request"><p>{returnReasonLabel(item.reason)}</p><span>{item.preferredResolution === 'EXCHANGE' ? 'Đổi sản phẩm' : item.preferredResolution === 'REFUND' ? 'Trả hàng / Hoàn tiền' : 'Chưa ghi nhận phương án'}</span></div>
             <div className="shop-returns-status-cell"><span className="shop-returns-status" data-pending={awaiting}>{returnStatusLabel(item.status)}</span></div>
-            <div className="shop-returns-action-cell"><Link to={`/merchant/returns/${item.id}`} className={`shop-returns-open${awaiting ? ' shop-returns-open-primary' : ''}`}>{awaiting ? 'Xử lý yêu cầu' : 'Xem hồ sơ'}<ChevronRight size={14} aria-hidden="true" /></Link></div>
+            <div className="shop-returns-action-cell"><Link to={`/merchant/returns/${item.id}`} state={detailState} className={`shop-returns-open${awaiting ? ' shop-returns-open-primary' : ''}`}>{awaiting ? 'Xử lý yêu cầu' : 'Xem hồ sơ'}<ChevronRight size={14} aria-hidden="true" /></Link></div>
           </article>;
         })}
       </section>}
       {!queue.error && total > 20 && <nav aria-label="Phân trang hồ sơ đổi trả" className="flex flex-wrap items-center justify-center gap-3">
-        <button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 disabled:opacity-50">Trang trước</button>
+        <button type="button" disabled={page <= 1} onClick={() => updateQueue(status, page - 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 disabled:opacity-50">Trang trước</button>
         <span className="text-sm text-[#7D715E]">Trang {page}/{pages} · {total} hồ sơ</span>
-        <button type="button" disabled={page >= pages} onClick={() => setPage((value) => value + 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 disabled:opacity-50">Trang sau</button>
+        <button type="button" disabled={page >= pages} onClick={() => updateQueue(status, page + 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 disabled:opacity-50">Trang sau</button>
       </nav>}
     </div>
   </main>;

@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { z } from "zod";
 import { Button, Caption, ErrorNotice, Screen } from "../../components/ui";
 import { roleLabels, RoleSchema } from "../../types/contracts";
+import { CreateStoreSheet } from "./CreateStoreSheet";
 import {
   CompactCommandForm as CommandForm,
   QueryState,
@@ -34,6 +35,7 @@ const Store = z.object({
 });
 export function StaffScreen() {
   const [tab, setTab] = useState("staff");
+  const [createStore, setCreateStore] = useState(false);
   const staff = useResource("staff", "/users/staff", z.array(Staff)),
     stores = useResource("all-stores", "/stores/all-admin", z.array(Store));
   const { user } = useActor(),
@@ -153,6 +155,12 @@ export function StaffScreen() {
             )}
           </ExpandableRecord>
         ))}
+      {tab === "stores" && (
+        <Button
+          title="Tạo cửa hàng nội bộ"
+          onPress={() => setCreateStore(true)}
+        />
+      )}
       {tab === "stores" &&
         stores.data?.map((item) => (
           <ExpandableRecord
@@ -213,6 +221,7 @@ export function StaffScreen() {
           </ExpandableRecord>
         ))}
       {form && <CommandForm spec={form} close={() => setForm(null)} />}
+      {createStore && <CreateStoreSheet close={() => setCreateStore(false)} />}
     </Screen>
   );
 }

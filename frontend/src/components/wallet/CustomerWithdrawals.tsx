@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, Building2, CheckCircle2, Clock, Copy, FileText, Loader2 } from 'lucide-react';
 import { customerWithdrawals, type CustomerWithdrawal, type WithdrawalPage } from '../../services/customer-withdrawals.service';
 import { BankSelectTrigger } from '../bank/BankSelectTrigger';
+import TopUpAmountInput from './TopUpAmountInput';
 import { toast } from '../../utils/toast';
 import { findBankByQuery, VIETNAM_BANKS } from '../../config/banks.config';
 
@@ -59,6 +60,7 @@ export default function CustomerWithdrawals({ balance, onChanged, onSubmitted }:
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const retry = useRef<{ payload: string; key: string } | null>(null);
+  const wholeBalance = Math.floor(balance);
   const valid = Number.isSafeInteger(Number(amount)) && Number(amount) >= 200000 && Number(amount) <= balance && /^\d{6,30}$/.test(account) && holder.trim().length >= 2 && bankName && confirmed;
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); if (!valid || inFlight.current) return;
@@ -87,7 +89,39 @@ export default function CustomerWithdrawals({ balance, onChanged, onSubmitted }:
           disabled={busy}
         />
         <div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-1.5 text-sm font-medium">Số tài khoản<input required inputMode="numeric" autoComplete="off" maxLength={30} value={account} onChange={e => setAccount(e.target.value.replace(/\D/g, ''))} className={withdrawalInputClass}/></label><label className="grid gap-1.5 text-sm font-medium">Chủ tài khoản<input required maxLength={150} value={holder} onChange={e => setHolder(e.target.value)} className={`${withdrawalInputClass} uppercase`}/></label></div>
-        <label className="grid gap-1.5 text-sm font-medium"><span className="flex justify-between gap-2">Số tiền rút<button type="button" onClick={() => setAmount(String(balance))} className="text-xs text-[#B88E4F]">Rút toàn bộ</button></span><input required inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value.replace(/\D/g, ''))} placeholder="Từ 200.000 đ" className={withdrawalInputClass}/></label>
+        <div className="grid gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="customer-withdrawal-amount" className="text-sm font-medium">Số tiền rút</label>
+            <button
+              type="button"
+              disabled={busy || !Number.isSafeInteger(wholeBalance) || wholeBalance < 200000}
+              onClick={() => setAmount(String(wholeBalance))}
+              className="text-xs font-medium text-[#805B27] hover:underline disabled:opacity-50"
+            >
+              Rút toàn bộ
+            </button>
+          </div>
+          <div className="relative">
+            <TopUpAmountInput
+              id="customer-withdrawal-amount"
+              required
+              autoComplete="off"
+              value={amount}
+              onAmountChange={setAmount}
+              onPaste={(event) => {
+                const pasted = event.clipboardData.getData('text').trim();
+                if (!/^(?:\d+|\d{1,3}(?:[. \u00a0\u202f]\d{3})+)(?:\s*(?:₫|đ|VND))?$/i.test(pasted)) {
+                  event.preventDefault();
+                  toast.error('Vui lòng nhập số tiền rút bằng đồng, không có phần lẻ.');
+                }
+              }}
+              placeholder="Từ 200.000"
+              aria-describedby="customer-withdrawal-currency"
+              className={`${withdrawalInputClass} pr-16 text-lg font-semibold tabular-nums placeholder:text-sm placeholder:font-normal`}
+            />
+            <span id="customer-withdrawal-currency" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-muted">VND</span>
+          </div>
+        </div>
         <label className="flex items-start gap-2 text-xs leading-5 text-[#7D715E]"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1 accent-[#C59B58]"/>Tôi đã kiểm tra đúng tài khoản nhận tiền và số tiền muốn rút.</label>
         <button disabled={!valid || busy} className={withdrawalButtonClass}>{busy ? <Loader2 size={17} className="animate-spin"/> : <ArrowUpRight size={17}/>}Gửi yêu cầu rút tiền</button>
       </form>

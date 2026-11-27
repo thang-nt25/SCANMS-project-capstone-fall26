@@ -18,6 +18,7 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
 import { notifyCustomerOrderEvent } from './customer-order-notifications';
 import { WalletPayosService } from '../wallets/wallet-payos.service';
+import { SponsorshipPayosService } from '../stores/sponsorship/sponsorship-payos.service';
 
 type PayosDetails = {
   orderCode: number;
@@ -41,6 +42,7 @@ export class PayosPaymentService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     @Optional() private readonly walletPayos?: WalletPayosService,
+    @Optional() private readonly sponsorshipPayos?: SponsorshipPayosService,
   ) {}
 
   private client(): PayOS {
@@ -491,6 +493,8 @@ export class PayosPaymentService {
       throw new BadRequestException('Dữ liệu thanh toán PayOS không hợp lệ');
     }
 
+    if (await this.sponsorshipPayos?.handleVerifiedWebhook(data))
+      return { success: true };
     if (await this.walletPayos?.handleVerifiedWebhook(data))
       return { success: true };
 

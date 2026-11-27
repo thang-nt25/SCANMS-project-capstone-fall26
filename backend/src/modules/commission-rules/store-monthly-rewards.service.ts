@@ -115,6 +115,28 @@ export class StoreMonthlyRewardsService {
     if (reviewers.length) await tx.notification.createMany({ data: reviewers.map(reviewer => ({ userId: reviewer.id, type: 'SYSTEM', title, message,
       data: { actionUrl: `/admin/payouts?tab=monthly&yearMonth=${yearMonth}`, policyId, yearMonth } })) });
   }
+  async policyHistory(user: AuthenticatedUser, storeId: string, page = 1) {
+    await this.access(user, storeId, true);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 100000)
+      throw new BadRequestException('Trang không hợp lệ');
+    const pageSize = 5;
+    const where = { storeId };
+    const [items, total] = await Promise.all([
+      this.db.storeMonthlyRewardPolicy.findMany({
+        where, select: { id: true, yearMonth: true, name: true, targetRevenue: true, rewardAmount: true, status: true, createdAt: true, reviewNote: true },
+        orderBy: [{ yearMonth: 'desc' }, { id: 'desc' }], skip: (page - 1) * pageSize, take: pageSize,
+      }),
+      this.db.storeMonthlyRewardPolicy.count({ where }),
+    ]);
+    return { items, total, page, pageSize };
+  }
+  private async notifyShopSubmission(tx: Prisma.TransactionClient, userId: string, policyId: string, dto: CreateMonthlyRewardDto, resubmitted = false) {
+    await tx.notification.create({ data: {
+      userId, type: 'SYSTEM', title: resubmitted ? 'Đã gửi lại mốc thưởng tháng' : 'Đã tạo mốc thưởng tháng',
+      message: `${dto.name.trim()} · ${dto.yearMonth} · Mốc ${Number(dto.targetRevenue).toLocaleString('vi-VN')} đ · Thưởng ${Number(dto.rewardAmount).toLocaleString('vi-VN')} đ · Chờ kiểm duyệt.`,
+      data: { actionUrl: `/merchant/promotions?tab=creator-incentives&section=milestones&yearMonth=${dto.yearMonth}`, policyId, yearMonth: dto.yearMonth },
+    } });
+  }
   async create(
     user: AuthenticatedUser,
     storeId: string,
@@ -152,6 +174,7 @@ export class StoreMonthlyRewardsService {
             submitted: { name: dto.name.trim(), targetRevenue: dto.targetRevenue, rewardAmount: dto.rewardAmount },
           } } });
           await this.notifyReviewers(tx, 'Chính sách thưởng tháng gửi lại', `${store.name} · ${dto.yearMonth} · Chờ kiểm duyệt chính sách đã chỉnh sửa.`, previous.id, dto.yearMonth);
+          await this.notifyShopSubmission(tx, user.id, previous.id, dto, true);
           return { id: previous.id, status: 'PENDING', resubmitted: true };
         }
         const policy = await tx.storeMonthlyRewardPolicy.create({
@@ -176,6 +199,7 @@ export class StoreMonthlyRewardsService {
           },
         });
         await this.notifyReviewers(tx, 'Chính sách thưởng tháng chờ duyệt', `${store.name} · ${dto.yearMonth} · KPI ${Number(dto.targetRevenue).toLocaleString('vi-VN')} đ · Thưởng ${Number(dto.rewardAmount).toLocaleString('vi-VN')} đ.`, policy.id, dto.yearMonth);
+        await this.notifyShopSubmission(tx, user.id, policy.id, dto);
         return policy;
       });
     } catch (error) {
@@ -223,7 +247,7 @@ export class StoreMonthlyRewardsService {
       await tx.notification.create({ data: { userId: policy.createdBy, type: 'SYSTEM',
         title: dto.decision === 'APPROVED' ? 'Chính sách thưởng tháng đã được duyệt' : 'Chính sách thưởng tháng bị từ chối',
         message: `${policy.name} · ${policy.yearMonth}${dto.note ? ` · ${dto.note}` : ''}`,
-        data: { actionUrl: `/merchant/promotions?tab=creator-incentives&yearMonth=${policy.yearMonth}`, policyId: id, yearMonth: policy.yearMonth },
+        data: { actionUrl: `/merchant/promotions?tab=creator-incentives&section=milestones&yearMonth=${policy.yearMonth}`, policyId: id, yearMonth: policy.yearMonth },
       } });
       if (dto.decision === 'APPROVED') {
         const store = await tx.store.findUnique({ where: { id: policy.storeId }, select: { name: true } });

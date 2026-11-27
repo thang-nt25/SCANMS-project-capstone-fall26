@@ -40,7 +40,7 @@ export default function MarketplacePage() {
 
       return apiItems.map((dbP: any) => {
         const rawPrice = Number(dbP.price || 0);
-        const rawOrigPrice = dbP.originalPrice ? Number(dbP.originalPrice) : 0;
+        const rawOrigPrice = Number(dbP.listPrice ?? dbP.originalPrice) || 0;
         const commissionValue = dbP.customCommissionRate ?? dbP.commissionRate ?? dbP.store?.defaultCommissionRate;
         const parsedCommissionRate = commissionValue == null ? undefined : Number(commissionValue);
         const commRate = parsedCommissionRate !== undefined && Number.isFinite(parsedCommissionRate) && parsedCommissionRate > 0
@@ -233,9 +233,9 @@ export default function MarketplacePage() {
 
       <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} />
 
-      <MarketplaceHero stores={marketplaceStores} />
+      <MarketplaceHero products={items} />
 
-      <CategoryQuickNav products={items} loading={loading} />
+      <CategoryQuickNav products={items} />
 
       <FeaturedStores stores={marketplaceStores} loading={storesLoading} failed={storesFailed} onRetry={() => void retryStores()} />
 

@@ -1,0 +1,72 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import puppeteer from 'puppeteer-core';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+const base=process.env.GHN_UI_TEST_URL;
+test('active Deals use full-width rows, distinct products, accurate KPI types, deadlines and guarded actions',{skip:!base,timeout:45000},async()=>{
+ const origin=new URL(base).origin;assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
+ const browser=await puppeteer.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--no-sandbox']});
+ let kyc='REJECTED';let writes=0;let confirms=0;
+ const channel={platformName:'TikTok',channelName:'profileqa',channelUrl:'https://www.tiktok.com/@profileqa',followerCount:5000,engagementRate:0};
+ const kol=()=>({id:'kol-qa',fullName:'Partner QA',email:'',phoneNumber:'0900000000',collaboratorProfile:{tier:{name:'BRONZE'},kycStatus:kyc},socialChannels:[channel,{platformName:'YOUTUBE',channelName:'videoqa',channelUrl:'https://www.youtube.com/@videoqa',followerCount:1200}]});
+ const deals=Array.from({length:3},(_,i)=>({id:'deal-'+i,collaboratorId:i===2?'other':'kol-qa',collaboratorName:i===2?'Partner Two':'Partner QA',collaboratorTier:i===2?'Kim Cương':'Vàng',primaryChannel:{platformName:'TIKTOK',channelName:'@partnerqa',followerCount:5000},productId:i===1?'product-0':'product-'+i,productTitle:'Product '+i,productPrice:390000,dealCommissionRate:14+i,targetOrders:i===0?0:30,targetRevenue:i===0?10000000:null,commitmentDays:14,commitmentEndsAt:'2026-12-01T12:00:00Z',isExpired:i===2,progress:{completedOrders:i,validRevenue:i===0?2500000:0,pendingOrders:0,targetOrders:30,status:'ACTIVE'},referralLink:{shortCode:'QA-'+i}}));
+ try{
+  const page=await browser.newPage();page.setDefaultTimeout(7000);await page.setViewport({width:1440,height:1000});
+  await page.evaluateOnNewDocument(()=>{localStorage.setItem('token','fixture-only');localStorage.setItem('user',JSON.stringify({id:'shop-qa',role:'SHOP_MANAGER',stores:[{id:'store-qa',name:'Shop QA'}]}));Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.copiedTestId=value;}}});});
+  page.on('dialog',async dialog=>{confirms++;await dialog.dismiss();});
+  await page.setRequestInterception(true);page.on('request',req=>{
+   const url=new URL(req.url());
+   if(url.pathname==='/profile-fixture')return req.respond({contentType:'text/html',body:'<div id="root"></div><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;</script><script type="module" src="/tests/fixtures/kol-workspace.tsx"></script>'});
+   if(url.pathname==='/src/services/chat-socket.service.ts')return req.respond({contentType:'application/javascript',body:'const s={connected:false,on(){return this},off(){return this},emit(){},connect(){return this}};export const getChatSocket=()=>s;export const isChatSocketAuthenticated=()=>false;export const disconnectChatSocket=()=>{};'});
+   if(url.pathname.startsWith('/api/')||url.port==='3000'){
+    const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':req.headers()['access-control-request-headers']||'*','Access-Control-Allow-Methods':'GET,OPTIONS'};
+    if(req.method()==='OPTIONS')return req.respond({status:204,headers});
+    if(req.method()!=='GET')writes++;
+    let data=[];
+    if(url.pathname==='/api/store-collaborators/shop')data={store:{id:'store-qa',name:'Shop QA'},members:[{collaboratorId:'kol-qa',collaborator:kol(),stats:{totalRevenue:0,totalOrders:0}}]};
+    if(url.pathname==='/api/chat/search-collaborators')data=[kol()];
+    if(url.pathname==='/api/affiliate-deals/shop/active-partners')data={totalPartners:2,totalActiveDeals:3,averageCommissionRate:15,deals};
+    if(url.pathname==='/api/affiliate-deals/shop')data={items:[],total:0,page:1,pageSize:20};
+    if(url.pathname.includes('/progress'))data={canTerminate:false};
+    if(url.pathname==='/api/stores/my-store')data={id:'store-qa',name:'Shop QA',slug:'shop-qa'};
+    return req.respond({headers,contentType:'application/json',body:JSON.stringify({data})});
+   }
+   if(url.origin!==origin&&!['data:','blob:'].includes(url.protocol))return req.abort();return req.continue();
+  });
+  await page.goto(origin+'/profile-fixture?view=deals',{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('.deal-product-row');
+  assert.equal(await page.$$eval('.deal-creator-group',els=>els.length),2);
+  assert.equal(await page.$$eval('.deal-product-row',els=>els.length),3);
+  assert.match(await page.$eval('.deal-creator-group header',el=>el.textContent),/1 sản phẩm · 2 Deal/);
+  assert.match(await page.$eval('.deal-row-kpi',el=>el.textContent),/2.500.000\/10.000.000 ₫/);
+  assert.equal(await page.$eval('progress',el=>el.value),25);
+  assert.match(await page.$eval('.deal-product-row:nth-child(4)',el=>el.textContent),/1\/30 đơn/);
+  assert.equal(await page.$eval('.deal-row-product img',el=>el.getBoundingClientRect().width),32);
+  assert.equal(await page.$eval('.deal-creator-group',el=>el.getBoundingClientRect().width),await page.$eval('.shop-active-deals',el=>el.clientWidth));
+  assert.equal(await page.$$eval('.deal-status-tabs button',els=>{const r=els.map(el=>el.getBoundingClientRect());return r.length===3&&r.every(x=>x.height===38&&Math.abs(x.width-r[0].width)<1);}),true);
+  assert.equal(await page.$eval('.deal-active-toolbar',el=>el.getBoundingClientRect().top),await page.$eval('.deal-status-tabs',el=>el.getBoundingClientRect().top));
+  await page.click('.deal-row-actions button');assert.match(await page.evaluate(()=>window.copiedTestId),/\/r\/QA-0$/);
+  await page.click('.deal-row-actions summary');assert.ok(await page.$('.deal-row-actions details[open]'));
+  await page.click('.deal-row-actions details[open] button');assert.equal(writes,0);
+  assert.equal(await page.$('.deal-overview-metrics'),null);
+  await page.screenshot({path:join(tmpdir(),'scanms-deals-grouped-desktop.png')});
+  assert.equal(await page.$('.deal-active-toolbar button'),null);
+  await page.click('.deal-status-tabs button:nth-child(2)');
+  assert.equal(await page.$('[aria-label="Lọc mức thù lao"]'),null);
+  assert.ok(await page.$('[aria-label="Tìm KOL, sản phẩm"]'));
+  await page.click('.deal-status-tabs button:nth-child(3)');
+  assert.equal(await page.$('[aria-label="Lọc mức thù lao"]'),null);
+  await page.click('.deal-status-tabs button:first-child');
+  await page.select('[aria-label="Lọc mức thù lao"]','14');assert.equal(await page.$$eval('.deal-product-row',els=>els.length),1);
+  await page.select('[aria-label="Lọc mức thù lao"]','ALL');
+  await page.screenshot({path:join(tmpdir(),'scanms-deals-rows-desktop.png')});
+  await page.setViewport({width:390,height:844});
+  assert.equal(await page.$eval('.shop-active-deals',el=>el.scrollWidth<=el.clientWidth+1),true);
+  assert.equal(await page.$eval('.deal-product-row',el=>el.scrollWidth<=el.clientWidth+1),true);
+  assert.equal(await page.$eval('.deal-active-toolbar select',el=>el.getBoundingClientRect().height),38);
+  assert.ok(await page.$eval('.deal-state-toolbar',el=>el.querySelector('.deal-active-toolbar').getBoundingClientRect().top>=el.querySelector('.deal-status-tabs').getBoundingClientRect().bottom));
+  await page.screenshot({path:join(tmpdir(),'scanms-deals-rows-mobile.png')});
+  assert.equal(writes,0);
+ }finally{await browser.close();}
+});

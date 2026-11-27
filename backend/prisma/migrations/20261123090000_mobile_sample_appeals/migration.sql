@@ -1,0 +1,5 @@
+ALTER TYPE "SampleRequestStatus" ADD VALUE IF NOT EXISTS 'APPEALED';
+
+ALTER TABLE "sample_product_requests"
+  ADD COLUMN IF NOT EXISTS "appeal_reason" VARCHAR(1000),
+  ADD COLUMN IF NOT EXISTS "appealed_at" TIMESTAMPTZ(6);

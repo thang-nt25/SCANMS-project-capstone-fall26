@@ -12,11 +12,19 @@ test('shop returns fill the available width with aligned rows and preserve serve
   const queries = [];
   try {
     const page = await browser.newPage(); page.setDefaultTimeout(7000);
+    await page.evaluateOnNewDocument(() => {
+      localStorage.setItem('user', JSON.stringify({ id: 'qa-shop', role: 'SHOP_MANAGER', fullName: 'Shop' }));
+    });
     const errors = []; page.on('pageerror', e => { if (!e.message.includes('WebSocket closed without opened')) errors.push(e.message); });
     await page.setRequestInterception(true);
     page.on('request', req => {
       const url = new URL(req.url());
       if (url.pathname === '/queue-fixture') return req.respond({ contentType: 'text/html', body: '<div id="root"></div><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;</script><script type="module" src="/tests/fixtures/shop-returns-queue.tsx"></script>' });
+      if (/\/returns\/return-\d+$/.test(url.pathname) && url.pathname.includes('/api/')) {
+        const headers = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': req.headers()['access-control-request-headers'] || '*' };
+        if (req.method() === 'OPTIONS') return req.respond({ status: 204, headers });
+        return req.respond({ status: 404, headers, contentType: 'application/json', body: '{}' });
+      }
       if (url.pathname.endsWith('/returns/shop')) {
         const status = url.searchParams.get('status'); queries.push(status);
         const filtered = status ? items.filter(item => item.status === status) : items;
@@ -47,10 +55,22 @@ test('shop returns fill the available width with aligned rows and preserve serve
     assert.ok(queries.includes('REQUESTED'));
     assert.match(await page.$eval('.shop-returns-open', el => el.textContent), /Xử lý yêu cầu/);
     assert.equal(await page.$eval('.shop-returns-open', el => el.getAttribute('href')), '/merchant/returns/return-1');
+    await page.click('.shop-returns-open');
+    const queueBack = 'a[href="/merchant/returns?status=REQUESTED"]';
+    await page.waitForSelector(queueBack);
+    assert.match(await page.$eval(queueBack, el => el.textContent), /Quay lại danh sách hồ sơ/);
+    await page.click(queueBack);
+    await page.waitForSelector('.shop-returns-open');
+    assert.equal(await page.$eval('.shop-returns-filters button:nth-child(2)', el => el.getAttribute('aria-pressed')), 'true');
     await page.setViewport({ width: 390, height: 844 });
     assert.ok(await page.$eval('.shop-returns-queue', el => el.scrollWidth <= el.clientWidth));
     assert.ok(await page.$eval('.shop-returns-row', el => el.scrollWidth <= el.clientWidth));
     await page.screenshot({ path: join(tmpdir(), 'scanms-shop-returns-mobile.png') });
     assert.deepEqual(errors, []);
+    await page.goto(origin + '/queue-fixture?entry=/merchant/returns/return-0');
+    await page.waitForSelector('.shop-return-detail a[href="/merchant/returns"]');
+    await page.goto(origin + '/queue-fixture?entry=/merchant/orders');
+    await page.click('a[href="/merchant/returns/return-0"]');
+    await page.waitForSelector('.shop-return-detail a[href="/merchant/orders?status=RETURNS"]');
   } finally { await browser.close(); }
 });

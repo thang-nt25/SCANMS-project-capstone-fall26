@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { AccountAvatar } from './AccountAvatar';
 import { Megaphone, Shield, ShoppingBag, Store } from 'lucide-react';
 import type { UserProfile } from '../../services/auth.service';
 
@@ -21,11 +21,9 @@ const roles = {
 };
 
 export function HeaderAccountButton({ user, role, expanded, menuId, detail, darkMode = false, onClick }: HeaderAccountButtonProps) {
-  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const { label, icon: RoleIcon } = roles[role];
   const fullName = user?.fullName || user?.email || label;
   const name = fullName.replace(/\s*\((?:Top\s+KOL|KOL[^)]*|Vận Hành & Tuân Thủ|Super Admin|Admin|Ban Quản Trị Tối Cao|Quản trị viên Hệ thống)\)\s*$/iu, '').trim() || fullName;
-  const avatarUrl = user?.avatarUrl;
   const description = `${fullName} · ${label}${detail && detail !== label ? ` · ${detail}` : ''}`;
 
   return (
@@ -43,11 +41,7 @@ export function HeaderAccountButton({ user, role, expanded, menuId, detail, dark
       }}
     >
       <span className={`grid place-items-center shrink-0 w-[30px] h-[30px] overflow-hidden border rounded-full text-[12px] font-[600] ${darkMode ? "border-[#443828] bg-[#382F22] text-[#DEBE85]" : "border-[#EAE4D7] bg-[#FBF5EB] text-[#B88E4F]"}`} aria-hidden="true">
-        {avatarUrl && failedAvatar !== avatarUrl ? (
-          <img src={avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setFailedAvatar(avatarUrl)} />
-        ) : (
-          <span>{fullName.charAt(0).toUpperCase()}</span>
-        )}
+        <AccountAvatar user={user} name={fullName} useShopLogo={role === 'SHOP_MANAGER'} />
       </span>
       <span className="flex min-w-0 flex-col items-start gap-[1px] max-[639px]:hidden">
         <strong className={`block w-full max-w-full truncate text-[12px] font-[600] leading-[15px] ${darkMode ? "text-[#FAF8F5]" : "text-[#1A1612]"}`}>{name}</strong>

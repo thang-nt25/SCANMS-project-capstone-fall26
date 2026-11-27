@@ -19,6 +19,30 @@ describe('fair verified reviews and platform moderation', () => {
       returnRequest: null, productReviews: [], orderItems: [{ productId: 'product' }] } as any);
     return { service, customer, prisma };
   }
+  it('lists only moderation decisions with actor, reason and product title', async () => {
+    const { service, prisma } = fixture();
+    const productId = '2743e6cb-15a1-48fc-8d16-1b94b7eabc27';
+    const createdAt = new Date('2026-11-26T10:00:00Z');
+    prisma.auditLog.findMany.mockResolvedValue([{
+      id: 'event', action: 'PRODUCT_REVIEW_HIDDEN', createdAt, user: { fullName: 'Quản lý' },
+      details: { productId, reviewId: 'review', previousStatus: 'APPROVED', reason: 'Nội dung vi phạm.' },
+    }]);
+    prisma.product = { findMany: jest.fn().mockResolvedValue([{ id: productId, title: 'Sản phẩm mẫu' }]) };
+
+    await expect(service.listReviewModerationHistory(2)).resolves.toEqual({
+      items: [{
+        id: 'event', action: 'PRODUCT_REVIEW_HIDDEN', createdAt, actorName: 'Quản lý',
+        productId, productTitle: 'Sản phẩm mẫu', reviewId: 'review', decision: null,
+        previousStatus: 'APPROVED', reason: 'Nội dung vi phạm.',
+      }],
+      hasMore: false,
+    });
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      skip: 20, take: 21, where: { action: { in: [
+        'PRODUCT_REVIEW_APPROVED', 'PRODUCT_REVIEW_HIDDEN', 'PRODUCT_REVIEW_REJECTED', 'PRODUCT_REVIEW_REPORT_RESOLVED',
+      ] } },
+    }));
+  });
   it.each([1, 2, 3, 4, 5])('publishes a legitimate %s-star review equally and retains every uploaded photo', async rating => {
     const { customer, prisma } = fixture();
     const images = ['https://example.com/1.jpg', 'https://example.com/2.jpg'];

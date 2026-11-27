@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Heart, Minus, Plus, ShoppingCart, Store, X } from 'lucide-react';
 import type { Product } from '@/types/marketplace.types';
-import { formatMoney, getSafeProductImageUrl, handleProductImageError } from '@/utils/marketplace.utils';
+import { formatMoney, getSafeProductImageUrl, handleProductImageError, hasCatalogDiscount } from '@/utils/marketplace.utils';
 import { StoreCooperationAction } from '../affiliate/StoreCooperationAction';
 import { getColourSizeOptions } from '@/utils/variant-choice';
 import { authService } from '@/services/auth.service';
@@ -36,6 +36,18 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
   };
   const variant = variants.find((candidate) => candidate.id === variantId);
   const price = variant?.price != null ? Number(variant.price) : product.price;
+  const priceVariant = variant ?? variants.find(candidate =>
+    candidate.stockQuantity > 0 &&
+    Number(candidate.price ?? product.price) === price &&
+    Number(candidate.listPrice) > price,
+  );
+  const originalPrice = Number(priceVariant?.listPrice ?? (
+    price === product.price && variants.every(candidate => candidate.listPrice == null) ? product.origPrice : 0
+  ));
+  const discountPercent = originalPrice > price ? Math.round((originalPrice - price) / originalPrice * 100) : 0;
+  const discountLabel = originalPrice > price
+    ? (discountPercent > 0 ? `−${discountPercent}%` : 'Giảm giá')
+    : !variant && hasCatalogDiscount(product, true) ? 'Có phân loại giảm giá' : '';
   const available = variants.length ? variants.some((candidate) => candidate.stockQuantity > 0) : (product.stockQuantity ?? 0) > 0;
   const selectedAvailable = !variant || variant.stockQuantity > 0;
   const stock = variant?.stockQuantity ?? product.stockQuantity ?? 0;
@@ -77,7 +89,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
         <Link to={`/products/${product.sku || product.id}`} className="block h-full w-full">
           <img src={getSafeProductImageUrl(product.image, product.name)} alt={product.name} loading="lazy" onError={handleProductImageError} className="h-full w-full object-contain p-3 transition motion-safe:group-hover:scale-[1.03]" />
         </Link>
-        {product.origPrice > price && <span className="absolute left-2 top-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-bold text-[#8C6226]">−{Math.round((product.origPrice - price) / product.origPrice * 100)}%</span>}
+        {discountLabel && <span className="absolute left-2 top-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-bold text-[#8C6226]">{discountLabel}</span>}
         <button type="button" onClick={onWishlist} aria-label={wished ? `Bỏ lưu ${product.name}` : `Lưu ${product.name}`} aria-pressed={wished} className="group/wishlist absolute right-0.5 top-0.5 flex h-11 w-11 items-center justify-center rounded-full bg-transparent text-[#7D715E] hover:text-[#DC2626] focus-visible:outline-[#C59B58]">
           <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#DFD6C5] bg-white/95 shadow-[0_1px_4px_rgba(35,29,21,0.05)] transition-colors group-hover/wishlist:border-[#EEDFC6]"><Heart size={15} strokeWidth={1.7} className={wished ? 'fill-[#DC2626] text-[#DC2626]' : ''} /></span>
         </button>
@@ -97,7 +109,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
             </span>
           ) : null}
         </div>
-        <div className="mt-auto flex min-h-8 flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1 tabular-nums"><strong className="text-base font-bold tracking-tight text-[#1A1612] sm:text-lg">{formatMoney(price)}</strong>{product.origPrice > price && <del className="text-[10px] text-[#7D715E]">{formatMoney(product.origPrice)}</del>}</div>
+        <div className="mt-auto flex min-h-8 flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1 tabular-nums"><strong className="text-base font-bold tracking-tight text-[#1A1612] sm:text-lg">{formatMoney(price)}</strong>{originalPrice > price && <del className="text-[10px] text-[#7D715E]">{formatMoney(originalPrice)}</del>}</div>
         <div className="mt-2.5 grid grid-cols-[44px_minmax(0,1fr)] gap-2">
           <button type="button" onClick={() => buy('cart')} disabled={!available} aria-label={`Thêm ${product.name} vào giỏ`} title="Thêm vào giỏ" className="flex h-11 items-center justify-center rounded-xl border border-[#C59B58] text-[#B88E4F] hover:bg-[#FBF5EB] disabled:border-[#EAE4D7] disabled:text-[#7D715E] disabled:opacity-50"><ShoppingCart size={17} /></button>
           <button type="button" onClick={() => buy('buy')} disabled={!available} className="inline-flex h-11 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2 text-center text-xs font-semibold leading-4 text-[#231D15] hover:bg-[#F3EFE6] disabled:border-[#EAE4D7] disabled:bg-[#FAF8F5] disabled:text-[#7D715E]">{!available ? 'Hết hàng' : 'Mua ngay'}</button>

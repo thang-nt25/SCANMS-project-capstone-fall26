@@ -11,10 +11,13 @@ const require = createRequire(import.meta.url);
 const options = { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX };
 const source = readFileSync(new URL('../src/pages/merchant/OrdersManagementPage.tsx', import.meta.url), 'utf8');
 const file = ts.createSourceFile('OrdersManagementPage.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-let button, badge, refund;
+let button, badge, refund, returnAction, needsReturn, returnLabel;
 function find(node) {
   if (ts.isVariableDeclaration(node) && node.name.getText(file) === 'badge') badge = node.initializer;
   if (ts.isVariableDeclaration(node) && node.name.getText(file) === 'refundSucceeded') refund = node.initializer;
+  if (ts.isVariableDeclaration(node) && node.name.getText(file) === 'openReturn') returnAction = node.initializer;
+  if (ts.isVariableDeclaration(node) && node.name.getText(file) === 'needsReturnAction') needsReturn = node.initializer;
+  if (ts.isVariableDeclaration(node) && node.name.getText(file) === 'returnActionLabel') returnLabel = node.initializer;
   if (ts.isJsxElement(node) && node.openingElement.tagName.getText(file) === 'button' && node.openingElement.attributes.properties.some(attribute =>
     ts.isJsxAttribute(attribute) && attribute.name.getText(file) === 'title' && attribute.initializer &&
     ts.isStringLiteral(attribute.initializer) && attribute.initializer.text === 'Mở hồ sơ và bước xử lý đổi trả tiếp theo')) button = node;
@@ -30,6 +33,11 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/utils/return-
 const module = { exports: {} };
 vm.runInNewContext(ts.transpileModule(`export function render(order, navigate, setSelectedOrderDetails) {
   const refundSucceeded = ${refund.getText(file)};
+  const needsReturnAction = ${needsReturn.getText(file)};
+  const returnActionLabel = ${returnLabel.getText(file)};
+  const returnDetailState = { shopReturnFrom: { pathname: '/merchant/orders', search: '?status=RETURNS' } };
+  const setActiveDropdownOrderId = () => {};
+  const openReturn = ${returnAction.getText(file)};
   return <>${conditional.getText(file)}</>;
 }
 export function label(order) {
@@ -50,11 +58,11 @@ const order = status => ({ id: 'order-1', status: 'RETURN_REQUESTED', returnRequ
 test('merchant return CTA opens the actionable return case instead of the read-only order modal', () => {
   for (const status of ['REQUESTED', 'PICKUP_BOOKED', 'RETURN_SHIPPED', 'INSPECTING', 'EXCHANGE_PENDING', 'EXCHANGE_SHIPPED', 'DISPUTED']) {
     const visited = [], modals = [];
-    const tree = module.exports.render(order(status), url => visited.push(url), value => modals.push(value));
+    const tree = module.exports.render(order(status), (url, options) => visited.push([url, options.state.shopReturnFrom.search]), value => modals.push(value));
     const action = elements(tree).find(node => node.type === 'button');
     assert.ok(action, `missing action for ${status}`);
     action.props.onClick();
-    assert.deepEqual(visited, ['/merchant/returns/return-case-1']);
+    assert.deepEqual(visited, [['/merchant/returns/return-case-1', '?status=RETURNS']]);
     assert.equal(modals.length, 0);
     assert.match(renderToStaticMarkup(tree), /Xử lý đổi trả/);
   }

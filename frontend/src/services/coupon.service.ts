@@ -229,8 +229,8 @@ export const couponService = {
     return Array.isArray(payload) ? payload : [];
   },
 
-  getPublicStoreCoupons: async (storeId: string, productId?: string, signal?: AbortSignal, fresh = false): Promise<PublicStoreCoupon[]> => {
-    const res: any = await api.get(`/coupons/stores/${storeId}/available`, { params: { productId }, signal, headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
+  getShareableStoreCoupons: async (storeId: string): Promise<PublicStoreCoupon[]> => {
+    const res: any = await api.get(`/stores/${storeId}/coupons/shareable`);
     const payload = res?.data?.data ?? res?.data ?? res;
     if (Array.isArray(payload)) return payload;
     return Array.isArray(payload?.items) ? payload.items : [];

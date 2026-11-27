@@ -13,7 +13,7 @@ export type RootStackParams = {
     | { order: Order; publicOrderCode?: never }
     | { publicOrderCode: string; order?: never };
   Chat: { conversation: Conversation };
-  Deals: undefined;
+  Deals: { dealId: string } | undefined;
   DealEditor:
     | { product?: Product; collaboratorId?: string; collaboratorName?: string; collaboratorEmail?: string; collaboratorAvatar?: string; storeId?: string }
     | undefined;

@@ -15,6 +15,33 @@ describe('Audit filters, export and complete statistics', () => {
     };
     service = new AuditService(prisma);
   });
+  it('classifies automated flags as review warnings and login requests without inferring success', () => {
+    expect(service.resolveActionMeta('AI_FRAUD_FLAG')).toMatchObject({
+      category: 'AI_SECURITY',
+      severity: 'WARN',
+    });
+    expect(
+      service.resolveActionMeta('HTTP_POST_AuthController_login'),
+    ).toMatchObject({ severity: 'INFO', nameVi: 'Yêu cầu đăng nhập' });
+  });
+  it('preserves missing IP and system actor data without inventing an address', async () => {
+    prisma.auditLog.findMany.mockResolvedValue([
+      {
+        id: 'log',
+        action: 'AI_FRAUD_FLAG',
+        createdAt: new Date(),
+        details: { riskScore: 80 },
+        ipAddress: null,
+        user: null,
+      },
+    ]);
+    const result = await service.getAuditLogs({});
+    expect(result.data.items[0]).toMatchObject({
+      ipAddress: null,
+      severity: 'WARN',
+      actor: { email: '' },
+    });
+  });
   it('combines exact action, inferred category and severity instead of overriding them', async () => {
     prisma.auditLog.findMany.mockResolvedValueOnce([
       { action: 'FRAUD_MITIGATION_RESOLVE' },
@@ -83,7 +110,8 @@ describe('Audit filters, export and complete statistics', () => {
     ]);
     const result = await service.getAuditStats('all');
     expect(result.data.securityEventsCount).toBe(2500);
-    expect(result.data.recentSeverityCounts.critical).toBe(2500);
+    expect(result.data.recentSeverityCounts.warn).toBe(2500);
+    expect(result.data.recentSeverityCounts.critical).toBe(0);
     expect(result.data.categoryBreakdown[0].percentage).toBe(100);
   });
 });

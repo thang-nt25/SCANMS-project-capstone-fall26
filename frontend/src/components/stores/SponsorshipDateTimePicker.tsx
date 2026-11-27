@@ -1,92 +1,236 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
 
 const pad = (value: number) => String(value).padStart(2, '0');
-const localValue = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+const localDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const dateLabel = (date: Date) => date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const timeLabel = (date: Date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+const dayLabel = (date: Date) => date.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' });
+const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const navigationClass = 'grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-[#EAE4D7] bg-white text-[#655A49] transition-colors hover:bg-[#FBF5EB]';
+const timeFields = [
+  { part: 'hour', label: 'Giờ', max: 23 },
+  { part: 'minute', label: 'Phút', max: 59 },
+] as const;
+const quickMinutes = [0, 15, 30, 45];
+const timeArrows: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -6, ArrowDown: 6 };
+const validTimeField = (value: string, max: number) => /^\d{1,2}$/.test(value) && Number(value) <= max;
+const timeOptionClass = 'grid min-h-9 min-w-0 cursor-pointer place-items-center rounded-md border border-[#EAE4D7] bg-white text-[13px] font-semibold tabular-nums text-[#655A49] hover:border-[#C59B58] hover:bg-[#FBF5EB] aria-checked:border-[#B88E4F] aria-checked:bg-[#C59B58] aria-checked:text-[#231D15] aria-pressed:border-[#B88E4F] aria-pressed:bg-[#C59B58] aria-pressed:text-[#231D15]';
 
-export function SponsorshipDateTimePicker({ name, label, value, onChange }: {
-  name: string; label: string; value: string; onChange: (value: string) => void;
+export function SponsorshipDateTimePicker({ name, label, value, onChange, earlierValue }: {
+  name: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  earlierValue?: string;
 }) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const optionGrid = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(new Date());
   const [month, setMonth] = useState(new Date());
-  const close = () => { setOpen(false); trigger.current?.focus(); };
+  const [time, setTime] = useState({ hour: '', minute: '' });
+  const [activePart, setActivePart] = useState<'hour' | 'minute'>('hour');
+
+  function close() {
+    setOpen(false);
+    trigger.current?.focus();
+  }
+
   useEffect(() => {
     if (!open) return;
-    const outside = (event: PointerEvent) => {
+    function closeOnOutsidePress(event: PointerEvent) {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('pointerdown', outside);
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress);
     root.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus();
-    return () => document.removeEventListener('pointerdown', outside);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress);
   }, [open]);
+
+  useEffect(() => {
+    const grid = optionGrid.current;
+    if (!open || activePart !== 'minute' || !grid) return;
+    const selected = grid.querySelector<HTMLElement>('[aria-checked="true"]');
+    grid.scrollTop = selected ? selected.offsetTop - (grid.clientHeight - selected.offsetHeight) / 2 : 0;
+  }, [open, activePart]);
+
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const offset = (first.getDay() + 6) % 7;
-  const length = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const cells = Math.ceil((offset + length) / 7) * 7;
-  const selectedDate = value ? new Date(value) : null;
-  const choose = (date: Date) => {
+  const monthLength = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const weekCount = Math.ceil((offset + monthLength) / 7);
+  const selection = value ? new Date(value) : null;
+  const today = new Date();
+  const timeValid = timeFields.every(({ part, max }) => validTimeField(time[part], max));
+  const choosingMinute = activePart === 'minute';
+  const optionCount = choosingMinute ? 60 : 24;
+  const unit = choosingMinute ? 'phút' : 'giờ';
+  const selectedOption = validTimeField(time[activePart], optionCount - 1) ? Number(time[activePart]) : null;
+  const chosenTime = timeValid ? `${pad(Number(time.hour))}:${pad(Number(time.minute))}` : '';
+  const draftValue = chosenTime ? `${localDate(draft)}T${chosenTime}` : '';
+  const tooEarly = Boolean(earlierValue && draftValue && draftValue <= earlierValue);
+  const field = label.toLowerCase();
+
+  function confirm() {
+    if (!timeValid || tooEarly) return;
+    onChange(draftValue);
+    close();
+  }
+
+  function choose(date: Date) {
     const next = new Date(draft);
     next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
     setDraft(next);
     setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
-  };
-  return <div className="sp-datetime relative min-w-0 scheme-light [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-solid [&_button:focus-visible]:outline-[#C59B58] [&_button:focus-visible]:outline-offset-[2px] [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-solid [&_select:focus-visible]:outline-[#C59B58] [&_select:focus-visible]:outline-offset-[2px] [&:last-child_.sp-date-panel]:left-auto [&:last-child_.sp-date-panel]:right-0" ref={root} onKeyDown={event => {
-    if (event.key === 'Escape' && open) { event.stopPropagation(); close(); }
-  }}>
-    <span className="sp-field-label block mb-[8px] text-[13px] font-semibold" id={`${id}-label`}>{label}</span>
-    <input type="hidden" name={name} value={value} />
-    <button ref={trigger} type="button" className={`sp-date-trigger flex w-full min-h-[48px] items-center gap-[9px] bg-white text-[#B88E4F] border border-[#EAE4D7] rounded-[10px] py-[10px] px-[12px] cursor-pointer text-left [&>span]:flex [&>span]:items-center [&>span]:justify-between [&>span]:gap-[8px] [&>span]:flex-1 [&>span]:min-w-0 [&_strong]:text-[13px] [&_strong]:font-semibold [&_strong]:text-[#1A1612] [&_small]:text-[12px] [&_small]:text-[#7D715E] [&_small]:border-l [&_small]:border-l-[#EAE4D7] [&_small]:pl-[8px] [&.is-open]:border-[#C59B58] [&.is-open]:shadow-[0_0_0_3px_#FBF5EB]${open ? ' is-open' : ''}`}
-      aria-labelledby={`${id}-label ${id}-value`} aria-expanded={open} aria-controls={`${id}-panel`}
-      onClick={() => {
-        if (open) { close(); return; }
-        const initial = value ? new Date(value) : new Date();
-        setDraft(initial); setMonth(new Date(initial.getFullYear(), initial.getMonth(), 1)); setOpen(true);
+  }
+
+  return (
+    <div ref={root}
+      className="sp-datetime min-w-0 scheme-light [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[#795A2D] sm:[&:last-child_.sp-date-panel]:right-0 sm:[&:last-child_.sp-date-panel]:left-auto"
+      onKeyDown={event => {
+        if (event.key === 'Escape' && open) {
+          event.stopPropagation();
+          close();
+        }
       }}>
-      <CalendarDays size={17} />
-      <span id={`${id}-value`}>{selectedDate
-        ? <><strong>{selectedDate.toLocaleDateString('vi-VN')}</strong><small>{pad(selectedDate.getHours())}:{pad(selectedDate.getMinutes())}</small></>
-        : <span className="sp-date-placeholder text-[12px] text-[#7D715E]">Chọn ngày và giờ</span>}</span>
-      <Clock3 size={15} />
-    </button>
-    {open && <section id={`${id}-panel`} className="sp-date-panel absolute top-[calc(100%_+_8px)] left-0 z-[30] w-[310px] max-w-[calc(100vw_-_64px)] p-[16px] box-border bg-white border border-[#EEDFC6] rounded-[14px] shadow-[0_12px_36px_#7D715E24] [@media(max-width:520px)]:static [@media(max-width:520px)]:w-full [@media(max-width:520px)]:max-w-none [@media(max-width:520px)]:mt-[8px] [@media(max-width:520px)]:shadow-none" aria-label={`Chọn ${label.toLowerCase()}`}>
-      <div className="sp-calendar-heading flex items-center justify-between mb-[14px] gap-[8px] [&_strong]:text-[14px] [&_strong]:text-[#1A1612] [&>div]:flex [&>div]:gap-[3px] [&_button]:w-[28px] [&_button]:h-[28px] [&_button]:grid [&_button]:place-items-center [&_button]:bg-[#FAF8F5] [&_button]:text-[#7D715E] [&_button]:border [&_button]:border-[#EAE4D7] [&_button]:rounded-[7px] [&_button]:cursor-pointer">
-        <strong>Tháng {month.getMonth() + 1}, {month.getFullYear()}</strong>
-        <div><button type="button" aria-label="Tháng trước" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={17} /></button>
-          <button type="button" aria-label="Tháng sau" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={17} /></button>
-          <button type="button" aria-label="Đóng lịch" onClick={close}><X size={16} /></button></div>
-      </div>
-      <div className="sp-calendar-week grid grid-cols-7 gap-[3px] text-center text-[#7D715E] text-[10px] font-semibold mb-[6px]">{['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(day => <span key={day}>{day}</span>)}</div>
-      <div className="sp-calendar-grid grid grid-cols-7 gap-[3px] [&_button]:h-[32px] [&_button]:p-0 [&_button]:border [&_button]:border-[transparent] [&_button]:rounded-[8px] [&_button]:bg-white [&_button]:text-[#1A1612] [&_button]:cursor-pointer [&_button]:text-[12px] [&_button:hover]:bg-[#FBF5EB] [&_button:hover]:border-[#EEDFC6] [&_.is-other-month]:text-[#B6AD9E] [&_.is-today]:border-[#C59B58] [&_.is-selected]:bg-[#F3EFE6] [&_.is-selected]:border-[#C59B58] [&_.is-selected]:font-extrabold [&_.is-selected]:text-[#6C4D20]" role="grid" aria-label="Ngày trong tháng">
-        {Array.from({ length: cells }, (_, index) => {
-          const date = new Date(month.getFullYear(), month.getMonth(), index - offset + 1);
-          const selected = date.toDateString() === draft.toDateString();
-          const today = date.toDateString() === new Date().toDateString();
-          return <button type="button" role="gridcell" key={index}
-            aria-label={date.toLocaleDateString('vi-VN')} aria-selected={selected} aria-current={today ? 'date' : undefined}
-            className={`${date.getMonth() !== month.getMonth() ? 'is-other-month' : ''} ${selected ? 'is-selected' : ''} ${today ? 'is-today' : ''}`}
-            onClick={() => choose(date)} onKeyDown={event => {
-              const shift: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
-              if (shift[event.key]) {
-                event.preventDefault();
-                const next = new Date(date); next.setDate(next.getDate() + shift[event.key]); choose(next);
-                requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus());
-              }
-            }}>{date.getDate()}</button>;
-        })}
-      </div>
-      <div className="sp-time-row flex justify-between items-center mt-[14px] pt-[12px] border-t border-t-[#EAE4D7] gap-[10px] [&>span]:flex [&>span]:items-center [&>span]:gap-[6px] [&>span]:text-[12px] [&>span]:text-[#7D715E] [&>div]:flex [&>div]:gap-[5px] [&>div]:items-center [&_select]:appearance-auto [&_select]:bg-[#FAF8F5] [&_select]:border [&_select]:border-[#EAE4D7] [&_select]:text-[#1A1612] [&_select]:rounded-[7px] [&_select]:py-[7px] [&_select]:px-[4px] [&_select]:text-[12px]"><span><Clock3 size={15} /> Giờ chạy</span><div>
-        <select aria-label={`Giờ ${label.toLowerCase()}`} value={draft.getHours()} onChange={e => { const next = new Date(draft); next.setHours(Number(e.target.value)); setDraft(next); }}>
-          {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{pad(hour)}</option>)}
-        </select><span>:</span>
-        <select aria-label={`Phút ${label.toLowerCase()}`} value={draft.getMinutes()} onChange={e => { const next = new Date(draft); next.setMinutes(Number(e.target.value)); setDraft(next); }}>
-          {Array.from({ length: 60 }, (_, minute) => <option key={minute} value={minute}>{pad(minute)}</option>)}
-        </select></div></div>
-      <div className="sp-calendar-footer flex items-center justify-between gap-[12px] mt-[14px] [&_button]:cursor-pointer [&_button]:border-0 [&_button]:rounded-[8px] [&_button]:py-[8px] [&_button]:px-[12px] [&_button]:bg-white [&_button]:text-[#7D715E] [&_button]:text-[12px] [&_.sp-date-confirm]:bg-[#FBF5EB] [&_.sp-date-confirm]:border [&_.sp-date-confirm]:border-[#EEDFC6] [&_.sp-date-confirm]:text-[#6C4D20] [&_.sp-date-confirm]:font-bold"><button type="button" onClick={() => choose(new Date())}>Hôm nay</button>
-        <button type="button" className="sp-date-confirm" onClick={() => { onChange(localValue(draft)); close(); }}>Xác nhận</button></div>
-    </section>}
-  </div>;
+      <span id={`${id}-label`} className="sp-field-label mb-1.5 block text-xs font-semibold text-[#655A49]">{label}</span>
+      <input type="hidden" name={name} value={value} />
+      <button ref={trigger} type="button"
+        className={`sp-date-trigger flex min-h-[42px] w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left text-xs transition-colors ${open ? 'border-[#C59B58] ring-2 ring-[#FBF5EB]' : 'border-[#EAE4D7] hover:border-[#C59B58]'}`}
+        aria-labelledby={`${id}-label ${id}-value`} aria-expanded={open} aria-controls={open ? `${id}-panel` : undefined}
+        onClick={() => {
+          if (open) { close(); return; }
+          const initial = selection ?? new Date();
+          setDraft(initial);
+          setActivePart('hour');
+          setTime({ hour: pad(initial.getHours()), minute: pad(initial.getMinutes()) });
+          setMonth(new Date(initial.getFullYear(), initial.getMonth(), 1));
+          setOpen(true);
+        }}>
+        <CalendarDays size={16} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+        <span id={`${id}-value`} className={`min-w-0 flex-1 tabular-nums ${selection ? 'font-semibold text-[#1A1612]' : 'text-[#7D715E]'}`}>
+          {selection ? `${dateLabel(selection)} · ${timeLabel(selection)}` : 'Chọn ngày và giờ'}
+        </span>
+        <ChevronDown size={14} className={`shrink-0 text-[#7D715E] transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <section id={`${id}-panel`}
+          className="sp-date-panel @container mt-2 min-w-0 rounded-2xl border border-[#EEDFC6] bg-white text-[#1A1612] shadow-[0_12px_30px_#231D1514] sm:absolute sm:top-full sm:left-0 sm:z-30 sm:w-[580px] sm:max-w-full"
+          aria-labelledby={`${id}-title`}>
+          <h3 id={`${id}-title`} className="border-b border-[#EAE4D7] px-4 py-3 text-sm font-semibold">Chọn thời điểm {field}</h3>
+          <div className="grid @min-[500px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="min-w-0 px-4 py-3.5">
+              <div className="sp-calendar-heading mb-2 flex items-center justify-between gap-2">
+                <button type="button" className={navigationClass} aria-label="Tháng trước" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={16} /></button>
+                <strong className="text-sm" aria-live="polite">Tháng {month.getMonth() + 1}/{month.getFullYear()}</strong>
+                <button type="button" className={navigationClass} aria-label="Tháng sau" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={16} /></button>
+              </div>
+              <div className="sp-calendar-grid space-y-0.5" role="grid" aria-label="Ngày trong tháng">
+                <div className="sp-calendar-week grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-[#7D715E]" role="row">
+                  {dayNames.map(day => <span key={day} role="columnheader">{day}</span>)}
+                </div>
+                {Array.from({ length: weekCount }, (_, week) => (
+                  <div key={week} role="row" className="grid grid-cols-7 gap-0.5">
+                    {dayNames.map((day, weekday) => {
+                      const date = new Date(month.getFullYear(), month.getMonth(), week * 7 + weekday - offset + 1);
+                      const selected = date.toDateString() === draft.toDateString();
+                      const isToday = date.toDateString() === today.toDateString();
+                      return (
+                        <button type="button" role="gridcell" key={day}
+                          aria-label={date.toLocaleDateString('vi-VN')} aria-selected={selected} aria-current={isToday ? 'date' : undefined}
+                          className={`relative grid h-8 min-w-0 cursor-pointer place-items-center rounded-md border text-xs tabular-nums transition-colors ${selected ? 'border-[#C59B58] bg-[#FBF5EB] font-bold text-[#6C4D20]' : 'border-transparent hover:bg-[#FAF8F5]'} ${!selected && date.getMonth() !== month.getMonth() ? 'text-[#7D715E]' : ''}`}
+                          onClick={() => choose(date)}
+                          onKeyDown={event => {
+                            const shift: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+                            const move = shift[event.key];
+                            if (!move) return;
+                            event.preventDefault();
+                            date.setDate(date.getDate() + move);
+                            choose(date);
+                            requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus());
+                          }}>
+                          {date.getDate()}
+                          {isToday && <span className="absolute bottom-0.5 size-1 rounded-full bg-[#B88E4F]" aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => choose(today)} className="mt-3 min-h-9 cursor-pointer rounded-md border border-[#EEDFC6] px-3 text-xs font-semibold text-[#795A2D] hover:bg-[#FBF5EB]">Hôm nay</button>
+            </div>
+            <div className="sp-time-row min-w-0 border-t border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3.5 @min-[500px]:border-t-0 @min-[500px]:border-l">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-[#655A49]"><Clock3 size={15} className="text-[#B88E4F]" aria-hidden="true" /> Giờ {field}</p>
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                {timeFields.map(({ part, label: timeLabel, max }) => (
+                  <label key={part} data-active={activePart === part} className="flex min-w-0 cursor-pointer items-center gap-1 rounded-lg border border-[#EEDFC6] bg-white px-2 data-[active=true]:border-[#B88E4F] data-[active=true]:bg-[#FBF5EB] focus-within:ring-2 focus-within:ring-[#EEDFC6]">
+                    <span className="text-xs font-semibold text-[#655A49]">{timeLabel}</span>
+                    <input
+                      aria-label={`${timeLabel} ${field}`}
+                      aria-controls={`${id}-time-options`}
+                      aria-invalid={!validTimeField(time[part], max)}
+                      aria-describedby={!timeValid ? `${id}-time-error` : undefined}
+                      type="text"
+                      inputMode="none"
+                      maxLength={2}
+                      value={time[part]}
+                      onFocus={event => {
+                        setActivePart(part);
+                        event.currentTarget.select();
+                      }}
+                      onChange={event => setTime({ ...time, [part]: event.currentTarget.value.replace(/[^0-9]/g, '') })}
+                      onKeyDown={event => {
+                        if (event.key !== 'Enter') return;
+                        event.preventDefault();
+                        confirm();
+                      }}
+                      onBlur={() => {
+                        if (validTimeField(time[part], max)) setTime(current => ({ ...current, [part]: pad(Number(current[part])) }));
+                      }}
+                      className="h-11 min-w-0 flex-1 rounded-sm bg-transparent text-center text-2xl font-bold tabular-nums text-[#231D15] outline-none! aria-invalid:text-[#DC2626]"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div key={activePart} ref={optionGrid} id={`${id}-time-options`} role="radiogroup" aria-label={`Chọn ${unit}`}
+                className={`relative grid grid-cols-6 gap-1.5 ${choosingMinute ? 'max-h-[210px] overflow-y-auto overscroll-contain p-1 [scrollbar-color:#C59B58_#F3EFE6] [scrollbar-width:thin]' : ''}`}>
+                {Array.from({ length: optionCount }, (_, option) => (
+                  <button key={option} type="button" role="radio" aria-label={`${pad(option)} ${unit}`} aria-checked={selectedOption === option}
+                    tabIndex={option === (selectedOption ?? 0) ? 0 : -1} data-time-option={option}
+                    onClick={() => setTime(current => ({ ...current, [activePart]: pad(option) }))}
+                    onKeyDown={event => {
+                      const offset = timeArrows[event.key];
+                      if (!offset) return;
+                      event.preventDefault();
+                      const next = (option + offset + optionCount) % optionCount;
+                      setTime(current => ({ ...current, [activePart]: pad(next) }));
+                      optionGrid.current?.querySelector<HTMLButtonElement>(`[data-time-option="${next}"]`)?.focus();
+                    }}
+                    className={timeOptionClass}>{pad(option)}</button>
+                ))}
+              </div>
+              {!choosingMinute && <div role="group" aria-label="Chọn nhanh phút" className="mt-3 grid grid-cols-4 gap-1.5">
+                {quickMinutes.map(minute => (
+                  <button key={minute} type="button" aria-pressed={validTimeField(time.minute, 59) && Number(time.minute) === minute}
+                    onClick={() => setTime(current => ({ ...current, minute: pad(minute) }))}
+                    className={timeOptionClass}>{pad(minute)} phút</button>
+                ))}
+              </div>}
+              {!timeValid && <p id={`${id}-time-error`} className="mt-2 text-xs text-[#B91C1C]" role="alert">Nhập giờ từ 00 đến 23 và phút từ 00 đến 59.</p>}
+            </div>
+          </div>
+          <footer className="sp-calendar-footer flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-[#EAE4D7] px-4 py-3">
+            {tooEarly && <p role="alert" className="w-full text-xs text-[#B91C1C]">Chọn thời điểm kết thúc sau lúc bắt đầu.</p>}
+            <p className="text-xs tabular-nums text-[#655A49]" aria-live="polite">{dayLabel(draft)}{chosenTime && <> · <strong className="text-sm text-[#1A1612]">{chosenTime}</strong></>}</p>
+            <button type="button" disabled={!timeValid || tooEarly} className="sp-date-confirm inline-flex h-10 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg bg-[#C59B58]! px-3 text-xs font-bold text-[#231D15] hover:bg-[#B88E4F]! disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={confirm}>
+              <Check size={15} aria-hidden="true" /> Xác nhận
+            </button>
+          </footer>
+        </section>
+      )}
+    </div>
+  );
 }

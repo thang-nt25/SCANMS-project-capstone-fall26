@@ -31,13 +31,22 @@ describe('public checkout UUID validation', () => {
   afterAll(async () => { await app?.close(); });
   beforeEach(() => jest.clearAllMocks());
 
-  it.each([seedId, v4Id])('loads vouchers for an existing UUID version: %s', async id => {
-    await request(app.getHttpServer()).get(`/coupons/stores/${id}/available`).expect(200);
-    expect(service.getPublicStoreCoupons).toHaveBeenCalledWith(id, undefined);
+  it.each([seedId, v4Id])('returns an empty legacy list for a valid store UUID: %s', async id => {
+    await request(app.getHttpServer()).get(`/coupons/stores/${id}/available`).expect(200, []);
+    expect(service.getPublicStoreCoupons).not.toHaveBeenCalled();
   });
   it('rejects malformed store IDs before querying vouchers', async () => {
     await request(app.getHttpServer()).get('/coupons/stores/not-a-uuid/available').expect(400);
     expect(service.getPublicStoreCoupons).not.toHaveBeenCalled();
+  });
+  it.each(['/coupons/available', `/coupons/store/${seedId}`])(
+    'returns no codes on the legacy route %s',
+    async (path) => {
+      await request(app.getHttpServer()).get(path).expect('Cache-Control', 'private, no-store').expect(200, []);
+    },
+  );
+  it('does not reveal a code from the coupon ID', async () => {
+    await request(app.getHttpServer()).get(`/coupons/${seedId}/products`).expect(404);
   });
   it('accepts seeded product, variant and store IDs during voucher validation', async () => {
     await request(app.getHttpServer()).post('/coupons/validate').send({
@@ -52,11 +61,12 @@ describe('public checkout UUID validation', () => {
     }).expect(400);
     expect(service.validateCoupon).not.toHaveBeenCalled();
   });
-  it('uses verified session identity for contextual suggestions and disables shared caching', async () => {
+  it('returns no discoverable codes for a signed-in customer and disables shared caching', async () => {
     const result = await request(app.getHttpServer()).get(`/coupons/stores/${seedId}/product-eligible`)
       .query({ productId: seedId, variantId: seedId, quantity: 2 }).set('Authorization', 'Bearer fixture-customer').expect(200);
     expect(result.headers['cache-control']).toBe('private, no-store');
-    expect(service.getEligibleProductCoupons).toHaveBeenCalledWith(seedId, expect.objectContaining({ productId: seedId, quantity: 2 }), v4Id, expect.any(String));
+    expect(result.body).toEqual([]);
+    expect(service.getEligibleProductCoupons).not.toHaveBeenCalled();
   });
   it.each([{ quantity: 0 }, { quantity: 1.5 }, { customerId: v4Id }, { variantId: 'invalid' }])('rejects invalid or forged suggestion context: %j', async query => {
     await request(app.getHttpServer()).get(`/coupons/stores/${seedId}/product-eligible`).query({ productId: seedId, ...query }).expect(400);

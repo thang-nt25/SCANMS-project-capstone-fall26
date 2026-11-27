@@ -3,6 +3,10 @@ import {
   RefreshCw,
   Search,
   AlertTriangle,
+  Package,
+  Info,
+  ChevronDown,
+  FileCheck2,
 } from "lucide-react";
 import api from "../../services/api";
 import {
@@ -27,20 +31,32 @@ interface ExceptionStats {
 }
 
 type TabType = "pending" | "approved" | "rejected";
+const exceptionTabs = [
+  { key: "approved", label: "Đã phê duyệt", count: "approvedCount", empty: "Chưa có thỏa thuận được phê duyệt" },
+  { key: "pending", label: "Chờ thẩm định", count: "pendingCount", empty: "Không có đề xuất chờ thẩm định" },
+  { key: "rejected", label: "Đã từ chối", count: "rejectedCount", empty: "Chưa có đề xuất bị từ chối" },
+] as const;
+const filterControl = "h-[42px] w-full min-w-0 rounded-lg border border-line bg-white px-3 py-0! text-sm leading-normal text-ink focus:border-brand-strong focus:outline-none";
+const filterSelect = `${filterControl} block! appearance-none! bg-none! pl-8 pr-8 text-center [text-align-last:center] [&::picker-icon]:hidden!`;
+const dateFormat = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
+const numberFormat = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 });
+
+function formatCommitment(orders: number, revenue: number) {
+  return [orders > 0 ? `${numberFormat.format(orders)} đơn` : "", revenue > 0 ? formatMoney(revenue) : ""].filter(Boolean).join(" · ");
+}
+
+function dealProducts(item: any) {
+  return item.scopeType === "SELECTED_PRODUCTS"
+    ? (item.scopeProducts ?? []).map((entry: any) => entry.product).filter(Boolean)
+    : item.product ? [item.product] : [];
+}
 
 export default function VipExceptionsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>("pending");
+  const [activeTab, setActiveTab] = useState<TabType>("approved");
   const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [stats, setStats] = useState<ExceptionStats>({
-    pendingCount: 0,
-    approvedCount: 0,
-    rejectedCount: 0,
-    totalTargetOrders: 0,
-    totalTargetRevenue: 0,
-    avgRate: 17.5,
-  });
+  const [stats, setStats] = useState<ExceptionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,6 +64,7 @@ export default function VipExceptionsPage() {
   const [selectedStore, setSelectedStore] = useState<string>("ALL");
   const [selectedRateRange, setSelectedRateRange] = useState<string>("ALL");
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [detailItem, setDetailItem] = useState<any>(null);
 
   // Decision Modal state
   const [selected, setSelected] = useState<any>(null);
@@ -91,12 +108,16 @@ export default function VipExceptionsPage() {
     void loadData(activeTab);
   }, [activeTab, loadData]);
 
-  const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab);
-    setPage(1);
+  const clearFilters = () => {
     setSearchQuery("");
     setSelectedStore("ALL");
     setSelectedRateRange("ALL");
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setPage(1);
+    clearFilters();
   };
 
   // Filtered items
@@ -117,7 +138,7 @@ export default function VipExceptionsPage() {
       const rate = Number(item.proposedCommissionRate || 0);
       let matchRate = true;
       if (selectedRateRange === "16-18") {
-        matchRate = rate >= 16 && rate <= 18;
+        matchRate = rate > 16 && rate <= 18;
       } else if (selectedRateRange === "18-21") {
         matchRate = rate > 18 && rate <= 21;
       } else if (selectedRateRange === "21-25") {
@@ -137,36 +158,6 @@ export default function VipExceptionsPage() {
     return Array.from(names);
   }, [items]);
 
-  // Clean, professional Tier badge (No emojis, no AI-vibe)
-  const renderTierBadge = (tierName?: string, tierBonus: number = 0) => {
-    const t = (tierName || "").toLowerCase();
-    if (t.includes("kim cương") || t.includes("diamond")) {
-      return (
-        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-          Hạng Kim Cương (+{tierBonus}%)
-        </span>
-      );
-    }
-    if (t.includes("vàng") || t.includes("gold")) {
-      return (
-        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
-          Hạng Vàng (+{tierBonus}%)
-        </span>
-      );
-    }
-    if (t.includes("bạc") || t.includes("silver")) {
-      return (
-        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-          Hạng Bạc (+{tierBonus}%)
-        </span>
-      );
-    }
-    return (
-      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-orange-50 text-orange-800 border border-orange-200">
-        Hạng Đồng (+{tierBonus}%)
-      </span>
-    );
-  };
 
   async function handleDecisionSubmit(event: FormEvent) {
     event.preventDefault();
@@ -191,6 +182,7 @@ export default function VipExceptionsPage() {
           : `Đã từ chối đề xuất thù lao đặc cách của KOL ${selected.collaborator?.fullName}.`
       );
       setSelected(null);
+      setDetailItem(null);
       setNote("");
       await loadData(activeTab);
     } catch (caught) {
@@ -202,472 +194,232 @@ export default function VipExceptionsPage() {
     }
   }
 
+  const filtersActive = Boolean(searchQuery.trim()) || selectedStore !== "ALL" || selectedRateRange !== "ALL";
+  const commitment = formatCommitment(Number(stats?.totalTargetOrders ?? 0), Number(stats?.totalTargetRevenue ?? 0));
+  const hasProposals = Boolean(commitment) || exceptionTabs.some(({ count }) => (stats?.[count] ?? 0) > 0);
+  const averageRate = hasProposals && stats && Number.isFinite(stats.avgRate) ? `${numberFormat.format(stats.avgRate)}%` : "—";
+  const emptyMessage = exceptionTabs.find(({ key }) => key === activeTab)?.empty;
+  const rowColumns = "@min-[850px]/exceptions:grid-cols-[minmax(115px,1fr)_minmax(170px,1.6fr)_80px_minmax(110px,1fr)_94px_104px]";
+
   return (
-    <main className="min-h-screen bg-[#FAF8F5] p-5 lg:p-7 text-[#1A1612] space-y-5">
-      {/* 1. Header Section (Clean enterprise single-row header) */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#EAE4D7]">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-xl font-bold tracking-tight text-[#1A1612]">
-            Phê duyệt Thỏa thuận Đặc cách
-          </h1>
-          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-            &gt; 16% (Trần 25%)
-          </span>
+    <section aria-label="Phê duyệt Thỏa thuận Đặc cách" className="@container/exceptions w-full min-w-0 shrink-0 overflow-hidden rounded-xl border border-line bg-white text-ink">
+      <dl className="m-0 grid grid-cols-2 gap-3 border-b border-line bg-white p-3 @min-[560px]/exceptions:p-4">
+        <div className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-2xl border border-line bg-white p-3 @min-[560px]/exceptions:p-4">
+          <dt className="text-xs font-semibold leading-snug text-[#655A49]">Cam kết KPI</dt>
+          <dd className="m-0 text-2xl leading-tight font-bold tabular-nums [overflow-wrap:anywhere]">{commitment || (stats ? "Chưa có cam kết" : "—")}</dd>
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowPolicyModal(true)}
-            className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
-          >
-            Quy chuẩn Trần 25%
-          </button>
-
-          <button
-            type="button"
-            disabled={loading || busy}
-            onClick={() => void loadData(activeTab)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-            <span>{loading ? "Đang tải..." : "Làm mới"}</span>
-          </button>
+        <div className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-2xl border border-line bg-white p-3 @min-[560px]/exceptions:p-4">
+          <dt className="text-xs font-semibold leading-snug text-[#655A49]">Thù lao trung bình</dt>
+          <dd className="m-0 text-2xl leading-tight font-bold tabular-nums text-[#805B27]">{averageRate}</dd>
         </div>
-      </header>
+      </dl>
 
-      {/* 2. Top Metric Strip (Clean, understated typography) */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-[#EAE4D7] p-3.5 shadow-2xs">
-          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Chờ thẩm định</p>
-          <p className="text-2xl font-bold text-[#1A1612] tabular-nums mt-1">{stats.pendingCount}</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#EAE4D7] p-3.5 shadow-2xs">
-          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Đã phê duyệt</p>
-          <p className="text-2xl font-bold text-[#059669] tabular-nums mt-1">{stats.approvedCount}</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#EAE4D7] p-3.5 shadow-2xs">
-          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Đã từ chối</p>
-          <p className="text-2xl font-bold text-[#DC2626] tabular-nums mt-1">{stats.rejectedCount}</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#EAE4D7] p-3.5 shadow-2xs">
-          <p className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider">Tổng đơn cam kết</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-[#1A1612] tabular-nums">
-              {Number(stats.totalTargetOrders || 0) > 0
-                ? `${Number(stats.totalTargetOrders).toLocaleString("vi-VN")} đơn`
-                : stats.totalTargetRevenue > 0
-                ? `${Math.round(stats.totalTargetRevenue / 1000000)}M`
-                : "0 đơn"}
-            </span>
-            <span className="text-xs text-[#7D715E]">TB {stats.avgRate}%</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Tab Bar & Filter Controls */}
-      <section className="bg-white rounded-xl border border-[#EAE4D7] p-3 shadow-2xs space-y-2.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[#EAE4D7]">
-          {/* Tab Navigation (Clean text tabs, no icon clutter) */}
-          <div className="inline-flex p-1 bg-[#F3EFE6] rounded-lg border border-[#EAE4D7]">
-            <button
-              type="button"
-              onClick={() => handleTabChange("pending")}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                activeTab === "pending"
-                  ? "bg-white text-[#1A1612] shadow-2xs"
-                  : "text-[#7D715E] hover:text-[#1A1612]"
-              }`}
-            >
-              Chờ thẩm định ({stats.pendingCount})
+      <div role="group" aria-label="Trạng thái thỏa thuận" className="grid grid-cols-3 gap-2 border-b border-line p-2 @min-[560px]/exceptions:gap-3 @min-[560px]/exceptions:px-3 @min-[560px]/exceptions:py-2.5">
+        {exceptionTabs.map(({ key, label, count }, index) => (
+            <button type="button" aria-pressed={activeTab === key} onClick={() => handleTabChange(key)}
+              key={key} className="group flex min-h-[44px] min-w-0 w-full cursor-pointer flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-lg border border-line bg-white px-2 py-1.5 text-center text-xs leading-5 font-semibold text-muted transition-colors hover:bg-canvas aria-pressed:border-brand-border aria-pressed:bg-brand-soft aria-pressed:text-[#805B27] focus-visible:outline-2 focus-visible:outline-brand-strong @min-[560px]/exceptions:flex-nowrap @min-[560px]/exceptions:text-[13px]">
+              <span aria-hidden="true" className="hidden size-6 shrink-0 items-center justify-center rounded-full border border-line bg-white text-xs font-normal text-muted group-aria-pressed:border-brand group-aria-pressed:text-[#805B27] @min-[560px]/exceptions:inline-flex">{index + 1}</span>
+              <span>{label}</span><span className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-md border border-line bg-canvas px-1.5 py-0.5 text-xs font-medium tabular-nums group-aria-pressed:border-brand-border group-aria-pressed:text-[#805B27]">{stats?.[count] ?? "—"}</span>
             </button>
+        ))}
+      </div>
 
-            <button
-              type="button"
-              onClick={() => handleTabChange("approved")}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                activeTab === "approved"
-                  ? "bg-white text-[#1A1612] shadow-2xs"
-                  : "text-[#7D715E] hover:text-[#1A1612]"
-              }`}
-            >
-              Đã phê duyệt ({stats.approvedCount})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabChange("rejected")}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                activeTab === "rejected"
-                  ? "bg-white text-[#1A1612] shadow-2xs"
-                  : "text-[#7D715E] hover:text-[#1A1612]"
-              }`}
-            >
-              Đã từ chối ({stats.rejectedCount})
-            </button>
-          </div>
-
-          <span className="text-xs text-[#7D715E]">
-            Hiển thị <strong className="text-[#1A1612] font-semibold">{filteredItems.length}</strong> thỏa thuận
-          </span>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_36px] items-center gap-2 border-b border-line px-3 py-[11px] @min-[560px]/exceptions:grid-cols-[minmax(0,1fr)_160px_150px_36px] @min-[560px]/exceptions:px-4">
+        <div className="relative col-span-full min-w-0 @min-[560px]/exceptions:col-span-1">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />
+          <input type="search" aria-label="Tìm KOL, nhãn hàng, sản phẩm" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Tìm KOL, nhãn hàng, sản phẩm…" className={`${filterControl} pl-9`} />
         </div>
-
-        {/* Filter Controls Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo KOL, Cửa hàng, Sản phẩm..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] placeholder:text-[#7D715E] focus:bg-white focus:border-[#C59B58] focus:outline-none transition"
-            />
-          </div>
-
-          <div>
-            <select
-              value={selectedStore}
-              onChange={(e) => setSelectedStore(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none transition"
-            >
-              <option value="ALL">Tất cả Nhãn hàng nội bộ</option>
-              {storeOptions.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <select
-              value={selectedRateRange}
-              onChange={(e) => setSelectedRateRange(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none transition"
-            >
-              <option value="ALL">Tất cả biên thù lao leo thang</option>
-              <option value="16-18">16.1% - 18.0% (Mức tăng trưởng)</option>
-              <option value="18-21">18.1% - 21.0% (Đối tác chiến lược)</option>
-              <option value="21-25">21.1% - 25.0% (Cận trần tối đa)</option>
-            </select>
-          </div>
+        <div className="relative min-w-0">
+        <select aria-label="Nhãn hàng" value={selectedStore} onChange={(event) => setSelectedStore(event.target.value)} className={filterSelect}>
+          <option value="ALL">Nhãn hàng</option>
+          {storeOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <ChevronDown size={15} aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
         </div>
-      </section>
-
-      {/* 4. Main Content Area */}
-      {error && !selected && (
-        <div role="alert" className="p-3 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium flex items-center gap-2">
-          <AlertTriangle size={15} />
-          <span>{error}</span>
+        <div className="relative min-w-0">
+        <select aria-label="Mức thù lao" value={selectedRateRange} onChange={(event) => setSelectedRateRange(event.target.value)} className={filterSelect}>
+          <option value="ALL">Mức thù lao</option>
+          <option value="16-18">Trên 16% đến 18%</option>
+          <option value="18-21">Trên 18% đến 21%</option>
+          <option value="21-25">Trên 21% đến 25%</option>
+        </select>
+        <ChevronDown size={15} aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
         </div>
-      )}
+        <button type="button" title="Quy chuẩn thù lao" aria-label="Quy chuẩn thù lao" aria-haspopup="dialog" onClick={() => setShowPolicyModal(true)}
+          className="grid size-9 cursor-pointer place-items-center rounded-lg border border-line text-[#805B27] hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-brand-strong">
+          <Info size={17} aria-hidden="true" />
+        </button>
+      </div>
 
-      {loading ? (
-        <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center space-y-2">
-          <RefreshCw size={20} className="animate-spin text-[#C59B58] mx-auto" />
-          <p className="text-xs text-[#7D715E]">Đang tải dữ liệu...</p>
+      {!loading && error && !selected ? (
+        <div role="alert" className="flex items-center gap-2 px-4 py-3 text-sm text-danger">
+          <AlertTriangle size={16} className="shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1">{error}</span>
+          <button type="button" disabled={busy} onClick={() => void loadData(activeTab)} className="shrink-0 rounded-md px-2 py-1 font-semibold underline underline-offset-2 disabled:opacity-60">Thử lại</button>
+        </div>
+      ) : loading ? (
+        <div role="status" className="flex items-center justify-center gap-2 p-7 text-sm text-muted">
+          <RefreshCw size={16} className="animate-spin text-brand-strong motion-reduce:animate-none" aria-hidden="true" /> Đang tải đề xuất…
         </div>
       ) : filteredItems.length === 0 ? (
-        /* Empty State */
-        <section className="bg-white rounded-xl border border-[#EAE4D7] p-10 text-center space-y-2 shadow-2xs">
-          <h3 className="text-sm font-bold text-[#1A1612]">
-            {activeTab === "pending"
-              ? "Không có đề xuất thù lao tồn đọng"
-              : activeTab === "approved"
-              ? "Chưa có thỏa thuận nào được phê duyệt"
-              : "Chưa có đề xuất nào bị từ chối"}
-          </h3>
-          <p className="text-xs text-[#7D715E] max-w-sm mx-auto">
-            {activeTab === "pending"
-              ? "Tất cả các đề xuất thù lao leo thang (> 16%) đã được thẩm định xong."
-              : activeTab === "approved"
-              ? "Danh sách các thỏa thuận đặc cách đã được phê duyệt sẽ hiển thị tại đây."
-              : "Danh sách các đề xuất thù lao bị từ chối sẽ hiển thị tại đây."}
+        <div className="flex min-h-[112px] flex-col items-center justify-center gap-2 px-4 py-5 text-center text-sm">
+          <FileCheck2 size={22} className="text-brand-strong" aria-hidden="true" />
+          <p role="status" className="m-0 font-medium text-muted">
+            {filtersActive ? (total > 50 ? "Không có kết quả phù hợp trên trang này" : "Không có kết quả phù hợp") : emptyMessage}
           </p>
-        </section>
+          {filtersActive && <button type="button" onClick={clearFilters} className="cursor-pointer font-semibold text-[#805B27] underline underline-offset-2">Xóa bộ lọc</button>}
+        </div>
       ) : (
-        /* Items Grid / List */
-        <div className="space-y-4">
-          {filteredItems.map((item) => {
-            const proposedRate = Number(item.proposedCommissionRate || 0);
-            const targetOrders = Number(item.targetOrders || 0);
-            const targetRev = Number(item.targetRevenue || 0);
-            const tierName = item.collaborator?.collaboratorProfile?.tier?.name || "Đồng";
-            const tierBonus = Number(item.collaborator?.collaboratorProfile?.tier?.extraBonusPercentage || 0);
-            const standardRate = 10 + tierBonus;
-            const kpiDiffRate = Math.max(0, proposedRate - standardRate);
-
-            // Extract products
-            const products: any[] =
-              item.scopeType === "SELECTED_PRODUCTS"
-                ? (item.scopeProducts || []).map((sp: any) => sp.product).filter(Boolean)
-                : item.product
-                ? [item.product]
-                : [];
-
-            return (
-              <article
-                key={item.id}
-                className="bg-white rounded-xl border border-[#EAE4D7] hover:border-[#C59B58]/80 transition shadow-2xs overflow-hidden"
-              >
-                {/* 4.1 Card Header: Clean, non-repetitive financial presentation */}
-                <div className="bg-[#FAF8F5] px-4 py-3 border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3">
-                  {/* Store & KOL Identity */}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-sm font-bold text-[#1A1612]">{item.store?.name}</strong>
-                      <span className="text-[10px] text-[#7D715E] bg-[#F3EFE6] px-1.5 py-0.5 rounded">
-                        Nhãn hàng nội bộ
+        <div>
+          <div className={`hidden gap-3 bg-canvas px-4 py-2.5 text-xs font-semibold text-muted @min-[850px]/exceptions:grid ${rowColumns}`} aria-hidden="true">
+            <span>KOL / Nhãn hàng</span><span>Sản phẩm</span><span className="text-right">Thù lao</span><span className="text-right">KPI cam kết</span><span className="text-right">Ngày gửi</span><span className="text-right">Thao tác</span>
+          </div>
+          <ul aria-label="Danh sách thỏa thuận đặc cách" className="m-0 list-none divide-y divide-line p-0 @min-[850px]/exceptions:border-t @min-[850px]/exceptions:border-line">
+            {filteredItems.map((item) => {
+              const products = dealProducts(item);
+              const product = products[0];
+              const storeWide = item.scopeType === "STORE_WIDE";
+              const rate = Number(item.approvedCommissionRate ?? item.proposedCommissionRate);
+              const sent = item.createdAt ? new Date(item.createdAt) : null;
+              const sentLabel = sent && Number.isFinite(sent.getTime()) ? dateFormat.format(sent) : "—";
+              const kpi = formatCommitment(Number(item.targetOrders ?? 0), Number(item.targetRevenue ?? 0));
+              return (
+                <li key={item.id} className={`grid min-h-[76px] min-w-0 grid-cols-2 items-center gap-x-3 gap-y-2.5 px-3 py-3 text-sm @min-[560px]/exceptions:px-4 ${rowColumns}`}>
+                  <div className="min-w-0 [overflow-wrap:anywhere]">
+                    <strong className="block font-semibold">{item.collaborator?.fullName || "Chưa có tên KOL"}</strong>
+                    <span className="block text-xs text-muted">{item.store?.name || "Chưa có nhãn hàng"}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    {product && !storeWide ? (
+                      <img src={getSafeProductImageUrl(product.imageUrl, product.title, product.categoryName)} alt="" loading="lazy" onError={handleProductImageError} className="size-9 shrink-0 rounded-md border border-line bg-canvas object-cover" />
+                    ) : (
+                      <span className="grid size-9 shrink-0 place-items-center rounded-md border border-line bg-canvas text-brand-strong"><Package size={16} aria-hidden="true" /></span>
+                    )}
+                    <div className="min-w-0">
+                      <span className="line-clamp-2 text-xs font-medium leading-4 [overflow-wrap:anywhere]" title={product?.title}>
+                        {storeWide ? "Toàn gian hàng" : product?.title || "Chưa có sản phẩm"}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-[#7D715E]">
-                      <span>Đối tác: <strong className="text-[#1A1612]">{item.collaborator?.fullName}</strong></span>
-                      {renderTierBadge(tierName, tierBonus)}
+                      {!storeWide && products.length > 1 && <span className="text-[11px] text-muted">+{products.length - 1} sản phẩm</span>}
                     </div>
                   </div>
-
-                  {/* Proposal Rate & Single Status (No duplicate numbers, no AI sparkles) */}
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <span className="text-[10px] text-[#7D715E] block uppercase tracking-wider font-semibold">
-                        {item.status === "APPROVED" ? "Thù lao thỏa thuận" : "Thù lao đề xuất"}
-                      </span>
-                      <span className="text-2xl font-black text-[#B88E4F] tabular-nums tracking-tight block">
-                        {proposedRate}%
-                      </span>
-                    </div>
-
-                    <div>
-                      {item.status === "APPROVED" ? (
-                        <span className="px-3 py-1 rounded-md text-xs font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
-                          Đã phê duyệt
-                        </span>
-                      ) : item.status === "REJECTED" ? (
-                        <span className="px-3 py-1 rounded-md text-xs font-semibold bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]">
-                          Đã từ chối
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 rounded-md text-xs font-semibold bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]">
-                          Chờ thẩm định
-                        </span>
-                      )}
-                    </div>
+                  <div className="tabular-nums @min-[850px]/exceptions:text-right">
+                    <span className="block text-xs text-muted @min-[850px]/exceptions:sr-only">Thù lao</span>
+                    <strong className="font-semibold text-[#805B27]">{Number.isFinite(rate) ? `${numberFormat.format(rate)}%` : "—"}</strong>
                   </div>
-                </div>
-
-                {/* 4.2 Card Body */}
-                <div className="p-4 space-y-3.5">
-                  {/* Commitments & Scope Strip */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-[#FAF8F5] rounded-lg border border-[#EAE4D7] text-xs">
-                    <div>
-                      <span className="text-[#7D715E] mr-1.5">Phạm vi:</span>
-                      <strong className="text-[#1A1612]">
-                        {item.scopeType === "STORE_WIDE"
-                          ? "Toàn bộ gian hàng"
-                          : item.scopeType === "SELECTED_PRODUCTS"
-                          ? `Nhóm chọn lọc (${products.length} sản phẩm)`
-                          : "Sản phẩm đơn lẻ"}
-                      </strong>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <span className="text-[#7D715E] mr-1.5">Cam kết KPI:</span>
-                        <strong className="text-[#B88E4F] font-bold tabular-nums">
-                          {targetOrders > 0
-                            ? `${targetOrders.toLocaleString("vi-VN")} đơn`
-                            : targetRev > 0
-                            ? formatMoney(targetRev)
-                            : "Theo thỏa thuận"}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-[#7D715E] mr-1.5">Thời hạn:</span>
-                        <strong className="text-[#1A1612] font-bold">{item.commitmentDays || 30} ngày</strong>
-                      </div>
-                    </div>
+                  <div className="min-w-0 text-xs font-medium tabular-nums [overflow-wrap:anywhere] @min-[850px]/exceptions:text-right">
+                    <span className="block font-normal text-muted @min-[850px]/exceptions:sr-only">KPI cam kết</span>
+                    {kpi || "Theo thỏa thuận"}
                   </div>
-
-                  {/* 4.3 Product Showcase Section (Real Images & Clickable Details) */}
-                  {item.scopeType === "STORE_WIDE" ? (
-                    <div className="p-3 bg-white rounded-lg border border-[#EAE4D7]">
-                      <strong className="text-xs font-bold text-[#1A1612] block">
-                        Áp dụng toàn bộ danh mục sản phẩm của {item.store?.name}
-                      </strong>
-                      <span className="text-[11px] text-[#7D715E] mt-0.5 block">
-                        Bao gồm tất cả sản phẩm hiện hành và sản phẩm mới niêm yết trong thời gian thỏa thuận.
-                      </span>
-                    </div>
-                  ) : products.length > 0 ? (
-                    <div className="space-y-2">
-                      <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider block">
-                        Sản phẩm áp dụng ({products.length})
-                      </span>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                        {products.map((p: any) => {
-                          const safeImg = getSafeProductImageUrl(p.imageUrl, p.title, p.categoryName);
-                          return (
-                            <div
-                              key={p.id}
-                              className="flex items-center gap-2.5 p-2 rounded-lg bg-white border border-[#EAE4D7] hover:border-[#C59B58] transition shadow-2xs"
-                            >
-                              <img
-                                src={safeImg}
-                                alt={p.title}
-                                onError={handleProductImageError}
-                                className="w-12 h-12 rounded-md object-cover border border-[#EAE4D7] shrink-0 bg-[#FAF8F5]"
-                              />
-                              <div className="min-w-0 flex-1">
-                                <p
-                                  className="text-xs font-semibold text-[#1A1612] truncate"
-                                  title={p.title}
-                                >
-                                  {p.title}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-xs font-bold text-[#B88E4F] tabular-nums">
-                                    {formatMoney(p.price)}
-                                  </span>
-                                  {p.floorPrice && (
-                                    <span className="text-[10px] text-[#7D715E]">
-                                      Sàn: {formatMoney(p.floorPrice)}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPreviewProduct({
-                                    ...p,
-                                    storeName: item.store?.name,
-                                  })
-                                }
-                                className="px-2 py-1 rounded text-[11px] font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] border border-[#EEDFC6] transition shrink-0 cursor-pointer"
-                              >
-                                Chi tiết
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#EAE4D7] text-xs text-[#7D715E]">
-                      Chưa gắn thông tin sản phẩm cụ thể.
-                    </div>
-                  )}
-
-                  {/* 4.4 2-Stage Financial Breakdown (Executive Telemetry) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div className="p-3 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold text-[#8F682E] uppercase tracking-wider block">
-                          Giai đoạn 1 • Tiền chắc chắn (14 ngày)
-                        </span>
-                        <span className="text-xs text-[#7D715E] mt-0.5 block">
-                          Khả dụng sau hạn 14 ngày đổi trả
-                        </span>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xl font-bold text-[#1A1612] tabular-nums block">
-                          {standardRate}%
-                        </span>
-                        <span className="text-[10px] text-[#7D715E]">10% Gốc + {tierBonus}% Bậc</span>
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold text-[#D97706] uppercase tracking-wider block">
-                          Giai đoạn 2 • Treo thưởng KPI
-                        </span>
-                        <span className="text-xs text-[#7D715E] mt-0.5 block">
-                          Giải ngân khi đạt 100% KPI đơn hàng
-                        </span>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xl font-bold text-[#D97706] tabular-nums block">
-                          +{kpiDiffRate}%
-                        </span>
-                        <span className="text-[10px] text-[#7D715E]">{proposedRate}% - {standardRate}%</span>
-                      </div>
-                    </div>
+                  <div className="text-xs tabular-nums text-muted @min-[850px]/exceptions:text-right">
+                    <span className="block @min-[850px]/exceptions:sr-only">Ngày gửi</span>
+                    {sentLabel}
                   </div>
-
-                  {/* 4.5 KOL Sales Commitment */}
-                  {item.salesCommitment && (
-                    <div className="text-xs p-2.5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] flex items-start gap-2">
-                      <span className="font-semibold text-[#7D715E] shrink-0 text-[11px]">Kế hoạch:</span>
-                      <p className="text-[#1A1612] italic leading-relaxed">
-                        "{item.salesCommitment}"
-                      </p>
-                    </div>
-                  )}
-
-                  {/* 4.6 Audit Trail Decision Note */}
-                  {(item.exceptionNote || (item.status === "REJECTED" && item.shopResponse)) && (
-                    <div className={`p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
-                      item.status === "REJECTED"
-                        ? "bg-[#FEF2F2] border-[#FECACA]"
-                        : "bg-[#F8FAFC] border-[#E2E8F0]"
-                    }`}>
-                      <span className={`font-semibold shrink-0 text-[11px] ${
-                        item.status === "REJECTED" ? "text-[#B91C1C]" : "text-[#475569]"
-                      }`}>
-                        {item.status === "REJECTED" ? "Lý do từ chối:" : "Căn cứ phê duyệt:"}
-                      </span>
-                      <p className="text-[#1E293B] leading-relaxed">
-                        {item.exceptionNote || item.shopResponse}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* 4.7 Action Buttons for Pending Items */}
-                  {item.status === "PENDING_ADMIN_APPROVAL" && (
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelected(item);
-                          setApprove(false);
-                          setNote("");
-                          setError("");
-                        }}
-                        className="px-3 py-1.5 rounded-lg border border-[#DC2626]/30 text-xs font-semibold text-[#DC2626] hover:bg-[#FEF2F2] transition cursor-pointer"
-                      >
-                        Từ chối
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelected(item);
-                          setApprove(true);
-                          setNote("");
-                          setError("");
-                        }}
-                        className="px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-xs font-bold text-white transition shadow-2xs cursor-pointer"
-                      >
-                        Ký Phê duyệt Đặc cách
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </article>
-            );
-          })}
+                  <button type="button" aria-haspopup="dialog" onClick={() => setDetailItem(item)}
+                    className={`h-9 w-full cursor-pointer rounded-lg border px-2 text-xs font-semibold whitespace-nowrap text-[#715126] transition-colors hover:border-brand focus-visible:outline-2 focus-visible:outline-brand-strong ${item.status === "PENDING_ADMIN_APPROVAL" ? "border-brand-border bg-brand-soft" : "border-line bg-white"}`}>
+                    {item.status === "PENDING_ADMIN_APPROVAL" ? "Thẩm định" : "Xem hồ sơ"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
-      {total > 50 && <nav aria-label="Phân trang ngoại lệ VIP" className="flex flex-wrap items-center justify-center gap-3">
-        <button type="button" disabled={loading || busy || page <= 1} onClick={() => setPage(value => value - 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm disabled:opacity-50">Trang trước</button>
-        <span className="text-sm text-[#7D715E]">Trang {page}/{Math.max(1, Math.ceil(total / 50))} · {total} đề nghị</span>
-        <button type="button" disabled={loading || busy || page * 50 >= total} onClick={() => setPage(value => value + 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm disabled:opacity-50">Trang sau</button>
+      {total > 50 && <nav aria-label="Phân trang ngoại lệ VIP" className="flex flex-wrap items-center justify-end gap-2.5 border-t border-line bg-canvas px-3 py-2.5 text-xs @min-[560px]/exceptions:px-4">
+        <span className="mr-auto text-muted">Trang {page}/{Math.ceil(total / 50)} · {total} đề xuất</span>
+        <button type="button" disabled={loading || busy || page <= 1} onClick={() => setPage(value => value - 1)} className="min-h-9 rounded-lg border border-line bg-white px-3 disabled:opacity-50">Trang trước</button>
+        <button type="button" disabled={loading || busy || page * 50 >= total} onClick={() => setPage(value => value + 1)} className="min-h-9 rounded-lg border border-line bg-white px-3 disabled:opacity-50">Trang sau</button>
       </nav>}
+
+      {detailItem && !selected && !previewProduct && (() => {
+        const item = detailItem;
+        const products = dealProducts(item);
+        const rate = Number(item.approvedCommissionRate ?? item.proposedCommissionRate);
+        const status = item.status === "APPROVED" ? "Đã phê duyệt" : item.status === "REJECTED" ? "Đã từ chối" : "Chờ thẩm định";
+        const reviewer = item.exceptionReviewer ?? item.reviewer;
+        const reviewedAt = item.adminApprovedAt ?? item.reviewedAt;
+        const timestamp = (value?: string | null) => {
+          const date = value ? new Date(value) : null;
+          return date && Number.isFinite(date.getTime())
+            ? date.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })
+            : "Chưa ghi nhận";
+        };
+        const scope = item.scopeType === "STORE_WIDE" ? "Toàn gian hàng" : item.scopeType === "SELECTED_PRODUCTS" ? `${products.length} sản phẩm` : "Sản phẩm đơn lẻ";
+        const lifecycle = item.closedAt ? "Đã đóng" : item.commitmentEndsAt && Date.parse(item.commitmentEndsAt) <= Date.now() ? "Đã kết thúc kỳ KPI" : item.commitmentStartedAt && Date.parse(item.commitmentStartedAt) <= Date.now() ? "Đã bắt đầu kỳ KPI" : "Chưa ghi nhận ngày bắt đầu";
+        return (
+          <Modal isOpen title="Hồ sơ thỏa thuận đặc cách" maxWidth="4xl" stickyHeader
+            onClose={() => setDetailItem(null)}
+            subtitle={<span>{item.store?.name || "Chưa có nhãn hàng"} · {item.collaborator?.fullName || "Chưa có tên KOL"}</span>}
+            footer={<div className="flex flex-wrap items-center justify-end gap-2">
+              <button type="button" onClick={() => setDetailItem(null)} className="h-10 rounded-lg border border-line bg-white px-4 text-sm font-medium">Đóng</button>
+              {item.status === "PENDING_ADMIN_APPROVAL" && <>
+                <button type="button" onClick={() => { setSelected(item); setApprove(false); setNote(""); setError(""); }} className="h-10 rounded-lg border border-danger/30 px-4 text-sm font-semibold text-danger">Từ chối</button>
+                <button type="button" onClick={() => { setSelected(item); setApprove(true); setNote(""); setError(""); }} className="h-10 rounded-lg border border-brand-strong bg-brand px-4 text-sm font-semibold text-brand-dark">Phê duyệt</button>
+              </>}
+            </div>}
+          >
+            <article className="space-y-4 text-sm text-ink">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${item.status === "REJECTED" ? "border-danger/20 text-danger" : "border-brand-border bg-brand-soft text-[#805B27]"}`}>{status}</span>
+                <span className="text-xs text-muted">Gửi {timestamp(item.createdAt)}</span>
+              </div>
+              <dl className="m-0 grid grid-cols-3 divide-x divide-line border-y border-line py-3">
+                {[
+                  [item.approvedCommissionRate != null ? "Thù lao Deal" : "Thù lao đề xuất", Number.isFinite(rate) ? `${numberFormat.format(rate)}%` : "—"],
+                  ["KPI cam kết", formatCommitment(Number(item.targetOrders ?? 0), Number(item.targetRevenue ?? 0)) || "Theo thỏa thuận"],
+                  ["Thời hạn", item.commitmentDays ? `${item.commitmentDays} ngày` : "Chưa ghi nhận"],
+                ].map(([label, value], index) => <div key={label} className="min-w-0 px-3 first:pl-0 last:pr-0">
+                  <dt className="text-xs text-muted">{label}</dt>
+                  <dd className={`m-0 mt-1.5 font-semibold tabular-nums [overflow-wrap:anywhere] ${index === 0 ? "text-xl text-[#805B27]" : "text-sm"}`}>{value}</dd>
+                </div>)}
+              </dl>
+
+              <section aria-label="Sản phẩm áp dụng">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted"><strong className="font-medium">Sản phẩm áp dụng</strong><span>{scope}</span></div>
+                {item.scopeType === "STORE_WIDE" ? <p className="m-0 py-2">Toàn bộ sản phẩm của {item.store?.name}</p> : products.length ? (
+                  <div className="divide-y divide-line">
+                    {products.map((product: any) => <div key={product.id} className="flex items-center gap-3 py-2.5">
+                      <img src={getSafeProductImageUrl(product.imageUrl, product.title, product.categoryName)} alt="" onError={handleProductImageError} className="size-11 shrink-0 rounded-lg border border-line bg-canvas object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <p className="m-0 font-semibold leading-5 [overflow-wrap:anywhere]">{product.title}</p>
+                        <p className="m-0 mt-1 text-xs text-muted tabular-nums">{product.price != null ? formatMoney(product.price) : "Chưa có giá"}{product.floorPrice != null && <> · Giá sàn {formatMoney(product.floorPrice)}</>}</p>
+                      </div>
+                      <button type="button" onClick={() => setPreviewProduct({ ...product, storeName: item.store?.name })} className="min-h-9 shrink-0 rounded-lg border border-line px-3 text-xs font-semibold text-[#805B27] hover:bg-brand-soft">Chi tiết</button>
+                    </div>)}
+                  </div>
+                ) : <p className="m-0 text-muted">Chưa gắn thông tin sản phẩm.</p>}
+              </section>
+
+              <dl className="m-0 grid gap-3 border-y border-line py-3 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-line">
+                <div className="min-w-0 sm:pr-4">
+                  <dt className="text-xs font-semibold text-[#805B27]">Thù lao tiêu chuẩn</dt>
+                  <dd className="m-0 mt-1 font-medium">10% + phần tăng theo bậc áp dụng</dd>
+                  <dd className="m-0 mt-1 text-xs leading-5 text-muted">Mở khóa sau 14 ngày và đủ điều kiện đối soát.</dd>
+                </div>
+                <div className="min-w-0 sm:pl-4">
+                  <dt className="text-xs font-semibold text-[#805B27]">Chênh lệch chờ KPI</dt>
+                  <dd className="m-0 mt-1 font-medium">{Number.isFinite(rate) ? `${numberFormat.format(rate)}%` : "Mức Deal"} − mức tiêu chuẩn</dd>
+                  <dd className="m-0 mt-1 text-xs leading-5 text-muted">Mở khóa khi đạt KPI và đủ điều kiện đối soát.</dd>
+                </div>
+              </dl>
+              {item.salesCommitment && <section><h4 className="m-0 text-xs font-semibold text-muted">Kế hoạch</h4><p className="m-0 mt-1 whitespace-pre-wrap leading-6 [overflow-wrap:anywhere]">{item.salesCommitment}</p></section>}
+              {(item.exceptionNote || (item.status === "REJECTED" && item.shopResponse)) && <section>
+                <h4 className="m-0 text-xs font-semibold text-muted">{item.status === "REJECTED" ? "Lý do từ chối" : "Căn cứ phê duyệt"}</h4>
+                <p className="m-0 mt-1 whitespace-pre-wrap leading-6 [overflow-wrap:anywhere]">{item.exceptionNote || item.shopResponse}</p>
+              </section>}
+              <dl className="m-0 grid gap-x-6 gap-y-3 border-t border-line pt-3 text-xs sm:grid-cols-2">
+                <div><dt className="text-muted">Người duyệt</dt><dd className="m-0 mt-1 font-medium">{reviewer?.fullName || "Chưa ghi nhận"}</dd></div>
+                <div><dt className="text-muted">Thời gian duyệt</dt><dd className="m-0 mt-1 tabular-nums">{timestamp(reviewedAt)}</dd></div>
+                {item.status === "APPROVED" && <>
+                  <div><dt className="text-muted">Kỳ KPI</dt><dd className="m-0 mt-1">{lifecycle}</dd></div>
+                  <div><dt className="text-muted">Bắt đầu / Kết thúc KPI</dt><dd className="m-0 mt-1 tabular-nums">{timestamp(item.commitmentStartedAt)} / {timestamp(item.commitmentEndsAt)}</dd></div>
+                </>}
+              </dl>
+            </article>
+          </Modal>
+        );
+      })()}
 
       {/* 5. Product Quick View Modal */}
       {previewProduct && (
@@ -867,53 +619,42 @@ export default function VipExceptionsPage() {
         </Modal>
       )}
 
-      {/* 7. Modal Quy chuẩn & Pháp chế Trần 25% */}
       {showPolicyModal && (
-        <Modal
-          isOpen
-          title="Quy chế Quản trị Thù lao & Trần Thỏa thuận Đặc cách (SCANMS)"
+        <Modal isOpen title="Quy chuẩn thù lao" maxWidth="3xl" className="max-w-[720px]!" stickyHeader
           onClose={() => setShowPolicyModal(false)}
+          footer={<div className="flex justify-end"><button type="button" onClick={() => setShowPolicyModal(false)} className="h-10 rounded-lg border border-brand-strong bg-brand px-5 text-sm font-semibold text-brand-dark">Đã hiểu</button></div>}
         >
-          <div className="space-y-3.5 text-xs text-[#1A1612] leading-relaxed max-h-[70vh] overflow-y-auto pr-1">
-            <div className="p-3 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] space-y-1">
-              <strong className="text-[#8F682E] font-bold text-sm block">1. Cơ chế phân cấp thẩm quyền phê duyệt:</strong>
-              <ul className="list-disc list-inside space-y-1 text-[#7D715E]">
-                <li><strong className="text-[#1A1612]">&lt;= 16%:</strong> Quản lý Cửa hàng có toàn quyền chủ động đàm phán và duyệt thỏa thuận với KOL qua Chat realtime.</li>
-                <li><strong className="text-[#1A1612]">&gt; 16% đến 25%:</strong> Bắt buộc leo thang lên Ban Giám Đốc (Quản trị viên Hệ thống) thẩm định dựa trên cam kết số đơn hàng và tiềm năng của KOL.</li>
-                <li><strong className="text-[#1A1612]">Trần tuyệt đối 25%:</strong> Toàn hệ thống khóa cứng mức trần 25% (kể cả khi cộng phụ trợ Livestream +2%), ngăn chặn nguy cơ ăn mòn lợi nhuận doanh nghiệp.</li>
-              </ul>
-            </div>
-
-            <div className="p-3 rounded-lg bg-white border border-[#EAE4D7] space-y-1">
-              <strong className="text-[#1A1612] font-bold text-sm block">2. Nguyên tắc Giải ngân 2 Giai đoạn (Không cộng dồn):</strong>
-              <p className="text-[#7D715E]">
-                Thù lao Deal đặc cách <strong className="text-[#DC2626]">TUYỆT ĐỐI KHÔNG CỘNG DỒN VỚI BẬC KOL</strong>.
-              </p>
-              <div className="p-2.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] space-y-1 text-[11px]">
-                <p><strong>Giai đoạn 1:</strong> Trả trước <code>10% Gốc + Bậc KOL</code> ngay sau khi đơn hàng giao thành công qua hạn 14 ngày đổi trả.</p>
-                <p><strong>Giai đoạn 2:</strong> Phần chênh lệch <code>Deal% - (10% + Bậc%)</code> được giam giữ trong Giỏ Escrow. Chỉ giải ngân khi đạt đủ 100% KPI đơn hàng đã cam kết.</p>
+          <div className="divide-y divide-line text-sm">
+            <section className="pb-4">
+              <h4 className="m-0 mb-3 text-[13px] font-semibold text-[#805B27]">Thẩm quyền phê duyệt</h4>
+              <dl className="m-0 space-y-2.5">
+                {[
+                  ["Đến 16%", "Shop phê duyệt"],
+                  ["Trên 16% đến 25%", "Admin phê duyệt"],
+                  ["Trần tổng thù lao", "25%"],
+                ].map(([label, value]) => <div key={label} className="grid grid-cols-2 gap-4"><dt className="text-muted">{label}</dt><dd className="m-0 font-medium">{value}</dd></div>)}
+              </dl>
+            </section>
+            <section className="py-4">
+              <h4 className="m-0 mb-3 text-[13px] font-semibold text-[#805B27]">Thù lao &amp; đối soát</h4>
+              <dl className="m-0 space-y-2.5">
+                <div className="grid grid-cols-2 gap-4"><dt className="text-muted">Tiêu chuẩn</dt><dd className="m-0 font-medium">10% + phần tăng theo bậc</dd></div>
+                <div className="grid grid-cols-2 gap-4"><dt className="text-muted">Chênh lệch Deal</dt><dd className="m-0 font-medium">Mức Deal − mức tiêu chuẩn</dd></div>
+              </dl>
+              <div className="mt-3 grid grid-cols-2 divide-x divide-line rounded-lg border border-line bg-canvas py-2.5 text-center text-xs">
+                <div className="grid grid-cols-2 gap-1 px-2"><span className="text-muted">Đồng</span><strong>10%</strong><span className="text-muted">Bạc</span><strong>11%</strong></div>
+                <div className="grid grid-cols-2 gap-1 px-2"><span className="text-muted">Vàng</span><strong>12%</strong><span className="text-muted">Kim Cương</span><strong>13%</strong></div>
               </div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-white border border-[#EAE4D7] space-y-1">
-              <strong className="text-[#1A1612] font-bold text-sm block">3. Trách nhiệm Kiểm toán & Lưu vết:</strong>
-              <p className="text-[#7D715E]">
-                Mọi hành động phê duyệt hoặc từ chối thỏa thuận đặc cách đều được mã hóa và ghi vĩnh viễn vào Nhật ký Kiểm toán kèm lý do thẩm định của Admin, đảm bảo tính minh bạch tuyệt đối trước Ban Giám Đốc và Hội đồng kiểm toán.
-              </p>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowPolicyModal(false)}
-                className="px-4 py-1.5 rounded-lg bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition"
-              >
-                Đã hiểu quy chế
-              </button>
-            </div>
+              <p className="mb-0 mt-3 text-xs leading-5 text-muted">Mức Deal là tổng thù lao áp dụng. Tiêu chuẩn mở khóa sau 14 ngày và đủ điều kiện đối soát. Chênh lệch mở khóa khi đạt KPI và đủ điều kiện đối soát.</p>
+              <p className="mb-0 mt-2 text-xs leading-5 text-muted">Phụ trợ Livestream +2% vẫn tuân theo trần tổng 25%.</p>
+            </section>
+            <section className="pt-4">
+              <h4 className="m-0 text-[13px] font-semibold text-[#805B27]">Lưu vết xét duyệt</h4>
+              <p className="mb-0 mt-2 text-xs leading-5 text-muted">Người duyệt · Thời gian · Quyết định · Căn cứ xét duyệt.</p>
+            </section>
           </div>
         </Modal>
       )}
-    </main>
+    </section>
   );
 }

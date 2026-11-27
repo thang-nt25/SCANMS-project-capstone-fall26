@@ -25,7 +25,7 @@ import {
 } from "../common/shared";
 import { ExpandableRecord, FilterTabs } from "../../components/RecordList";
 import { IconButton } from "../../components/commerce";
-import { couponActions, isCustomerKolCoupon } from "./coupon-policy";
+import { couponActions } from "./coupon-policy";
 import {
   CouponSchema,
   CouponPageSchema,
@@ -115,21 +115,13 @@ function CouponManagementScreen() {
     CouponPageSchema,
     !customer && (user.role !== "SHOP_MANAGER" || Boolean(store)),
   );
-  const available = useResource(
-    "kol-coupon-discovery-v2",
-    "/coupons/available",
-    z.array(CouponSchema),
-    customer,
-  );
   const eligible = useResource(
     "coupon-stores",
     "/collaborator/coupons/eligible-stores",
     z.array(z.object({ id: z.string(), name: z.string() })),
     koc,
   );
-  const rows = customer
-    ? available.data?.filter(isCustomerKolCoupon)
-    : list.data?.data;
+  const rows = customer ? undefined : list.data?.data;
   const reasonForm = (path: string, title: string, method = "PATCH") =>
     setForm({
       title,
@@ -152,7 +144,7 @@ function CouponManagementScreen() {
     <Screen scroll compact>
       <Caption>
         {customer
-          ? "Sao chép và tự nhập mã khi thanh toán. Bấm mã để xem điều kiện."
+          ? "Nhập mã bạn nhận từ KOL hoặc KOC khi thanh toán."
           : "Bấm mã để xem điều kiện và quản lý."}
       </Caption>
       {user.role === "SHOP_MANAGER" && !store && (
@@ -212,13 +204,12 @@ function CouponManagementScreen() {
       )}
       <QueryState
         loading={
-          (customer ? available.isLoading : list.isLoading) ||
+          (!customer && list.isLoading) ||
           (koc && eligible.isLoading)
         }
-        error={list.error || available.error || eligible.error}
+        error={list.error || eligible.error}
         retry={() => {
-          if (customer) void available.refetch();
-          else void list.refetch();
+          if (!customer) void list.refetch();
           if (koc) void eligible.refetch();
         }}
       />

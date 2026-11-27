@@ -28,6 +28,7 @@ import { UserRole } from '@prisma/client';
 import { ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { ReviewSandboxSampleVideoDto } from './dto/review-sandbox-sample-video.dto';
 
 @ApiTags('Shipping & GHN Logistics')
 @Controller('shipping/ghn')
@@ -155,6 +156,14 @@ export class ShippingController {
   @Post('sync-sample/:requestId')
   async syncSampleDelivery(@Param('requestId') requestId: string, @Req() req: any) {
     return this.ghnService.syncSampleDelivery(requestId, req.user?.id || req.user?.sub);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER)
+  @Post('sandbox-sample/:orderCode/review-video')
+  reviewSandboxSampleVideo(@Param('orderCode') code: string, @Req() req: any, @Body() dto: ReviewSandboxSampleVideoDto) {
+    return this.ghnService.sandboxSampleState(code, req.user?.id || req.user?.sub, 'review-video', undefined, { review: dto });
   }
 
   @ApiOperation({

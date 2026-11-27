@@ -57,7 +57,7 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
         if (url.pathname.startsWith('/api/orders/payos/')) customerStatusRequests.push(url.pathname);
         if (url.pathname === '/api/orders/my-store' && created) data = { items: [{ id: 'qa-order-id', externalOrderSn: 'QA-ORDER-1', createdAt: '2026-10-24T03:00:00Z', updatedAt: '2026-10-24T03:00:00Z', status: 'PENDING', isManualOrder: true, paymentMethod: 'PAYOS', paymentStatus: paid ? 'PAID' : 'WAITING_PAYMENT', customerName: 'QA Buyer', customerPhone: '0902233445', shippingAddress: '123 QA Road', subtotalAmount: 200000, shippingFee: 35000, discountAmount: 10000, finalAmount: 225000, totalCommission: 0, items: [{ productId: 'p1', title: 'Product 1', sku: 'SKU1', quantity: 2, unitPrice: 100000 }] }], pagination: { total: 1, totalPages: 1 } };
         if (url.pathname === '/api/stores/my-store') data = { id: 'qa-store', name: 'QA Shop' };
-        if (url.pathname === '/api/products') data = { items: Array.from({ length: 20 }, (_, i) => ({ id: `p${i}`, title: `Product ${i}`, sku: `SKU${i}`, price: 100000, stockQuantity: i === 19 ? 0 : 5, isActive: true })), pagination: { totalPages: 1 } };
+        if (url.pathname === '/api/products') data = { items: Array.from({ length: 20 }, (_, i) => ({ id: `p${i}`, title: `Product ${i}`, sku: `SKU${i}`, imageUrl: i === 1 ? 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' : undefined, price: 100000, stockQuantity: i === 19 ? 0 : 5, isActive: true })), pagination: { totalPages: 1 } };
         if (url.pathname === '/api/shipping/ghn/quote-address') {
           shippingRequests.push(JSON.parse(request.postData()));
           if (failShipping) { status = 400; data = null; }
@@ -79,7 +79,24 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
     })().catch(error => { errors.push(error.message); request.abort().catch(() => {}); }));
     await page.goto(origin, { waitUntil: 'networkidle2' });
     await page.waitForSelector('dialog[open]');
-    await page.waitForFunction(() => !document.querySelector('.manual-products-section button[aria-haspopup=listbox]').disabled);
+    await page.waitForFunction(() => !document.querySelector('section[aria-labelledby="manual-products-heading"] button[aria-haspopup=listbox]').disabled);
+
+    await page.waitForSelector('[data-manual-order-map] .leaflet-container');
+    const dialogLayout = () => page.$eval('dialog[open]', dialog => {
+      const delivery = dialog.querySelector('#manual-delivery-heading').parentElement.getBoundingClientRect();
+      const products = dialog.querySelector('#manual-products-heading').parentElement.getBoundingClientRect();
+      const map = dialog.querySelector('[data-manual-order-map]').getBoundingClientRect();
+      return {
+        fits: dialog.scrollWidth <= dialog.clientWidth,
+        emailVisible: dialog.querySelector('#manual-email').getClientRects().length > 0,
+        aligned: Math.abs(delivery.width - products.width) <= 1 && delivery.top === products.top,
+        mapBelow: map.top >= products.bottom,
+      };
+    });
+    assert.deepEqual(await dialogLayout(), { fits: true, emailVisible: true, aligned: true, mapBelow: true });
+    await page.setViewport({ width: 390, height: 844 });
+    assert.deepEqual(await dialogLayout(), { fits: true, emailVisible: true, aligned: false, mapBelow: true });
+    await page.setViewport({ width: 1440, height: 1000 });
 
     const fill = async (label, value) => {
       const handle = await page.evaluateHandle(text => [...document.querySelectorAll('dialog label')].find(e => e.textContent.trim().startsWith(text))?.querySelector('input,textarea'), label);
@@ -89,7 +106,7 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
       await page.keyboard.press('Backspace'); await handle.asElement().type(value); await handle.dispose();
     };
     const pickAddress = async (index, option) => {
-      const handles = await page.$$('.manual-customer-section button[aria-haspopup=listbox]');
+      const handles = await page.$$('section[aria-labelledby="manual-delivery-heading"] button[aria-haspopup=listbox]');
       await handles[index].click();
       await page.evaluate(text => [...document.querySelectorAll('[role=option]')].find(e => e.textContent.trim() === text).click(), option);
     };
@@ -99,11 +116,11 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
     };
 
     // Dropdown Esc closes only the list, not the native modal.
-    await page.click('.manual-customer-section button[aria-haspopup=listbox]');
+    await page.click('section[aria-labelledby="manual-delivery-heading"] button[aria-haspopup=listbox]');
     await page.keyboard.press('Escape');
     assert.equal(await page.$eval('dialog', e => e.open), true);
     assert.equal(await page.$('[role=listbox]'), null);
-    await fill('Họ tên', 'QA Buyer'); await fill('Số điện thoại', '0902 233 445');
+    await fill('Họ tên', 'QA Buyer'); await fill('Điện thoại', '0902 233 445');
     await fill('Email', 'qa@example.test'); await fill('Địa chỉ chi tiết', '123 QA Road');
     await pickAddress(0, 'QA City'); await pickAddress(1, 'QA District'); await pickAddress(2, 'QA Ward');
     await fill('Địa chỉ chi tiết', '');
@@ -112,7 +129,7 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
     await page.waitForFunction(() => document.querySelector('.address-location-header').textContent.includes('khu vực gần đúng'));
     assert.ok(alternateSearches > 0, 'an empty result from the first provider uses the alternate provider');
     assert.equal(await page.$('.manual-map-selection'), null, 'an area center is not saved as an exact delivery pin');
-    assert.equal(await page.$$eval('.manual-customer-section label', es => es.find(e => e.textContent.trim().startsWith('Địa chỉ chi tiết')).querySelector('input').value), '');
+    assert.equal(await page.$$eval('section[aria-labelledby="manual-delivery-heading"] label', es => es.find(e => e.textContent.trim().startsWith('Địa chỉ chi tiết')).querySelector('input').value), '');
     emptyPrimarySearch = false;
     await fill('Địa chỉ chi tiết', '123 QA Road');
     // Customer shipping uses the entered address or a map pin, never the merchant's GPS.
@@ -120,11 +137,11 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
     assert.equal(await page.$('.address-location-locate'), null);
     await page.click('.leaflet-container', { offset: { x: 200, y: 100 } });
     await page.waitForFunction(() => document.querySelector('[data-manual-order-map]').textContent.includes('New GPS administrative name'));
-    assert.equal(await page.$$eval('.manual-customer-section button[aria-haspopup=listbox]', es => es[1].textContent.includes('QA District') && es[2].textContent.includes('QA Ward')), true);
-    assert.equal(await page.$$eval('.manual-customer-section label', es => es.find(e => e.textContent.trim().startsWith('Địa chỉ chi tiết')).querySelector('input').value), '123 QA Road');
+    assert.equal(await page.$$eval('section[aria-labelledby="manual-delivery-heading"] button[aria-haspopup=listbox]', es => es[1].textContent.includes('QA District') && es[2].textContent.includes('QA Ward')), true);
+    assert.equal(await page.$$eval('section[aria-labelledby="manual-delivery-heading"] label', es => es.find(e => e.textContent.trim().startsWith('Địa chỉ chi tiết')).querySelector('input').value), '123 QA Road');
     await page.evaluate(() => [...document.querySelectorAll('[data-manual-order-map] button')].find(e => e.textContent.trim() === 'Bỏ qua').click());
     await pickAddress(0, 'Other City');
-    assert.equal(await page.$$eval('.manual-customer-section button[aria-haspopup=listbox]', es => es[1].textContent.includes('QA District')), false);
+    assert.equal(await page.$$eval('section[aria-labelledby="manual-delivery-heading"] button[aria-haspopup=listbox]', es => es[1].textContent.includes('QA District')), false);
     await pickAddress(0, 'QA City'); await pickAddress(1, 'QA District'); await pickAddress(2, 'QA Ward');
     // A geocoder result without a road must not clear a manually entered street.
     await page.evaluate(() => [...document.querySelectorAll('.address-location-actions button')].find(e => e.textContent.includes('Tìm địa chỉ')).click());
@@ -136,7 +153,7 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
       await page.setViewport({ width: 1440, height: 1000 });
     }
     await page.evaluate(() => [...document.querySelectorAll('[data-manual-order-map] button')].find(e => e.textContent.trim() === 'Dùng địa chỉ này').click());
-    assert.equal(await page.$$eval('.manual-customer-section label', es => es.find(e => e.textContent.trim().startsWith('Địa chỉ chi tiết')).querySelector('input').value), '123 QA Road');
+    assert.equal(await page.$$eval('section[aria-labelledby="manual-delivery-heading"] label', es => es.find(e => e.textContent.trim().startsWith('Địa chỉ chi tiết')).querySelector('input').value), '123 QA Road');
     await page.click('.manual-map-selection button');
     assert.equal(await page.$('.manual-map-selection'), null);
     await page.evaluate(() => [...document.querySelectorAll('.address-location-actions button')].find(e => e.textContent.includes('Tìm địa chỉ')).click());
@@ -151,43 +168,53 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
     assert.equal(await page.$eval('dialog', e => e.open), true);
     await page.click('button[aria-label="Sản phẩm dòng 1"]');
     assert.equal(await page.$eval('[role=option]:last-child', e => e.disabled), true);
-    await page.evaluate(() => [...document.querySelectorAll('[role=option]')].find(e => e.textContent.includes('Product 1 ')).click());
+    assert.equal(await page.$('button[aria-label="Xóa dòng sản phẩm 1"]'), null);
+    await page.type('[role=listbox] input', 'SKU1');
+    const matchingProduct = '[role=option] span.line-clamp-2';
+    assert.equal(await page.$$eval(matchingProduct, elements => elements.some(el => el.textContent === 'Product 2')), false);
+    assert.equal(await page.$$eval('[role=option]', elements => {
+      const option = elements.find(el => el.querySelector('.line-clamp-2')?.textContent === 'Product 1');
+      const hasImage = Boolean(option?.querySelector('img[src^="data:image/gif"]'));
+      option?.click();
+      return hasImage;
+    }), true);
+    await page.waitForSelector('button[aria-label="Sản phẩm dòng 1"] img[src^="data:image/gif"]');
     assert.equal(await page.$eval('input[aria-label="Đơn giá dòng 1"]', e => e.value), '100000');
-    await page.waitForFunction(() => document.querySelector('.manual-payment-section').textContent.includes('Tính lại phí'));
-    assert.equal(await page.$eval('input[aria-label="Phí vận chuyển GHN"]', e => e.value), '');
-    assert.equal(await page.$eval('form > footer button[type=submit]', e => e.disabled), true);
-    failShipping = false;
-    await page.evaluate(() => [...document.querySelectorAll('.manual-payment-section button')].find(e => e.textContent.includes('Tính lại phí')).click());
-    await page.waitForFunction(() => document.querySelector('input[aria-label="Phí vận chuyển GHN"]').value === '35.000');
-    assert.equal(await page.$eval('input[aria-label="Phí vận chuyển GHN"]', e => e.readOnly), true);
-    await fill('Số điện thoại', '0');
+    await page.waitForSelector('footer [data-manual-shipping-fee] button');
+    assert.match(await page.$eval('footer [data-manual-shipping-fee]', e => e.textContent), /Không lấy được phí GHN/);
     await submit();
-    await page.waitForFunction(() => document.querySelector('dialog [role=alert]')?.textContent.includes('SĐT'));
     assert.equal(submitted.length, 0);
-    await fill('Số điện thoại', '0902 233 445');
-    assert.equal(await page.$('.manual-payment-section button[aria-haspopup=listbox]'), null);
-    assert.ok((await page.$eval('.manual-payment-state', e => e.textContent)).includes('Chưa thanh toán'));
-    await page.evaluate(() => document.querySelector('.manual-products-section > button').click());
+    failShipping = false;
+    await page.click('footer [data-manual-shipping-fee] button');
+    await page.waitForFunction(() => document.querySelector('footer [data-manual-shipping-fee] [role=status]').textContent.includes('35.000'));
+    await fill('Điện thoại', '0');
+    await submit();
+    await page.waitForFunction(() => document.activeElement.id === 'manual-phone' && document.querySelector('#manual-phone-error'));
+    assert.equal(submitted.length, 0);
+    await fill('Điện thoại', '0902 233 445');
+    assert.equal(await page.$('section[aria-labelledby="manual-payment-heading"] button[aria-haspopup=listbox]'), null);
+    assert.ok((await page.$eval('section[aria-labelledby="manual-payment-heading"]', e => e.textContent)).includes('Chưa thanh toán'));
+    await page.evaluate(() => document.querySelector('section[aria-labelledby="manual-products-heading"] > button').click());
     await page.click('button[aria-label="Sản phẩm dòng 2"]');
-    await page.evaluate(() => [...document.querySelectorAll('[role=option]')].find(e => e.textContent.includes('Product 1 ')).click());
+    await page.$$eval('[role=option]', elements => elements.find(el => el.querySelector('.line-clamp-2')?.textContent === 'Product 1').click());
     await setNumber('Số lượng dòng 1', '3'); await setNumber('Số lượng dòng 2', '3');
-    await submit(); await page.waitForFunction(() => document.querySelector('dialog [role=alert]')?.textContent.includes('vượt tồn kho'));
+    await submit(); await page.waitForFunction(() => document.activeElement.getAttribute('aria-label') === 'Số lượng dòng 2' && document.querySelector('[id$=quantity-error]')?.textContent.includes('vượt tồn kho'));
     assert.equal(submitted.length, 0);
     await page.click('button[aria-label="Xóa dòng sản phẩm 2"]');
     await setNumber('Số lượng dòng 1', '1');
-    await fill('Mã giảm giá', 'SAVE');
-    await page.evaluate(() => [...document.querySelectorAll('.manual-payment-section button')].find(e => e.textContent.trim() === 'Áp dụng').click());
+    await page.type('#manual-discount', 'SAVE');
+    await page.evaluate(() => [...document.querySelectorAll('section[aria-labelledby="manual-payment-heading"] button')].find(e => e.textContent.trim() === 'Áp dụng').click());
     await page.waitForFunction(() => document.querySelector('dialog [role=status]')?.textContent.includes('QA coupon applied'));
     assert.equal(quotes.length, 1);
     await setNumber('Số lượng dòng 1', '2');
-    assert.equal(await page.$eval('input[aria-label="Phí vận chuyển GHN"]', e => e.value), '');
-    await page.waitForFunction(() => document.querySelector('input[aria-label="Phí vận chuyển GHN"]').value === '35.000');
+    assert.doesNotMatch(await page.$eval('footer [data-manual-shipping-fee] [role=status]', e => e.textContent), /35.000/);
+    await page.waitForFunction(() => document.querySelector('footer [data-manual-shipping-fee] [role=status]').textContent.includes('35.000'));
     await submit();
-    await page.waitForFunction(() => document.querySelector('dialog [role=alert]')?.textContent.includes('áp dụng lại'));
+    await page.waitForFunction(() => document.activeElement.id === 'manual-discount' && document.querySelector('#manual-discount-hint'));
     assert.equal(submitted.length, 0);
-    await page.evaluate(() => [...document.querySelectorAll('.manual-payment-section button')].find(e => e.textContent.trim() === 'Áp dụng').click());
+    await page.evaluate(() => [...document.querySelectorAll('section[aria-labelledby="manual-payment-heading"] button')].find(e => e.textContent.trim() === 'Áp dụng').click());
     await page.waitForFunction(() => document.querySelector('dialog [role=status]')?.textContent.includes('QA coupon applied'));
-    await page.waitForFunction(() => document.querySelector('input[aria-label="Phí vận chuyển GHN"]').value === '35.000');
+    await page.waitForFunction(() => document.querySelector('footer [data-manual-shipping-fee] [role=status]').textContent.includes('35.000'));
     await submit(); await page.waitForFunction(() => document.querySelector('dialog [role=alert]')?.textContent.includes('QA retryable failure'));
     assert.equal(submitted.length, 1);
     assert.equal(await page.$eval('dialog', e => e.open), true);
@@ -228,13 +255,13 @@ test('manual order controls, coupon invalidation, stock, map, duplicate submit a
     // The remaining close controls work after scrolling on a narrow viewport.
     await page.goto(origin, { waitUntil: 'networkidle2' });
     await page.setViewport({ width: 390, height: 844 });
-    await page.$eval('dialog', e => { e.scrollTop = e.scrollHeight; });
-    const closeVisible = await page.$eval('.manual-dialog-close', e => {
+    await page.$eval('dialog form > div', e => { e.scrollTop = e.scrollHeight; });
+    const closeVisible = await page.$eval('dialog[data-order-action="manual"] header button[aria-label="Đóng"]', e => {
       const r = e.getBoundingClientRect();
       return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
     });
     assert.equal(closeVisible, true);
-    await page.click('.manual-dialog-close');
+    await page.click('dialog[data-order-action="manual"] header button[aria-label="Đóng"]');
     await page.waitForFunction(() => !document.querySelector('dialog[open]'));
     await page.reload({ waitUntil: 'networkidle2' });
     await page.evaluate(() => document.querySelector('dialog form > footer button[type=button]').click());

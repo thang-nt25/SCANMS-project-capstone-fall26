@@ -8,9 +8,10 @@ interface Props {
   onCopy: (tracking: string, event: MouseEvent<HTMLButtonElement>) => void;
   onTrack?: () => void;
   compact?: boolean;
+  inline?: boolean;
 }
 
-export function MerchantOrderTrackingCodes({ order, copiedTrackingId, onCopy, onTrack, compact = false }: Props) {
+export function MerchantOrderTrackingCodes({ order, copiedTrackingId, onCopy, onTrack, compact = false, inline = false }: Props) {
   const candidate = order.returnRequest?.exchangeShipment;
   const exchange = candidate?.providerStatus?.startsWith('booking') ? null : candidate;
   const codes = [
@@ -19,9 +20,9 @@ export function MerchantOrderTrackingCodes({ order, copiedTrackingId, onCopy, on
       carrier: order.carrierName, replacement: false }] : []),
   ];
   if (!codes.length) return null;
-  return <div className={`merchant-waybills${compact ? ' merchant-waybills-compact' : ''}`} aria-label="Mã vận đơn của đơn hàng">
+  return <div className={`merchant-waybills${compact ? ' merchant-waybills-compact' : ''}${inline ? ' merchant-waybills-inline' : ''}`} aria-label="Mã vận đơn của đơn hàng">
     {codes.map(({ tracking, label, carrier, replacement }) => <div className="merchant-waybill" key={`${label}-${tracking}`}>
-      {exchange && <span className="merchant-waybill-label">{label}{compact && carrier ? ` · ${/GHN|Giao Hàng Nhanh/i.test(carrier) ? 'GHN' : carrier}` : ''}</span>}
+      {(exchange || inline) && <span className="merchant-waybill-label">{inline && !exchange ? 'Vận đơn' : label}{compact && carrier ? ` · ${/GHN|Giao Hàng Nhanh/i.test(carrier) ? 'GHN' : carrier}` : ''}</span>}
       <div className="merchant-waybill-line">
       {!(compact && replacement) && <><Truck size={15} className="merchant-waybill-icon" aria-hidden="true" />
       <span className="merchant-waybill-carrier" title={carrier || undefined}>{carrier && /GHN|Giao Hàng Nhanh/i.test(carrier) ? 'GHN' : carrier || 'Vận chuyển'}</span></>}
@@ -33,7 +34,8 @@ export function MerchantOrderTrackingCodes({ order, copiedTrackingId, onCopy, on
       {copiedTrackingId === tracking ? <Check className="h-3 w-3 shrink-0 text-[#059669]" aria-hidden="true" />
         : <Copy className="h-3 w-3 shrink-0 text-[#7D715E]" aria-hidden="true" />}
     </button>{compact && !replacement && onTrack && <button type="button" className="merchant-waybill-open" onClick={onTrack} title="Xem hành trình vận chuyển" aria-label={`Xem hành trình vận đơn ${tracking}`}><ArrowUpRight size={14} aria-hidden="true" /></button>}</div>
+      {inline && !replacement && onTrack && <button type="button" className="merchant-waybill-track" onClick={onTrack} aria-label={`Xem hành trình vận đơn giao ban đầu ${tracking}`}>Xem hành trình<ArrowUpRight size={13} aria-hidden="true" /></button>}
     </div>)}
-    {!compact && order.trackingNumber && onTrack && <button type="button" className="merchant-waybill-track" onClick={onTrack} aria-label={`Xem hành trình vận đơn giao ban đầu ${order.trackingNumber}`}>Xem hành trình<ArrowUpRight size={13} aria-hidden="true" /></button>}
+    {!inline && !compact && order.trackingNumber && onTrack && <button type="button" className="merchant-waybill-track" onClick={onTrack} aria-label={`Xem hành trình vận đơn giao ban đầu ${order.trackingNumber}`}>Xem hành trình<ArrowUpRight size={13} aria-hidden="true" /></button>}
   </div>;
 }

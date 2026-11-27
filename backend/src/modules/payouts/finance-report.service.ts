@@ -4,11 +4,27 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, UserRole } from '@prisma/client';
+import { Prisma, ReturnRequestStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { actualPayoutWhere, isTestPayout } from './payout-environment';
 import { COMMISSION_HOLD_DAYS } from '../commissions/commission.constants';
 import { cleanGoodsRevenue } from './finance-revenue';
+
+const resolvedReturnStatuses: ReturnRequestStatus[] = ['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED'];
+const waitingExchangeStatuses: ReturnRequestStatus[] = ['EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'];
+
+function escrowReviewWhere(includeWaitingExchange: boolean): Prisma.CommissionWhereInput {
+  return {
+    status: 'PENDING',
+    order: { OR: [
+      { rawPayload: { path: ['selfReferralReviewRequired'], equals: true } },
+      { returnRequests: { some: { OR: [
+        { status: { notIn: includeWaitingExchange ? resolvedReturnStatuses : [...resolvedReturnStatuses, ...waitingExchangeStatuses] } },
+        { dispute: { is: { status: 'OPEN' } } },
+      ] } } },
+    ] },
+  };
+}
 
 @Injectable()
 export class FinanceReportService {
@@ -18,25 +34,19 @@ export class FinanceReportService {
     const [kol, customer, escrow, policies, grants, exchangeCandidates] = await Promise.all([
       this.prisma.payoutRequest.count({ where: { status: 'PENDING' } }),
       this.prisma.customerWithdrawal.count({ where: { status: 'PENDING' } }),
-      this.prisma.commission.count({ where: { status: 'PENDING', order: { OR: [
-        { rawPayload: { path: ['selfReferralReviewRequired'], equals: true } },
-        { returnRequests: { some: { OR: [
-          { status: { notIn: ['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED'] } },
-          { dispute: { is: { status: 'OPEN' } } },
-        ] } } },
-      ] } } }),
+      this.prisma.commission.count({ where: escrowReviewWhere(true) }),
       this.prisma.storeMonthlyRewardPolicy.findMany({ where: { status: 'PENDING', createdBy: { not: userId } }, select: { yearMonth: true } }),
       this.prisma.storeMonthlyRewardGrant.findMany({ where: { status: 'PENDING', requestedBy: { not: userId }, policy: { status: 'APPROVED' } }, select: { policy: { select: { yearMonth: true } } } }),
       this.prisma.commission.findMany({
-        where: { status: 'PENDING', order: { returnRequests: { some: { status: { in: ['EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'] } } } } },
+        where: { status: 'PENDING', order: { returnRequests: { some: { status: { in: waitingExchangeStatuses } } } } },
         select: { order: { select: { rawPayload: true, returnRequests: { select: { status: true, dispute: { select: { status: true } } } } } } },
       }),
     ]);
     const escrowWaitingExchange = exchangeCandidates.filter(item => {
       const risk = item.order.rawPayload as Prisma.JsonObject | null;
-      const active = item.order.returnRequests.filter(claim => !['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED'].includes(claim.status));
+      const active = item.order.returnRequests.filter(claim => !resolvedReturnStatuses.includes(claim.status));
       return risk?.selfReferralReviewRequired !== true && !item.order.returnRequests.some(claim => claim.dispute?.status === 'OPEN')
-        && active.length > 0 && active.every(claim => ['EXCHANGE_SHIPPED', 'AWAITING_CUSTOMER_CONFIRMATION'].includes(claim.status));
+        && active.length > 0 && active.every(claim => waitingExchangeStatuses.includes(claim.status));
     }).length;
     return { kol, customer, escrow, escrowWaitingExchange, monthly: { policies: policies.length, grants: grants.length, total: policies.length + grants.length,
       months: [...new Set([...policies.map(p => p.yearMonth), ...grants.map(g => g.policy.yearMonth)])].sort(),
@@ -547,13 +557,25 @@ export class FinanceReportService {
     if (!Number.isInteger(page) || page < 1)
       throw new BadRequestException('Trang không hợp lệ');
     const commission = await this.prisma.commission.findUnique({
-      where: { id }, select: { id: true, collaboratorId: true, order: { select: { externalOrderSn: true } } },
+      where: { id },
+      select: {
+        id: true,
+        collaboratorId: true,
+        order: { select: { externalOrderSn: true, refunds: { select: { id: true } } } },
+      },
     });
     if (!commission) throw new NotFoundException('Không tìm thấy khoản thù lao');
-    // Exact commission reference and wallet owner: never mix other orders or customer refunds.
+    // Refund clawbacks use the order refund ID rather than the commission ID.
     const where: Prisma.FinancialLedgerWhereInput = {
-      referenceType: 'COMMISSION', referenceId: commission.id,
       wallet: { collaboratorId: commission.collaboratorId },
+      OR: [
+        { referenceType: 'COMMISSION', referenceId: commission.id },
+        {
+          referenceType: 'ORDER_REFUND',
+          referenceId: { in: commission.order.refunds.map((refund) => refund.id) },
+          transactionType: 'REVERSAL',
+        },
+      ],
     };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.financialLedger.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -566,17 +588,17 @@ export class FinanceReportService {
     return { items, total, page, limit: 10, orderCode: commission.order.externalOrderSn };
   }
 
-  async escrow(page = 1) {
+  async escrow(page = 1, reviewOnly = false) {
     if (!Number.isInteger(page) || page < 1)
       throw new BadRequestException('Trang không hợp lệ');
-    const where: Prisma.CommissionWhereInput = { OR: [
+    const where: Prisma.CommissionWhereInput = reviewOnly ? escrowReviewWhere(false) : { OR: [
       { status: 'PENDING' },
       { status: { in: ['APPROVED', 'PAID'] }, dealBonusStatus: 'PENDING_KPI', dealBonusAmount: { gt: 0 } },
     ] };
     const [items, total, aggregate] = await this.prisma.$transaction([
       this.prisma.commission.findMany({
         where,
-        orderBy: [{ availableAt: 'asc' }, { id: 'asc' }],
+        orderBy: [{ order: { createdAt: 'desc' } }, { id: 'desc' }],
         skip: (page - 1) * 20,
         take: 20,
         select: {
@@ -620,7 +642,8 @@ export class FinanceReportService {
       items: items.map((item) => {
         const { rawPayload, returnRequests, ...order } = item.order;
         const risk = rawPayload as Prisma.JsonObject | null;
-        const activeReturn = returnRequests.find(claim => !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(claim.status));
+        const activeReturns = returnRequests.filter(claim => !resolvedReturnStatuses.includes(claim.status));
+        const activeReturn = activeReturns.find(claim => !waitingExchangeStatuses.includes(claim.status)) ?? activeReturns[0];
         const openDispute = returnRequests.find(claim => claim.dispute?.status === 'OPEN');
         return {
           ...item,

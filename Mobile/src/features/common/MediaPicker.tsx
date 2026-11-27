@@ -22,6 +22,7 @@ export function MediaPicker({
   disabled = false,
   hideHint = false,
   renderTrigger,
+  onBusyChange,
 }: {
   label: string;
   video?: boolean;
@@ -30,33 +31,65 @@ export function MediaPicker({
   disabled?: boolean;
   hideHint?: boolean;
   renderTrigger?(open: () => void, busy: boolean): ReactNode;
+  onBusyChange?(busy: boolean): void;
 }) {
   const operation = useOperation();
-  const open = () =>
-          void operation.run(async () => {
-            const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: video ? ["videos"] : ["images"], quality: 1 });
-            if (result.canceled || !result.assets[0]) return;
-            const asset = result.assets[0], max = (video ? 100 : 5) * 1024 * 1024;
-            if (!asset.fileSize || asset.fileSize > max) throw new Error(`Chọn tệp có kích thước tối đa ${video ? 100 : 5} MB.`);
-            if (cover && (asset.width !== asset.height || asset.width < 800)) throw new Error("Ảnh bìa cần vuông, ít nhất 800×800 px.");
-            const form = new FormData(); form.append("file", filePart(asset));
-            const response = z.object({ secureUrl: z.string().url() }).parse(await api.request(cover ? "/upload/product-cover" : `/upload/${video ? "video" : "image"}?folder=scanms/evidence`, { method: "POST", body: form, timeout: 120000 }));
-            onUploaded(response.secureUrl);
-          });
+  const open = () => {
+    if (disabled || operation.busy) return;
+    void operation.run(async () => {
+      onBusyChange?.(true);
+      try {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: video ? ["videos"] : ["images"],
+          quality: 1,
+        });
+        if (result.canceled || !result.assets[0]) return;
+        const asset = result.assets[0],
+          max = (video ? 100 : 5) * 1024 * 1024;
+        if (!asset.fileSize || asset.fileSize > max)
+          throw new Error(
+            `Chọn tệp có kích thước tối đa ${video ? 100 : 5} MB.`,
+          );
+        if (cover && (asset.width !== asset.height || asset.width < 800))
+          throw new Error("Ảnh bìa cần vuông, ít nhất 800×800 px.");
+        const form = new FormData();
+        form.append("file", filePart(asset));
+        const response = z
+          .object({ secureUrl: z.string().url() })
+          .parse(
+            await api.request(
+              cover
+                ? "/upload/product-cover"
+                : `/upload/${video ? "video" : "image"}?folder=scanms/evidence`,
+              { method: "POST", body: form, timeout: 120000 },
+            ),
+          );
+        onUploaded(response.secureUrl);
+      } finally {
+        onBusyChange?.(false);
+      }
+    });
+  };
   return (
     <>
-      {renderTrigger ? renderTrigger(open, operation.busy || disabled) : <Button
-        title={label}
-        secondary
-        disabled={disabled}
-        loading={operation.busy}
-        onPress={open}
-      />}
-      {!hideHint && <Caption>
-        {video
-          ? "Chọn video có sẵn, tối đa 100 MB."
-          : "Chọn ảnh có sẵn, tối đa 5 MB."}
-      </Caption>}
+      {renderTrigger ? (
+        renderTrigger(open, operation.busy || disabled)
+      ) : (
+        <Button
+          title={label}
+          secondary
+          disabled={disabled}
+          loading={operation.busy}
+          onPress={open}
+        />
+      )}
+      {!hideHint && (
+        <Caption>
+          {video
+            ? "Chọn video có sẵn, tối đa 100 MB."
+            : "Chọn ảnh có sẵn, tối đa 5 MB."}
+        </Caption>
+      )}
       <ErrorNotice error={operation.error} />
     </>
   );

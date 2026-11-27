@@ -132,6 +132,7 @@ function AppRoutes() {
               <Route path="/stores" element={<ShoppingDiscoverPage />} />
               <Route path="/shops/:shopId" element={<ShopPage />} />
               <Route path="/search" element={<SearchPage />} />
+              <Route path="/offers" element={<Navigate to="/search?discount=true&inStock=true" replace />} />
               <Route path="/marketplace/search" element={<SearchPage />} />
               <Route path="/payment/payos-return" element={<PayosReturnPage />} />
               <Route path="/cart" element={<CartPage />} />

@@ -3672,6 +3672,7 @@ export class OrdersService {
             fullName: true,
           },
         },
+        couponRedemption: { select: { collaboratorId: true, discountAmount: true } },
         productReviews: true,
       },
     });
@@ -3684,18 +3685,19 @@ export class OrdersService {
 
       switch (order.status) {
         case OrderStatus.PENDING:
-          timelineStep = 1;
-          statusLabel = 'Đã tiếp nhận • Đang chuẩn bị hàng';
+          timelineStep = (order.rawPayload as Record<string, unknown> | null)
+            ?.shopConfirmedAt ? 2 : 1;
+          statusLabel = timelineStep === 2 ? 'Đang chuẩn bị hàng' : 'Đã tiếp nhận đơn';
           statusColor = '#B88E4F';
           break;
         case OrderStatus.SHIPPING:
-          timelineStep = 2;
-          statusLabel = 'Đang giao hàng (Đơn vị GHN / GHTK)';
+          timelineStep = 3;
+          statusLabel = 'Đang giao hàng';
           statusColor = '#2563EB';
           break;
         case OrderStatus.DELIVERED:
-          timelineStep = 3;
-          statusLabel = 'Giao hàng thành công • Khách đã nhận';
+          timelineStep = 4;
+          statusLabel = 'Giao thành công';
           statusColor = '#16A34A';
           break;
         case OrderStatus.COMPLETED:
@@ -3710,8 +3712,16 @@ export class OrdersService {
           break;
         case OrderStatus.RETURNED:
           timelineStep = -1;
-          statusLabel = 'Đơn hàng đã hoàn trả (Return & Refund)';
+          statusLabel = 'Đã trả hàng';
           statusColor = '#9333EA';
+          break;
+        case OrderStatus.RETURN_REQUESTED:
+          timelineStep = order.deliveredAt ? 4 : 1;
+          statusLabel = 'Đang xử lý đổi trả';
+          break;
+        case OrderStatus.DISPUTED:
+          timelineStep = order.deliveredAt ? 4 : 1;
+          statusLabel = 'Đang khiếu nại';
           break;
       }
 
@@ -3730,6 +3740,11 @@ export class OrdersService {
           : undefined,
         subtotalAmount: Number(order.subtotalAmount),
         discountAmount: Number(order.discountAmount),
+        shippingFee: order.shippingFee == null ? null : Number(order.shippingFee),
+        hasCollaboratorDiscount:
+          !!order.couponRedemption &&
+          order.couponRedemption.collaboratorId === order.attributedCollaborator?.id &&
+          Number(order.couponRedemption.discountAmount) > 0,
         finalAmount: Number(order.finalAmount),
         trackingNumber:
           (order.rawPayload as Record<string, any> | null)?.ghnOrderCode ||
@@ -4317,6 +4332,9 @@ export class OrdersService {
               product: {
                 select: { id: true, title: true, sku: true, imageUrl: true },
               },
+              variant: {
+                select: { name: true, sku: true, imageUrl: true },
+              },
             },
           },
           coupon: {
@@ -4458,10 +4476,14 @@ export class OrdersService {
               }
             : null,
           items: order.orderItems.map((item) => ({
+            id: item.id,
             productId: item.productId,
             title: item.product?.title || 'Sản phẩm',
             sku: item.product?.sku || '',
             imageUrl: item.product?.imageUrl || '',
+            variantName: item.variant?.name ?? null,
+            variantSku: item.variant?.sku ?? null,
+            variantImageUrl: item.variant?.imageUrl ?? null,
             quantity: item.quantity,
             unitPrice: Number(item.unitPrice),
             appliedCommissionRate: Number(item.appliedCommissionRate || 0),

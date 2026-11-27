@@ -5,17 +5,25 @@ import { ArrowRight, Megaphone } from 'lucide-react';
 import api from '@/services/api';
 import { StoreLogo } from './FeaturedStores';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
+import type { SponsorshipProduct } from '@/services/sponsorship.service';
 
-interface Placement { store: MarketplaceStore; headline: string; endsAt: string }
+interface Placement {
+  id?: string;
+  store: MarketplaceStore;
+  headline: string;
+  endsAt: string;
+  product?: SponsorshipProduct;
+  bannerImageUrl?: string;
+}
 
 const EMPTY_PLACEMENTS: Placement[] = [];
 
-export function SponsoredStores() {
+export function useActiveSponsoredPlacements() {
   const [now, setNow] = useState(Date.now());
   const { data = EMPTY_PLACEMENTS } = useQuery<Placement[]>({
     queryKey: ['marketplace-sponsored-placements'],
-    queryFn: async () => {
-      const response = await api.get('/stores/public/placements');
+    queryFn: async ({ signal }) => {
+      const response = await api.get('/stores/public/placements', { signal, headers: { 'x-skip-cache': 'true' } });
       const payload = response?.data?.data ?? response?.data ?? response;
       return Array.isArray(payload) ? payload : [];
     },
@@ -24,10 +32,14 @@ export function SponsoredStores() {
   useEffect(() => {
     const nextExpiry = Math.min(...data.map(row => Date.parse(row.endsAt)).filter(time => time > Date.now()));
     if (!Number.isFinite(nextExpiry)) return;
-    const timer = window.setTimeout(() => setNow(Date.now()), Math.min(2147483647, Math.max(50, nextExpiry - Date.now() + 50)));
+    const timer = window.setTimeout(() => setNow(Date.now()), Math.min(2147483647, Math.max(0, nextExpiry - Date.now())));
     return () => window.clearTimeout(timer);
   }, [data, now]);
-  const placements = data.filter((placement) => Date.parse(placement.endsAt) > Math.max(now, Date.now()));
+  return data.filter((placement) => Date.parse(placement.endsAt) > Math.max(now, Date.now()));
+}
+
+export function SponsoredStores() {
+  const placements = useActiveSponsoredPlacements();
   if (!placements.length) return null;
 
   return (

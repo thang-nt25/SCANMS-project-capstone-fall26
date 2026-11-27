@@ -44,7 +44,7 @@ test('Flow 5: real report rendering, empty/error states, escrow pagination, appr
         } else if (url.pathname.endsWith('/admin/payouts')) data = { requests: [{ id, collaboratorId: id, collaboratorName: 'Đối tác kiểm thử', kycStatus: 'VERIFIED', amount: '2072000', taxAmount: '207200', netAmount: '1864800', status: 'PENDING', bankName: 'MB', bankAccountNumber: '001234', bankAccountName: 'TEST CREATOR', hasBill: false, createdAt: '2026-10-31T00:00:00Z' }], total: 1 };
         else if (url.pathname.endsWith('/executive-summary')) {
           if (failReport) return request.respond({ status: 500, headers, body: JSON.stringify({ message: 'Unavailable' }) });
-          data = { asOf: '2026-10-31T00:00:00Z', gmv: '52000000', netRevenue: '52000000', ordersCount: 12, affiliateExpense: '5000000', affiliateExpenseRatio: '9.62', escrowPending: '72000', availableEarnings: '2072000', grossPaid: '2072000', netPaid: '1864800', taxWithheld: '207200', holdDays: 14 };
+          data = { yearMonth: url.searchParams.get('yearMonth'), asOf: '2026-10-31T00:00:00Z', gmv: '52000000', netRevenue: '52000000', ordersCount: 12, affiliateExpense: '5000000', affiliateExpenseRatio: '9.62', escrowPending: '72000', availableEarnings: '2072000', grossPaid: '2072000', netPaid: '1864800', taxWithheld: '207200', holdDays: 14 };
         } else if (url.pathname.endsWith('/tax-invoices')) data = { items: [{ id, amount: '2072000', taxAmount: '207200', netAmount: '1864800', bankRefCode: 'FT-TEST', processedAt: '2026-10-31T00:00:00Z' }] };
         else if (url.pathname.includes('/tax-invoices/')) data = { id, amount: '2072000', taxAmount: '207200', netAmount: '1864800', bankRefCode: 'FT-TEST', processedAt: '2026-10-31T00:00:00Z', collaborator: { fullName: '<script>unsafe</script>', collaboratorProfile: { taxCode: 'TEST' } }, bankAccountNumber: '••••1234' };
         else return request.respond({ status: 400, headers, body: JSON.stringify({ message: 'Unexpected test API' }) });
@@ -101,11 +101,13 @@ test('Flow 5: real report rendering, empty/error states, escrow pagination, appr
     assert.ok(await admin.$eval('body', element => element.scrollWidth <= window.innerWidth + 1));
     await admin.screenshot({ path: '../artifacts/flow5/escrow-mobile.png', fullPage: true });
     const executive = await open('executive');
-    assert.ok((await executive.$eval('body', element => element.innerText)).includes('9.62%'));
+    await executive.waitForFunction(() => document.body.innerText.includes('9,62%'));
     await executive.screenshot({ path: '../artifacts/flow5/executive.png', fullPage: true });
-    failReport = true; await clickText(executive, 'Làm mới');
+    failReport = true;
+    await executive.click('button[aria-label="Chọn kỳ báo cáo"]');
+    await executive.click('[role="dialog"] [role="group"] button[aria-pressed="false"]:not(:disabled)');
     await executive.waitForSelector('[role="alert"]');
-    assert.ok(!(await executive.$eval('body', element => element.innerText)).includes('9.62%'));
+    assert.ok(!(await executive.$eval('body', element => element.innerText)).includes('9,62%'));
     const partner = await open('partner');
     const popupPromise = new Promise(resolve => partner.once('popup', resolve));
     await clickText(partner, 'In / Lưu PDF');

@@ -78,11 +78,22 @@ export class KycController {
     return this.kycService.getUpgradeApplications();
   }
 
+  @Get('admin/review-history')
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({ summary: 'Xem lịch sử thẩm định hồ sơ đối tác' })
+  async getKolReviewHistory() {
+    return this.kycService.getKolReviewHistory();
+  }
+
   @Patch('admin/:id/review')
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({ summary: 'Admin duyệt hoặc từ chối hồ sơ KYC cũ' })
-  async reviewKyc(@Param('id') profileId: string, @Body() dto: ReviewKycDto) {
-    return this.kycService.reviewKyc(profileId, dto);
+  async reviewKyc(
+    @Param('id') profileId: string,
+    @Body() dto: ReviewKycDto,
+    @CurrentUser('id') reviewerId: string,
+  ) {
+    return this.kycService.reviewKyc(profileId, dto, reviewerId);
   }
 
   @Patch('admin/kol/:id/review')

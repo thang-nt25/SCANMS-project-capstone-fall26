@@ -5,6 +5,23 @@ export function formatMoney(value: number | string): string {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
 }
 
+export const discountedCatalogPath = '/search?discount=true&inStock=true';
+
+export function hasCatalogDiscount(product: Product, inStockOnly = false): boolean {
+  const variants = product.variants?.filter(variant => variant.isActive !== false) ?? [];
+  if (variants.length) {
+    return variants.some(variant =>
+      (!inStockOnly || variant.stockQuantity > 0) &&
+      Number(variant.listPrice) > Number(variant.price ?? product.price),
+    ) || (
+      variants.every(variant => variant.listPrice == null) &&
+      product.origPrice > product.price &&
+      (!inStockOnly || variants.some(variant => variant.stockQuantity > 0 && Number(variant.price ?? product.price) === product.price))
+    );
+  }
+  return (!inStockOnly || (product.stockQuantity ?? 0) > 0) && product.origPrice > product.price;
+}
+
 export function normalizeSearch(value: string): string {
   return value
     .normalize('NFD')

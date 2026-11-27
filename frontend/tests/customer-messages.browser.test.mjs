@@ -75,11 +75,21 @@ test('Shop customer messaging routes each action correctly and preserves data on
           if (failProducts) return respond(null, 500);
           return respond({ items: [{ ...product, title: url.searchParams.get('page') === '2' ? 'Sản phẩm trang hai' : product.title }], pagination: { page: Number(url.searchParams.get('page') || 1), totalPages: 2 } });
         }
-        if (url.pathname.endsWith('/available')) return failCoupons ? respond(null, 500) : respond([{ id: 'qa-coupon', displayCode: 'SHOP10', discountType: 'PERCENTAGE', discountValue: 10 }]);
+        if (url.pathname.endsWith('/coupons/shareable')) {
+          const discount = { discountType: 'PERCENTAGE', discountValue: 10, benefitType: 'GOODS' };
+          return failCoupons ? respond(null, 500) : respond([
+            { ...discount, id: 'qa-coupon', displayCode: 'SHOP10', couponType: 'KOL_EXCLUSIVE', fundingSource: 'SHOP_FUNDED', scopeType: 'PRODUCTS', remainingUses: 4 },
+            { ...discount, id: 'qa-platform', displayCode: 'PLATFORM10', fundingSource: 'PLATFORM_FUNDED' },
+          ]);
+        }
         if (url.pathname === '/api/orders/my-store') {
           if (failOrders) return respond(null, 500);
           const suffix = url.searchParams.get('page') === '2' ? '2' : '1';
-          return respond({ items: [{ id: 'qa-order-' + suffix, externalOrderSn: 'QA-ORDER-' + suffix, storeId, customerId: url.searchParams.get('customerId'), status: 'SHIPPING', trackingNumber: 'GHN123', finalAmount: 90000, createdAt: '2026-10-24T06:00:00Z', items: [] }], pagination: { totalPages: 2 } });
+          const items = [
+            { id: 'qa-item-1', productId, title: 'Mặt nạ kiểm thử', sku: 'QA-SKU', variantName: 'Gói 50 ml', variantSku: 'QA-50ML', variantImageUrl: '/assets/cica-mask-product.jpg', imageUrl: '/assets/cleanser-product.jpg', quantity: 2 },
+            { id: 'qa-item-2', productId, title: 'Sữa rửa mặt kiểm thử', sku: 'QA-CLEANSER', imageUrl: '/assets/cleanser-product.jpg', quantity: 1 },
+          ];
+          return respond({ items: [{ id: 'qa-order-' + suffix, externalOrderSn: 'QA-ORDER-' + suffix, storeId, customerId: url.searchParams.get('customerId'), status: 'SHIPPING', trackingNumber: 'GHN123', finalAmount: 90000, createdAt: '2026-10-24T06:00:00Z', items }], pagination: { totalPages: 2 } });
         }
         if (url.pathname.endsWith('/attachments')) { uploads++; return respond({ url: 'https://res.cloudinary.com/qa/raw/upload/bao-gia.pdf', fileName: 'bao-gia.pdf', type: 'DOCUMENT' }); }
         return respond([]);
@@ -144,15 +154,25 @@ test('Shop customer messaging routes each action correctly and preserves data on
     await page.waitForFunction(selector => document.querySelector(selector).textContent.includes('Mặt nạ kiểm thử'), {}, productModal);
     assert.equal(requests.filter(item => item.path === '/api/products').at(-1).query.scope, 'chat-share');
     assert.equal(requests.filter(item => item.path === '/api/products').at(-1).query.storeId, storeId);
+    assert.equal(await page.$eval(productModal, panel => panel.hasAttribute('aria-modal')), false);
+    const skuResponse = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.pathname === '/api/products' && url.searchParams.get('search') === 'QA-SKU';
+    });
+    await page.type(productModal + ' input', 'QA-SKU');
+    await skuResponse;
+    await page.waitForFunction(selector => document.querySelector(selector).textContent.includes('Mặt nạ kiểm thử'), {}, productModal);
+    await page.waitForFunction(selector => !document.querySelector(selector + ' [aria-busy="true"]'), {}, productModal);
+    assert.equal(requests.filter(item => item.path === '/api/products').at(-1).query.search, 'QA-SKU');
     await clickText(productModal + ' button', 'Trang sau');
     await page.waitForFunction(selector => document.querySelector(selector).textContent.includes('Sản phẩm trang hai'), {}, productModal);
     await page.evaluate(() => { window.qaFailSend = true; });
     await clickText(productModal + ' button', 'Gửi thẻ');
     await page.waitForSelector(productModal + ' [role="alert"]');
     assert.ok(await page.$(productModal), 'a failed send keeps the product dialog open');
+    assert.equal(await page.$eval(productModal + ' input', element => element.value), 'QA-SKU');
+    assert.match(await page.$eval(productModal, element => element.textContent), /Sản phẩm trang hai/);
     await clickText(productModal + ' button', 'Thử lại');
-    await page.waitForFunction(selector => [...document.querySelectorAll(selector + ' button')].some(button => button.textContent.trim() === 'Gửi thẻ'), {}, productModal);
-    await clickText(productModal + ' button', 'Gửi thẻ');
     await page.waitForSelector(productModal, { hidden: true });
     const sentProduct = (await messagesSent()).at(-1);
     assert.equal(sentProduct.payload.conversationId, ids[0]);
@@ -165,9 +185,19 @@ test('Shop customer messaging routes each action correctly and preserves data on
     failCoupons = false;
     await clickText(couponModal + ' button', 'Thử lại');
     await page.waitForFunction(selector => document.querySelector(selector).textContent.includes('SHOP10'), {}, couponModal);
+    assert.doesNotMatch(await page.$eval(couponModal, element => element.textContent), /PLATFORM10/);
+    await page.type(couponModal + ' input', 'khongton tai');
+    assert.match(await page.$eval(couponModal, element => element.textContent), /Không tìm thấy mã phù hợp/);
+    await page.$eval(couponModal + ' input', element => element.select());
+    await page.keyboard.type('shop10');
+    await page.evaluate(() => { window.qaFailSend = true; });
+    await clickText(couponModal + ' button', 'Gửi mã');
+    await page.waitForSelector(couponModal + ' [role="alert"]');
+    assert.equal(await page.$eval(couponModal + ' input', element => element.value), 'shop10');
     await clickText(couponModal + ' button', 'Gửi mã');
     await page.waitForSelector(couponModal, { hidden: true });
-    assert.deepEqual(JSON.parse((await messagesSent()).at(-1).payload.messageText), { type: 'COUPON_VOUCHER', couponId: 'qa-coupon' });
+    const voucher = JSON.parse((await messagesSent()).at(-1).payload.messageText);
+    assert.deepEqual([voucher.type, voucher.couponId, voucher.remainingUses], ['COUPON_VOUCHER', 'qa-coupon', 4]);
     await clickText('.chat-message-content button', 'Sao chép');
     await page.waitForFunction(() => window.qaCopied === 'SHOP10');
 
@@ -178,22 +208,46 @@ test('Shop customer messaging routes each action correctly and preserves data on
     failOrders = false;
     await clickText(orderModal + ' button', 'Thử tải lại');
     await page.waitForFunction(selector => document.querySelector(selector).textContent.includes('QA-ORDER-1'), {}, orderModal);
+    assert.equal(await page.$eval(orderModal, panel => panel.parentElement.id === 'chat-page' && getComputedStyle(panel).position === 'static'), true);
+    assert.match(await page.$eval(orderModal + ' li', item => item.textContent), /Gói 50 ml.*QA-50ML.*SL: 2/);
+    assert.equal(await page.$eval(orderModal + ' li img', img => new URL(img.src).pathname), '/assets/cica-mask-product.jpg');
+    await clickText(orderModal + ' button', '+1 sản phẩm');
+    assert.equal(await page.$eval(orderModal + ' li:nth-child(2) img', img => new URL(img.src).pathname), '/assets/cleanser-product.jpg');
+    await page.click(orderModal + ' button[aria-label="Sao chép mã vận đơn"]');
+    await page.waitForFunction(() => window.qaCopied === 'GHN123');
+    const orderSearch = page.waitForResponse(response => new URL(response.url()).searchParams.get('search') === 'GHN123');
+    await page.type(orderModal + ' input', 'GHN123');
+    await orderSearch;
+    await page.waitForFunction(selector => document.querySelector(selector).textContent.includes('QA-ORDER-1'), {}, orderModal);
     await clickText(orderModal + ' button', 'Trang sau');
     await page.waitForFunction(selector => document.querySelector(selector).textContent.includes('QA-ORDER-2'), {}, orderModal);
     const orderQuery = requests.filter(item => item.path === '/api/orders/my-store').at(-1).query;
-    assert.equal(orderQuery.customerId, customerIds[0]); assert.equal(orderQuery.storeId, storeId); assert.equal(orderQuery.page, '2');
+    assert.equal(orderQuery.customerId, customerIds[0]); assert.equal(orderQuery.storeId, storeId); assert.equal(orderQuery.page, '2'); assert.equal(orderQuery.search, 'GHN123');
     const beforeDraft = (await messagesSent()).length;
-    await clickText(orderModal + ' button', 'Soạn tin nhắn trạng thái');
+    await clickText(orderModal + ' button', 'Soạn tin trạng thái');
     await page.waitForSelector(orderModal, { hidden: true });
     assert.match(await page.$eval(input, el => el.value), /QA-ORDER-2.*Đang giao hàng.*GHN123/);
     assert.equal((await messagesSent()).length, beforeDraft, 'order information is a draft until explicitly sent');
-    await page.click('#btn-cskh-tools-menu');
-    await clickText('#btn-cskh-tools-menu + div button', 'Tin nhắn mẫu CSKH');
+    await replaceInput('Đầu đoạn cuối đoạn');
+    await page.$eval(input, el => el.setSelectionRange('Đầu đoạn'.length, 'Đầu đoạn'.length));
+    await page.click('#btn-composer-quick-replies');
     const replyModal = '[aria-labelledby="customer-quick-replies-title"]';
     await page.waitForSelector(replyModal);
-    await page.$eval(replyModal + ' section button', button => button.click());
+    for (const [group, count] of [['Chào hỏi', 2], ['Sản phẩm', 5], ['Đơn hàng', 3], ['Đổi trả', 4]]) {
+      await clickText(replyModal + ' [role="group"] button', group);
+      assert.equal(await page.$$(replyModal + ' li button').then(buttons => buttons.length), count);
+    }
+    await page.type(replyModal + ' input', 'cham giao');
+    await page.$eval(replyModal + ' li button', button => button.click());
+    assert.match(await page.$eval(replyModal + ' li button[aria-pressed="true"]', button => button.textContent), /Đơn giao chậm.*mã đơn.*đơn vị vận chuyển/);
+    assert.equal(await page.$eval(input, el => el.value), 'Đầu đoạn cuối đoạn');
+    await clickText(replyModal + ' button', 'Chèn vào tin nhắn');
     await page.waitForSelector(replyModal, { hidden: true });
-    assert.match(await page.$eval(input, el => el.value), /Dạ chào bạn!/);
+    await page.waitForFunction(selector => {
+      const textarea = document.querySelector(selector);
+      return textarea === document.activeElement && textarea.value.slice(textarea.selectionEnd) === ' cuối đoạn';
+    }, {}, input);
+    assert.match(await page.$eval(input, el => el.value), /^Đầu đoạn Dạ, Shop xin lỗi vì đơn giao chậm\..* cuối đoạn$/);
     assert.equal((await messagesSent()).length, beforeDraft);
 
     await page.click('#chat-attach-btn');
@@ -225,11 +279,12 @@ test('Shop customer messaging routes each action correctly and preserves data on
     assert.match(await page.$eval('.chat-person-status', el => el.textContent), /Chat đang mất kết nối/);
     await page.evaluate(() => window.qaSocketEvent('connect'));
     await page.waitForFunction(() => document.querySelector('.chat-person-status').textContent.includes('Hội thoại khách hàng'));
+    const expandedSidebarWidth = await page.$eval('#chat-page > aside', el => Math.round(el.getBoundingClientRect().width));
     await page.click('[aria-label="Thu gọn danh sách"]');
     await page.waitForFunction(() => Math.round(document.querySelector('#chat-page > aside').getBoundingClientRect().width) === 72);
     assert.equal(await page.$eval('#chat-page > aside', el => Math.round(el.getBoundingClientRect().width)), 72);
     await page.click('[aria-label="Mở rộng danh sách hội thoại"]');
-    await page.waitForFunction(() => Math.round(document.querySelector('#chat-page > aside').getBoundingClientRect().width) === 325);
+    await page.waitForFunction(width => Math.round(document.querySelector('#chat-page > aside').getBoundingClientRect().width) === width, {}, expandedSidebarWidth);
     const artifactDirectory = new URL('../../artifacts/customer-messages-audit/', import.meta.url);
     await mkdir(artifactDirectory, { recursive: true });
     await page.screenshot({ path: fileURLToPath(new URL('desktop.png', artifactDirectory)), fullPage: false });
@@ -241,6 +296,32 @@ test('Shop customer messaging routes each action correctly and preserves data on
     assert.equal(await page.$eval(input, el => el.value), 'Bản nháp Đăng');
     await page.screenshot({ path: fileURLToPath(new URL('mobile.png', artifactDirectory)), fullPage: false });
     assert.ok(await page.$eval('#chat-page', el => el.scrollWidth <= el.clientWidth));
+    await page.click('#btn-customer-send-product');
+    await page.waitForFunction(selector => document.querySelector(selector)?.textContent.includes('Mặt nạ kiểm thử'), {}, productModal);
+    assert.equal(await page.$eval(productModal, panel => {
+      const bounds = panel.getBoundingClientRect();
+      const composer = document.querySelector('.chat-composer').getBoundingClientRect();
+      return bounds.left >= 0 && bounds.right <= innerWidth && Math.abs(bounds.bottom - (composer.top - 8)) < 2;
+    }), true, 'the product picker fits the phone viewport and opens above the composer');
+    await closeWithEscape(productModal);
+    await page.click('#btn-composer-quick-replies');
+    await page.waitForSelector(replyModal);
+    assert.equal(await page.$eval(replyModal, panel => {
+      const bounds = panel.getBoundingClientRect();
+      const composer = document.querySelector('.chat-composer').getBoundingClientRect();
+      return bounds.left >= 0 && bounds.right <= innerWidth && Math.abs(bounds.bottom - (composer.top - 8)) < 2;
+    }), true, 'the quick reply picker opens above the phone composer');
+    await closeWithEscape(replyModal);
+    await page.click('#btn-cskh-tools-menu');
+    await clickText('#btn-cskh-tools-menu + div button', 'Tra cứu đơn của khách');
+    await page.waitForSelector(orderModal);
+    assert.equal(await page.$eval(orderModal, panel => {
+      const bounds = panel.getBoundingClientRect();
+      const chat = panel.parentElement.getBoundingClientRect();
+      return getComputedStyle(panel).position === 'absolute' &&
+        Math.abs(bounds.bottom - chat.bottom) < 2 && bounds.height < chat.height;
+    }), true);
+    await page.click(orderModal + ' button[aria-label="Đóng tra cứu đơn hàng"]');
     await page.setViewport({ width: 1440, height: 1000 });
     failList = true;
     await page.reload();
