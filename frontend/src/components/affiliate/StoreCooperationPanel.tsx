@@ -71,7 +71,7 @@ export function StoreCooperationPanel({ mode, storeId, collaboratorId, onChanged
     const pending = items.filter(item => item.status === 'PENDING' && item.requestedByKol && (!collaboratorId || (item.collaboratorId || item.collaborator?.id) === collaboratorId));
     if (!error && pending.length === 0) return null;
     return (
-      <section className="shrink-0 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3" aria-label="Yêu cầu hợp tác từ KOL">
+      <section className="kol-cooperation-request shrink-0 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3" aria-label="Yêu cầu hợp tác từ KOL">
         {error ? <div role="alert" className="flex items-center justify-between gap-3 text-xs text-[#DC2626]"><p>Chưa tải được yêu cầu.</p><button type="button" className={buttonClass} onClick={() => void refresh()}>Thử lại</button></div> : !loaded ? <p className="text-xs text-[#7D715E]">Đang tải…</p> : pending.length === 0 ? <p className="text-xs text-[#7D715E]">Chưa có yêu cầu đang chờ Shop duyệt.</p> : (
           <div className="max-h-40 space-y-2 overflow-y-auto">
             {pending.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3">

@@ -38,6 +38,21 @@ enum ProductModerationStatus {
   REJECTED
 }
 
+enum ProductReportReason {
+  WRONG_IMAGE
+  MISLEADING_INFORMATION
+  SUSPECTED_COUNTERFEIT
+  OTHER
+}
+
+enum ProductReportStatus {
+  PENDING
+  ESCALATED
+  DISMISSED
+  CORRECTION_REQUESTED
+  HIDDEN
+}
+
 enum SocialPlatform {
   TIKTOK
   FACEBOOK
@@ -651,6 +666,7 @@ model Product {
   referralLinks          ReferralLink[]
   orderItems             OrderItem[]
   productReviews         ProductReview[]
+  reports                ProductReport[]
   campaignProducts       CampaignProduct[]
   couponProducts         CouponProduct[]
   variants               ProductVariant[]
@@ -667,6 +683,32 @@ model Product {
   @@index([submittedById], map: "idx_products_submitted_by")
   @@index([barcode], map: "idx_products_barcode")
   @@map("products")
+}
+
+model ProductReport {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId        String              @map("product_id") @db.Uuid
+  reporterId       String              @map("reporter_id") @db.Uuid
+  variantId        String?             @map("variant_id") @db.Uuid
+  variantName      String?             @map("variant_name") @db.VarChar(150)
+  variantSku       String?             @map("variant_sku") @db.VarChar(100)
+  reason           ProductReportReason
+  details          String?             @db.Text
+  evidence         Bytes?
+  evidenceMime     String?             @map("evidence_mime") @db.VarChar(30)
+  evidenceVideo    Bytes?              @map("evidence_video")
+  evidenceVideoMime String?            @map("evidence_video_mime") @db.VarChar(30)
+  status           ProductReportStatus @default(PENDING)
+  decisionNote     String?             @map("decision_note") @db.Text
+  reviewedBy       String?             @map("reviewed_by") @db.Uuid
+  reviewedAt       DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product          Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt, id], map: "idx_product_reports_queue")
+  @@index([productId, createdAt], map: "idx_product_reports_product")
+  @@map("product_reports")
 }
 
 model ProductReview {

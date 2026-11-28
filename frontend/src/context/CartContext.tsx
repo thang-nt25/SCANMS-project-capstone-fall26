@@ -226,13 +226,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [selectedItemIds, activeUserId]);
 
-  // A cart item stores a product photo snapshot. Refresh legacy photo URLs so
-  // an image corrected in the catalogue is also corrected in an existing cart.
+  // Fill in catalogue photos for carts saved before variant images were synced.
   useEffect(() => {
     let cancelled = false;
     const staleProductIds = Array.from(new Set(
       cart
-        .filter(({ imageUrl }) =>
+        .filter(({ imageUrl, productImageUrl, availableVariants }) =>
+          (productImageUrl === undefined && Boolean(availableVariants?.length)) ||
+          availableVariants?.some(variant => variant.imageUrl === undefined) ||
           imageUrl.includes('/scanms/products/') ||
           (imageUrl.startsWith('/assets/products/') && !imageUrl.startsWith('/assets/products/real/')),
         )
@@ -243,7 +244,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (staleProductIds.length === 0) return;
 
     const refreshImages = async () => {
-      const imageByProductId = new Map<string, string>();
+      const photosByProductId = new Map<string, { productImageUrl: string | null; variants: Map<string, string | null> }>();
       await Promise.all(staleProductIds.map(async (productId) => {
         try {
           const response: any = await api.get(
@@ -255,21 +256,36 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             : response?.data?.product
               ? response.data
               : response?.data?.data || response?.data || response;
-          const imageUrl = payload?.images?.[0] || payload?.product?.imageUrl;
-          if (typeof imageUrl === 'string' && imageUrl.trim()) {
-            imageByProductId.set(productId, imageUrl.trim());
+          if (!payload?.product) return;
+          const variants = new Map<string, string | null>();
+          for (const variant of payload.product.variants || []) {
+            if (typeof variant.id === 'string') variants.set(variant.id, variant.imageUrl?.trim() || null);
           }
+          photosByProductId.set(productId, {
+            productImageUrl: payload.product.imageUrl?.trim() || payload.images?.[0]?.trim() || null,
+            variants,
+          });
         } catch {
           // Keep the saved cart usable if the catalogue is temporarily offline.
         }
       }));
 
-      if (cancelled || imageByProductId.size === 0) return;
+      if (cancelled || photosByProductId.size === 0) return;
       const refreshItem = (item: CartItem): CartItem => {
-        const imageUrl = imageByProductId.get(item.productId);
-        if (!imageUrl) return item;
-        const nextImage = getSafeProductImageUrl(imageUrl, item.title, item.variantName);
-        return nextImage === item.imageUrl ? item : { ...item, imageUrl: nextImage };
+        const photos = photosByProductId.get(item.productId);
+        if (!photos) return item;
+        const productImageUrl = photos.productImageUrl ?? item.productImageUrl ?? null;
+        const availableVariants = item.availableVariants?.map(variant => {
+          const catalogueImage = photos.variants.get(variant.id);
+          const imageUrl = catalogueImage === undefined ? variant.imageUrl ?? null : catalogueImage;
+          return imageUrl === variant.imageUrl ? variant : { ...variant, imageUrl };
+        });
+        const variantImageUrl = item.variantId && (photos.variants.get(item.variantId) ||
+          availableVariants?.find(variant => variant.id === item.variantId)?.imageUrl);
+        const imageUrl = getSafeProductImageUrl(variantImageUrl || productImageUrl || item.imageUrl, item.title);
+        if (imageUrl === item.imageUrl && productImageUrl === item.productImageUrl &&
+          !availableVariants?.some((variant, index) => variant !== item.availableVariants?.[index])) return item;
+        return { ...item, imageUrl, productImageUrl, availableVariants };
       };
       const refreshList = (previous: CartItem[]) => {
         const next = previous.map(refreshItem);
@@ -411,7 +427,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addItem = useCallback(
     ({ product, variantId, quantity = 1, store, openCartAfterAdd = false }: AddItemParams) => {
       const prodTitle = product.title || product.name || 'Sản phẩm';
-      const prodImage = getSafeProductImageUrl(product.imageUrl || product.image, prodTitle);
+      const productImageUrl = getSafeProductImageUrl(product.imageUrl || product.image, prodTitle);
       const availableVariants = product.variants || [];
 
       // Find variant if specified
@@ -449,6 +465,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Unique cart item identifier (Requirement 1: product + variant)
       const cartItemId = `${product.id}_${variantId || 'base'}`;
+      const imageUrl = getSafeProductImageUrl(matchedVariant?.imageUrl || productImageUrl, prodTitle);
 
       setCart((prev) => {
         const existingIndex = prev.findIndex((item) => item.cartItemId === cartItemId);
@@ -461,6 +478,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: newQty,
             stockQuantity: availableStock,
             price: finalPrice,
+            ...(matchedVariant?.imageUrl ? { imageUrl } : {}),
+            productImageUrl: existing.productImageUrl ?? productImageUrl,
+            availableVariants: availableVariants.length ? availableVariants : existing.availableVariants,
           };
           return next;
         }
@@ -475,7 +495,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sku: finalSku,
           price: finalPrice,
           originalPrice: product.originalPrice ? Number(product.originalPrice) : (product.origPrice ? Number(product.origPrice) : undefined),
-          imageUrl: prodImage,
+          imageUrl,
+          productImageUrl,
           quantity: Math.min(quantity, availableStock),
           stockQuantity: availableStock,
           isActive: product.isActive !== false,
@@ -529,6 +550,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Update variant directly inside cart (Requirement 3)
   const updateVariant = useCallback((cartItemId: string, newVariantId: string) => {
+    const currentItem = cart.find((item) => item.cartItemId === cartItemId);
+    if (!currentItem || currentItem.variantId === newVariantId ||
+      !currentItem.availableVariants?.some(variant => variant.id === newVariantId)) return;
+    const newCartItemId = `${currentItem.productId}_${newVariantId}`;
+
     setCart((prev) => {
       const currentItem = prev.find((i) => i.cartItemId === cartItemId);
       if (!currentItem || !currentItem.availableVariants) return prev;
@@ -536,7 +562,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newVar = currentItem.availableVariants.find((v) => v.id === newVariantId);
       if (!newVar) return prev;
 
-      const newCartItemId = `${currentItem.productId}_${newVariantId}`;
+      const imageUrl = getSafeProductImageUrl(
+        newVar.imageUrl || (currentItem.productImageUrl === undefined ? currentItem.imageUrl : currentItem.productImageUrl),
+        currentItem.title,
+      );
 
       // Check if target variant already in cart
       const existingOther = prev.find((i) => i.cartItemId === newCartItemId);
@@ -545,7 +574,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mergedQty = Math.min(existingOther.quantity + currentItem.quantity, newVar.stockQuantity);
         return prev
           .filter((i) => i.cartItemId !== cartItemId)
-          .map((i) => (i.cartItemId === newCartItemId ? { ...i, quantity: mergedQty } : i));
+          .map((i) => (i.cartItemId === newCartItemId
+            ? { ...i, quantity: mergedQty, imageUrl: newVar.imageUrl || currentItem.productImageUrl !== undefined ? imageUrl : i.imageUrl }
+            : i));
       }
 
       // Replace variant on current line
@@ -556,6 +587,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             cartItemId: newCartItemId,
             variantId: newVar.id,
             variantName: newVar.name,
+            imageUrl,
             sku: newVar.sku,
             price: newVar.price !== null && newVar.price !== undefined ? Number(newVar.price) : item.price,
             stockQuantity: newVar.stockQuantity,
@@ -569,9 +601,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update selection key
     setSelectedItemIds((prev) => {
       if (!prev.includes(cartItemId)) return prev;
-      const currentItem = cart.find((i) => i.cartItemId === cartItemId);
-      const newKey = `${currentItem?.productId}_${newVariantId}`;
-      return prev.map((k) => (k === cartItemId ? newKey : k));
+      return [...new Set(prev.map((k) => (k === cartItemId ? newCartItemId : k)))];
     });
   }, [cart]);
 
@@ -671,7 +701,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const buyNow = useCallback(
     (params: AddItemParams, couponCode?: string) => {
       const prodTitle = params.product.title || params.product.name || 'Sản phẩm';
-      const prodImage = getSafeProductImageUrl(params.product.imageUrl || params.product.image, prodTitle);
+      const productImageUrl = getSafeProductImageUrl(params.product.imageUrl || params.product.image, prodTitle);
       const availableVariants = params.product.variants || [];
 
       let matchedVariant: CartVariantInfo | undefined;
@@ -718,7 +748,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sku: finalSku,
         price: finalPrice,
         originalPrice: params.product.originalPrice ? Number(params.product.originalPrice) : (params.product.origPrice ? Number(params.product.origPrice) : undefined),
-        imageUrl: prodImage,
+        imageUrl: getSafeProductImageUrl(matchedVariant?.imageUrl || productImageUrl, prodTitle),
+        productImageUrl,
         quantity: Math.min(qty, availableStock),
         stockQuantity: availableStock,
         isActive: params.product.isActive !== false,
@@ -753,7 +784,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   // Preserve direct-buy items in the shared cart without doubling an existing variant.
-  const stageCheckoutItems = useCallback((items: CartItem[]) => {
+  const returnCheckoutItemsToCart = useCallback((items: CartItem[]) => {
     setCart((prev) => {
       const next = [...prev];
       for (const item of items) {
@@ -772,17 +803,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ])));
     setCheckoutItems([]);
     setIsCheckoutOpen(false);
-  }, []);
-
-  const editCheckoutCart = useCallback((items: CartItem[]) => {
-    stageCheckoutItems(items);
-    setIsCartOpen(true);
-  }, [stageCheckoutItems]);
-
-  const continueShoppingFromCheckout = useCallback((items: CartItem[]) => {
-    stageCheckoutItems(items);
     setIsCartOpen(false);
-  }, [stageCheckoutItems]);
+  }, []);
 
   const closeCheckout = useCallback(() => {
     localStorage.removeItem(PENDING_CHECKOUT_KEY);
@@ -868,8 +890,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       checkoutCouponCode,
       startCheckout,
       buyNow,
-      editCheckoutCart,
-      continueShoppingFromCheckout,
+      returnCheckoutItemsToCart,
       closeCheckout,
       refreshCartStock,
       isValidatingStock,
@@ -902,8 +923,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       checkoutCouponCode,
       startCheckout,
       buyNow,
-      editCheckoutCart,
-      continueShoppingFromCheckout,
+      returnCheckoutItemsToCart,
       closeCheckout,
       refreshCartStock,
       isValidatingStock,

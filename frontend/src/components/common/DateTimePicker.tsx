@@ -22,12 +22,14 @@ export interface DateTimePickerProps {
   className?: string;
   id?: string;
   label?: string;
+  'aria-label'?: string;
   popoverAlign?: 'start' | 'end';
   smallCalendar?: boolean;
   compact?: boolean;
   popoverTitle?: string;
   inlinePopoverRef?: RefObject<HTMLDivElement | null>;
   popoverPortalRef?: RefObject<HTMLElement | null>;
+  inline?: boolean;
   getCurrentDate?: () => Date;
 }
 
@@ -85,12 +87,14 @@ export function DateTimePicker({
   className = '',
   id,
   label,
+  'aria-label': ariaLabel,
   popoverAlign = 'start',
   smallCalendar = false,
   compact = false,
   popoverTitle,
   inlinePopoverRef,
   popoverPortalRef,
+  inline = false,
   getCurrentDate = () => new Date(),
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -107,11 +111,14 @@ export function DateTimePicker({
     if (!rect) return null;
 
     const width = Math.min(smallCalendar ? 280 : mode === 'datetime' ? 480 : 310, window.innerWidth - 16);
-    const estimatedHeight = smallCalendar ? 338 : mode === 'datetime' ? 450 : 360;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow >= estimatedHeight + 8
-      ? rect.bottom + (smallCalendar ? 4 : 8)
-      : Math.max(8, rect.top - estimatedHeight - 8);
+    const height = popoverRef.current?.offsetHeight ?? (smallCalendar ? 338 : mode === 'datetime' ? 450 : 360);
+    const gap = smallCalendar ? 4 : 8;
+    const spaceBelow = window.innerHeight - rect.bottom - gap - 8;
+    const spaceAbove = rect.top - gap - 8;
+    const preferredTop = height <= spaceBelow || spaceBelow >= spaceAbove
+      ? rect.bottom + gap
+      : rect.top - height - gap;
+    const top = Math.max(8, Math.min(preferredTop, window.innerHeight - height - 8));
     const requestedLeft = popoverAlign === 'end' ? rect.right - width : rect.left;
     const left = Math.max(8, Math.min(requestedLeft, window.innerWidth - width - 8));
     return { top, left, width };
@@ -173,10 +180,10 @@ export function DateTimePicker({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !inlinePopoverRef) return;
+    if (!isOpen || (!inline && !inlinePopoverRef)) return;
     const frame = requestAnimationFrame(() => popoverRef.current?.scrollIntoView({ block: 'nearest' }));
     return () => cancelAnimationFrame(frame);
-  }, [isOpen, inlinePopoverRef]);
+  }, [isOpen, inline, inlinePopoverRef]);
 
   useLayoutEffect(() => {
     if (!isOpen || !popoverPortalRef?.current) {
@@ -190,9 +197,16 @@ export function DateTimePicker({
     };
 
     updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    if (popoverRef.current) {
+      observer.observe(popoverRef.current);
+      popoverRef.current.focus({ preventScroll: true });
+    }
+
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
+      observer.disconnect();
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
@@ -396,10 +410,13 @@ export function DateTimePicker({
         tabIndex={disabled ? -1 : 0}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        aria-label={label || popoverTitle || placeholder}
+        aria-label={ariaLabel || label || popoverTitle || placeholder}
         aria-disabled={disabled}
         onKeyDown={(e) => {
-          if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+          if (isOpen && e.key === 'Escape') {
+            e.stopPropagation();
+            setIsOpen(false);
+          } else if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
             togglePicker();
           }
@@ -407,7 +424,7 @@ export function DateTimePicker({
         onClick={togglePicker}
         className={`group w-full ${
           compact ? 'h-[42px] px-2.5 py-2 gap-1.5 rounded-[10px] border-[#EAE4D7]' : 'rounded-xl border-[#EEDFC6] px-3.5 py-2.5 gap-2.5'
-        } bg-white text-left ${compact ? 'text-[11px]' : 'text-xs sm:text-sm'} font-normal text-[#1A1612] outline-none transition-all flex items-center justify-between cursor-pointer select-none border ${
+        } bg-white text-left ${compact ? 'text-[11px]' : 'text-xs sm:text-sm'} font-normal text-[#1A1612] outline-none transition-all flex items-center justify-between cursor-pointer select-none border focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 ${
           isOpen
             ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 shadow-md'
             : 'hover:border-[#C59B58] hover:shadow-xs'
@@ -419,7 +436,7 @@ export function DateTimePicker({
           </div>
           <div className="flex flex-col min-w-0 truncate">
             {displayLabel ? (
-              <span className="font-bold text-[#1A1612] truncate text-xs sm:text-sm">
+              <span className={`font-bold text-[#1A1612] truncate text-xs ${compact ? '' : 'sm:text-sm'}`}>
                 {displayLabel}
               </span>
             ) : (
@@ -466,14 +483,15 @@ export function DateTimePicker({
       {isOpen && renderPopover(
         <div
           ref={popoverRef}
+          tabIndex={popoverPortalRef ? -1 : undefined}
           role="group"
           aria-label={popoverTitle || 'Chọn ngày giờ'}
           onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setIsOpen(false); triggerRef.current?.focus(); } }}
           className={`${smallCalendar ? 'scanms-small-calendar' : ''} ${
-            inlinePopoverRef ? 'relative inset-auto shadow-none' : popoverPortalRef ? 'fixed' : 'absolute top-[calc(100%+6px)]'
-          } ${!inlinePopoverRef && !popoverPortalRef ? (popoverAlign === 'end' ? 'right-0' : 'left-0') : ''} ${popoverPortalRef ? 'z-[100]' : 'z-50'} ${
-            compact ? 'p-3.5 rounded-[14px] border border-[#EEDFC6] shadow-none' : 'rounded-2xl border border-[#EEDFC6] p-4 shadow-2xl shadow-[#C59B58]/10'
-          } bg-white ring-1 ring-[#C59B58]/15 ${popoverPortalRef ? '' : 'transition-all animate-in fade-in zoom-in-95 duration-150'} ${
+            inline ? 'relative mt-1.5 shadow-sm' : inlinePopoverRef ? 'relative inset-auto shadow-none' : popoverPortalRef ? 'fixed' : 'absolute top-[calc(100%+6px)]'
+          } ${!inline && !inlinePopoverRef && !popoverPortalRef ? (popoverAlign === 'end' ? 'right-0' : 'left-0') : ''} ${popoverPortalRef ? 'z-[100]' : 'z-50'} ${
+            compact ? `${smallCalendar ? 'p-2.5' : 'p-3.5'} rounded-[14px] border border-[#EEDFC6]` : 'rounded-2xl border border-[#EEDFC6] p-4 shadow-2xl shadow-[#C59B58]/10'
+          } bg-white outline-none ring-1 ring-[#C59B58]/15 ${popoverPortalRef ? 'shadow-xl shadow-[#231D15]/15' : 'transition-all animate-in fade-in zoom-in-95 duration-150'} ${
             smallCalendar && mode === 'datetime' ? 'w-[288px] max-w-full' : mode === 'datetime'
               ? 'w-[320px] sm:w-[480px] max-w-[calc(100vw-2rem)]'
               : 'w-[280px] sm:w-[310px]'
@@ -487,7 +505,7 @@ export function DateTimePicker({
           } : undefined}
         >
           {/* Header Preview */}
-          <div className="mb-3.5 pb-2.5 border-b border-[#F3EFE6] flex items-center justify-between gap-2">
+          <div className={`border-b border-[#F3EFE6] flex items-center justify-between gap-2 ${smallCalendar ? 'mb-2 pb-1.5' : 'mb-3.5 pb-2.5'}`}>
             <span className="text-xs font-bold text-[#7D715E] flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58]" />
               {popoverTitle || (mode === 'datetime' ? 'Chọn ngày & giờ phát sóng' : 'Chọn ngày')}
@@ -512,11 +530,12 @@ export function DateTimePicker({
 
           {/* Mobile Tab Switcher (if datetime mode on small screens) */}
           {mode === 'datetime' && (
-            <div className={`flex ${smallCalendar ? '' : 'sm:hidden'} rounded-xl bg-[#FAF8F5] p-1 border border-[#EEDFC6] mb-3`}>
+            <div className={`flex ${smallCalendar ? 'mb-2' : 'mb-3 sm:hidden'} ${inline ? 'gap-2' : ''} rounded-xl bg-[#FAF8F5] p-1 border border-[#EEDFC6]`}>
               <button
                 type="button"
                 onClick={() => setActiveTab('calendar')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
+                aria-pressed={activeTab === 'calendar'}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${inline ? "relative after:pointer-events-none after:absolute after:-right-[5px] after:top-1/2 after:h-3 after:w-px after:-translate-y-1/2 after:bg-[#EAE4D7] after:content-['']" : ''} ${
                   activeTab === 'calendar'
                     ? 'bg-white text-[#1A1612] shadow-xs'
                     : 'text-[#7D715E] hover:text-[#1A1612]'
@@ -527,6 +546,7 @@ export function DateTimePicker({
               <button
                 type="button"
                 onClick={() => setActiveTab('time')}
+                aria-pressed={activeTab === 'time'}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
                   activeTab === 'time'
                     ? 'bg-white text-[#1A1612] shadow-xs'
@@ -542,7 +562,7 @@ export function DateTimePicker({
           <div className={`scanms-datetime-content flex flex-col gap-4 ${smallCalendar ? '' : 'sm:flex-row'}`}>
             {/* Left: Calendar Panel (Giữ nguyên logic và cấu trúc ngày) */}
             <div
-              className={`scanms-datetime-calendar flex-1 min-w-[210px] ${
+              className={`scanms-datetime-calendar flex-1 ${inline ? 'min-w-0' : 'min-w-[210px]'} ${
                 mode === 'datetime' && activeTab === 'time' ? (smallCalendar ? 'hidden' : 'hidden sm:block') : 'block'
               }`}
             >
@@ -583,7 +603,7 @@ export function DateTimePicker({
               {/* Day Grid */}
               <div className="grid grid-cols-7 gap-1">
                 {Array.from({ length: adjustedFirstDay }).map((_, idx) => (
-                  <div key={`empty-${idx}`} className="w-7 h-7 sm:w-8 sm:h-8" />
+                  <div key={`empty-${idx}`} />
                 ))}
 
                 {Array.from({ length: daysInMonth }).map((_, idx) => {
@@ -604,7 +624,7 @@ export function DateTimePicker({
                       aria-label={`${padZero(day)}/${padZero(currentMonth + 1)}/${currentYear}`}
                       aria-pressed={Boolean(isSelected)}
                       onClick={() => handleSelectDay(day)}
-                      className={`scanms-datetime-day relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition cursor-pointer ${
+                      className={`scanms-datetime-day relative max-w-full justify-self-center ${smallCalendar ? 'size-7' : 'size-7 sm:size-8'} rounded-lg text-xs font-semibold flex items-center justify-center transition cursor-pointer ${
                         isSelected
                           ? 'bg-[#C59B58] text-white font-bold shadow-md shadow-[#C59B58]/30 scale-105'
                           : isDisabled
@@ -704,7 +724,7 @@ export function DateTimePicker({
           </div>
 
           {/* Footer Actions (Sáng sủa, sắc nét) */}
-          <div className="scanms-datetime-footer mt-3.5 pt-3 border-t border-[#F3EFE6] flex items-center justify-between text-xs">
+          <div className={`scanms-datetime-footer border-t border-[#F3EFE6] flex items-center ${compact && required ? 'justify-end' : 'justify-between'} text-xs ${smallCalendar ? 'mt-2 pt-2' : 'mt-3.5 pt-3'}`}>
             {!(compact && required) && <button
               type="button"
               onClick={handleClear}

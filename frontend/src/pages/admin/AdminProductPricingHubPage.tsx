@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Package, ShieldCheck, Tag } from 'lucide-react';
+import { Flag, Package, ShieldCheck, Tag } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import ProductModerationPage from './ProductModerationPage';
 import ProductPricingPage from '../shared/ProductPricingPage';
+import ProductReportsPanel from './ProductReportsPanel';
 
-const PRODUCT_PRICING_TABS = ['moderation', 'pricing', 'promotions'] as const;
+const PRODUCT_PRICING_TABS = ['moderation', 'pricing', 'promotions', 'reports'] as const;
 type ProductPricingTab = (typeof PRODUCT_PRICING_TABS)[number];
 
 export default function AdminProductPricingHubPage() {
@@ -48,6 +49,7 @@ export default function AdminProductPricingHubPage() {
       icon: Tag,
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
+    { id: 'reports', label: 'Báo cáo sản phẩm', icon: Flag },
   ];
 
   return (
@@ -56,7 +58,7 @@ export default function AdminProductPricingHubPage() {
         className="mb-0"
         variant="framed"
         stretchTabs
-        stretchTabColumns={3}
+        stretchTabColumns={4}
         tone="white"
         tabs={tabs}
         activeTab={activeTab}
@@ -67,7 +69,7 @@ export default function AdminProductPricingHubPage() {
         <div role="tabpanel" aria-labelledby="hub-tab-moderation" hidden={activeTab !== 'moderation'}>
           {visitedTabs['moderation'] && <ProductModerationPage />}
         </div>
-        <div hidden={activeTab === 'moderation'}>
+        <div hidden={activeTab !== 'pricing' && activeTab !== 'promotions'}>
           {(visitedTabs.pricing || visitedTabs.promotions) && (
             <ProductPricingPage
               reviewer
@@ -76,6 +78,11 @@ export default function AdminProductPricingHubPage() {
             />
           )}
         </div>
+        {activeTab === 'reports' && (
+          <div role="tabpanel" aria-labelledby="hub-tab-reports">
+            <ProductReportsPanel admin={user.role === 'SYSTEM_ADMIN'} />
+          </div>
+        )}
       </div>
     </div>
   );

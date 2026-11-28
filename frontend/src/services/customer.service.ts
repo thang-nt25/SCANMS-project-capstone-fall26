@@ -120,6 +120,7 @@ export interface SyncedCartItem {
   price: number;
   originalPrice?: number;
   imageUrl: string;
+  productImageUrl?: string | null;
   quantity: number;
   stockQuantity: number;
   isActive: boolean;
@@ -136,6 +137,7 @@ export interface SyncedCartItem {
     id: string;
     name: string;
     sku: string;
+    imageUrl?: string | null;
     price?: number | null;
     stockQuantity: number;
     isActive?: boolean;

@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 // Compile pure TS modules in memory for Node's test runner; no browser globals.
@@ -49,8 +47,10 @@ test('all original local script and stylesheet entry points are copied', () => {
 test('currency is formatted in Vietnamese dong', () => {
   assert.match(formatMoney(459000), /459\.000/);
 });
-test('source prototype remains present', () => {
-  assert(existsSync(pathToFileURL(resolve('..', 'docs/ui-ux/NGUYENDINHTUAN/index.html'))));
+test('home and marketplace routes render the React storefront', () => {
+  const routes = readFileSync(new URL('../src/routes/AppRoutes.tsx', import.meta.url), 'utf8');
+  assert.match(routes, /<Route path="\/" element=\{<MarketplacePage \/>\}/);
+  assert.match(routes, /<Route path="\/marketplace" element=\{<MarketplacePage \/>\}/);
 });
 
 test('FR16 reference UI submits checkout to backend and never fabricates success data', () => {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SampleRequestItem } from '../../pages/merchant/ShopKolHubPage';
 import { SampleSandboxWaybills } from './SampleGhnEnvironmentPicker';
-import { ExternalLink, Truck, Play, Copy, Check } from 'lucide-react';
+import { CalendarDays, CalendarX, ExternalLink, Truck, Play, Copy, Check } from 'lucide-react';
 
 function videoThumbnail(url: string): string | undefined {
   try {
@@ -49,10 +49,40 @@ export function PartnerSampleDetails({ item }: { item: SampleRequestItem }) {
         const invalid = date && (!Number.isFinite(date.getTime()) || date.getTime()<new Date(item.createdAt).getTime());
         const poster = videoThumbnail(asset.urlOrContent);
         const directVideo = /\.(mp4|webm|mov)(?:[?#]|$)|cloudinary\.com\/.*\/video\//i.test(asset.urlOrContent);
+        const statusLabel = asset.status === 'APPROVED' ? 'Đã nghiệm thu'
+          : asset.status === 'REJECTED' ? 'Cần chỉnh sửa' : 'Chờ duyệt';
         return <div key={asset.id} className="partner-video-row">
-          <div className="partner-video-thumbnail" aria-hidden="true">{poster?<img src={poster} alt="" onError={event=>{event.currentTarget.style.display='none';}}/>:directVideo?<video src={asset.urlOrContent} preload="metadata" muted playsInline/>:null}<Play size={17} className="absolute"/></div>
-          <div className="partner-video-info"><strong title={asset.title}>{asset.title || 'Video review đã nộp'}</strong><div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[#7D715E]">{invalid?<span title={`Ngày nộp đã lưu: ${submitted}; trước ngày yêu cầu ${item.createdAt}`}>Ngày nộp cần đối chiếu</span>:date?<time dateTime={submitted}>Đã nộp: {date.toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</time>:<span>Chưa ghi nhận ngày nộp</span>}{asset.status && <span>{asset.status==='APPROVED'?'Đã nghiệm thu':asset.status==='REJECTED'?'Cần chỉnh sửa':'Chờ duyệt'}</span>}</div>{asset.rejectionReason && <p className="text-xs text-[#DC2626]">{asset.rejectionReason}</p>}</div>
-          <a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="partner-video-open">Xem video<ExternalLink size={13}/></a>
+          <div className="partner-video-thumbnail" aria-hidden="true">
+            {poster ? <img src={poster} alt="" onError={event => { event.currentTarget.hidden = true; }}/>
+              : directVideo ? <video src={asset.urlOrContent} preload="metadata" muted playsInline/> : null}
+            <span className="absolute grid size-6 place-items-center rounded-full bg-white/95 shadow-sm">
+              <Play size={13}/>
+            </span>
+          </div>
+          <div className="partner-video-info">
+            <strong title={asset.title}>{asset.title || 'Video review đã nộp'}</strong>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#7D715E]">
+              {invalid ? (
+                <span title={`Ngày nộp đã lưu: ${submitted} · Ngày yêu cầu: ${item.createdAt}`} className="inline-flex items-center gap-1.5 rounded-md bg-[#FBF5EB] px-1.5 py-0.5 font-medium text-[#79592C]">
+                  <CalendarX size={13} className="shrink-0" aria-hidden="true"/>Ngày nộp cần đối chiếu
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays size={13} className="shrink-0" aria-hidden="true"/>
+                  {date ? <time dateTime={submitted}>Đã nộp: {date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</time> : 'Chưa có ngày nộp'}
+                </span>
+              )}
+              {asset.status && (
+                <span className={`rounded-md border px-1.5 py-0.5 font-medium ${asset.status === 'REJECTED' ? 'border-red-100 bg-red-50 text-[#DC2626]' : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#79592C]'}`}>
+                  {statusLabel}
+                </span>
+              )}
+            </div>
+            {asset.rejectionReason && <p className="text-xs text-[#DC2626]">{asset.rejectionReason}</p>}
+          </div>
+          <a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="partner-video-open">
+            Xem video<ExternalLink size={13} aria-hidden="true"/>
+          </a>
         </div>;
       })}
     </section>}

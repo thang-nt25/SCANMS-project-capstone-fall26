@@ -48,7 +48,7 @@ export const normalizeStoredCartItem = (rawItem: any): CartItem => {
           stockQuantity: Number.isSafeInteger(matchedVariant.stockQuantity) && matchedVariant.stockQuantity >= 0 ? matchedVariant.stockQuantity : item.stockQuantity,
         }
       : {}),
-    imageUrl: getSafeProductImageUrl(item.imageUrl, item.title, item.variantName),
+    imageUrl: getSafeProductImageUrl(matchedVariant?.imageUrl || item.imageUrl, item.title),
   } as CartItem;
 };
 

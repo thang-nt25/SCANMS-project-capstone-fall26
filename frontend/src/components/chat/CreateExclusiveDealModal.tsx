@@ -19,6 +19,7 @@ interface Props {
   collaboratorId: string;
   collaboratorName: string;
   storeId?: string;
+  preferredProductId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -50,6 +51,7 @@ export function CreateExclusiveDealModal({
   collaboratorId,
   collaboratorName,
   storeId,
+  preferredProductId,
   onClose,
   onSuccess,
 }: Props) {
@@ -79,11 +81,9 @@ export function CreateExclusiveDealModal({
         if (cancelled) return;
         const storeItems = storeId ? items.filter((p) => p.storeId === storeId) : items;
         setProducts(storeItems);
-        // Pre-select the first available (unlocked) product
-        const firstUnlocked = storeItems.find((p) => !p.activeDeal?.isLocked);
-        if (firstUnlocked) {
-          setSelectedProductIds([firstUnlocked.id]);
-        }
+        const preferred = storeItems.find(product => product.id === preferredProductId && !product.activeDeal?.isLocked);
+        const defaultProduct = preferred ?? storeItems.find(product => !product.activeDeal?.isLocked);
+        setSelectedProductIds(defaultProduct ? [defaultProduct.id] : []);
       })
       .catch(() => {
         if (!cancelled)
@@ -96,7 +96,7 @@ export function CreateExclusiveDealModal({
     return () => {
       cancelled = true;
     };
-  }, [collaboratorId, storeId]);
+  }, [collaboratorId, storeId, preferredProductId]);
 
   // Filter products by search and store
   const filteredProducts = products

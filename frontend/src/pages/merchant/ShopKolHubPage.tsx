@@ -3,8 +3,8 @@ import { publicWebsiteUrl } from '@/utils/public-url';
 import { handleAvatarImageError, handleProductImageError } from '@/utils/image-fallback.utils';
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
-import { normalizePartnerTier } from '../../utils/partner-tier';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { normalizePartnerTier, tierRemuneration } from '../../utils/partner-tier';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
 import { TerminateCooperationModal } from '../../components/affiliate/TerminateCooperationModal';
@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Package,
   BarChart3,
+  CalendarDays,
   UserCheck,
   Search,
   ExternalLink,
@@ -35,6 +36,7 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Mail,
   X,
   Radar,
@@ -154,6 +156,81 @@ export interface PartnerKol {
   cooperationNote?: string | null;
   cooperationUpdatedAt?: string;
   hasCooperationHistory?: boolean;
+}
+
+function KolCooperationDetails({ kol }: { kol: PartnerKol }) {
+  const id = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const status = kol.cooperationStatus;
+  const statusLabel = status === 'APPROVED' ? 'Đang hợp tác'
+    : status === 'PENDING' ? (kol.requestedByKol ? 'KOL xin hợp tác' : 'Đã gửi lời mời · Chờ KOL')
+    : status === 'REJECTED' ? 'KOL đã từ chối'
+    : status === 'TERMINATED' ? 'Đã chấm dứt hợp tác'
+    : status === 'BLOCKED' ? 'Đã khóa hợp tác'
+    : 'Chưa mời hợp tác';
+  const statusColor = status === 'APPROVED' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#79592C]'
+    : status === 'PENDING' ? 'border-[#FCD34D] bg-[#FFFBEB] text-[#B45309]'
+    : status === 'REJECTED' || status === 'BLOCKED' ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
+    : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]';
+  const tier = kol.tier ?? 'BRONZE';
+  const tierLabel = { BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', DIAMOND: 'Kim cương' }[tier];
+  const rate = kol.commissionRate || tierRemuneration(tier);
+
+  useLayoutEffect(() => {
+    const button = trigger.current;
+    const popover = panel.current;
+    if (!open || !button || !popover) return;
+
+    const position = () => {
+      const anchor = button.getBoundingClientRect();
+      const { offsetWidth: width, offsetHeight: height } = popover;
+      popover.style.left = `${Math.max(8, Math.min(anchor.right - width, document.documentElement.clientWidth - width - 8))}px`;
+      const below = anchor.bottom + 6;
+      popover.style.top = `${below + height <= window.innerHeight - 8 ? below : Math.max(8, anchor.top - height - 6)}px`;
+    };
+
+    position();
+    window.addEventListener('resize', position);
+    window.addEventListener('scroll', position, true);
+    return () => {
+      window.removeEventListener('resize', position);
+      window.removeEventListener('scroll', position, true);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        popoverTarget={id}
+        aria-expanded={open}
+        aria-controls={id}
+        title={statusLabel}
+        className={`ml-auto inline-flex min-h-7 max-w-[55%] shrink-0 cursor-pointer items-center gap-1 rounded-full border px-2 text-[11px] font-semibold hover:brightness-95 ${statusColor}`}
+      >
+        <span className="min-w-0 truncate">{statusLabel}</span>
+        <ChevronDown size={13} aria-hidden="true" className={`shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <div
+        ref={panel}
+        id={id}
+        popover="auto"
+        onToggle={event => setOpen(event.newState === 'open')}
+        role="region"
+        aria-label="Thông tin hợp tác"
+        className="fixed inset-auto m-0 w-[17rem] max-w-[calc(100vw-16px)] rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-0.5 text-xs text-[#1A1612] shadow-xl shadow-[#231D15]/10"
+      >
+        <dl className="divide-y divide-[#EAE4D7] [&>div]:grid [&>div]:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] [&>div]:items-baseline [&>div]:gap-2 [&>div]:py-2.5 [&_dt]:text-[#7D715E] [&_dd]:m-0 [&_dd]:text-right [&_dd]:font-semibold">
+          <div><dt>Trạng thái</dt><dd>{statusLabel}</dd></div>
+          <div><dt>Hạng đối tác</dt><dd>{tierLabel}</dd></div>
+          <div><dt>Mức thù lao</dt><dd className="tabular-nums">{rate}%{kol.commissionRate ? ' · Deal' : ''}</dd></div>
+        </dl>
+      </div>
+    </>
+  );
 }
 
 export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platform: string; className?: string }) {
@@ -364,6 +441,7 @@ export default function ShopKolHubPage() {
   const [samplesMap, setSamplesMap] = useState<Record<string, SampleRequestItem[]>>(() => lastShopKolHubSnapshot?.samplesMap || {});
   const sampleLoadSequence = useRef(0);
   const [loadingBackendData, setLoadingBackendData] = useState(() => !lastShopKolHubSnapshot);
+  const [sampleRequestsUnavailable, setSampleRequestsUnavailable] = useState(false);
   const [sampleFilter, setSampleFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'REVISION_REQUIRED' | 'OVERDUE' | 'DELIVERY_ISSUE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'>('ALL');
   const [trackingModalItem, setTrackingModalItem] = useState<SampleRequestItem | null>(null);
   const [sampleShippingError, setSampleShippingError] = useState('');
@@ -510,7 +588,7 @@ export default function ShopKolHubPage() {
     try {
 // 1. Fetch conversations, sample requests, and store members in parallel
       const [sampleRes, statsRes, convsRes, membersRes]: [any, any, any, any] = await Promise.all([
-        api.get('/sample-requests/shop').catch(() => []),
+        api.get('/sample-requests/shop').catch(() => null),
         api.get('/sample-requests/shop/stats').catch(() => null),
         api.get('/chat/conversations').catch(() => []),
         api.get('/store-collaborators/shop', { headers: { 'x-skip-cache': '1' } }).catch(() => ({})),
@@ -518,9 +596,10 @@ export default function ShopKolHubPage() {
 
       const parsedConvs = Array.isArray(convsRes) ? convsRes : convsRes?.data || [];
       setRawConversations(parsedConvs);
-      const sampleData = sampleRes?.data || sampleRes;
       if (sequence !== sampleLoadSequence.current) return;
-      if (!Array.isArray(sampleData)) throw new Error('Không đọc được danh sách hàng mẫu.');
+      const sampleResponse = sampleRes?.data ?? sampleRes;
+      const sampleData = Array.isArray(sampleResponse) ? sampleResponse : [];
+      setSampleRequestsUnavailable(!Array.isArray(sampleResponse));
       const sampleStatsByKol: Record<string, { total: number; pending: number; completed: number }> = {};
       const requestKols: PartnerKol[] = [];
       let grouped: Record<string, SampleRequestItem[]> = {};
@@ -980,6 +1059,7 @@ export default function ShopKolHubPage() {
       if (!isMountedRef.current || sequence !== sampleLoadSequence.current) return;
       setKols([]);
       setSamplesMap({});
+      setSampleRequestsUnavailable(true);
       setTrackingModalItem(null);
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
@@ -1093,18 +1173,21 @@ export default function ShopKolHubPage() {
     return list;
   }, [selectedKol]);
 
-  // Filtered KOL List
+  const pendingSamplesByKol = useMemo(() => new Map(
+    kols.map(({ id }) => [id, (samplesMap[id] || []).filter(sample => sample.status === 'PENDING').length]),
+  ), [kols, samplesMap]);
+
+  const searchedKols = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return q ? kols.filter(kol =>
+      kol.fullName.toLowerCase().includes(q) ||
+      kol.email.toLowerCase().includes(q) ||
+      kol.handle?.toLowerCase().includes(q),
+    ) : kols;
+  }, [kols, searchQuery]);
+
   const filteredKols = useMemo(() => {
-    return kols.filter((kol) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchSearch =
-        !q ||
-        kol.fullName.toLowerCase().includes(q) ||
-        kol.email.toLowerCase().includes(q) ||
-        (kol.handle && kol.handle.toLowerCase().includes(q));
-
-      if (!matchSearch) return false;
-
+    return searchedKols.filter((kol) => {
       const isClosed =
         kol.cooperationStatus === 'REJECTED' ||
         kol.cooperationStatus === 'TERMINATED' ||
@@ -1114,8 +1197,7 @@ export default function ShopKolHubPage() {
         return kol.cooperationStatus === 'PENDING';
       }
       if (filterTag === 'PENDING_SAMPLE') {
-        const kolSamples = samplesMap[kol.id] || [];
-        return kolSamples.some((s) => s.status === 'PENDING') || kol.stats.pendingSamplesCount > 0;
+        return Boolean(pendingSamplesByKol.get(kol.id));
       }
       if (filterTag === 'CLOSED') {
         return isClosed;
@@ -1126,7 +1208,7 @@ export default function ShopKolHubPage() {
       }
       return true;
     });
-  }, [kols, searchQuery, filterTag, samplesMap]);
+  }, [searchedKols, filterTag, pendingSamplesByKol]);
 
   const pendingCoopCount = useMemo(
     () => kols.filter((k) => k.cooperationStatus === 'PENDING').length,
@@ -1157,10 +1239,7 @@ export default function ShopKolHubPage() {
     return list.filter((s) => sampleDisplayStatus(s) === sampleFilter);
   }, [samplesMap, selectedKol, sampleFilter]);
 
-  const pendingSampleCount = kols.reduce((total, kol) => total + Math.max(
-    (samplesMap[kol.id] || []).filter(sample => sample.status === 'PENDING').length,
-    kol.stats.pendingSamplesCount || 0,
-  ), 0);
+  const pendingSampleCount = Array.from(pendingSamplesByKol.values()).reduce((total, count) => total + count, 0);
   // Handler: Select KOL
   const setAiMatchingMode = (enabled: boolean) => {
     setIsAiMatchingMode(enabled);
@@ -1178,15 +1257,28 @@ export default function ShopKolHubPage() {
     setSearchParams(params, { replace: true });
   };
 
-  const handleSelectKol = (kolId: string) => {
+  const handleSelectKol = (kolId: string, showPendingSamples = false) => {
+    const tab = showPendingSamples ? 'samples' : activeTab;
+    if (showPendingSamples) {
+      setActiveTab('samples');
+      setSampleFilter('PENDING');
+    }
     setSelectedKolId(kolId);
     setSearchParams(
       {
         kol: kolId,
-        tab: activeTab,
+        tab,
       },
       { replace: true }
     );
+  };
+
+  const handleShowNewSamples = () => {
+    setViewMode('CRM');
+    setFilterTag('PENDING_SAMPLE');
+    const pendingCreators = searchedKols.filter(kol => pendingSamplesByKol.get(kol.id));
+    const target = pendingCreators.find(kol => kol.id === selectedKolId) ?? pendingCreators[0];
+    if (target) handleSelectKol(target.id, true);
   };
 
   const openKolProfile = (kolId: string) => {
@@ -1786,7 +1878,7 @@ export default function ShopKolHubPage() {
 
       {/* Mode 1: AI Recommendation Mode */}
       <div className={`kol-ai-workspace flex-1 min-h-0 w-full overflow-y-auto rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs ${isAiMatchingMode ? 'flex flex-col' : 'hidden'}`}>
-        <KolRecommendationPage onReturn={() => setAiMatchingMode(false)} />
+        <KolRecommendationPage onReturn={() => setAiMatchingMode(false)} storeId={ownedStore?.id} />
       </div>
 
       {/* Mode 2: BẢNG XẾP HẠNG KOL */}
@@ -2110,16 +2202,11 @@ export default function ShopKolHubPage() {
 
                   {/* Filter Tabs Under Search */}
                   <div className="kol-list-filters">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <div role="group" aria-label="Lọc nhà sáng tạo">
                       <button
                         type="button"
                         onClick={() => { setViewMode('CRM'); setFilterTag('ALL'); }}
                         aria-pressed={filterTag === 'ALL'}
-                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
-                          filterTag === 'ALL'
-                            ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
-                            : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                        }`}
                       >
                         Tất cả
                       </button>
@@ -2127,38 +2214,24 @@ export default function ShopKolHubPage() {
                         type="button"
                         onClick={() => { setViewMode('CRM'); setFilterTag('PENDING'); }}
                         aria-pressed={filterTag === 'PENDING'}
-                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
-                          filterTag === 'PENDING'
-                            ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
-                            : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                        }`}
                       >
                         <span>Chờ phản hồi</span>
                         {pendingCoopCount > 0 && <span className="kol-pending-count">{pendingCoopCount}</span>}
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setViewMode('CRM'); setFilterTag('PENDING_SAMPLE'); }}
+                        onClick={handleShowNewSamples}
                         aria-pressed={filterTag === 'PENDING_SAMPLE'}
-                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
-                          filterTag === 'PENDING_SAMPLE'
-                            ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
-                            : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                        }`}
+                        title="Yêu cầu hàng mẫu đang chờ shop duyệt"
                       >
                         <span>Có mẫu mới</span>
-                        {pendingSampleCount > 0 && <span className="kol-pending-count">{pendingSampleCount}</span>}
+                        {!loadingBackendData && !sampleRequestsUnavailable && <span className="kol-pending-count">{pendingSampleCount}</span>}
                       </button>
                       {(closedCoopCount > 0 || filterTag === 'CLOSED') && (
                         <button
                           type="button"
                           onClick={() => { setViewMode('CRM'); setFilterTag('CLOSED'); }}
                           aria-pressed={filterTag === 'CLOSED'}
-                          className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 pb-1 text-xs relative ${
-                            filterTag === 'CLOSED'
-                              ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
-                              : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                          }`}
                         >
                           <span>Đã kết thúc</span>
                           {closedCoopCount > 0 && (
@@ -2179,7 +2252,26 @@ export default function ShopKolHubPage() {
                   {filteredKols.length === 0 ? (
                     <div className="py-12 text-center text-[#7D715E] text-xs space-y-2">
                       <Users className="w-7 h-7 mx-auto text-[#C59B58]/40 stroke-1" />
-                      <p className="font-medium">Không tìm thấy nhà sáng tạo nào phù hợp.</p>
+                      {filterTag === 'PENDING_SAMPLE' ? (
+                        <div className="space-y-2" role="status">
+                          <p className="font-medium">
+                            {loadingBackendData ? 'Đang tải yêu cầu hàng mẫu…'
+                              : sampleRequestsUnavailable ? 'Chưa tải được yêu cầu hàng mẫu.'
+                              : pendingSampleCount === 0 ? 'Chưa có yêu cầu hàng mẫu chờ duyệt.'
+                              : 'Không tìm thấy yêu cầu mẫu theo từ khóa.'}
+                          </p>
+                          {!loadingBackendData && sampleRequestsUnavailable && (
+                            <button type="button" className="cursor-pointer font-semibold text-[#79592C] underline" onClick={() => void loadBackendData()}>
+                              Thử lại
+                            </button>
+                          )}
+                          {!loadingBackendData && !sampleRequestsUnavailable && (
+                            <button type="button" className="min-h-8 cursor-pointer rounded-lg border border-[#EEDFC6] bg-white px-2.5 font-semibold text-[#79592C] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F]" onClick={() => { setSearchQuery(''); setFilterTag('ALL'); }}>
+                              Xem tất cả nhà sáng tạo
+                            </button>
+                          )}
+                        </div>
+                      ) : <p className="font-medium">Không tìm thấy nhà sáng tạo nào phù hợp.</p>}
                     </div>
                   ) : (
                     filteredKols.map((kol) => {
@@ -2231,7 +2323,7 @@ export default function ShopKolHubPage() {
                       return (
                         <div
                           key={kol.id}
-                          onClick={() => handleSelectKol(kol.id)}
+                          onClick={() => handleSelectKol(kol.id, filterTag === 'PENDING_SAMPLE')}
                           data-selected={isSelected}
                           role="button"
                           tabIndex={0}
@@ -2239,7 +2331,7 @@ export default function ShopKolHubPage() {
                           onKeyDown={event => {
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
-                              handleSelectKol(kol.id);
+                              handleSelectKol(kol.id, filterTag === 'PENDING_SAMPLE');
                             }
                           }}
                           className={`shop-kol-person group relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-150 ${
@@ -2441,7 +2533,6 @@ export default function ShopKolHubPage() {
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
           <div className="shop-kol-detail flex-1 flex flex-col min-w-0 min-h-0 bg-white">
-            <StoreCooperationPanel mode="shop" onChanged={() => void loadBackendData()} />
             {!selectedKol ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
                 <div className="w-14 h-14 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mb-3 shadow-2xs">
@@ -2479,32 +2570,7 @@ export default function ShopKolHubPage() {
                       {selectedKol.kycStatus === 'VERIFIED' && (
                         <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#059669]" aria-label="Đã xác thực" />
                       )}
-                      <span className="kol-chat-rate" title="Mức thù lao áp dụng cho đối tác">
-                        {selectedKol.commissionRate ? `Deal · ${selectedKol.commissionRate}%` : selectedKol.tier === 'DIAMOND' ? 'Kim cương · 13%' : selectedKol.tier === 'GOLD' ? 'Vàng · 12%' : selectedKol.tier === 'SILVER' ? 'Bạc · 11%' : 'Đồng · 10%'}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                          selectedKol.cooperationStatus === 'APPROVED'
-                            ? 'border-[#C59B58]/60 bg-[#FBF5EB] text-[#8C6226]'
-                            : selectedKol.cooperationStatus === 'PENDING'
-                              ? 'border-[#FCD34D] bg-[#FFFBEB] text-[#B45309]'
-                              : selectedKol.cooperationStatus === 'REJECTED' || selectedKol.cooperationStatus === 'BLOCKED'
-                                ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
-                                : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
-                        }`}
-                      >
-                        {selectedKol.cooperationStatus === 'APPROVED'
-                          ? 'Đang hợp tác'
-                          : selectedKol.cooperationStatus === 'PENDING'
-                            ? (selectedKol.requestedByKol ? 'KOL xin hợp tác' : 'Đã gửi lời mời · Chờ KOL')
-                            : selectedKol.cooperationStatus === 'REJECTED'
-                              ? 'KOL đã từ chối'
-                              : selectedKol.cooperationStatus === 'TERMINATED'
-                                ? 'Đã chấm dứt hợp tác'
-                                : selectedKol.cooperationStatus === 'BLOCKED'
-                                  ? 'Đã khóa hợp tác'
-                                  : 'Chưa mời hợp tác'}
-                      </span>
+                      <KolCooperationDetails key={selectedKol.id} kol={selectedKol} />
                     </div>
                     <div className="kol-chat-channels">
                       {allChannels.length ? allChannels.map((channel, index) => (
@@ -2518,7 +2584,7 @@ export default function ShopKolHubPage() {
                       )) : <span>Chưa liên kết kênh</span>}
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <div className="kol-chat-actions min-w-0">
                     {(!selectedKol.cooperationStatus || selectedKol.cooperationStatus === 'REJECTED' || selectedKol.cooperationStatus === 'TERMINATED') && selectedKol.email && (
                       <button
                         type="button"
@@ -2541,7 +2607,7 @@ export default function ShopKolHubPage() {
                           id="btn-header-kol-coupon"
                           onClick={() => setShowQuickCouponModal(true)}
                           className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8C6226] hover:bg-[#F3EFE6] cursor-pointer whitespace-nowrap"
-                          title="Quản lý nhanh / Gia hạn / Phát hành mã ưu đãi cho KOC"
+                          title={`Quản lý mã ưu đãi KOC${pendingKolCoupon || activeKolCoupon ? ` · ${(pendingKolCoupon || activeKolCoupon)?.displayCode}` : ''}`}
                         >
                           <Ticket className="h-3.5 w-3.5 text-[#B88E4F]" />
                           <span className="hidden md:inline">
@@ -2552,7 +2618,7 @@ export default function ShopKolHubPage() {
                                 : 'Mã ưu đãi KOC'}
                           </span>
                           <span className="md:hidden">Mã KOC</span>
-                          {pendingKolCoupon && <span className="h-2 w-2 rounded-full bg-[#D97706]" />}
+                          {pendingKolCoupon && <span className="h-2 w-2 shrink-0 rounded-full bg-[#D97706]" />}
                         </button>
                       );
                     })()}
@@ -2584,7 +2650,7 @@ export default function ShopKolHubPage() {
                         title="Kiểm tra ràng buộc & chấm dứt hợp tác với KOL"
                       >
                         <UserMinus className="h-3.5 w-3.5" />
-                        <span className="hidden xl:inline">Chấm dứt</span>
+                        <span>Chấm dứt</span>
                       </button>
                     )}
                   </div>
@@ -2668,6 +2734,9 @@ export default function ShopKolHubPage() {
                 >
                   <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' && viewMode === 'CRM' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
                   <span>Hồ sơ</span>
+                  {selectedKol.cooperationStatus === 'PENDING' && selectedKol.requestedByKol && (
+                    <span className="kol-cooperation-badge inline-grid size-4 shrink-0 place-items-center rounded-full bg-[#FBF5EB] text-[10px] text-[#8C6226]" title="Yêu cầu hợp tác chờ duyệt">1</span>
+                  )}
                 </button>
               </div>
 
@@ -2920,11 +2989,13 @@ export default function ShopKolHubPage() {
                 return (
                   <div className="kol-performance @container overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
                     <div className="kol-performance-toolbar grid @[720px]:grid-cols-[152px_minmax(0,1fr)]">
-                      <label className="flex items-center gap-2 border-b border-[#EAE4D7] px-3 py-2.5 text-xs text-[#7D715E] @[720px]:border-r @[720px]:border-b-0">
-                        <span>Kỳ</span>
+                      <label className="flex min-w-0 items-center justify-between gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-xs @[720px]:flex-col @[720px]:items-start @[720px]:justify-center @[720px]:gap-1.5 @[720px]:border-r @[720px]:border-b-0">
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-[#7D715E]">
+                          <CalendarDays size={13} className="text-[#8C6226]" aria-hidden="true" /> Kỳ báo cáo
+                        </span>
                         <select aria-label="Kỳ báo cáo" value={performanceRange}
                           onChange={event => { setPerformancePage(1); setPerformanceRange(event.target.value as typeof performanceRange); }}
-                          className="flex h-9 min-w-0 flex-1 items-center gap-1 rounded-lg border border-[#EAE4D7] px-2 py-0 text-xs font-medium [&::picker-icon]:self-center">
+                          className="flex h-8 w-32 min-w-0 cursor-pointer items-center gap-1 rounded-md border px-2 py-0 text-xs font-semibold tabular-nums transition-colors hover:border-[#C59B58]! @[720px]:w-full [&::picker-icon]:self-center [&::picker-icon]:text-[10px]">
                           <option value="7d">7 ngày</option>
                           <option value="30d">30 ngày</option>
                           <option value="month">Tháng này</option>
@@ -2939,7 +3010,7 @@ export default function ShopKolHubPage() {
                         {label:'TB/đơn',value:kolPerformance&&displayOrders>0?`${displayAov.toLocaleString('vi-VN')} ₫`:'—',help:'Doanh số đã giao chia cho số đơn đã giao trong kỳ.'},
                       ].map(metric => <div key={metric.label} className="flex min-h-[66px] min-w-0 flex-col justify-center px-3 py-2 even:border-l [&:nth-child(n+3)]:border-t @[720px]:[&:nth-child(n+3)]:border-t-0 @[720px]:[&:not(:first-child)]:border-l border-[#EAE4D7]">
                         <div className="flex items-center gap-1.5 text-xs text-[#7D715E]"><span>{metric.label}</span><span title={metric.help} aria-label={metric.help} tabIndex={0} className="shrink-0"><HelpCircle size={12}/></span></div>
-                        <strong className={`mt-0.5 block text-xl font-semibold leading-6 tabular-nums [overflow-wrap:anywhere] ${metric.label === 'Thù lao ghi nhận' ? 'text-[#90682F]' : 'text-[#1A1612]'}`}>{metric.value}</strong>
+                        <strong title={metric.value} className={`mt-0.5 block overflow-x-auto text-[clamp(13px,2cqw,20px)] leading-6 font-bold whitespace-nowrap tabular-nums [scrollbar-width:thin] ${metric.label === 'Thù lao ghi nhận' ? 'text-[#90682F]' : 'text-[#1A1612]'}`}>{metric.value}</strong>
                       </div>)}
                     </div>
                     </div>
@@ -2948,7 +3019,67 @@ export default function ShopKolHubPage() {
                       <div className="kol-order-filters grid grid-cols-6 gap-1 p-3" role="group" aria-label="Lọc đơn hàng theo trạng thái">
                         {[{value:'ALL',label:'Tất cả'},{value:'PENDING',label:'Đang xử lý'},{value:'SHIPPING',label:'Đang giao'},{value:'DELIVERED_GROUP',label:'Đã giao'},{value:'CANCELLED',label:'Đã hủy'},{value:'RETURNS_GROUP',label:'Đổi trả',title:'Đổi trả / Khiếu nại'}].map(filter=><button type="button" key={filter.value} title={filter.title||filter.label} aria-label={filter.title||filter.label} aria-pressed={performanceStatus===filter.value} onClick={()=>{setPerformancePage(1);setPerformanceStatus(filter.value);}} className={`relative flex h-[38px] min-w-0 items-center justify-center rounded-lg px-1 text-xs font-medium ${performanceStatus===filter.value?'text-[#79592C]':'text-[#7D715E] hover:bg-[#FAF8F5]'}`}><span className="min-w-0 truncate">{filter.label}</span></button>)}
                       </div>
-                      {loadingKolOrders?<p role="status" className="flex items-center justify-center gap-2 border-t border-[#EAE4D7] py-10 text-xs text-[#7D715E]"><RefreshCw size={15} className="animate-spin"/>Đang tải đơn hàng…</p>:performanceError?null:!ordersList.length?<div className="kol-orders-empty"><ShoppingBag size={26}/><strong>{performanceStatus==='ALL'?'Chưa có đơn hàng trong kỳ này':'Không có đơn ở trạng thái này'}</strong></div>:<div className="overflow-x-auto border-t border-[#EAE4D7]"><table className="w-full min-w-[560px] text-left text-xs"><thead className="bg-[#FAF8F5] text-[#7D715E]"><tr><th className="px-4 py-3 font-medium">Mã đơn · Sản phẩm</th><th className="px-3 py-3 text-right font-medium">Giá trị</th><th className="px-3 py-3 text-right font-medium">Thù lao</th><th className="px-4 py-3 font-medium">Trạng thái</th></tr></thead><tbody className="divide-y divide-[#EAE4D7]">{ordersList.map(ord=><tr key={ord.id} className="hover:bg-[#FAF8F5]"><td className="px-4 py-3"><strong className="block font-semibold">{ord.orderCode}</strong><span className="mt-1 flex max-w-[300px] items-center gap-2 text-[#7D715E]">{ord.productImage?<img src={ord.productImage} alt="" onError={handleProductImageError} className="size-6 shrink-0 rounded border border-[#EAE4D7] bg-white object-contain"/>:<span className="grid size-6 shrink-0 place-items-center rounded border border-[#EAE4D7] bg-white text-[#B88E4F]"><Package size={13}/></span>}<span className="min-w-0">{ord.productTitle}</span></span><span className="mt-1 block text-[11px] text-[#7D715E]">{ord.customerName} · {ord.createdAt}</span></td><td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums">{ord.orderTotal.toLocaleString('vi-VN')} ₫</td><td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-[#90682F]">{ord.commissionEarned.toLocaleString('vi-VN')} ₫</td><td className="px-4 py-3"><span className="inline-flex whitespace-nowrap rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[11px] text-[#79592C]">{({PENDING:'Đang xử lý',CONFIRMED:'Đã xác nhận',PROCESSING:'Đang xử lý',SHIPPING:'Đang giao',DELIVERED:'Đã giao',COMPLETED:'Hoàn tất',CANCELLED:'Đã hủy',RETURN_REQUESTED:'Yêu cầu đổi trả',RETURNED:'Đã trả hàng',DISPUTED:'Đang khiếu nại'} as Record<string,string>)[ord.status]||ord.status}</span></td></tr>)}</tbody></table></div>}
+                      {loadingKolOrders ? (
+                        <p role="status" className="flex items-center justify-center gap-2 border-t border-[#EAE4D7] py-10 text-xs text-[#7D715E]">
+                          <RefreshCw size={15} className="animate-spin" />Đang tải đơn hàng…
+                        </p>
+                      ) : performanceError ? null : !ordersList.length ? (
+                        <div className="kol-orders-empty">
+                          <ShoppingBag size={26} />
+                          <strong>{performanceStatus === 'ALL' ? 'Chưa có đơn hàng trong kỳ này' : 'Không có đơn ở trạng thái này'}</strong>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border-t border-[#EAE4D7]">
+                          <table aria-label="Đơn hàng của đối tác" className="w-full min-w-[560px] table-fixed text-xs">
+                            <colgroup>
+                              <col className="w-[44%]" />
+                              <col span={3} />
+                            </colgroup>
+                            <thead className="bg-[#FAF8F5] text-[#7D715E]">
+                              <tr className="divide-x divide-[#EAE4D7]">
+                                <th scope="col" className="py-3 pr-4 pl-[62px] text-left font-semibold">Mã đơn · Sản phẩm</th>
+                                <th scope="col" className="px-3 py-3 text-center font-semibold">Giá trị</th>
+                                <th scope="col" className="px-3 py-3 text-center font-semibold">Thù lao</th>
+                                <th scope="col" className="px-3 py-3 text-center font-semibold">Trạng thái</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#EAE4D7]">
+                              {ordersList.map(order => {
+                                const status = ({
+                                  PENDING: 'Đang xử lý', CONFIRMED: 'Đã xác nhận', PROCESSING: 'Đang xử lý',
+                                  SHIPPING: 'Đang giao', DELIVERED: 'Đã giao', COMPLETED: 'Hoàn tất',
+                                  CANCELLED: 'Đã hủy', RETURN_REQUESTED: 'Yêu cầu đổi trả', RETURNED: 'Đã trả hàng',
+                                  DISPUTED: 'Đang khiếu nại',
+                                } as Record<string, string>)[order.status] || order.status;
+
+                                return (
+                                  <tr key={order.id} className="h-[90px] hover:bg-[#FAF8F5]">
+                                    <th scope="row" className="px-4 py-2.5 text-left font-normal">
+                                      <span className="flex min-w-0 items-center gap-2.5">
+                                        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-[#EAE4D7] bg-[#FAF8F5]">
+                                          {order.productImage ? (
+                                            <img src={order.productImage} alt="" onError={handleProductImageError} className="size-6 rounded object-contain" />
+                                          ) : <Package size={15} className="text-[#B88E4F]" aria-hidden="true" />}
+                                        </span>
+                                        <span className="grid min-w-0 flex-1 gap-0.5">
+                                          <strong className="truncate leading-4 font-semibold tabular-nums text-[#1A1612]" title={order.orderCode}>{order.orderCode}</strong>
+                                          <span className="line-clamp-2 leading-4 wrap-anywhere text-[#554D41]" title={order.productTitle}>{order.productTitle}</span>
+                                          <span className="truncate text-[11px] leading-4 text-[#7D715E]" title={`${order.customerName} · ${order.createdAt}`}>{order.customerName} · {order.createdAt}</span>
+                                        </span>
+                                      </span>
+                                    </th>
+                                    <td className="px-3 py-3 text-center font-semibold tabular-nums text-[#1A1612]">{order.orderTotal.toLocaleString('vi-VN')} ₫</td>
+                                    <td className="px-3 py-3 text-center font-semibold tabular-nums text-[#90682F]">{order.commissionEarned.toLocaleString('vi-VN')} ₫</td>
+                                    <td className="px-3 py-3 text-center">
+                                      <span className="inline-block max-w-full rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] leading-tight font-medium wrap-anywhere text-[#79592C]">{status}</span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                       {!loadingKolOrders&&!performanceError&&ordersList.length>0&&<div className="kol-performance-pagination flex items-center justify-end gap-2 border-t border-[#EAE4D7] px-4 py-3 text-xs text-[#7D715E]"><button type="button" disabled={performancePage<=1} onClick={()=>setPerformancePage(page=>page-1)} className="h-8 rounded-lg border border-[#EAE4D7] px-3 disabled:opacity-40">Trước</button><span className="tabular-nums">{performancePage}/{Math.max(1,performancePages)}</span><button type="button" disabled={performancePage>=performancePages} onClick={()=>setPerformancePage(page=>page+1)} className="h-8 rounded-lg border border-[#EAE4D7] px-3 disabled:opacity-40">Sau</button></div>}
                     </div>
                   </div>
@@ -2961,6 +3092,9 @@ export default function ShopKolHubPage() {
                 const canQuickInvite = (!selectedKol.cooperationStatus || selectedKol.cooperationStatus === 'REJECTED' || selectedKol.cooperationStatus === 'TERMINATED') && Boolean(selectedKol.email);
                 return (
                 <div className="kol-channel-profile">
+                  {selectedKol.cooperationStatus === 'PENDING' && selectedKol.requestedByKol && (
+                    <StoreCooperationPanel mode="shop" storeId={ownedStore?.id} collaboratorId={selectedKol.id} />
+                  )}
                   <div className="kol-channel-panel rounded-xl border border-[#EAE4D7] bg-white p-4 text-[#1A1612] sm:p-5">
                     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAE4D7] pb-3">
                       <h3 className="text-sm font-semibold">Thông tin đối tác</h3>

@@ -2317,14 +2317,15 @@ export class ProductsService {
       );
 
     // 1. Tìm sản phẩm theo ID hoặc SKU
-    let product = await this.prisma.product.findFirst({
+    const exactLookup = {
       where: {
         isDeleted: false,
         moderationStatus: ProductModerationStatus.APPROVED,
         OR: isUuid
-          ? [{ id: trimmed }, { sku: { equals: trimmed, mode: 'insensitive' } }]
-          : [{ sku: { equals: trimmed, mode: 'insensitive' } }],
+          ? [{ id: trimmed }, { sku: { equals: trimmed, mode: 'insensitive' as const } }]
+          : [{ sku: { equals: trimmed, mode: 'insensitive' as const } }],
       },
+      orderBy: { id: 'asc' },
       include: {
         variants: {
           where: { isActive: true },
@@ -2371,7 +2372,23 @@ export class ProductsService {
           },
         },
       },
+    } satisfies Prisma.ProductFindFirstArgs;
+    // SKU can be reused by different stores. Prefer a public match while
+    // retaining the existing error for a SKU that only belongs to closed stores.
+    let product = isUuid ? null : await this.prisma.product.findFirst({
+      ...exactLookup,
+      where: {
+        ...exactLookup.where,
+        store: {
+          isActive: true,
+          isDeleted: false,
+          isVerified: true,
+          onboardingStatus: 'VERIFIED',
+          owner: { isActive: true },
+        },
+      },
     });
+    product ??= await this.prisma.product.findFirst(exactLookup);
 
     // 1.1 Hỗ trợ phân giải slug URL thân thiện (VD: /products/serum-vitamin-c -> sản phẩm Serum Vitamin C)
     if (!product) {
@@ -2982,10 +2999,19 @@ export class ProductsService {
     const product = await this.prisma.product.findFirst({
       where: {
         isDeleted: false,
+        moderationStatus: ProductModerationStatus.APPROVED,
         OR: isUuid
           ? [{ id: trimmed }, { sku: { equals: trimmed, mode: 'insensitive' } }]
           : [{ sku: { equals: trimmed, mode: 'insensitive' } }],
+        store: {
+          isActive: true,
+          isDeleted: false,
+          isVerified: true,
+          onboardingStatus: 'VERIFIED',
+          owner: { isActive: true },
+        },
       },
+      orderBy: { id: 'asc' },
       select: {
         id: true,
         sku: true,

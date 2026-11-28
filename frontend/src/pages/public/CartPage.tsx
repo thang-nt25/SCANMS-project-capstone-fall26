@@ -1,7 +1,10 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, BadgeCheck, Trash2, Minus, Plus, ChevronRight, ArrowRight, ArrowLeft, MessageCircle } from 'lucide-react';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { useCart, type CartItem } from '@/context/CartContext';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { toast } from '@/utils/toast';
@@ -11,6 +14,9 @@ const isAvailable = (item: CartItem) => item.isActive && item.stockQuantity > 0;
 
 export default function CartPage() {
   const navigate = useNavigate();
+  const [pendingRemoval, setPendingRemoval] = useState<string[]>([]);
+  const cancelRemoval = () => setPendingRemoval([]);
+  const { dialog, dialogId } = useDialogFocus(pendingRemoval.length > 0, cancelRemoval);
   const goBack = () => {
     if (window.history.state?.idx > 0) navigate(-1);
     else navigate('/marketplace');
@@ -52,10 +58,16 @@ export default function CartPage() {
   };
 
   const handleRemoveSelected = () => {
-    if (selected.length === 0) return;
-    if (window.confirm(`Bạn có chắc chắn muốn xóa ${selected.length} sản phẩm đã chọn khỏi giỏ hàng?`)) {
-      removeItems(selected.map((i) => i.cartItemId));
-    }
+    if (selected.length > 0) setPendingRemoval(selected.map(item => item.cartItemId));
+  };
+
+  const confirmRemoveSelected = () => {
+    const ids = new Set(pendingRemoval);
+    const itemsToRemove = cart.filter(item => ids.has(item.cartItemId));
+    setPendingRemoval([]);
+    if (!itemsToRemove.length) return;
+    removeItems(itemsToRemove.map(item => item.cartItemId));
+    toast.info(`Đã xóa ${itemsToRemove.length} sản phẩm khỏi giỏ hàng.`);
   };
 
   return (
@@ -344,7 +356,7 @@ export default function CartPage() {
 
             </div>
             {/* Cart checkout bar */}
-            <div className="sticky bottom-2 z-20 rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_-4px_24px_rgba(35,29,21,0.06)] lg:mr-36">
+            <div className="sticky bottom-2 z-20 rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_-4px_24px_rgba(35,29,21,0.06)] lg:bottom-20">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] px-4 py-3 sm:px-5 text-xs text-[#7D715E]">
                 <span>Mã độc quyền KOL được nhập ở bước thanh toán.</span>
                 <span>Phí vận chuyển tính theo địa chỉ nhận hàng.</span>
@@ -363,9 +375,9 @@ export default function CartPage() {
                     />
                     Chọn tất cả ({selectable.length})
                   </label>
-                  <button type="button" onClick={handleRemoveSelected} disabled={!selected.length}
-                    className="inline-flex items-center gap-1.5 text-sm text-[#7D715E] hover:text-[#DC2626] disabled:opacity-40 cursor-pointer">
-                    <Trash2 size={15} /> Xóa đã chọn
+                  <button type="button" aria-haspopup="dialog" onClick={handleRemoveSelected} disabled={!selected.length}
+                    className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[#EAE4D7] px-2.5 text-xs font-medium text-[#7D715E] transition-colors hover:border-[#DC2626]/25 hover:bg-[#DC2626]/5 hover:text-[#DC2626] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] disabled:opacity-40">
+                    <Trash2 size={15} aria-hidden="true" /> Xóa đã chọn
                   </button>
                 </div>
                 <div className="flex items-center justify-between gap-4 lg:block lg:text-right" aria-live="polite">
@@ -383,7 +395,31 @@ export default function CartPage() {
         )}
       </main>
 
-      {/* SCANMS Checkout Voucher Modal Component */}
+      {pendingRemoval.length > 0 && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-[#231D15]/25 px-4 pt-4 sm:pt-6">
+          <div
+            ref={dialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={dialogId}
+            tabIndex={-1}
+            className="w-full max-w-lg rounded-2xl border border-[#EAE4D7] bg-white p-5 font-sans text-[#1A1612] shadow-xl outline-none sm:p-6"
+          >
+            <h2 id={dialogId} className="text-base font-medium leading-6">
+              Bạn có muốn xóa {pendingRemoval.length} sản phẩm đã chọn khỏi giỏ hàng?
+            </h2>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={cancelRemoval} className="min-h-10 rounded-lg border border-[#EAE4D7] px-4 text-sm font-medium hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
+                Hủy
+              </button>
+              <button type="button" onClick={confirmRemoveSelected} className="min-h-10 rounded-lg bg-[#DC2626] px-4 text-sm font-semibold text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DC2626]">
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
     </div>
   );

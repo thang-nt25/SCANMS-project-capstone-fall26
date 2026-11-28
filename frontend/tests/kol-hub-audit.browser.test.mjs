@@ -43,10 +43,13 @@ test('KOL hub: selected partner chat, scoped cooperation, performance ranges, li
           if (url.pathname === '/api/sample-requests/my/eligibility') data = { canRequest: true, isBlocked: false, channels: [] };
           if (url.pathname === '/api/kyc/profile') data = { kycStatus: 'VERIFIED' };
           if (url.pathname === '/api/products' || url.pathname === '/api/media') data = { items: [], pagination: { total: 0 } };
-          if (url.pathname.includes('/performance')) { ranges.push(url.searchParams.get('range')); data = {totalOrders:4,completedOrders:2,revenue:500000,commission:34000,clicks:10,conversionRate:40,completionRate:50,orders:[{id:'order-1',code:'ORDER-1',createdAt:'2026-10-27T01:00:00Z',amount:250000,commission:17000,status:'DELIVERED',products:['Product']} ]}; }
-          if (url.pathname === '/api/store-collaborators/shop') data = {store:{id:storeId,name:'Test Shop'},members:[{id:'request-other',collaboratorId:'other-kol',requestedByKol:true,status:'PENDING',createdAt:new Date().toISOString(),collaborator:{id:'other-kol',fullName:'Other Creator'}}]};
+          if (url.pathname === '/api/dashboard/shop/kol-orders') {
+            ranges.push(url.searchParams.get('period'));
+            data = { items: [{ id: 'order-1', orderCode: 'ORDER-1', createdAt: '2026-10-27T01:00:00Z', finalAmount: 250000, commissionAmount: 17000, status: 'DELIVERED', productTitle: 'Product' }], totalPages: 1, summary: { totalOrders: 4, totalRevenue: 500000, accruedCommission: 34000 } };
+          }
+          if (url.pathname === '/api/store-collaborators/shop') data = {store:{id:storeId,name:'Test Shop'},members:[],pendingRequests:[{id:'request-other',collaboratorId:'other-kol',requestedByKol:true,status:'PENDING',createdAt:new Date().toISOString(),collaborator:{id:'other-kol',fullName:'Other Creator'}}]};
           if (url.pathname === '/api/store-collaborators/request-current/shop-approve' && request.method() === 'PATCH') cooperationPending = false;
-          if (url.pathname === '/api/store-collaborators/shop' && cooperationPending) data.members.push({id:'request-current',collaboratorId:'11111111-1111-4111-8111-111111111111',requestedByKol:true,status:'PENDING',createdAt:new Date().toISOString(),collaborator:{id:'11111111-1111-4111-8111-111111111111',fullName:'KOL test'}});
+          if (url.pathname === '/api/store-collaborators/shop' && cooperationPending) data.pendingRequests.push({id:'request-current',collaboratorId:'11111111-1111-4111-8111-111111111111',requestedByKol:true,status:'PENDING',createdAt:new Date().toISOString(),collaborator:{id:'11111111-1111-4111-8111-111111111111',fullName:'KOL test'}});
           if (url.pathname === '/api/chat/conversations') data = [{id:'22222222-2222-4222-8222-222222222222',storeId,store:{id:storeId,name:'Test Shop'},collaboratorId:'11111111-1111-4111-8111-111111111111',collaborator:{id:'11111111-1111-4111-8111-111111111111',fullName:'KOL test',role:'COLLABORATOR'},chatMessages:[],createdAt:new Date().toISOString()}];
           if (url.pathname.endsWith('/messages')) data = [{id:'msg-1',conversationId:'22222222-2222-4222-8222-222222222222',senderId:'11111111-1111-4111-8111-111111111111',sender:{id:'11111111-1111-4111-8111-111111111111',fullName:'KOL test',role:'COLLABORATOR'},messageText:'Correct partner message',createdAt:new Date().toISOString(),isRead:true}];
           return request.respond({ status: 200, headers, body: JSON.stringify({ success: true, data }) });
@@ -70,15 +73,18 @@ test('KOL hub: selected partner chat, scoped cooperation, performance ranges, li
       await page.waitForSelector('#tab-btn-profile .kol-cooperation-badge',{hidden:true});
       assert.equal(cooperationPending,false,'Approving clears the pending indicator');
       await page.click('#tab-btn-performance');
-      await page.waitForSelector('section[aria-label] table');
+      await page.waitForSelector('.kol-performance-orders table');
       assert.ok(ranges.includes('30d'));
-      await page.evaluate(()=>[...document.querySelectorAll('button')].find(el=>el.textContent.trim()==='7 ng'+String.fromCharCode(224)+'y qua').click());
-      await page.waitForFunction(()=>document.querySelector('section[aria-label] table'));
+      await Promise.all([
+        page.waitForResponse(response => response.url().includes('/kol-orders') && new URL(response.url()).searchParams.get('period') === '7d'),
+        page.select('select[aria-label="Kỳ báo cáo"]', '7d'),
+      ]);
+      await page.waitForSelector('.kol-performance-orders table');
       assert.ok(ranges.includes('7d'));
       const text = await page.$eval('.shop-kol-detail',el=>el.textContent);
       assert.ok(text.includes('34.000'));
       assert.ok(!text.includes('3.8%'));
-      assert.equal(await page.$eval('.shop-kol-detail table a',el=>el.getAttribute('href')),'/merchant/orders?search=ORDER-1');
+      assert.ok((await page.$eval('.kol-performance-orders table', el => el.textContent)).includes('ORDER-1'));
       for (const tab of ['samples','profile','messages']) {
         await page.click('#tab-btn-'+tab);
         assert.equal(await page.$eval('#tab-btn-'+tab,el=>el.getAttribute('aria-pressed')),'true');

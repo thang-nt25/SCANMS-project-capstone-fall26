@@ -8,6 +8,7 @@ import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { EscrowFinanceReport } from '../../components/wallet/FinanceReports';
 import { FinanceOperations } from '../../components/wallet/FinanceOperations';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { PayoutApprovalDialog, type ManualPayoutProof } from '../../components/wallet/PayoutApprovalDialog';
 import {
@@ -15,7 +16,10 @@ import {
   Eye,
   Loader2,
   CheckCircle2,
+  Check,
+  ChevronDown,
   Copy,
+  Trophy,
   X,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -92,6 +96,51 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 
 let lastAdminPayoutsSnapshot: { payouts: PayoutItem[]; stats: PayoutStats | null; total: number } | null = null;
 registerPrivateCacheReset(() => { lastAdminPayoutsSnapshot = null; });
+
+function PendingRewardMonthPicker({ months, selectedMonth, onSelect }: {
+  months: string[];
+  selectedMonth?: string;
+  onSelect: (month: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+        className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-[#EAE4D7] bg-white px-3.5 text-[13px] font-medium whitespace-nowrap text-[#715126] transition-colors hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+      >
+        <Trophy size={16} aria-hidden="true" />
+        <span>Kỳ chờ duyệt</span>
+        <span className="border-l border-[#EAE4D7] pl-2 tabular-nums text-[#7D715E]">{months.length}</span>
+        <ChevronDown size={14} aria-hidden="true" />
+      </button>
+      {open && createPortal(
+        <Modal isOpen title="Kỳ thưởng chờ duyệt" onClose={() => setOpen(false)} maxWidth="sm" stickyHeader bodyClassName="p-2 sm:p-2">
+          <ul className="divide-y divide-[#EAE4D7]">
+            {months.map(month => (
+              <li key={month} className="py-1 first:pt-0 last:pb-0">
+                <button
+                  type="button"
+                  aria-current={selectedMonth === month ? 'true' : undefined}
+                  onClick={() => { setOpen(false); onSelect(month); }}
+                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-sm font-medium text-[#1A1612] transition-colors hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#B88E4F] aria-[current=true]:bg-[#FBF5EB] aria-[current=true]:text-[#715126]"
+                >
+                  <span className="tabular-nums">Tháng {month.split('-').reverse().join('/')}</span>
+                  {selectedMonth === month && <Check size={16} aria-hidden="true" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Modal>,
+        document.body,
+      )}
+    </>
+  );
+}
 
 export default function AdminFinancePayoutsPage() {
   const [searchParams] = useSearchParams();
@@ -297,7 +346,26 @@ export default function AdminFinancePayoutsPage() {
       </div>
       {workError && <div className="finance-work-notice" role="status"><span>Chưa cập nhật được số việc cần xử lý{pendingWork ? '; số đang hiện là lần kiểm tra gần nhất.' : '.'}</span><button type="button" onClick={() => void fetchPendingWork()}>Thử lại</button></div>}
       {!workError && pendingWork && activeTab === 'customer' && pendingWork.customer > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.customer} yêu cầu rút tiền Customer chờ duyệt.</strong></span></div>}
-      {!workError && pendingWork && activeTab === 'monthly' && pendingWork.monthly.total > 0 && <div className="finance-work-notice" role="status"><span><strong>{pendingWork.monthly.total} việc chờ duyệt</strong> · {pendingWork.monthly.policies} chính sách · {pendingWork.monthly.grants} đề nghị thưởng</span><div>{pendingWork.monthly.months.map(month => <button type="button" key={month} aria-pressed={rewardMonth === month} onClick={() => setRewardMonth(month)}>Tháng {month.split('-').reverse().join('/')}</button>)}</div></div>}
+      {!workError && pendingWork && activeTab === 'monthly' && pendingWork.monthly.total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-[#EEDFC6] bg-[#FFFDFA] px-4 py-2">
+          <p role="status" className="m-0 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] leading-5 text-[#7D715E]">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#FBF5EB] px-2.5 py-1 font-medium text-[#715126]">
+              <strong className="font-semibold tabular-nums">{pendingWork.monthly.total}</strong>{' '}việc chờ duyệt
+            </span>
+            <span className="inline-flex flex-wrap items-center gap-y-1">
+              <span className="whitespace-nowrap pr-2.5">
+                <strong className="font-semibold tabular-nums text-[#1A1612]">{pendingWork.monthly.policies}</strong>{' '}chính sách
+              </span>
+              <span className="whitespace-nowrap border-l border-[#EAE4D7] pl-2.5">
+                <strong className="font-semibold tabular-nums text-[#1A1612]">{pendingWork.monthly.grants}</strong>{' '}đề nghị thưởng
+              </span>
+            </span>
+          </p>
+          {pendingWork.monthly.months.length > 0 && (
+            <PendingRewardMonthPicker months={pendingWork.monthly.months} selectedMonth={rewardMonth} onSelect={setRewardMonth} />
+          )}
+        </div>
+      )}
       {activeTab === 'customer' && <AdminCustomerWithdrawals onChanged={fetchPendingWork}/>}
       {activeTab === 'monthly' && <MonthlyRewardsPanel key={rewardMonth || 'current'} initialMonth={rewardMonth} mode="operator" onChanged={fetchPendingWork}/>}
 

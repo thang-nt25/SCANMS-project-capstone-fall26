@@ -1,5 +1,6 @@
 import { KolMatchAnalysisDialog } from '../../components/ai/KolMatchAnalysisDialog';
 import { Modal } from '../../components/ui/Modal';
+import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { handleProductImageError, handleAvatarImageError } from '@/utils/image-fallback.utils';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
@@ -68,7 +69,7 @@ function readMatchingPreferences(): { productId?: string; autoScan?: boolean } {
   }
 }
 
-export default function KolRecommendationPage({ onReturn: _onReturn }: { onReturn?: () => void } = {}) {
+export default function KolRecommendationPage({ onReturn: _onReturn, storeId }: { onReturn?: () => void; storeId?: string } = {}) {
   const navigate = useNavigate();
   const [products, setProducts] = useState<any[]>([]);
   const [searchParams] = useSearchParams();
@@ -80,6 +81,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   const [kols, setKols] = useState<KolMatchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [analyzingKol, setAnalyzingKol] = useState<KolMatchResult | null>(null);
+  const [dealRecipient, setDealRecipient] = useState<KolMatchResult | null>(null);
 
   const [productsReady, setProductsReady] = useState(false);
   const [autoScan, setAutoScan] = useState(() => readMatchingPreferences().autoScan === true);
@@ -336,10 +338,8 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
       .filter((k): k is KolMatchResult => !!k);
   }, [kols, compareKolIds]);
 
-  const handleNegotiateDeal = (kol: KolMatchResult, openDeal = false) => {
-    navigate(
-      `/merchant/kol-hub?kol=${kol.collaboratorId}&tab=messages${openDeal ? '&openDeal=1' : ''}`,
-    );
+  const handleNegotiateDeal = (kol: KolMatchResult) => {
+    navigate(`/merchant/kol-hub?kol=${kol.collaboratorId}&tab=messages`);
   };
 
   const buildSafeInviteNote = (productTitle: string | undefined, rawMessage: string) => {
@@ -780,7 +780,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
                     {coopStatus === 'APPROVED' ? (
                       <button
                         type="button"
-                        onClick={() => handleNegotiateDeal(kol, true)}
+                        onClick={() => setDealRecipient(kol)}
                         className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#231D15] hover:bg-[#1A1612] text-[#FAF8F5] font-bold text-xs shadow-xs active:scale-[0.96] transition-[transform,background-color] duration-150 cursor-pointer"
                         title="Mở đề xuất Thỏa thuận Độc quyền với KOL"
                       >
@@ -1048,6 +1048,20 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
             </div>
           </div>
         </div>
+      )}
+
+      {dealRecipient && (
+        <CreateExclusiveDealModal
+          collaboratorId={dealRecipient.collaboratorId}
+          collaboratorName={dealRecipient.fullName}
+          storeId={storeId}
+          preferredProductId={selectedProductId}
+          onClose={() => setDealRecipient(null)}
+          onSuccess={() => {
+            setDealRecipient(null);
+            toast.success('Đã gửi đề xuất thỏa thuận độc quyền.');
+          }}
+        />
       )}
 
       {/* 9. Detailed 1-on-1 Analysis Modal (Fits cleanly in 1 viewport, no cramped card scroll) */}

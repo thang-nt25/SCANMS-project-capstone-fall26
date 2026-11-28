@@ -101,6 +101,18 @@ export class StoreCollaboratorsController {
     return this.service.getTerminationEligibility(req.user!.id, req.user!.role, id, storeId);
   }
 
+  @Get(':id/termination-eligibility/:kind')
+  @Roles(UserRole.SHOP_MANAGER)
+  getTerminationBlockerDetails(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('kind') kind: string,
+    @Query('storeId') storeId?: string,
+    @Query('page') page?: string,
+  ) {
+    return this.service.getTerminationBlockerDetails(req.user!.id, req.user!.role, id, kind, storeId, page === undefined ? 1 : Number(page));
+  }
+
   @Delete(':id')
   @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   terminate(

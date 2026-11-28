@@ -91,7 +91,7 @@ test('homepage buy opens product detail before checkout and preserves the chosen
     assert.match(await page.$eval('.psp-details', el => el.textContent), /chưa công bố điều kiện bảo hành/);
     await page.click('.psp-toggle');
     assert.equal(await page.$eval('.psp-details', el => el.hidden), true);
-    assert.match(await page.$eval('[data-product-availability]', el => el.textContent), /Chọn phân loại để xem số lượng có sẵn/);
+    assert.match(await page.$eval('[data-product-availability]', el => el.textContent), /Chọn phân loại để xem tồn kho/);
     assert.doesNotMatch(await page.$eval('[data-product-availability]', el => el.textContent), /35 sản phẩm|Tồn kho tức thời/);
     assert.equal(await page.$$eval('[data-required] button[aria-pressed=true]', buttons => buttons.length), 0, 'no variant is selected by default');
     await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.includes('Mua sản phẩm này')).click());
@@ -99,7 +99,7 @@ test('homepage buy opens product detail before checkout and preserves the chosen
     assert.equal(await page.$('#guest-checkout-title'), null, 'buy without a variant cannot open checkout');
     assert.equal(new URL(page.url()).searchParams.has('checkout'), false);
     await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.includes('50 ml / Hộp quà')).click());
-    assert.match(await page.$eval('[data-product-availability]', el => el.textContent), /15 sản phẩm có sẵn/);
+    assert.match(await page.$eval('[data-product-availability]', el => el.textContent), /Còn 15 sản phẩm/);
     assert.equal(await page.$('[data-required=true]'), null, 'choosing a variant clears the warning');
     await page.click('button[aria-label="Tăng số lượng"]');
     assert.equal(await page.$eval('input[role=spinbutton]', el => el.value), '2');
@@ -146,7 +146,7 @@ test('homepage buy opens product detail before checkout and preserves the chosen
     await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.includes('50 ml / Hộp quà')).click());
     liveVariants[1].stockQuantity = 2;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await page.waitForFunction(() => document.querySelector('[data-product-availability]').textContent.includes('2 sản phẩm có sẵn'));
+    await page.waitForFunction(() => document.querySelector('[data-product-availability]').textContent.includes('Còn 2 sản phẩm'));
     const eventResponse = page.waitForResponse(response => response.url().endsWith('/analytics/events') && response.request().method() === 'POST');
     await page.evaluate(() => [...document.querySelectorAll('button')].find(button => button.textContent.includes('Thêm Vào Giỏ Hàng')).click());
     await eventResponse;

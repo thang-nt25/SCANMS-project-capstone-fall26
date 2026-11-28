@@ -860,7 +860,11 @@ export class CustomerService {
           originalPrice: product.originalPrice
             ? Number(product.originalPrice)
             : undefined,
-          imageUrl: product.imageUrl || '/assets/product-placeholder.svg',
+          imageUrl:
+            variant?.imageUrl?.trim() ||
+            product.imageUrl ||
+            '/assets/product-placeholder.svg',
+          productImageUrl: product.imageUrl,
           quantity: Math.min(row.quantity, Math.max(stockQuantity, 1)),
           stockQuantity,
           isActive:
@@ -881,6 +885,7 @@ export class CustomerService {
             id: item.id,
             name: item.name,
             sku: item.sku,
+            imageUrl: item.imageUrl,
             price: item.price ? Number(item.price) : null,
             stockQuantity: item.stockQuantity,
             isActive: item.isActive,

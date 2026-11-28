@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, ShieldAlert, X } from 'lucide-react';
+import { CircleDollarSign, CheckCircle2, ChevronRight, Handshake, Info, Loader2, Package, ShieldAlert, Ticket, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
+import { TerminationBlockerDetails } from './TerminationBlockerDetails';
 
 export interface TerminationBlocker {
   key: 'DEAL' | 'KPI' | 'VOUCHER' | 'SAMPLE';
@@ -50,6 +51,11 @@ export function TerminateCooperationModal({
   const [eligibility, setEligibility] = useState<TerminationEligibilityResponse | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [selectedBlocker, setSelectedBlocker] = useState<TerminationBlocker['key'] | null>(null);
+  const returnToChecklist = () => {
+    setSelectedBlocker(null);
+    void loadEligibility();
+  };
 
   const loadEligibility = async () => {
     if (!targetId) return;
@@ -73,17 +79,20 @@ export function TerminateCooperationModal({
   useEffect(() => {
     if (!isOpen) return;
     setReason('');
+    setSelectedBlocker(null);
     void loadEligibility();
   }, [isOpen, targetId, storeId]);
 
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) onClose();
+      if (e.key !== 'Escape' || submitting) return;
+      if (selectedBlocker) returnToChecklist();
+      else onClose();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, submitting, onClose]);
+  }, [isOpen, submitting, selectedBlocker, targetId, storeId, onClose]);
 
   if (!isOpen) return null;
 
@@ -117,32 +126,38 @@ export function TerminateCooperationModal({
     }
   };
 
-  const checklistRows: Array<{ key: 'DEAL' | 'KPI' | 'VOUCHER' | 'SAMPLE'; label: string; count: number; detail?: string }> = [
+  const checklistRows = [
     {
       key: 'DEAL',
-      label: 'Deal độc quyền đang hiệu lực / chờ duyệt',
+      label: 'Deal độc quyền',
+      detail: 'Còn hiệu lực hoặc chờ duyệt',
+      icon: Handshake,
       count: eligibility?.counts?.openDealsCount ?? 0,
-      detail: eligibility?.blockers?.find((b) => b.key === 'DEAL')?.detail,
     },
     {
       key: 'KPI',
-      label: 'Hoa hồng KPI đang tạm giữ chờ quyết toán',
+      label: 'Hoa hồng KPI',
+      detail: 'Đơn đang chờ quyết toán',
+      icon: CircleDollarSign,
       count: eligibility?.counts?.pendingKpiCount ?? 0,
-      detail: eligibility?.blockers?.find((b) => b.key === 'KPI')?.detail,
     },
     {
       key: 'VOUCHER',
-      label: 'Mã ưu đãi KOC đang tồn tại (ACTIVE / Chờ duyệt)',
+      label: 'Mã ưu đãi KOC',
+      detail: (mode === 'kol' && eligibility?.blockers?.find(blocker => blocker.key === 'VOUCHER')?.detail) || 'Đang hoạt động hoặc chờ xử lý',
+      icon: Ticket,
       count: eligibility?.counts?.activeVouchersCount ?? 0,
-      detail: eligibility?.blockers?.find((b) => b.key === 'VOUCHER')?.detail,
     },
     {
       key: 'SAMPLE',
-      label: 'Yêu cầu / Đơn hàng mẫu SLA 14 ngày chưa khép lại',
+      label: 'Hàng mẫu',
+      detail: 'Chưa hoàn tất · SLA 14 ngày',
+      icon: Package,
       count: eligibility?.counts?.openSamplesCount ?? 0,
-      detail: eligibility?.blockers?.find((b) => b.key === 'SAMPLE')?.detail,
     },
-  ];
+  ] as const;
+  const selectedRow = checklistRows.find(row => row.key === selectedBlocker);
+  const blockedGroups = checklistRows.filter(row => row.count > 0).length;
 
   return createPortal(
     <div
@@ -153,20 +168,20 @@ export function TerminateCooperationModal({
       onClick={() => { if (!submitting) onClose(); }}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-left shadow-2xl"
+        className="kol-cooperation-dialog"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[#EAE4D7] bg-[#FAF8F5] px-5 py-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]">
-              <ShieldAlert className="h-4.5 w-4.5" />
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#EAE4D7] px-4 py-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A6229]">
+              <ShieldAlert className="size-5" aria-hidden="true" />
             </div>
-            <div>
-              <h3 id="terminate-coop-title" className="m-0 text-sm font-bold text-[#1A1612]">
-                Chấm dứt hợp tác với {partnerName}
+            <div className="min-w-0">
+              <h3 id="terminate-coop-title" className="m-0 text-lg leading-tight font-bold text-[#1A1612]">
+                Chấm dứt hợp tác
               </h3>
-              <p className="m-0 mt-0.5 text-xs text-[#7D715E]">
-                Hệ thống kiểm tra tự động các Deal, KPI, Voucher và Hàng mẫu đang hiệu lực để bảo vệ quyền lợi hai bên.
+              <p className="m-0 mt-1 text-sm break-words text-[#7D715E]">
+                {partnerName}
               </p>
             </div>
           </div>
@@ -175,17 +190,24 @@ export function TerminateCooperationModal({
             disabled={submitting}
             onClick={onClose}
             aria-label="Đóng"
-            className="rounded-lg p-1.5 text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] cursor-pointer"
+            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-[#B88E4F] disabled:cursor-not-allowed"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
-          {loading ? (
+        <div className="kol-cooperation-dialog-body space-y-4 p-4 sm:p-5">
+          {selectedRow ? (
+            <TerminationBlockerDetails
+              key={selectedRow.key}
+              endpoint={`/store-collaborators/${encodeURIComponent(targetId)}/termination-eligibility/${selectedRow.key}${storeId ? `?storeId=${encodeURIComponent(storeId)}` : ''}`}
+              title={selectedRow.label}
+              onBack={returnToChecklist}
+            />
+          ) : loading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-xs font-medium text-[#7D715E]">
               <Loader2 className="h-4 w-4 animate-spin text-[#B88E4F]" />
-              <span>Đang kiểm tra ràng buộc hợp đồng...</span>
+              <span role="status">Đang kiểm tra điều kiện…</span>
             </div>
           ) : error ? (
             <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3.5 text-xs text-[#DC2626]">
@@ -200,71 +222,89 @@ export function TerminateCooperationModal({
             </div>
           ) : (
             <>
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-                  Bảng kiểm điều kiện chấm dứt hợp tác
+              <section aria-labelledby="terminate-coop-checklist" className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                  <h4 id="terminate-coop-checklist" className="m-0 text-sm font-bold text-[#1A1612]">
+                    Điều kiện chấm dứt
+                  </h4>
+                  <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${blockedGroups > 0
+                    ? 'border-[#FECACA] bg-[#FEF2F2] text-[#991B1B]'
+                    : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#79592C]'}`}>
+                    {eligibility?.canTerminate ? 'Đủ điều kiện' : blockedGroups > 0 ? `${blockedGroups} mục còn vướng` : 'Chưa đủ điều kiện'}
+                  </span>
                 </div>
-                <div className="divide-y divide-[#EAE4D7] rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60">
+                <ul className="m-0 list-none divide-y divide-[#EAE4D7] rounded-xl border border-[#EAE4D7] p-0">
                   {checklistRows.map((row) => {
                     const blocked = row.count > 0;
-                    return (
-                      <div key={row.key} className="flex items-start justify-between gap-3 px-3.5 py-2.5 text-xs">
-                        <div className="flex items-start gap-2 min-w-0">
-                          {blocked ? (
-                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#DC2626]" />
-                          ) : (
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                          )}
-                          <div className="min-w-0">
-                            <div className={`font-semibold ${blocked ? 'text-[#DC2626]' : 'text-[#1A1612]'}`}>
-                              {row.label}
-                            </div>
-                            <div className="mt-0.5 text-[11px] text-[#7D715E]">
-                              {blocked ? row.detail : 'Không còn vướng ràng buộc'}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                    const canView = blocked && mode === 'shop';
+                    const Icon = row.icon;
+                    const rowClass = 'grid min-h-14 w-full grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2.5 px-3 py-2 text-left text-sm';
+                    const content = (
+                      <>
+                        <span className={`grid size-8 place-items-center rounded-lg border ${blocked ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]' : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'}`}>
+                          <Icon size={15} aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={`block font-semibold ${blocked ? 'text-[#991B1B]' : 'text-[#1A1612]'}`}>{row.label}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-[#7D715E]">{row.detail}</span>
+                        </span>
+                        <span className="flex items-center gap-1 shrink-0">
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums ${
+                            className={`min-w-7 rounded-full border px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums ${
                               blocked
-                                ? 'border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
-                                : 'border border-[#EEDFC6] bg-white text-[#7D715E]'
+                                ? 'border-[#FECACA] bg-[#FEF2F2] text-[#991B1B]'
+                                : 'border-transparent bg-[#FAF8F5] text-[#7D715E]'
                             }`}
                           >
                             {row.count}
                           </span>
-                        </div>
-                      </div>
+                          <span className="grid size-4 place-items-center">
+                            {canView ? <ChevronRight size={15} className="text-[#8A6229]" aria-hidden="true" />
+                              : !blocked ? <CheckCircle2 size={13} className="text-[#059669]" aria-label="Đã hoàn tất" /> : null}
+                          </span>
+                        </span>
+                      </>
+                    );
+                    return (
+                      <li key={row.key} className="first:[&>button]:rounded-t-xl last:[&>button]:rounded-b-xl">
+                        {canView ? (
+                          <button type="button" onClick={() => setSelectedBlocker(row.key)}
+                            className={`${rowClass} cursor-pointer hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#B88E4F]`}>
+                            {content}
+                          </button>
+                        ) : <div className={rowClass}>{content}</div>}
+                      </li>
                     );
                   })}
-                </div>
-              </div>
+                </ul>
+              </section>
 
-              {!eligibility?.canTerminate ? (
-                <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3.5 text-xs leading-relaxed text-[#991B1B]">
-                  <strong>Chưa thể chấm dứt hợp tác lúc này:</strong> Bạn cần đóng/hoàn tất các Deal độc quyền, quyết toán xong các khoản thưởng KPI, ngừng/hết hạn Mã ưu đãi KOC và khép lại các đơn hàng mẫu đang mở ở danh sách trên trước khi chấm dứt.
-                </div>
-              ) : (
+              {eligibility?.canTerminate && (
                 <>
-                  <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs leading-relaxed text-[#7D715E]">
-                    Sau khi chấm dứt, {mode === 'shop' ? 'KOL' : 'Cửa hàng'} vẫn giữ toàn bộ lịch sử tin nhắn &amp; đối soát hoa hồng tiêu chuẩn của các đơn hàng cũ đã phát sinh, nhưng mọi nút tạo Deal / Mã ưu đãi / Hàng mẫu mới sẽ bị khóa cho tới khi hai bên kết nối lại.
+                  <div className="flex gap-2.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2.5">
+                    <Info className="mt-0.5 size-4 shrink-0 text-[#8A6229]" aria-hidden="true" />
+                    <div className="space-y-0.5 text-xs leading-5 text-[#7D715E]">
+                      <p className="m-0 font-semibold text-[#1A1612]">Sau khi chấm dứt</p>
+                      <p className="m-0">{mode === 'shop' ? 'KOL' : 'Cửa hàng'} vẫn xem được lịch sử chat và đối soát hoa hồng tiêu chuẩn của đơn cũ.</p>
+                      <p className="m-0">Cần kết nối lại để tạo Deal, mã KOC hoặc yêu cầu mẫu mới.</p>
+                    </div>
                   </div>
                   <div>
-                    <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-[#1A1612]">
+                    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 text-sm font-semibold text-[#1A1612]">
                       <label htmlFor="terminate-reason-input">
-                        Lý do chấm dứt hợp tác <span className="text-[#DC2626]">*</span>
+                        Lý do chấm dứt <span aria-hidden="true" className="text-[#DC2626]">*</span>
                       </label>
-                      <span className="text-[11px] font-normal text-[#7D715E]">{trimmedReason.length}/500 ký tự (tối thiểu 5)</span>
+                      <span id="terminate-reason-limit" className="text-xs font-normal tabular-nums text-[#7D715E]">{reason.length}/500 ký tự · Tối thiểu 5</span>
                     </div>
                     <textarea
                       id="terminate-reason-input"
-                      rows={3}
+                      rows={2}
+                      required
+                      aria-describedby="terminate-reason-limit"
                       maxLength={500}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder="Nhập lý do rõ ràng (ví dụ: Hoàn tất chiến dịch quý và hai bên đồng thuận kết thúc hợp tác)..."
-                      className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#FBF5EB]"
+                      className="block w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm text-[#1A1612] outline-none focus:border-[#B88E4F] focus:ring-2 focus:ring-[#EEDFC6]"
                     />
                   </div>
                 </>
@@ -273,26 +313,26 @@ export function TerminateCooperationModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[#EAE4D7] bg-[#FAF8F5] px-5 py-3.5">
+        {!selectedRow && <div className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)] gap-2 border-t border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3 sm:flex sm:justify-end sm:px-6">
           <button
             type="button"
             disabled={submitting}
             onClick={onClose}
-            className="rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-xs font-semibold text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
+            className="min-h-10 cursor-pointer rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm font-semibold text-[#7D715E] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#B88E4F] disabled:cursor-not-allowed"
           >
-            Đóng
+            Hủy
           </button>
           <button
             type="button"
             id="btn-confirm-terminate-coop"
             disabled={!canConfirm}
             onClick={() => void handleConfirm()}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#DC2626] px-4 py-2 text-xs font-bold text-white hover:bg-[#B91C1C] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#DC2626] px-3 py-2 text-sm font-bold text-white enabled:hover:bg-[#B91C1C] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DC2626] disabled:cursor-not-allowed disabled:bg-[#FBE8E6] disabled:text-[#991B1B] sm:px-4"
           >
             {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             <span>{submitting ? 'Đang xử lý...' : 'Xác nhận chấm dứt'}</span>
           </button>
-        </div>
+        </div>}
       </div>
     </div>,
     document.body,

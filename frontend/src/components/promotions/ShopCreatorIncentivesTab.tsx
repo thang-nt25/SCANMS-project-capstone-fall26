@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Tag,
+  CalendarClock,
   Trophy,
   Search,
   CheckCircle2,
@@ -116,7 +117,6 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
   // Coupon Detail / Extend / Block Modal states
   const [detailCoupon, setDetailCoupon] = useState<CreatorCoupon | null>(null);
   const [extendExpiresAt, setExtendExpiresAt] = useState<string>('');
-  const extendCalendar = useRef<HTMLDivElement>(null);
   const currentExpiry = detailCoupon?.expiresAt ? Date.parse(detailCoupon.expiresAt) : 0;
   const earliestExpiry = Math.floor(Math.max(Date.now(), currentExpiry || 0) / 60_000) * 60_000 + 60_000;
   const selectedExpiry = parseVietnamDateTime(extendExpiresAt);
@@ -1123,65 +1123,94 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
           onClose={() => { if (!isUpdatingPolicy && !isBlockingCoupon) setDetailCoupon(null); }}
           title={`Chi tiết mã ${detailCoupon.displayCode || detailCoupon.codeNormalized}`}
           subtitle={detailCoupon.collaborator?.fullName || 'Đối tác KOC'}
-          maxWidth="lg"
+          icon={<Ticket size={19} aria-hidden="true" />}
+          maxWidth="xl"
+          className="kol-cooperation-dialog shop-coupon-detail-dialog"
+          overlayClassName="p-4"
+          bodyClassName="kol-cooperation-dialog-body p-4 sm:p-5"
           stickyHeader
-          footer={
+          footer={detailCoupon.status === 'ACTIVE' ? (
             <div className="flex justify-end">
-              <button type="button" disabled={isUpdatingPolicy || isBlockingCoupon} onClick={() => setDetailCoupon(null)} className="h-10 rounded-lg border border-[#EAE4D7] px-4 text-sm font-medium hover:bg-[#FAF8F5] disabled:opacity-50">
-                {historyGroup ? 'Về lịch sử' : 'Đóng'}
+              <button
+                type="button"
+                aria-expanded={showBlockInput}
+                aria-controls="shop-coupon-block-form"
+                disabled={isUpdatingPolicy || isBlockingCoupon}
+                onClick={() => {
+                  if (showBlockInput) setBlockReasonInput('');
+                  setShowBlockInput(!showBlockInput);
+                }}
+                className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#FECACA] bg-white px-3.5 text-xs font-semibold text-[#991B1B] hover:bg-[#FEF2F2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DC2626] enabled:cursor-pointer disabled:opacity-50"
+              >
+                <XCircle size={14} aria-hidden="true" /> {showBlockInput ? 'Hủy' : 'Yêu cầu ngừng mã'}
               </button>
             </div>
-          }
+          ) : historyGroup ? (
+            <div className="flex justify-end">
+              <button type="button" onClick={() => setDetailCoupon(null)} className="h-10 cursor-pointer rounded-lg border border-[#EAE4D7] px-4 text-sm font-medium hover:bg-[#FAF8F5]">
+                Về lịch sử
+              </button>
+            </div>
+          ) : undefined}
         >
-          <div className="space-y-4 text-sm">
-            <dl className="overflow-hidden rounded-xl border border-[#EAE4D7]">
-              <div className="grid grid-cols-2 divide-x divide-[#EAE4D7] bg-[#FBF5EB]">
-                <div className="p-3.5">
-                  <dt className="text-xs text-[#7D715E]">Mức giảm</dt>
-                  <dd className="mt-1 text-xl font-bold tabular-nums text-[#805920]">
-                    {detailCoupon.discountType === 'PERCENTAGE'
-                      ? `${Number(detailCoupon.discountValue)}%`
-                      : `${Number(detailCoupon.discountValue).toLocaleString('vi-VN')} ₫`}
-                  </dd>
-                </div>
-                <div className="p-3.5">
-                  <dt className="text-xs text-[#7D715E]">Lượt dùng</dt>
-                  <dd className="mt-1 text-xl font-bold tabular-nums">
-                    {detailCoupon.usageCount ?? 0}{detailCoupon.usageLimitTotal ? ` / ${detailCoupon.usageLimitTotal}` : ''}
-                  </dd>
-                </div>
+          <div className="space-y-3 text-sm">
+            <section aria-label="Thông tin mã" className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-bold text-[#1A1612]">Thông tin mã</h4>
+                {renderStatusBadge(detailCoupon.status, detailCoupon.blockedReason)}
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#EAE4D7] p-3.5 [&_dd]:mt-1 [&_dd]:font-semibold [&_dt]:text-xs [&_dt]:text-[#7D715E]">
-                <div><dt>Phạm vi</dt><dd>{({ STORE_WIDE: 'Toàn cửa hàng', PRODUCTS: 'Sản phẩm được áp dụng', CATEGORIES: 'Danh mục được áp dụng', CAMPAIGN: 'Theo chiến dịch' } as Record<string, string>)[detailCoupon.scopeType ?? ''] || 'Chưa ghi nhận'}</dd></div>
-                <div><dt>Trạng thái</dt><dd>{renderStatusBadge(detailCoupon.status, detailCoupon.blockedReason)}</dd></div>
-                <div><dt>Đơn tối thiểu</dt><dd>{Number(detailCoupon.minimumOrderAmount) > 0 ? `${Number(detailCoupon.minimumOrderAmount).toLocaleString('vi-VN')} ₫` : 'Không yêu cầu'}</dd></div>
+              <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[#EAE4D7] bg-[#EAE4D7] text-center sm:grid-cols-4 [&>div]:min-w-0 [&>div]:bg-[#FAF8F5] [&>div]:px-2 [&>div]:py-2.5 [&_dt]:text-[11px] [&_dt]:text-[#7D715E] [&_dd]:mt-1 [&_dd]:text-xs [&_dd]:font-bold [&_dd]:tabular-nums [&_dd]:wrap-anywhere">
+                <div>
+                  <dt>Mức giảm</dt>
+                  <dd className="text-[#805920]">
+                    {detailCoupon.discountType === 'PERCENTAGE' ? `${Number(detailCoupon.discountValue)}%` : `${Number(detailCoupon.discountValue).toLocaleString('vi-VN')} ₫`}
+                  </dd>
+                </div>
                 <div><dt>Giảm tối đa / đơn</dt><dd>{Number(detailCoupon.maximumDiscountAmount) > 0 ? `${Number(detailCoupon.maximumDiscountAmount).toLocaleString('vi-VN')} ₫` : 'Không giới hạn'}</dd></div>
-                <div><dt>Hạn dùng</dt><dd>{detailCoupon.expiresAt ? new Date(detailCoupon.expiresAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }) : 'Không giới hạn'}</dd></div>
+                <div><dt>Lượt dùng</dt><dd>{detailCoupon.usageCount ?? 0}{detailCoupon.usageLimitTotal ? ` / ${detailCoupon.usageLimitTotal}` : ''}</dd></div>
+                <div>
+                  <dt>Hạn dùng</dt>
+                  <dd>{detailCoupon.expiresAt ? (
+                    <time dateTime={detailCoupon.expiresAt}>
+                      <span className="block">{new Date(detailCoupon.expiresAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                      <span className="block text-[11px] font-medium text-[#7D715E]">{new Date(detailCoupon.expiresAt).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    </time>
+                  ) : 'Không giới hạn'}</dd>
+                </div>
+              </dl>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none [&>div]:min-w-0 [&_dt]:text-[11px] [&_dt]:text-[#7D715E] [&_dd]:mt-0.5 [&_dd]:text-xs [&_dd]:font-semibold [&_dd]:tabular-nums">
+                <div><dt>Phạm vi</dt><dd>{({ STORE_WIDE: 'Toàn cửa hàng', PRODUCTS: 'Sản phẩm được áp dụng', CATEGORIES: 'Danh mục được áp dụng', CAMPAIGN: 'Theo chiến dịch' } as Record<string, string>)[detailCoupon.scopeType ?? ''] || 'Chưa ghi nhận'}</dd></div>
+                <div><dt>Đơn tối thiểu</dt><dd>{Number(detailCoupon.minimumOrderAmount) > 0 ? `${Number(detailCoupon.minimumOrderAmount).toLocaleString('vi-VN')} ₫` : 'Không yêu cầu'}</dd></div>
                 {detailCoupon.budgetTotal != null && <div><dt>Ngân sách</dt><dd>{Number(detailCoupon.budgetTotal).toLocaleString('vi-VN')} ₫</dd></div>}
-              </div>
-            </dl>
+              </dl>
+            </section>
 
             {(detailCoupon.rejectedReason || detailCoupon.blockedReason) && (
-              <p className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2.5 break-words"><strong>Lý do </strong>{detailCoupon.blockedReason || detailCoupon.rejectedReason}</p>
+              <div className="rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2.5">
+                <p className="m-0 text-xs font-semibold text-[#1A1612]">Lý do xử lý</p>
+                <p className="m-0 mt-0.5 text-xs leading-relaxed wrap-anywhere text-[#7D715E]">{detailCoupon.blockedReason || detailCoupon.rejectedReason}</p>
+              </div>
             )}
             {detailCoupon.status === 'PENDING_BLOCK_APPROVAL' && (
               <p className="rounded-lg bg-[#FBF5EB] px-3 py-2.5 text-[#805920]">Mã còn hiệu lực trong lúc chờ Vận hành duyệt ngừng.</p>
             )}
 
             {detailCoupon.status === 'ACTIVE' && (
-              <div className="space-y-3 border-t border-[#EAE4D7] pt-3">
-                <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <section aria-label="Hạn dùng và ngừng mã" className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4">
+                <h4 className="flex items-center gap-1.5 text-sm font-bold text-[#1A1612]"><CalendarClock size={15} className="text-[#8C6226]" aria-hidden="true" />Gia hạn</h4>
+                <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <DateTimePicker
                     compact
                     smallCalendar
                     disabled={isUpdatingPolicy || isBlockingCoupon}
-                    label="Hạn dùng mới · Giờ Việt Nam"
+                    aria-label="Hạn dùng mới · Giờ Việt Nam"
                     popoverTitle="Chọn hạn dùng mới"
+                    placeholder="Chọn hạn dùng mới"
                     value={extendExpiresAt}
                     onChange={setExtendExpiresAt}
                     getCurrentDate={vietnamPickerNow}
                     minDateTime={toVietnamDateTime(new Date(earliestExpiry))}
-                    inlinePopoverRef={extendCalendar}
+                    inline
                   />
                   <button
                     type="button"
@@ -1202,40 +1231,26 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                         setIsUpdatingPolicy(false);
                       }
                     }}
-                    className="h-10 rounded-lg bg-[#C59B58] px-4 font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50"
+                    className="h-[42px] rounded-[10px] border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 text-xs font-bold text-[#231D15] hover:bg-[#F3EFE6] enabled:cursor-pointer disabled:opacity-50"
                   >
-                    {isUpdatingPolicy ? 'Đang lưu…' : detailCoupon.expiresAt ? 'Gia hạn' : 'Đặt hạn dùng'}
+                    {isUpdatingPolicy ? 'Đang lưu…' : detailCoupon.expiresAt ? 'Cập nhật hạn dùng' : 'Đặt hạn dùng'}
                   </button>
                 </div>
-                <div ref={extendCalendar} className="min-w-0 empty:hidden" />
-                  {!showBlockInput ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowBlockInput(true)}
-                      className="text-[11px] font-semibold text-[#DC2626] hover:underline cursor-pointer"
-                    >
-                      Yêu cầu ngừng mã
-                    </button>
-                  ) : (
-                    <div className="space-y-2 pt-1 border-t border-[#EEDFC6]">
+                {showBlockInput && (
+                    <div id="shop-coupon-block-form" className="space-y-2 border-t border-[#EAE4D7] pt-2.5">
                       <p className="m-0 text-[11px] text-[#7D715E]">
                         Mã còn hiệu lực trong lúc chờ Vận hành duyệt.
                       </p>
                       <input
                         type="text"
+                        aria-label="Lý do đề nghị ngừng mã"
+                        autoFocus
                         value={blockReasonInput}
                         onChange={(e) => setBlockReasonInput(e.target.value)}
                         placeholder="Nhập lý do đề nghị ngừng mã (tối thiểu 5 ký tự)..."
                         className="w-full h-9 px-2.5 rounded-xl border border-rose-200 bg-white text-xs text-[#1A1612] outline-none focus:border-rose-400"
                       />
                       <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => { setShowBlockInput(false); setBlockReasonInput(''); }}
-                          className="px-3 py-1 rounded-lg border border-[#EAE4D7] text-[11px] text-[#7D715E] cursor-pointer"
-                        >
-                          Hủy
-                        </button>
                         <button
                           type="button"
                           disabled={isBlockingCoupon || isUpdatingPolicy || blockReasonInput.trim().length < 5}
@@ -1259,8 +1274,8 @@ export function ShopCreatorIncentivesTab({ section, hideNavigation = false, onCo
                         </button>
                       </div>
                     </div>
-                  )}
-                </div>
+                )}
+              </section>
               )}
 
             </div>

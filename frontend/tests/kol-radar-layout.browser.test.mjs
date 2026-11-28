@@ -27,6 +27,10 @@ test('Radar compact cards keep group semantics, membership actions, analysis she
     let data=[];
     if(url.pathname==='/api/store-collaborators/shop')data={members:[{collaboratorId:'kol-0',status:'APPROVED'}],pendingRequests:[{collaboratorId:'kol-1',status:'PENDING'}]};
     if(url.pathname==='/api/products')data={items:[product]};
+    if(url.pathname==='/api/affiliate-deals/collaborator-products')data=[
+      {...product,id:'other-product',title:'Sản phẩm khác',storeId:'store-qa'},
+      {...product,storeId:'store-qa'},
+    ];
     if(url.pathname.startsWith('/api/ai/recommend-kols'))data={targetProduct:{...product,productId:product.id,commissionRate:10},calculatedAt:new Date().toISOString(),totalKolsScanned:6,recommendedKols:results(url.searchParams.get('mode')),summaryCounts:{performanceCount:3,coldStartCount:3}};
     if(url.pathname==='/api/chat/search-collaborators')data=[kol()];
     if(url.pathname==='/api/stores/my-store')data={id:'store-qa',name:'Shop QA',slug:'shop-qa'};
@@ -53,7 +57,7 @@ test('Radar compact cards keep group semantics, membership actions, analysis she
   await page.waitForSelector('.radar-result-card');
   assert.equal(await page.$$eval('.radar-result-card',els=>els.length),3);
   assert.equal(await page.$('.radar-card-reason'),null);
-  assert.match(await page.$eval('.radar-result-card',el=>el.textContent),/Đã hợp tác/);
+  assert.match(await page.$eval('.radar-result-card',el=>el.textContent),/Đang hợp tác/);
   assert.match(await page.$eval('.radar-result-card:nth-child(2)',el=>el.textContent),/Đã gửi lời mời/);
   assert.equal(await page.$eval('.radar-result-card:nth-child(3) .radar-card-actions > div > button:first-child',el=>el.disabled),false);
   assert.match(await page.$eval('.radar-card-metrics',el=>el.textContent),/Lượt nhấp—Chuyển đổi0%/);
@@ -64,6 +68,16 @@ test('Radar compact cards keep group semantics, membership actions, analysis she
   assert.equal(await page.$eval('.radar-mode-tabs > div',el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),2);
   assert.equal(await page.$('.kol-comparison-dock'),null);
   await page.click('.radar-result-card input[type=checkbox]');await page.waitForSelector('.kol-comparison-dock');
+  const dealDialog = '.shop-deal-offer-dialog';
+  const dealButton = '.radar-result-card button[title="Mở đề xuất Thỏa thuận Độc quyền với KOL"]';
+  await page.click(dealButton);
+  await page.waitForSelector(dealDialog);
+  assert.match(await page.$eval(dealDialog + ' header', el => el.textContent), /Creator 0/);
+  await page.waitForFunction(selector => document.querySelector(selector)?.textContent.includes('Serum QA'), {}, dealDialog);
+  await page.click(dealDialog + ' [aria-label="Đóng"]');
+  await page.waitForSelector(dealDialog, { hidden: true });
+  assert.equal(await page.$eval('.radar-result-card input[type=checkbox]', el => el.checked), true);
+  assert.match(await page.$eval('[aria-label="Sản phẩm đối sánh"]', el => el.textContent), /Serum QA/);
   assert.equal(await page.$eval('.kol-comparison-dock button:first-child',el=>el.disabled),true);
   await page.click('.radar-result-card:nth-child(2) input[type=checkbox]');
   assert.equal(await page.$eval('.kol-comparison-dock button:first-child',el=>el.disabled),false);

@@ -278,9 +278,9 @@ test('KOC sends a cooperation plan and can explicitly decline a Shop invitation'
     await f.render('cooperation');
     await f.page.waitForFunction(() => document.body.textContent.includes('Gửi yêu cầu hợp tác'));
     await button(f.page, 'Gửi yêu cầu hợp tác');
-    await f.page.type('textarea[aria-label="Kế hoạch hợp tác với gian hàng"]', 'Review skincare twice monthly.');
+    await f.page.type('textarea[aria-label="Kế hoạch hợp tác với cửa hàng"]', 'Review skincare twice monthly.');
     await f.page.click('[role="dialog"] button[type="submit"]');
-    await f.page.waitForFunction(() => document.body.textContent.includes('Chờ Shop duyệt yêu cầu'));
+    await f.page.waitForFunction(() => document.body.textContent.includes('Đang chờ Shop duyệt yêu cầu'));
     const requests = f.calls.filter(call => call.path === '/api/store-collaborators/request');
     assert.equal(requests.length, 1);
     assert.equal(requests[0].body.note, 'Review skincare twice monthly.');
@@ -288,7 +288,7 @@ test('KOC sends a cooperation plan and can explicitly decline a Shop invitation'
     await f.render('cooperation');
     await f.page.waitForFunction(() => document.body.textContent.includes('Từ chối lời mời'));
     await button(f.page, 'Từ chối lời mời');
-    await f.page.waitForFunction(() => document.body.textContent.includes('Yêu cầu bị từ chối'));
+    await f.page.waitForFunction(() => document.body.textContent.includes('Hợp tác đã bị từ chối'));
     assert.ok(f.calls.some(call => call.path.endsWith('/request/reject') && call.method === 'PATCH'));
   } finally { await f.browser.close(); }
 });

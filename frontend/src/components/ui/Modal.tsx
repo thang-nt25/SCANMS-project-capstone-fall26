@@ -14,6 +14,7 @@ export interface ModalProps {
   belowHeader?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  overlayClassName?: string;
   bodyClassName?: string;
   stickyHeader?: boolean;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
@@ -29,6 +30,7 @@ export function Modal({
   belowHeader,
   footer,
   className,
+  overlayClassName,
   bodyClassName,
   stickyHeader = false,
   maxWidth = 'md',
@@ -53,7 +55,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 bg-[#231D15]/40 backdrop-blur-xs flex items-center justify-center overflow-y-auto p-3 sm:p-4 z-50 animate-in fade-in duration-150"
+      className={cn('fixed inset-0 bg-[#231D15]/40 backdrop-blur-xs flex items-center justify-center overflow-y-auto p-3 sm:p-4 z-50 animate-in fade-in duration-150', overlayClassName)}
       onClick={onClose}
     >
       <div

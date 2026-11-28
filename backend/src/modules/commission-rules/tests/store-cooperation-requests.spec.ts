@@ -1,4 +1,5 @@
 import { StoreCollaboratorsService } from '../store-collaborators.service';
+import { UserRole } from '@prisma/client';
 
 describe('Store cooperation requests', () => {
   let prisma: any;
@@ -288,5 +289,53 @@ describe('Store cooperation requests', () => {
         }),
       }),
     );
+  });
+
+  it('lists only the records counted as blockers for the selected shop and KOC', async () => {
+    prisma.storeCollaborator.findUnique.mockResolvedValue({
+      id: 'rel', storeId: 'store', collaboratorId: 'kol', status: 'APPROVED',
+    });
+    prisma.exclusiveDealProposal = {
+      count: jest.fn().mockResolvedValue(2),
+      findMany: jest.fn().mockResolvedValue([
+        { id: 'deal-one', status: 'PENDING', initiatedById: 'owner' },
+        { id: 'deal-two', status: 'PENDING_ADMIN_APPROVAL', initiatedById: null },
+      ]),
+    };
+    prisma.commission = { count: jest.fn().mockResolvedValue(21), findMany: jest.fn().mockResolvedValue(Array.from({ length: 21 }, (_, id) => ({ id }))) };
+    prisma.coupon = { findMany: jest.fn().mockResolvedValue([{ id: 'voucher', displayCode: 'NHIQA2311', status: 'ACTIVE' }]) };
+    prisma.sampleProductRequest = { count: jest.fn().mockResolvedValue(1), findMany: jest.fn().mockResolvedValue([{ id: 'sample' }]) };
+
+    const { counts } = await service.getTerminationEligibility('owner', UserRole.SHOP_MANAGER, 'rel', 'store');
+    expect(counts).toEqual({ openDealsCount: 2, pendingKpiCount: 21, activeVouchersCount: 1, openSamplesCount: 1 });
+    const getDetails = (kind: string, page = 1) =>
+      service.getTerminationBlockerDetails('owner', UserRole.SHOP_MANAGER, 'rel', kind, 'store', page);
+    await expect(getDetails('DEAL')).resolves.toMatchObject({
+      hasMore: false,
+      items: [{ id: 'deal-one', waitingFor: 'KOL' }, { id: 'deal-two', waitingFor: 'ADMIN' }],
+    });
+    const kpi = await getDetails('KPI');
+    expect(kpi.items).toHaveLength(20);
+    expect(kpi.hasMore).toBe(true);
+    await getDetails('KPI', 2);
+    await getDetails('VOUCHER');
+    await getDetails('SAMPLE');
+    for (const model of [prisma.exclusiveDealProposal, prisma.commission, prisma.sampleProductRequest]) {
+      expect(model.findMany.mock.calls[0][0].where).toEqual(model.count.mock.calls[0][0].where);
+    }
+    expect(prisma.coupon.findMany.mock.calls[1][0].where).toEqual(prisma.coupon.findMany.mock.calls[0][0].where);
+    expect(prisma.commission.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ skip: 20, take: 21 }));
+  });
+
+  it('rejects blocker details for other stores and roles before querying the blockers', async () => {
+    prisma.storeCollaborator.findUnique.mockResolvedValue({
+      id: 'rel', storeId: 'store', collaboratorId: 'kol', status: 'APPROVED',
+    });
+    prisma.exclusiveDealProposal = { findMany: jest.fn() };
+    await expect(service.getTerminationBlockerDetails('kol', UserRole.COLLABORATOR, 'rel', 'DEAL', 'store')).rejects.toMatchObject({ status: 403 });
+    await expect(service.getTerminationBlockerDetails('owner', UserRole.SHOP_MANAGER, 'rel', 'DEAL', 'other-store')).rejects.toMatchObject({ status: 404 });
+    prisma.store.findFirst.mockResolvedValue(null);
+    await expect(service.getTerminationBlockerDetails('other-owner', UserRole.SHOP_MANAGER, 'rel', 'DEAL', 'store')).rejects.toMatchObject({ status: 404 });
+    expect(prisma.exclusiveDealProposal.findMany).not.toHaveBeenCalled();
   });
 });

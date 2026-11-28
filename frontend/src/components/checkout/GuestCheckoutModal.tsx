@@ -126,7 +126,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { removeItems, editCheckoutCart, continueShoppingFromCheckout } = useCart();
+  const { removeItems, returnCheckoutItemsToCart } = useCart();
   const { openChat } = useScanmsChat();
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const addressDraftEdited = useRef(false);
@@ -1950,8 +1950,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               notes={orderNotes}
               onNotesChange={setOrderNotes}
               onChat={openChat}
-              onEditCart={() => { editCheckoutCart(activeItems); onClose(); }}
-              onContinueShopping={() => { continueShoppingFromCheckout(activeItems); onClose(); navigate('/marketplace#catalog-section'); }}
+              onEditCart={() => {
+                returnCheckoutItemsToCart(activeItems);
+                onClose();
+                if (location.pathname !== '/cart') navigate('/cart');
+              }}
+              onContinueShopping={() => { returnCheckoutItemsToCart(activeItems); onClose(); navigate('/marketplace#catalog-section'); }}
               appliedCoupons={appliedShopCoupons}
               onApplyCoupon={handleApplyShopCoupon}
               onRemoveCoupon={handleRemoveShopCoupon}

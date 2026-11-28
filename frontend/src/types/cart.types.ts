@@ -2,6 +2,7 @@ export interface CartVariantInfo {
   id: string;
   name: string;
   sku: string;
+  imageUrl?: string | null;
   price?: number | string | null;
   stockQuantity: number;
   isActive?: boolean;
@@ -17,6 +18,7 @@ export interface CartItem {
   price: number;
   originalPrice?: number;
   imageUrl: string;
+  productImageUrl?: string | null;
   quantity: number;
   stockQuantity: number;
   isActive: boolean;
@@ -102,8 +104,7 @@ export interface CartContextType {
   checkoutCouponCode?: string;
   startCheckout: (customItems?: CartItem[], couponCode?: string) => void;
   buyNow: (params: AddItemParams, couponCode?: string) => void;
-  editCheckoutCart: (items: CartItem[]) => void;
-  continueShoppingFromCheckout: (items: CartItem[]) => void;
+  returnCheckoutItemsToCart: (items: CartItem[]) => void;
   closeCheckout: () => void;
   refreshCartStock: () => Promise<void>;
   isValidatingStock: boolean;

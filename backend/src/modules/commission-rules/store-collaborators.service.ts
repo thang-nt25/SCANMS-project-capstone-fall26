@@ -22,6 +22,24 @@ const CLOSED_COOPERATION_STATUSES: StoreCollaboratorStatus[] = [
   StoreCollaboratorStatus.BLOCKED,
 ];
 
+function terminationBlockerFilters(storeId: string, collaboratorId: string) {
+  return {
+    DEAL: { storeId, collaboratorId, closedAt: null, status: { in: ['PENDING', 'PENDING_ADMIN_APPROVAL', 'APPROVED'] } },
+    KPI: { collaboratorId, dealBonusStatus: 'PENDING_KPI', order: { storeId } },
+    VOUCHER: { storeId, collaboratorId, status: { in: ['PENDING_APPROVAL', 'PENDING_ADMIN_APPROVAL', 'PENDING_BLOCK_APPROVAL', 'ACTIVE', 'PAUSED'] } },
+    SAMPLE: {
+      collaboratorId,
+      product: { storeId },
+      status: { in: ['PENDING', 'APPROVED', 'SHIPPED', 'RECEIVED', 'VIDEO_SUBMITTED', 'REVISION_REQUIRED', 'OVERDUE', 'APPEALED', 'DELIVERY_ISSUE'] },
+    },
+  } satisfies {
+    DEAL: Prisma.ExclusiveDealProposalWhereInput;
+    KPI: Prisma.CommissionWhereInput;
+    VOUCHER: Prisma.CouponWhereInput;
+    SAMPLE: Prisma.SampleProductRequestWhereInput;
+  };
+}
+
 @Injectable()
 export class StoreCollaboratorsService {
   constructor(
@@ -788,67 +806,23 @@ export class StoreCollaboratorsService {
   }
 
   private async evaluateTerminationBlockers(storeId: string, collaboratorId: string) {
+    const filters = terminationBlockerFilters(storeId, collaboratorId);
     const [openDealsCount, pendingKpiCount, activeVouchers, openSamplesCount] =
       await Promise.all([
         typeof this.prisma.exclusiveDealProposal?.count === 'function'
-          ? this.prisma.exclusiveDealProposal.count({
-              where: {
-                storeId,
-                collaboratorId,
-                closedAt: null,
-                status: {
-                  in: ['PENDING', 'PENDING_ADMIN_APPROVAL', 'APPROVED'],
-                },
-              },
-            })
+          ? this.prisma.exclusiveDealProposal.count({ where: filters.DEAL })
           : 0,
         typeof (this.prisma as any).commission?.count === 'function'
-          ? (this.prisma as any).commission.count({
-              where: {
-                collaboratorId,
-                dealBonusStatus: 'PENDING_KPI',
-                order: { storeId },
-              },
-            })
+          ? this.prisma.commission.count({ where: filters.KPI })
           : 0,
         typeof this.prisma.coupon?.findMany === 'function'
           ? this.prisma.coupon.findMany({
-              where: {
-                storeId,
-                collaboratorId,
-                status: {
-                  in: [
-                    'PENDING_APPROVAL',
-                    'PENDING_ADMIN_APPROVAL',
-                    'PENDING_BLOCK_APPROVAL',
-                    'ACTIVE',
-                    'PAUSED',
-                  ],
-                },
-              },
+              where: filters.VOUCHER,
               select: { id: true, displayCode: true, status: true },
             })
           : [],
         typeof this.prisma.sampleProductRequest?.count === 'function'
-          ? this.prisma.sampleProductRequest.count({
-              where: {
-                collaboratorId,
-                product: { storeId },
-                status: {
-                  in: [
-                    'PENDING',
-                    'APPROVED',
-                    'SHIPPED',
-                    'RECEIVED',
-                    'VIDEO_SUBMITTED',
-                    'REVISION_REQUIRED',
-                    'OVERDUE',
-                    'APPEALED',
-                    'DELIVERY_ISSUE',
-                  ],
-                },
-              },
-            })
+          ? this.prisma.sampleProductRequest.count({ where: filters.SAMPLE })
           : 0,
       ]);
 
@@ -932,6 +906,85 @@ export class StoreCollaboratorsService {
       storeId: record.storeId,
       collaboratorId: record.collaboratorId,
     };
+  }
+
+  async getTerminationBlockerDetails(
+    actorId: string,
+    role: UserRole,
+    targetId: string,
+    kind: string,
+    storeId?: string,
+    page = 1,
+  ) {
+    if (role !== UserRole.SHOP_MANAGER) throw new ForbiddenException();
+    const pageSize = 20;
+    if (!Number.isSafeInteger(page) || page < 1 || page > Math.floor(2_147_483_647 / pageSize)) {
+      throw new BadRequestException('Trang không hợp lệ.');
+    }
+    const { record } = await this.resolveCooperationTarget(actorId, role, targetId, storeId);
+    if (storeId && storeId !== record.storeId) {
+      throw new NotFoundException('Không tìm thấy bản ghi hợp tác tại cửa hàng này.');
+    }
+    const filters = terminationBlockerFilters(record.storeId, record.collaboratorId);
+    const pagination = {
+      skip: (page - 1) * pageSize,
+      take: pageSize + 1,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] as const,
+    };
+    const query = { ...pagination, orderBy: [...pagination.orderBy] };
+
+    switch (kind) {
+      case 'DEAL': {
+        const rows = await this.prisma.exclusiveDealProposal.findMany({
+          ...query,
+          where: filters.DEAL,
+          select: {
+            id: true, status: true, scopeType: true, initiatedById: true,
+            proposedCommissionRate: true, approvedCommissionRate: true,
+            commitmentEndsAt: true, settlementEndsAt: true, product: { select: { title: true } },
+          },
+        });
+        return {
+          kind, hasMore: rows.length > pageSize,
+          items: rows.slice(0, pageSize).map(({ initiatedById, ...row }) => ({
+            ...row, waitingFor: row.status === 'PENDING_ADMIN_APPROVAL' ? 'ADMIN'
+              : row.status === 'PENDING' ? (initiatedById ? 'KOL' : 'SHOP') : null,
+          })),
+        };
+      }
+      case 'KPI': {
+        const rows = await this.prisma.commission.findMany({
+          ...query,
+          where: filters.KPI,
+          select: { id: true, dealBonusAmount: true, order: { select: { id: true, externalOrderSn: true } } },
+        });
+        return { kind, items: rows.slice(0, pageSize), hasMore: rows.length > pageSize };
+      }
+      case 'VOUCHER': {
+        const rows = await this.prisma.coupon.findMany({
+          ...query,
+          where: filters.VOUCHER,
+          select: {
+            id: true, displayCode: true, status: true, expiresAt: true, discountType: true,
+            discountValue: true, maximumDiscountAmount: true, usageCount: true,
+          },
+        });
+        return { kind, items: rows.slice(0, pageSize), hasMore: rows.length > pageSize };
+      }
+      case 'SAMPLE': {
+        const rows = await this.prisma.sampleProductRequest.findMany({
+          ...query,
+          where: filters.SAMPLE,
+          select: {
+            id: true, status: true, deadlineAt: true, revisionDeadlineAt: true,
+            product: { select: { title: true } }, productVariant: { select: { name: true } },
+          },
+        });
+        return { kind, items: rows.slice(0, pageSize), hasMore: rows.length > pageSize };
+      }
+      default:
+        throw new BadRequestException('Loại ràng buộc không hợp lệ.');
+    }
   }
 
   async terminateCooperation(
